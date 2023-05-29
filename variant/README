@@ -1,0 +1,5 @@
+This directory contiains the variant files for the memory board.
+
+In order to have the board operate, the files need to be copied to:
+
+<where ever this is on your system>/.platformio/packages/framework-arduino-samd-adafruit/variants/feather_m0
