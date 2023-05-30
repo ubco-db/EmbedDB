@@ -147,31 +147,6 @@ void *sbitsGetMaxKey(sbitsState *state, void *buffer) {
 }
 
 /**
- * @brief   Gets upper or lower bound of all pages in data
- * @param   state   SBITS algorithm state structure
- * @param   data    pointer to pages to extract bounds from
- * @param   size    number of records to load
- * @return  Returns pointer to array of data bound
- */
-void *getPageBounds(void *data, sbitsState *state, uint64_t size) {
-    /* Allocate array */
-    int8_t *dataBounds = (int8_t *)malloc(state->keySize * size);
-    int8_t *currentData = dataBounds;
-    printf("start\n");
-    for (int i = 0; i < size; i++) {
-        // cast data to int8 to perform byte-wise operations on pointer
-        void *currentPointer = ((int8_t *)data) + (i * state->pageSize);
-        // currentData = sbitsGetMinKey(state, currentPointer);
-        memcpy(currentData, sbitsGetMinKey(state, currentPointer), state->keySize);
-        // increment pointer for bounds data
-        printf("i: %lu, minKey: %lu\n", i, *(int32_t *)sbitsGetMinKey(state, currentPointer));
-        currentData += state->keySize;
-    }
-    printf("end\n");
-    return dataBounds;
-}
-
-/**
  * @brief   Initialize SBITS structure.
  * @param   state           SBITS algorithm state structure
  * @param   indexMaxError   max error of indexing structure (spline or PGM)
