@@ -54,9 +54,6 @@ extern "C" {
 #include "spline/radixspline.h"
 #include "spline/spline.h"
 
-/* If using PGM indexing */
-/* TODO */
-
 /* Define type for page ids (physical and logical). */
 typedef uint32_t id_t;
 
@@ -89,7 +86,7 @@ typedef uint16_t count_t;
 
 #define SBITS_GET_BITMAP(x) ((void *)((int8_t *)x + SBITS_BITMAP_OFFSET))
 
-#define SBITS_GET_MIN_KEY(x, y) ((void *)((int8_t *)x + SBITS_MIN_OFFSET))
+#define SBITS_GET_MIN_KEY(x) ((void *)((int8_t *)x + SBITS_MIN_OFFSET))
 #define SBITS_GET_MAX_KEY(x, y) ((void *)((int8_t *)x + SBITS_MIN_OFFSET + y->keySize))
 
 #define SBITS_GET_MIN_DATA(x, y) ((void *)((int8_t *)x + SBITS_MIN_OFFSET + y->keySize * 2))
@@ -159,10 +156,10 @@ typedef struct {
     id_t firstIdxPage;                          /* First data page number (physical location) */
     id_t erasedEndPage;                         /* Physical page number of last erased page */
     id_t erasedEndIdxPage;                      /* Physical page number of last erased index page */
+    uint64_t minVarRecordId;                    /* Minimum record id that we still have variable data for */
     int8_t wrappedMemory;                       /* 1 if have wrapped around in memory, 0 otherwise */
     int8_t wrappedIdxMemory;                    /* 1 if have wrapped around in index memory, 0 otherwise */
     int8_t wrappedVariableMemory;               /* 1 if have wrapped around in variable data memory, 0 otherwise */
-    id_t minVarRecordId;                        /* Minimum record id that we still have variable data for */
     void *buffer;                               /* Pre-allocated memory buffer for use by algorithm */
     spline *spl;                                /* Spline model */
     radixspline *rdix;                          /* Radix Spline search model */
@@ -187,8 +184,8 @@ typedef struct {
     void (*extractData)(void *data);            /* Given a record, function that extracts the data (key) value from that record */
     void (*updateBitmap)(void *data, void *bm); /* Given a record, updates bitmap based on its data (key) value */
     int8_t (*inBitmap)(void *data, void *bm);   /* Returns 1 if data (key) value is a valid value given the bitmap */
-    int32_t minKey;                             /* Minimum key */
-    int32_t maxKey;                             /* Maximum key */
+    uint64_t minKey;                            /* Minimum key */
+    uint64_t maxKey;                            /* Maximum key */
     int32_t maxError;                           /* Maximum key error */
     id_t numWrites;                             /* Number of page writes */
     id_t numReads;                              /* Number of page reads */
