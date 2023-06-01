@@ -1,41 +1,41 @@
 /******************************************************************************/
 /**
-@file		radixspline.c
-@author		Ramon Lawrence
-@brief		Implementation of radix spline for embedded devices.
-                        Based on "RadixSpline: a single-pass learned index" by
-                        A. Kipf, R. Marcus, A. van Renen, M. Stoian, A. Kemper,
-                        T. Kraska, and T. Neumann
-                        https://github.com/learnedsystems/RadixSpline
-@copyright	Copyright 2022
-                        The University of British Columbia
-                        Ramon Lawrence
-@par Redistribution and use in source and binary forms, with or without
-        modification, are permitted provided that the following conditions are met:
-
-@par 1.Redistributions of source code must retain the above copyright notice,
-        this list of conditions and the following disclaimer.
-
-@par 2.Redistributions in binary form must reproduce the above copyright notice,
-        this list of conditions and the following disclaimer in the documentation
-        and/or other materials provided with the distribution.
-
-@par 3.Neither the name of the copyright holder nor the names of its contributors
-        may be used to endorse or promote products derived from this software without
-        specific prior written permission.
-
-@par THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
-        AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-        IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
-        ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE
-        LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
-        CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
-        SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
-        INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
-        CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
-        ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
-        POSSIBILITY OF SUCH DAMAGE.
-*/
+ * @file		radixspline.c
+ * @author		Ramon Lawrence
+ * @brief		Implementation of radix spline for embedded devices.
+ *                         Based on "RadixSpline: a single-pass learned index" by
+ *                         A. Kipf, R. Marcus, A. van Renen, M. Stoian, A. Kemper,
+ *                         T. Kraska, and T. Neumann
+ *                         https://github.com/learnedsystems/RadixSpline
+ * @copyright	Copyright 2022
+ *                         The University of British Columbia
+ *                         Ramon Lawrence
+ * @par Redistribution and use in source and binary forms, with or without
+ *         modification, are permitted provided that the following conditions are met:
+ *
+ * @par 1.Redistributions of source code must retain the above copyright notice,
+ *         this list of conditions and the following disclaimer.
+ *
+ * @par 2.Redistributions in binary form must reproduce the above copyright notice,
+ *         this list of conditions and the following disclaimer in the documentation
+ *         and/or other materials provided with the distribution.
+ *
+ * @par 3.Neither the name of the copyright holder nor the names of its contributors
+ *         may be used to endorse or promote products derived from this software without
+ *         specific prior written permission.
+ *
+ * @par THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+ *         AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ *         IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+ *         ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE
+ *         LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+ *         CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+ *         SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+ *         INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+ *         CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+ *         ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+ *         POSSIBILITY OF SUCH DAMAGE.
+ */
 /******************************************************************************/
 
 #include <math.h>
@@ -46,14 +46,11 @@
 #include "radixspline.h"
 
 /**
-@brief     	Build the radix table
-@param		rsdix
-                                Radix spline structure
-@param     	spl
-                Spline structure
-@param		radixSize
-                                Size of radix table
-*/
+ * @brief	Build the radix table
+ * @param	rsdix		Radix spline structure
+ * @param	spl			Spline structure
+ * @param	radixSize	Size of radix table
+ */
 void radixsplineBuild(radixspline *rsidx, spline *spl, int8_t radixSize) {
     // radixsplinePrint(rsidx);
     free(rsidx->table);
@@ -66,14 +63,11 @@ void radixsplineBuild(radixspline *rsidx, spline *spl, int8_t radixSize) {
 }
 
 /**
-@brief     	Rebuild the radix table with new shift amount
-@param		rsdix
-                                Radix spline structure
-@param		radixSize
-                                Size of radix table
-@param		shiftAmount
-                                Difference in shift amount between current radix table and desired radix table
-*/
+ * @brief     	Rebuild the radix table with new shift amount
+ * @param		rsdix		Radix spline structure
+ * @param		radixSize	Size of radix table
+ * @param		shiftAmount	Difference in shift amount between current radix table and desired radix table
+ */
 void radixsplineRebuild(radixspline *rsidx, int8_t radixSize, int8_t shiftAmount) {
     rsidx->prevPrefix = rsidx->prevPrefix >> shiftAmount;
 
@@ -87,14 +81,11 @@ void radixsplineRebuild(radixspline *rsidx, int8_t radixSize, int8_t shiftAmount
 }
 
 /**
-@brief     	Add a point to be indexed by the radix spline structure
-@param		rsdix
-                                Radix spline structure
-@param     	key
-                New point to be indexed by radix spline
-*/
-void radixsplineAddPoint(radixspline *rsidx, uint32_t key) // Note: splineAdd() must be run before radixsplineAddPoint()
-{
+ * @brief	Add a point to be indexed by the radix spline structure
+ * @param	rsdix	Radix spline structure
+ * @param	key	 	New point to be indexed by radix spline
+ */
+void radixsplineAddPoint(radixspline *rsidx, uint32_t key) {
     // Add spline point
     splineAdd(rsidx->spl, key);
 
@@ -152,14 +143,11 @@ void radixsplineAddPoint(radixspline *rsidx, uint32_t key) // Note: splineAdd() 
 }
 
 /**
-@brief     	Initialize an empty radix spline index of given size
-@param		rsdix
-                                Radix spline structure
-@param     	spl
-                Spline structure
-@param		radixSize
-                                Size of radix table
-*/
+ * @brief	Initialize an empty radix spline index of given size
+ * @param	rsdix		Radix spline structure
+ * @param	spl			Spline structure
+ * @param	radixSize	Size of radix table
+ */
 void radixsplineInit(radixspline *rsidx, spline *spl, int8_t radixSize) {
     rsidx->spl = spl;
     rsidx->radixSize = radixSize;
@@ -210,26 +198,21 @@ size_t radixBinarySearch(point *arr, int low, int high, int x) {
 }
 
 /**
-@brief     	Initialize a radix spline index of given size using pre-built spline structure.
-@param		rsdix
-                                Radix spline structure
-@param     	spl
-                Spline structure
-@param		radixSize
-                                Size of radix table
-*/
+ * @brief	Initialize a radix spline index of given size using pre-built spline structure.
+ * @param	rsdix		Radix spline structure
+ * @param	spl			Spline structure
+ * @param	radixSize	Size of radix table
+ */
 void radixsplineInitBuild(radixspline *rsidx, spline *spl, uint32_t radixSize) {
     radixsplineInit(rsidx, spl, radixSize);
     radixsplineBuild(rsidx, spl, radixSize);
 }
 
 /**
-@brief     	Returns the radix index that is end of spline segment containing key.
-@param     	rsidx
-                Radix spline structure
-@param		key
-                                Search key
-*/
+ * @brief	Returns the radix index that is end of spline segment containing key.
+ * @param	rsidx	Radix spline structure
+ * @param	key		Search key
+ */
 size_t radixsplineGetEntry(radixspline *rsidx, id_t key) {
     // If no radix table, perform binary search on spline points
     if (rsidx->radixSize == 0)
@@ -278,14 +261,11 @@ size_t radixsplineGetEntryBinarySearch(radixspline *rsidx, id_t key) {
 }
 
 /**
-@brief     	Estimate location of key in data using spline points.
-@param     	rsidx
-                Radix spline structure
-@param		key
-                                Search key
-@param		index
-                                Spline index entry
-*/
+ * @brief	Estimate location of key in data using spline points.
+ * @param	rsidx	Radix spline structure
+ * @param	key		Search key
+ * @param	index	Spline index entry
+ */
 size_t radixsplineEstimateLocation(radixspline *rsidx, id_t key) {
     if (key < rsidx->minKey)
         return 0;
@@ -303,19 +283,13 @@ size_t radixsplineEstimateLocation(radixspline *rsidx, id_t key) {
 }
 
 /**
-@brief     	Finds a value using index.
-                        Returns predicted location and low and high error bounds.
-@param     	rsidx
-                Radix spline structure
-@param		key
-                                Search key
-@param		loc
-                                Predicted location
-@param		low
-                                Low bound on predicted location
-@param		high
-                                High bound on predicted location
-*/
+ * @brief	Finds a value using index. Returns predicted location and low and high error bounds.
+ * @param	rsidx	Radix spline structure
+ * @param	key		Search key
+ * @param	loc		Predicted location
+ * @param	low		Low bound on predicted location
+ * @param	high	High bound on predicted location
+ */
 id_t radixsplineFind(radixspline *rsidx, id_t key, id_t *loc, id_t *low, id_t *high) {
     /* Estimate location */
     *loc = radixsplineEstimateLocation(rsidx, key);
@@ -330,10 +304,9 @@ id_t radixsplineFind(radixspline *rsidx, id_t key, id_t *loc, id_t *low, id_t *h
 }
 
 /**
-@brief     	Print radix spline structure.
-@param     	rsidx
-                Radix spline structure
-*/
+ * @brief	Print radix spline structure.
+ * @param	rsidx	Radix spline structure
+ */
 void radixsplinePrint(radixspline *rsidx) {
     if (rsidx == NULL) {
         printf("No radix spline index to print.\n");
@@ -347,20 +320,18 @@ void radixsplinePrint(radixspline *rsidx) {
 }
 
 /**
-@brief     	Returns size of radix spline index structure in bytes
-@param     	rsidx
-                Radix spline structure
-*/
+ * @brief	Returns size of radix spline index structure in bytes
+ * @param	rsidx	Radix spline structure
+ */
 size_t radixsplineSize(radixspline *rsidx) {
     /* Note: Counting size of spline by number of points not the memory allocated (which may be larger). */
     return sizeof(rsidx) + rsidx->size * sizeof(uint32_t) + splineSize(rsidx->spl);
 }
 
 /**
-@brief     	Closes and frees space for radix spline index structure
-@param     	rsidx
-                Radix spline structure
-*/
+ * @brief	Closes and frees space for radix spline index structure
+ * @param	rsidx	Radix spline structure
+ */
 void radixsplineClose(radixspline *rsidx) {
     free(rsidx->spl->points);
     free(rsidx->table);
