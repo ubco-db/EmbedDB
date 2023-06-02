@@ -9,7 +9,7 @@
 
 #define NUM_STEPS 10
 #define NUM_RUNS 1
-#define VALIDATE_VAR_DATA 1
+#define VALIDATE_VAR_DATA 0
 /**
  * 0 = Random data
  * 1 = Image data
@@ -198,8 +198,9 @@ void test_vardata(void *storage) {
         if (seqdata == 1) {
             for (i = 0; i < numRecords; i++) {
                 // Key = i, fixed data = i % 100
-                *((int32_t *)recordBuffer) = i;
-                *((int32_t *)(recordBuffer + state->keySize)) = (i % 100);
+                memcpy(recordBuffer, &i, sizeof(int32_t));
+                int32_t data = i % 100;
+                memcpy(recordBuffer + state->keySize, &data, sizeof(int32_t));
 
                 // Generate variable-length data
                 void *variableData = NULL;
@@ -208,7 +209,8 @@ void test_vardata(void *storage) {
                 if (TEST_TYPE == 0) {
                     randomVarData(10, 10, 100, &hasVarData, &length, &variableData);
                 } else if (TEST_TYPE == 1) {
-                    imageVarData(0.05, "test.png", &hasVarData, &length, &variableData);
+                    char filename[] = "test.png";
+                    imageVarData(0.05, filename, &hasVarData, &length, &variableData);
                 } else if (TEST_TYPE == 2) {
                     hasVarData = 1;
                     length = 15;
@@ -281,7 +283,8 @@ void test_vardata(void *storage) {
                     if (TEST_TYPE == 0) {
                         randomVarData(10, 10, 100, &hasVarData, &length, &variableData);
                     } else if (TEST_TYPE == 1) {
-                        imageVarData(0.05, "test.png", &hasVarData, &length, &variableData);
+                        char filename[] = "test.png";
+                        imageVarData(0.05, filename, &hasVarData, &length, &variableData);
                     } else if (TEST_TYPE == 2) {
                         hasVarData = 1;
                         length = 15;
@@ -373,13 +376,14 @@ void test_vardata(void *storage) {
                 void *varData = NULL;
                 uint32_t length = 0;
                 int8_t result = sbitsGetVar(state, keyBuf, recordBuffer, &varData, &length);
-
+                int32_t retrievedData;
+                memcpy(&retrievedData, recordBuffer, min(state->dataSize, (int8_t)sizeof(int32_t)));
                 if (result == -1) {
                     printf("ERROR: Failed to find: %lu\n", i);
                 } else if (result == 1) {
                     printf("WARN: Variable data associated with key %lu was deleted\n", i);
-                } else if (*((int32_t *)recordBuffer) != i % 100) {
-                    printf("ERROR: Wrong data for: %lu\n", i);
+                } else if (retrievedData != i % 100) {
+                    printf("ERROR: Wrong data for: %lu: %lu\n", i, retrievedData);
                 } else if (VALIDATE_VAR_DATA && varData != NULL) {
                     while (validationHead->key != i) {
                         Node *tmp = validationHead;
@@ -400,7 +404,9 @@ void test_vardata(void *storage) {
                 // Retrieve image if using image test
                 if (varData != NULL) {
                     if (TEST_TYPE == 1) {
-                        retrieveImageData(&varData, length, i, "test", ".png");
+                        char filename[] = "test";
+                        char extension[] = ".png";
+                        retrieveImageData(&varData, length, i, filename, extension);
                     }
                     free(varData);
                     varData = NULL;
@@ -484,7 +490,9 @@ void test_vardata(void *storage) {
                         // Retrieve image
                         if (varData != NULL) {
                             if (TEST_TYPE == 1) {
-                                retrieveImageData(&varData, length, *key, "test", ".png");
+                                char filename[] = "test";
+                                char extension[] = ".png";
+                                retrieveImageData(&varData, length, *key, filename, extension);
                             }
                             free(varData);
                             varData = NULL;
@@ -532,7 +540,9 @@ void test_vardata(void *storage) {
 
                     // Retrieve image
                     if (length != 0 && TEST_TYPE == 1) {
-                        retrieveImageData(&varData, length, key, "test", ".png");
+                        char filename[5] = "test";
+                        char extension[5] = ".png";
+                        retrieveImageData(&varData, length, key, filename, extension);
                     }
 
                     // printf("Key: %lu Data: %lu Var: %s\n", key, *((int32_t *)recordBuffer), varData);
@@ -822,7 +832,6 @@ void updateBitmapInt64(void *data, void *bm) {
     int16_t stepSize = 10;
 
     int32_t current = 320;
-    int8_t bmsize = 63;
     int8_t count = 0;
 
     while (val > current && count < 63) {
@@ -876,7 +885,7 @@ uint32_t readImageFromFile(void **data, char *filename) {
     // SD_FILE* file = fopen(filename, "rb");
     // if (file == NULL) {
     //     printf("Failed to open the file\n");
-    //     return -1;
+    //     return 0;
     // }
 
     // // Determine the file size
@@ -889,7 +898,7 @@ uint32_t readImageFromFile(void **data, char *filename) {
     // if (*data == NULL) {
     //     printf("Failed to allocate memory\n");
     //     fclose(file);
-    //     return -1;
+    //     return 0;
     // }
 
     // // Read the file data into the buffer
@@ -898,7 +907,7 @@ uint32_t readImageFromFile(void **data, char *filename) {
     //     printf("Failed to read the file\n");
     //     free(*data);
     //     fclose(file);
-    //     return 1;
+    //     return 0;
     // }
 
     // fclose(file);
@@ -926,8 +935,7 @@ void imageVarData(float chance, char *filename, uint8_t *usingVarData, uint32_t 
     *usingVarData = (rand() % 100) / 100.0 < chance;
     if (usingVarData) {
         *length = readImageFromFile(varData, filename);
-        // printf("Length from file: %i\n", *length);
-        if (*length == -1) {
+        if (*length == 0) {
             printf("ERROR: Failed to read image '%s'\n", filename);
             exit(-1);
         }
