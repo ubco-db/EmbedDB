@@ -53,8 +53,8 @@ extern "C" {
 typedef uint32_t id_t;
 
 typedef struct {
-    id_t x;
-    id_t y;
+    void *key;
+    uint32_t page;
 } point;
 
 struct spline_s {
@@ -65,26 +65,22 @@ struct spline_s {
     point upper;            /* Upper spline limit */
     point lower;            /* Lower spline limit */
     id_t lastLoc;           /* Location of previous spline key */
-    id_t lastKey;           /* Previous spline key */
+    void *lastKey;          /* Previous spline key */
     uint32_t maxError;      /* Maximum error */
     id_t tempLastPoint;     /* Last spline point is temporary if value is not 0 */
+    uint8_t keySize;        /* Size of key in bytes */
 };
 
 typedef struct spline_s spline;
 
 /**
- * @brief	Initialize a spline structure with given maximum size.
- * @param	spl		Spline structure
- * @param	size	Maximum size of spline
+ * @brief    Initialize a spline structure with given maximum size and error.
+ * @param    spl        Spline structure
+ * @param    size       Maximum size of spline
+ * @param    maxError   Maximum error allowed in spline
+ * @param    keySize    Size of key in bytes
  */
-void splineInit(spline *spl, id_t size, size_t maxError);
-
-/**
- * @brief	Adds a new data point to index.
- * @param	spl	Spline structure
- * @param	key	Key to index (note: location is last point in array)
- */
-void splineAdd(spline *spl, id_t minKey);
+void splineInit(spline *spl, id_t size, size_t maxError, uint8_t keySize);
 
 /**
  * @brief	Builds a spline structure given a sorted data set.
@@ -95,7 +91,14 @@ void splineAdd(spline *spl, id_t minKey);
  * @param	size		Number of values in array
  * @param	maxError	Maximum error for each spline
  */
-void splineBuild(spline *spl, id_t *data, id_t size, size_t maxError);
+void splineBuild(spline *spl, void **data, id_t size, size_t maxError);
+
+/**
+ * @brief    Adds point to spline structure
+ * @param    spl     Spline structure
+ * @param    key     Data key to be added (must be incrementing)
+ */
+void splineAdd(spline *spl, void *key);
 
 /**
  * @brief	Print a spline structure.
@@ -111,14 +114,14 @@ uint32_t splineSize(spline *spl);
 
 /**
  * @brief	Estimate the page number of a given key
- *
- * @param	spl		The spline structure to search
- * @param	key		The key to search for
- * @param	loc		A return value for the best estimate of which page the key is on
- * @param	low		A return value for the smallest page that it could be on
- * @param	high	A return value for the largest page it could be on
+ * @param	spl			The spline structure to search
+ * @param	key			The key to search for
+ * @param	compareKey	Function to compare keys
+ * @param	loc			A return value for the best estimate of which page the key is on
+ * @param	low			A return value for the smallest page that it could be on
+ * @param	high		A return value for the largest page it could be on
  */
-void splineFind(spline *spl, id_t key, id_t *loc, id_t *low, id_t *high);
+void splineFind(spline *spl, void *key, int8_t compareKey(void *, void *), id_t *loc, id_t *low, id_t *high);
 
 #ifdef __cplusplus
 }

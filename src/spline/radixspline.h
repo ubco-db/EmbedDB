@@ -70,13 +70,14 @@ extern "C" {
 typedef struct {
     spline *spl;      /* Spline with spline points */
     uint32_t size;    /* Size of radix table */
-    uint32_t *table;  /* Radix table */
+    id_t *table;      /* Radix table */
     int8_t shiftSize; /* Size of prefix/shift (in bits) */
     int8_t radixSize; /* Size of radix (in bits) */
-    id_t minKey;      /* Minimum key */
-    id_t dataSize;    /* Size of data */
+    void *minKey;     /* Minimum key */
+    id_t numPoints;   /* Size of data */
     id_t prevPrefix;  /* Prefix of most recently seen spline point */
     id_t pointsSeen;  /* Number of data points added to radix */
+	uint8_t keySize;  /* Size of key in bytes */
 } radixspline;
 
 typedef struct {
@@ -85,37 +86,50 @@ typedef struct {
 } lookup_t;
 
 /**
+ * @brief   Build the radix table
+ * @param   rsdix       Radix spline structure
+ * @param   keys        Data points to be indexed
+ * @param   numKeys     Number of data items
+ */
+void radixsplineBuild(radixspline *rsidx, void **keys, uint32_t numKeys);
+
+/**
  * @brief	Initialize an empty radix spline index of given size
  * @param	rsdix		Radix spline structure
  * @param	spl			Spline structure
  * @param	radixSize	Size of radix table
+ * @param	keySize		Size of keys to be stored in radix table
  */
-void radixsplineInit(radixspline *rsidx, spline *spl, int8_t radixSize);
+void radixsplineInit(radixspline *rsidx, spline *spl, int8_t radixSize, uint8_t keySize);
 
 /**
- * @brief	Initialize a radix spline index of given size using pre-built spline structure.
+ * @brief	Initialize and build a radix spline index of given size using pre-built spline structure.
  * @param	rsdix		Radix spline structure
  * @param	spl			Spline structure
  * @param	radixSize	Size of radix table
+ * @param	keys		Keys to be indexed
+ * @param	numKeys 	Number of keys in `keys`
+ * @param	keySize		Size of keys to be stored in radix table
  */
-void radixsplineInitBuild(radixspline *rsidx, spline *spl, uint32_t radixSize);
+void radixsplineInitBuild(radixspline *rsidx, spline *spl, uint32_t radixSize, void **keys, uint32_t numKeys, uint8_t keySize);
 
 /**
  * @brief	Add a point to be indexed by the radix spline structure
  * @param	rsdix	Radix spline structure
- * @param	key	 	New point to be indexed by radix spline
+ * @param	key		New point to be indexed by radix spline
  */
-void radixsplineAddPoint(radixspline *rsidx, uint32_t key);
+void radixsplineAddPoint(radixspline *rsidx, void *key);
 
 /**
  * @brief	Finds a value using index. Returns predicted location and low and high error bounds.
- * @param	rsidx	Radix spline structure
- * @param	key		Search key
- * @param	loc		Predicted location
- * @param	low		Low bound on predicted location
- * @param	high	High bound on predicted location
+ * @param	rsidx	    Radix spline structure
+ * @param	key		    Search key
+ * @param   compareKey  Function to compare keys
+ * @param	loc		    Return of predicted location
+ * @param	low		    Return of low bound on predicted location
+ * @param	high	    Return of high bound on predicted location
  */
-id_t radixsplineFind(radixspline *rsidx, id_t key, id_t *loc, id_t *low, id_t *high);
+void radixsplineFind(radixspline *rsidx, void *key, int8_t compareKey(void *, void *), id_t *loc, id_t *low, id_t *high);
 
 /**
  * @brief	Print radix spline structure.
