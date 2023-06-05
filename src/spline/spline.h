@@ -83,6 +83,12 @@ typedef struct spline_s spline;
 void splineInit(spline *spl, id_t size, size_t maxError, uint8_t keySize);
 
 /**
+ * @brief    Free memory allocated for spline structure.
+ * @param    spl        Spline structure
+ */
+void splineFree(spline *spl);
+
+/**
  * @brief	Builds a spline structure given a sorted data set.
  * 			GreedySplineCorridor implementation from "Smooth interpolating histograms
  * 			with error guarantees" (BNCOD'08) by T. Neumann and S. Michel.

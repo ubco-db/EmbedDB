@@ -54,8 +54,28 @@ void splineInit(spline *spl, id_t size, size_t maxError, uint8_t keySize) {
     spl->size = size;
     spl->maxError = maxError;
     spl->points = (point *)malloc(sizeof(point) * size);
+    for (id_t i = 0; i < size; i++) {
+        spl->points[i].key = malloc(keySize);
+    }
     spl->tempLastPoint = 0;
     spl->keySize = keySize;
+    spl->lastKey = malloc(keySize);
+    spl->lower.key = malloc(keySize);
+    spl->upper.key = malloc(keySize);
+}
+
+/**
+ * @brief    Free memory allocated for spline structure.
+ * @param    spl        Spline structure
+ */
+void splineFree(spline *spl) {
+    for (id_t i = 0; i < spl->size; i++) {
+        free(spl->points[i].key);
+    }
+    free(spl->points);
+    free(spl->lastKey);
+    free(spl->lower.key);
+    free(spl->upper.key);
 }
 
 /**
@@ -73,32 +93,18 @@ static inline int8_t splineIsRight(uint64_t x1, int64_t y1, uint64_t x2, int64_t
 }
 
 /**
- * @brief	Deep copy the given data
- * @param	data		Data to be copied
- * @param	dataSize	Size of data to be copied
- * @return	Pointer to copied data
- */
-void *copy(void *data, uint8_t dataSize) {
-    void *newData = malloc(dataSize);
-    memcpy(newData, data, dataSize);
-    return newData;
-}
-
-/**
  * @brief    Adds point to spline structure
  * @param    spl     Spline structure
  * @param    key     Data key to be added (must be incrementing)
  */
 void splineAdd(spline *spl, void *key) {
-    key = copy(key, spl->keySize);
-
     /* Check if no spline points are currently empty */
     if (spl->currentPointLoc == 0) {
         /* Add first point in data set to spline. */
-        spl->points[0].key = key;
+        memcpy(spl->points[0].key, key, spl->keySize);
         spl->points[0].page = 0;
         spl->count++;
-        spl->lastKey = key;
+        memcpy(spl->lastKey, key, spl->keySize);
         /* Update location of current point */
         spl->currentPointLoc++;
         return;
@@ -107,11 +113,11 @@ void splineAdd(spline *spl, void *key) {
     /* Check if there is only one spline point (need to initialize upper and lower limits using 2nd point) */
     if (spl->currentPointLoc == 1) {
         /* Initialize upper and lower limits using second (unique) data point */
-        spl->lower.key = key;
+        memcpy(spl->lower.key, key, spl->keySize);
         spl->lower.page = spl->currentPointLoc < spl->maxError ? 0 : spl->currentPointLoc - spl->maxError;
-        spl->upper.key = key;
+        memcpy(spl->upper.key, key, spl->keySize);
         spl->upper.page = spl->currentPointLoc + spl->maxError;
-        spl->lastKey = key;
+        memcpy(spl->lastKey, key, spl->keySize);
         spl->lastLoc = spl->currentPointLoc;
 
         spl->currentPointLoc++;
@@ -157,28 +163,25 @@ void splineAdd(spline *spl, void *key) {
 
         /* Point is not in error corridor. Add previous point to spline. */
         assert(spl->count < spl->size);
-        spl->points[spl->count].key = spl->lastKey;
+        memcpy(spl->points[spl->count].key, spl->lastKey, spl->keySize);
         spl->points[spl->count].page = spl->lastLoc;
         spl->count++;
         spl->tempLastPoint = 0;
-
         /* Update upper and lower limits. */
-        spl->lower.key = key;
+        memcpy(spl->lower.key, key, spl->keySize);
         spl->lower.page = spl->currentPointLoc < spl->maxError ? 0 : spl->currentPointLoc - spl->maxError;
-        spl->upper.key = key;
+        memcpy(spl->upper.key, key, spl->keySize);
         spl->upper.page = spl->currentPointLoc + spl->maxError;
     } else {
         /* Check if must update upper or lower limits */
-
         /* Upper limit */
         if (splineIsLeft(upperXDiff, upperYDiff, xdiff, spl->currentPointLoc + spl->maxError - last.page) == 1) {
-            spl->upper.key = key;
+            memcpy(spl->upper.key, key, spl->keySize);
             spl->upper.page = spl->currentPointLoc + spl->maxError;
         }
-
         /* Lower limit */
         if (splineIsRight(lowerXDiff, lowerYDiff, xdiff, (spl->currentPointLoc < spl->maxError ? 0 : spl->currentPointLoc - spl->maxError) - last.page) == 1) {
-            spl->lower.key = key;
+            memcpy(spl->lower.key, key, spl->keySize);
             spl->lower.page = spl->currentPointLoc < spl->maxError ? 0 : spl->currentPointLoc - spl->maxError;
         }
     }
@@ -190,10 +193,9 @@ void splineAdd(spline *spl, void *key) {
 
     /* Add last key on spline if not already there. */
     /* This will get overwritten the next time a new spline point is added */
-
-    spl->lastKey = key;
+    memcpy(spl->lastKey, key, spl->keySize);
     assert(spl->count < spl->size);
-    spl->points[spl->count].key = spl->lastKey;
+    memcpy(spl->points[spl->count].key, spl->lastKey, spl->keySize);
     spl->points[spl->count].page = spl->lastLoc;
     spl->count++;
 
