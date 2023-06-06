@@ -278,7 +278,7 @@ void runalltests_sbits(void *storage) {
     uint32_t rtimes[numSteps][numRuns];
     uint32_t rreads[numSteps][numRuns];
     uint32_t rhits[numSteps][numRuns];
-    int8_t seqdata = 1;
+    int8_t seqdata = 0;
     SD_FILE *infile, *infileRandom;
     uint32_t minRange, maxRange;
     char infileBuffer[512];
@@ -339,7 +339,7 @@ void runalltests_sbits(void *storage) {
         // fopen("data/uwa_data_only_2000_500KSorted_randomized.bin", "r+b");
         minRange = 946713600;
         maxRange = 977144040;
-        numRecords = 500000;
+        numRecords = 20000; // 500000;
         testRecords = 500000;
 
         splineMaxError = 1;
@@ -374,7 +374,7 @@ void runalltests_sbits(void *storage) {
         }
 
         /* Address level parameters */
-        state->storageType = DATAFLASH_STORAGE;
+        state->storageType = FILE_STORAGE;
         state->storage = storage;
         state->startAddress = 0;
         state->endAddress = 6000 * state->pageSize; // state->pageSize * numRecords / 10; /* Modify this value lower to test wrap around */
@@ -419,9 +419,10 @@ void runalltests_sbits(void *storage) {
         if (seqdata == 1) {
             for (i = 0; i < numRecords; i++) {
                 // printf("Inserting record %lu\n", i);
-                *((int32_t *)recordBuffer) = i;
-                *((int32_t *)(recordBuffer + 4)) = (i % 100);
-                sbitsPut(state, recordBuffer, (void *)(recordBuffer + 4));
+                memcpy(recordBuffer, &i, sizeof(int32_t));
+                int32_t data = i % 100;
+                memcpy(recordBuffer + state->keySize, &data, sizeof(int32_t));
+                sbitsPut(state, recordBuffer, (void *)(recordBuffer + state->keySize));
 
                 if (i % stepSize == 0) {
                     // printf("Num: %lu KEY: %lu\n", i, i);
@@ -448,6 +449,7 @@ void runalltests_sbits(void *storage) {
                 /* Process all records on page */
                 int16_t count = *((int16_t *)(infileBuffer + 4));
                 for (int j = 0; j < count; j++) {
+                    // printf("Inserting record %lu\n", i);
                     void *buf = (infileBuffer + headerSize + j * state->recordSize);
 
                     // printf("Key: %lu, Data: %lu, Page num: %lu, i: %lu\n",
@@ -556,13 +558,9 @@ void runalltests_sbits(void *storage) {
 
                         int8_t result = sbitsGet(state, key, recordBuffer);
                         if (result != 0)
-                            printf("ERROR: Failed to find key: %lu, i: %lu\n",
-                                   *key, i);
-                        if (*((int32_t *)recordBuffer) !=
-                            *((int32_t *)((int8_t *)buf + 4))) {
-                            printf(
-                                "ERROR: Wrong data for: Key: %lu Data: %lu\n",
-                                *key, *((int32_t *)recordBuffer));
+                            printf("ERROR: Failed to find key: %lu, i: %lu\n", *key, i);
+                        if (*((int32_t *)recordBuffer) != *((int32_t *)((int8_t *)buf + 4))) {
+                            printf("ERROR: Wrong data for: Key: %lu Data: %lu\n", *key, *((int32_t *)recordBuffer));
                             printf("%lu %d %d %d\n", *((uint32_t *)buf),
                                    *((int32_t *)((int8_t *)buf + 4)),
                                    *((int32_t *)((int8_t *)buf + 8)),
@@ -582,8 +580,7 @@ void runalltests_sbits(void *storage) {
                             }
                         }
                         i++;
-                        if (i == numRecords ||
-                            i == testRecords) /* Allows ending test after set
+                        if (i == numRecords || i == testRecords) /* Allows ending test after set
                                                  number of records rather than
                                                  processing entire file */
                             goto donetest;
@@ -692,8 +689,8 @@ void runalltests_sbits(void *storage) {
         // printStats(state);
 
         free(recordBuffer);
-        fclose(state->file);
         free(state->buffer);
+        sbitsClose(state);
         free(state);
     }
 

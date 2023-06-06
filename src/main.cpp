@@ -57,8 +57,8 @@ static ArduinoOutStream cout(Serial);
 #include "SdFat.h"
 #include "sd_test.h"
 
-// #include "test_sbits.h"
-#include "varTest.h"
+#include "test_sbits.h"
+// #include "varTest.h"
 
 #define ENABLE_DEDICATED_SPI 1
 #define SPI_DRIVER_SELECT 1
@@ -120,8 +120,8 @@ void setup() {
 
     init_df((void *)&at45db32_m);
 
-    // runalltests_sbits(&at45db32_m);
-    test_vardata(&at45db32_m);
+    runalltests_sbits(&at45db32_m);
+    // test_vardata(&at45db32_m);
 }
 
 void loop() {

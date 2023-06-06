@@ -303,10 +303,10 @@ int8_t sbitsInit(sbitsState *state, size_t indexMaxError) {
 
     if (SEARCH_METHOD == 2) {
         if (USE_RADIX) {
-            initRadixSpline(state, numPages, RADIX_BITS);
+            initRadixSpline(state, 1000, RADIX_BITS);
         } else {
             state->spl = malloc(sizeof(spline));
-            splineInit(state->spl, numPages, indexMaxError, state->keySize);
+            splineInit(state->spl, 1000, indexMaxError, state->keySize);
         }
     }
 
@@ -496,7 +496,7 @@ int8_t sbitsPut(sbitsState *state, void *key, void *data) {
         if (state->keySize <= 4) {
             uint32_t maxKey = 0;
             memcpy(&maxKey, sbitsGetMaxKey(state, state->buffer), state->keySize);
-        state->avgKeyDiff = (maxKey - state->minKey) / numBlocks / state->maxRecordsPerPage;
+            state->avgKeyDiff = (maxKey - state->minKey) / numBlocks / state->maxRecordsPerPage;
         } else {
             uint64_t maxKey = 0;
             memcpy(&maxKey, sbitsGetMaxKey(state, state->buffer), state->keySize);
@@ -743,10 +743,11 @@ int8_t linearSearch(sbitsState *state, int16_t *numReads, void *buf, void *key, 
         }
 
         /* Read page into buffer. If 0 not returned, there was an error */
+        id_t start = state->numReads;
         if (readPage(state, physPageId) != 0) {
             return -1;
         }
-        (*numReads)++;
+        *numReads += state->numReads - start;
 
         if (state->compareKey(key, sbitsGetMinKey(state, buf)) < 0) { /* Key is less than smallest record in block. */
             high = --pageId;
@@ -1490,10 +1491,25 @@ void resetStats(sbitsState *state) {
  * @param	state	SBITS state structure
  */
 void sbitsClose(sbitsState *state) {
+    if (state->storageType == FILE_STORAGE) {
+        if (state->file != NULL) {
+            fclose(state->file);
+        }
+        if (state->indexFile != NULL) {
+            fclose(state->indexFile);
+        }
+        if (state->varFile != NULL) {
+            fclose(state->varFile);
+        }
+    }
     if (SEARCH_METHOD == 2) { // Spline
-        radixsplineClose(state->rdix);
+        if (USE_RADIX) {
+            radixsplineClose(state->rdix);
+            free(state->rdix);
+        } else {
+            splineFree(state->spl);
+        }
         free(state->spl);
-        free(state->rdix);
     }
 }
 
