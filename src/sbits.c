@@ -743,10 +743,11 @@ int8_t linearSearch(sbitsState *state, int16_t *numReads, void *buf, void *key, 
         }
 
         /* Read page into buffer. If 0 not returned, there was an error */
+        id_t start = state->numReads;
         if (readPage(state, physPageId) != 0) {
             return -1;
         }
-        (*numReads)++;
+        *numReads += state->numReads - start;
 
         if (state->compareKey(key, sbitsGetMinKey(state, buf)) < 0) { /* Key is less than smallest record in block. */
             high = --pageId;
