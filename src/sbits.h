@@ -45,9 +45,9 @@ extern "C" {
 #include <stdlib.h>
 
 #if defined(ARDUINO)
-#include "file/dataflash_c_iface.h"
-#include "file/sdcard_c_iface.h"
-#include "file/serial_c_iface.h"
+#include "../lib/file/dataflash_c_iface.h"
+#include "../lib/file/sdcard_c_iface.h"
+#include "../lib/file/serial_c_iface.h"
 #endif
 
 /* If using radix spline indexing */
