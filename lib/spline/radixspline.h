@@ -49,9 +49,9 @@ extern "C" {
 #include <stdlib.h>
 
 #if defined(ARDUINO)
-#include "../lib/file/dataflash_c_iface.h"
-#include "../lib/file/sdcard_c_iface.h"
-#include "../lib/file/serial_c_iface.h"
+#include "dataflash_c_iface.h"
+#include "sdcard_c_iface.h"
+#include "serial_c_iface.h"
 #endif
 
 #include "spline.h"

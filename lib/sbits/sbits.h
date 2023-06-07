@@ -45,14 +45,14 @@ extern "C" {
 #include <stdlib.h>
 
 #if defined(ARDUINO)
-#include "../lib/file/dataflash_c_iface.h"
-#include "../lib/file/sdcard_c_iface.h"
-#include "../lib/file/serial_c_iface.h"
+#include "dataflash_c_iface.h"
+#include "sdcard_c_iface.h"
+#include "serial_c_iface.h"
 #endif
 
 /* If using radix spline indexing */
-#include "spline/radixspline.h"
-#include "spline/spline.h"
+#include "radixspline.h"
+#include "spline.h"
 
 /* Define type for page ids (physical and logical). */
 typedef uint32_t id_t;
