@@ -99,6 +99,7 @@ void setup() {
     /* Setup for data flash memory (DB32 512 byte pages) */
     pinMode(CS_DB32, OUTPUT);
     digitalWrite(CS_DB32, HIGH);
+
     at45db32_m.spi->begin();
 
     df_initialize(&at45db32_m);
