@@ -22,5 +22,5 @@ jobs:
     - name: Run tests on the embedded target
       env:
         PLATFORMIO_AUTH_TOKEN: ${{ secrets.PLATFORMIO_AUTH_TOKEN }}
-      run: platformio remote test -e hifive1-revb -v
+      run: platformio remote test -e memboard -v
       
