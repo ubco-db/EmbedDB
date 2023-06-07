@@ -1,4 +1,10 @@
-on: [push, pull_request]
+name: Embedded Tests
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
 
 jobs:
   build:
@@ -6,7 +12,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v1
+    - uses: actions/checkout@v3
     - name: Set up Python
       uses: actions/setup-python@v1
     - name: Install PlatformIO
