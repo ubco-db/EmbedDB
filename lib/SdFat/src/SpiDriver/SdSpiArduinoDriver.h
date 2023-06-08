@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2011-2020 Bill Greiman
+ * Copyright (c) 2011-2022 Bill Greiman
  * This file is part of the SdFat library for SD memory cards.
  *
  * MIT License
@@ -38,6 +38,8 @@
  */
 class SdSpiArduinoDriver {
  public:
+  /** Constructor. */
+  SdSpiArduinoDriver() = default;
   /** Activate SPI hardware. */
   void activate();
   /** Initialize the SPI bus.
@@ -55,12 +57,12 @@ class SdSpiArduinoDriver {
    */
   uint8_t receive();
   /** Receive multiple bytes.
-  *
-  * \param[out] buf Buffer to receive the data.
-  * \param[in] count Number of bytes to receive.
-  *
-  * \return Zero for no error or nonzero error code.
-  */
+   *
+   * \param[out] buf Buffer to receive the data.
+   * \param[in] count Number of bytes to receive.
+   *
+   * \return Zero for no error or nonzero error code.
+   */
   uint8_t receive(uint8_t* buf, size_t count);
   /** Send a byte.
    *
@@ -82,7 +84,7 @@ class SdSpiArduinoDriver {
   }
 
  private:
-  SPIClass *m_spi;
+  SPIClass* m_spi = nullptr;
   SPISettings m_spiSettings;
 };
 /** Typedef for use of SdSpiArduinoDriver */

@@ -1,8 +1,25 @@
-### Warning: This is SdFat Version 2.
+### Warning: Major Reformat of Source in 2.2.2
 
-Earlier releases of Version 1 are here:
+There are a huge number of changes in 2.2.2 since I decided to use clang-format
+to force Google style formatting.
 
-https://github.com/greiman/SdFat/releases
+I did this to avoid warnings from the static analysis programs Cppcheck and
+cpplint.
+
+clang-format is aggressive so it may actually cause code to fail.  For example
+clang-format rearranges the order of includes according to the selected style.
+
+UTF-8 encoded filenames are supported in v2.1.0 or later.
+
+Try the UnicodeFilenames example.  Here is output from ls:
+<pre>
+Type any character to begin
+ls:
+         0 😀/
+          20 россиянин
+          17 très élégant
+           9 狗.txt
+</pre>
 
 SdFat Version 2 supports FAT16/FAT32 and exFAT SD cards. It is mostly
 backward compatible with SdFat Version 1 for FAT16/FAT32 cards.

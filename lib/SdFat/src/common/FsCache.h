@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2011-2020 Bill Greiman
+ * Copyright (c) 2011-2022 Bill Greiman
  * This file is part of the SdFat library for SD memory cards.
  *
  * MIT License
@@ -28,8 +28,8 @@
  * \file
  * \brief Common cache code for exFAT and FAT.
  */
+#include "FsBlockDevice.h"
 #include "SysCall.h"
-#include "BlockDevice.h"
 /**
  * \class FsCache
  * \brief Sector cache.
@@ -42,7 +42,7 @@ class FsCache {
   static const uint8_t CACHE_STATUS_MIRROR_FAT = 2;
   /** Cache sector status bits */
   static const uint8_t CACHE_STATUS_MASK =
-    CACHE_STATUS_DIRTY | CACHE_STATUS_MIRROR_FAT;
+      CACHE_STATUS_DIRTY | CACHE_STATUS_MIRROR_FAT;
   /** Sync existing sector but do not read new sector. */
   static const uint8_t CACHE_OPTION_NO_READ = 4;
   /** Cache sector for read. */
@@ -51,12 +51,12 @@ class FsCache {
   static const uint8_t CACHE_FOR_WRITE = CACHE_STATUS_DIRTY;
   /** Reserve cache sector for write - do not read from sector device. */
   static const uint8_t CACHE_RESERVE_FOR_WRITE =
-    CACHE_STATUS_DIRTY | CACHE_OPTION_NO_READ;
+      CACHE_STATUS_DIRTY | CACHE_OPTION_NO_READ;
   //----------------------------------------------------------------------------
+  /** Cobstructor. */
+  FsCache() { init(nullptr); }
   /** \return Cache buffer address. */
-  uint8_t* cacheBuffer() {
-    return m_buffer;
-  }
+  uint8_t* cacheBuffer() { return m_buffer; }
   /**
    * Cache safe read of a sector.
    *
@@ -107,7 +107,7 @@ class FsCache {
    * \return true for success or false for failure.
    */
   bool cacheSafeWrite(uint32_t sector, const uint8_t* src, size_t count) {
-     if (isCached(sector, count)) {
+    if (isCached(sector, count)) {
       invalidate();
     }
     return m_blockDev->writeSectors(sector, src, count);
@@ -121,13 +121,11 @@ class FsCache {
     return m_buffer;
   }
   /** Set current sector dirty. */
-  void dirty() {
-    m_status |= CACHE_STATUS_DIRTY;
-  }
+  void dirty() { m_status |= CACHE_STATUS_DIRTY; }
   /** Initialize the cache.
    * \param[in] blockDev Block device for this cache.
    */
-  void init(BlockDevice* blockDev) {
+  void init(FsBlockDevice* blockDev) {
     m_blockDev = blockDev;
     invalidate();
   }
@@ -140,8 +138,8 @@ class FsCache {
    * \param[in] sector Sector to checked.
    * \return true if the sector is cached.
    */
-  bool isCached(uint32_t sector) const {return sector == m_sector;}
-   /** Check if the cache contains a sector from a range.
+  bool isCached(uint32_t sector) const { return sector == m_sector; }
+  /** Check if the cache contains a sector from a range.
    * \param[in] sector Start sector of the range.
    * \param[in] count Number of sectors in the range.
    * \return true if a sector in the range is cached.
@@ -150,24 +148,19 @@ class FsCache {
     return sector <= m_sector && m_sector < (sector + count);
   }
   /** \return dirty status */
-  bool isDirty() {
-    return m_status & CACHE_STATUS_DIRTY;
-  }
+  bool isDirty() { return m_status & CACHE_STATUS_DIRTY; }
+  /** Prepare cache to access sector.
+   * \param[in] sector Sector to read.
+   * \param[in] option mode for cached sector.
+   * \return Address of cached sector.
+   */
+  uint8_t* prepare(uint32_t sector, uint8_t option);
   /** \return Logical sector number for cached sector. */
-  uint32_t sector() {
-    return m_sector;
-  }
+  uint32_t sector() { return m_sector; }
   /** Set the offset to the second FAT for mirroring.
    * \param[in] offset Sector offset to second FAT.
    */
-  void setMirrorOffset(uint32_t offset) {
-    m_mirrorOffset = offset;
-  }
-  /** Fill cache with sector data.
-   * \param[in] sector Sector to read.
-   * \param[in] option mode for cached sector.
-   * \return Address of cached sector. */
-  uint8_t* get(uint32_t sector, uint8_t option);
+  void setMirrorOffset(uint32_t offset) { m_mirrorOffset = offset; }
   /** Write current sector if dirty.
    * \return true for success or false for failure.
    */
@@ -175,9 +168,9 @@ class FsCache {
 
  private:
   uint8_t m_status;
-  BlockDevice* m_blockDev;
-  uint32_t m_mirrorOffset;
+  FsBlockDevice* m_blockDev;
   uint32_t m_sector;
+  uint32_t m_mirrorOffset;
   uint8_t m_buffer[512];
 };
 #endif  // FsCache_h

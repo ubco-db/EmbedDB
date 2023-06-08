@@ -26,18 +26,21 @@
 // SDCARD_SS_PIN is defined for the built-in SD on some boards.
 #ifndef SDCARD_SS_PIN
 const uint8_t SD_CS_PIN = SS;
-#else  // SDCARD_SS_PIN
+#else   // SDCARD_SS_PIN
 // Assume built-in SD is used.
 const uint8_t SD_CS_PIN = SDCARD_SS_PIN;
 #endif  // SDCARD_SS_PIN
+
+// Try max SPI clock for an SD. Reduce SPI_CLOCK if errors occur.
+#define SPI_CLOCK SD_SCK_MHZ(50)
 
 // Try to select the best SD card configuration.
 #if HAS_SDIO_CLASS
 #define SD_CONFIG SdioConfig(FIFO_SDIO)
 #elif ENABLE_DEDICATED_SPI
-#define SD_CONFIG SdSpiConfig(SD_CS_PIN, DEDICATED_SPI)
+#define SD_CONFIG SdSpiConfig(SD_CS_PIN, DEDICATED_SPI, SPI_CLOCK)
 #else  // HAS_SDIO_CLASS
-#define SD_CONFIG SdSpiConfig(SD_CS_PIN, SHARED_SPI)
+#define SD_CONFIG SdSpiConfig(SD_CS_PIN, SHARED_SPI, SPI_CLOCK)
 #endif  // HAS_SDIO_CLASS
 
 #if SD_FAT_TYPE == 0
@@ -55,7 +58,6 @@ FsFile file;
 #else  // SD_FAT_TYPE
 #error Invalid SD_FAT_TYPE
 #endif  // SD_FAT_TYPE
-
 
 #if RTC_TYPE == 0
 RTC_Millis rtc;
@@ -105,12 +107,12 @@ void getLine(char* line, size_t size) {
   while (true) {
     t = millis() + 10;
     while (!Serial.available()) {
-      if (millis() > t){
+      if (millis() > t) {
         return;
       }
     }
     int c = Serial.read();
-    if (i >= (size - 1) || c == '\r' || c == '\n' ) {
+    if (i >= (size - 1) || c == '\r' || c == '\n') {
       return;
     }
     line[i++] = c;
@@ -131,11 +133,11 @@ void printField(Print* pr, char sep, uint8_t v) {
 void printNow(Print* pr) {
   DateTime now = rtc.now();
   pr->print(now.year());
-  printField(pr, '-',now.month());
-  printField(pr, '-',now.day());
-  printField(pr, ' ',now.hour());
-  printField(pr, ':',now.minute());
-  printField(pr, ':',now.second());
+  printField(pr, '-', now.month());
+  printField(pr, '-', now.day());
+  printField(pr, ' ', now.hour());
+  printField(pr, ':', now.minute());
+  printField(pr, ':', now.second());
 }
 //------------------------------------------------------------------------------
 bool setRtc() {
@@ -177,7 +179,7 @@ void setup() {
   }
 #if RTC_TYPE == 0
   rtc.begin(DateTime(F(__DATE__), F(__TIME__)));
-#else  // RTC_TYPE
+#else   // RTC_TYPE
   if (!rtc.begin()) {
     Serial.println(F("rtc.begin failed"));
     return;
@@ -198,7 +200,8 @@ void setup() {
     Serial.println();
     clearSerialInput();
     Serial.println(F("Type Y to set RTC, any other character to continue"));
-    while (!Serial.available()) {}
+    while (!Serial.available()) {
+    }
     if (Serial.read() != 'Y') break;
     if (setRtc()) break;
   }
@@ -229,5 +232,4 @@ void setup() {
   Serial.println(F("Done"));
 }
 //------------------------------------------------------------------------------
-void loop() {
-}
+void loop() {}

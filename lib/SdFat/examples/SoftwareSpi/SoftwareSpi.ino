@@ -16,7 +16,7 @@ const uint8_t SD_CS_PIN = 10;
 // Pin numbers in templates must be constants.
 const uint8_t SOFT_MISO_PIN = 12;
 const uint8_t SOFT_MOSI_PIN = 11;
-const uint8_t SOFT_SCK_PIN  = 13;
+const uint8_t SOFT_SCK_PIN = 13;
 
 // SdFat software SPI template
 SoftSpiDriver<SOFT_MISO_PIN, SOFT_MOSI_PIN, SOFT_SCK_PIN> softSpi;
@@ -47,11 +47,11 @@ void setup() {
   Serial.begin(9600);
   // Wait for USB Serial
   while (!Serial) {
-    SysCall::yield();
+    yield();
   }
   Serial.println("Type any character to start");
   while (!Serial.available()) {
-    SysCall::yield();
+    yield();
   }
 
   if (!sd.begin(SD_CONFIG)) {
@@ -77,4 +77,4 @@ void setup() {
 void loop() {}
 #else  // SPI_DRIVER_SELECT
 #error SPI_DRIVER_SELECT must be two in SdFat/SdFatConfig.h
-#endif  //SPI_DRIVER_SELECT
+#endif  // SPI_DRIVER_SELECT
