@@ -25,6 +25,6 @@ jobs:
         PLATFORMIO_AUTH_TOKEN: ${{ secrets.PLATFORMIO_AUTH_TOKEN }}
       run: |
         pio pkg install
-        python replacementScript.py
+        python scripts/replacementScript.py
         platformio remote test -e memboard -v
       

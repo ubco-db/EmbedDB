@@ -1,3 +1,5 @@
+#ifndef PIO_UNIT_TESTING
+
 #include <errno.h>
 #include <math.h>
 #include <stdint.h>
@@ -815,3 +817,5 @@ void retrieveImageData(void **varData, uint32_t length, int32_t key, char *filen
 uint8_t dataEquals(void *varData, uint32_t length, Node *node) {
     return length == node->length && memcmp(varData, node->data, length) == 0;
 }
+
+#endif

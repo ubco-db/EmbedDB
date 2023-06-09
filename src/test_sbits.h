@@ -35,6 +35,9 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 /******************************************************************************/
+
+#ifndef PIO_UNIT_TESTING
+
 #include <errno.h>
 #include <string.h>
 #include <time.h>
@@ -625,3 +628,5 @@ void runalltests_sbits(void *storage) {
         printf("\t%lu\n", sum / r);
     }
 }
+
+#endif

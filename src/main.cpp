@@ -34,6 +34,8 @@
  */
 /******************************************************************************/
 
+#ifndef PIO_UNIT_TESTING
+
 #include "Arduino.h"
 #include "SPI.h"
 
@@ -175,3 +177,5 @@ bool test_sd_card() {
     dmpVol(sd);
     return true;
 }
+
+#endif
