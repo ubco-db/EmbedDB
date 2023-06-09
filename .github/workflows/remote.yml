@@ -24,7 +24,7 @@ jobs:
       env:
         PLATFORMIO_AUTH_TOKEN: ${{ secrets.PLATFORMIO_AUTH_TOKEN }}
       run: |
-        cd ../.platformio
+        cd /home/.platformio
         pwd
         platformio remote test -e memboard -v
       
