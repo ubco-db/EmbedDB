@@ -7,6 +7,26 @@ on:
     branches: [ "main" ]
 
 jobs:
+
+  lint:
+    name: Run Linter
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out Git repository
+        uses: actions/checkout@v3
+
+      - name: Install ClangFormat
+        run: sudo apt-get install -y clang-format
+
+      - name: Check clang version
+        run: clang-format --version
+
+      - name: Lint
+        uses: wearerequired/lint-action@v2
+        with:
+          clang_format: true
+
   build:
 
     runs-on: ubuntu-latest
@@ -27,4 +47,3 @@ jobs:
         pio pkg install
         python scripts/replacementScript.py
         platformio remote test -e memboard -v
-      
