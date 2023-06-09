@@ -24,6 +24,7 @@ jobs:
       env:
         PLATFORMIO_AUTH_TOKEN: ${{ secrets.PLATFORMIO_AUTH_TOKEN }}
       run: |
-        echo `find . -name 'framework-arduino-samd-adafruit'`
+        cd ../.platformio
+        pwd
         platformio remote test -e memboard -v
       
