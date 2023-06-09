@@ -11,6 +11,9 @@ jobs:
   lint:
     name: Run Linter
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        subdir: [test, src]
 
     steps:
       - name: Check out Git repository
@@ -26,15 +29,8 @@ jobs:
         uses: wearerequired/lint-action@v2
         with:
           clang_format: true
-          clang_format_dir: /test
-          check_name: Lint Tests
-
-      - name: Lint
-        uses: wearerequired/lint-action@v2
-        with:
-          clang_format: true
-          clang_format_dir: /src
-          check_name: Lint Source
+          clang_format_dir: ${{ matrix.subdir }}/
+          check_name: lint  ${{ matrix.subdir }}
 
   build:
 
