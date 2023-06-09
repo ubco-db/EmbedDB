@@ -303,10 +303,10 @@ int8_t sbitsInit(sbitsState *state, size_t indexMaxError) {
 
     if (SEARCH_METHOD == 2) {
         if (USE_RADIX) {
-            initRadixSpline(state, 1000, RADIX_BITS);
+            initRadixSpline(state, 300, RADIX_BITS);
         } else {
             state->spl = malloc(sizeof(spline));
-            splineInit(state->spl, 1000, indexMaxError, state->keySize);
+            splineInit(state->spl, 300, indexMaxError, state->keySize);
         }
     }
 
@@ -950,7 +950,7 @@ int8_t sbitsGetVar(sbitsState *state, void *key, void *data, void **varData, uin
     uint32_t dataLength;
     memcpy(&dataLength, (int8_t *)ptr + bufPos, sizeof(uint32_t));
     *length = dataLength;
-    bufPos += 4;
+    bufPos += sizeof(uint32_t);
     // If the length was the last thing in the page, then we need to read the next page for the data
     if (bufPos >= state->pageSize) {
         pageNum = (pageNum + 1) % state->numVarPages;
