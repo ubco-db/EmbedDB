@@ -1,6 +1,10 @@
 import os
 from os.path import join
 
+# This file is used by the github action to replace the variant files with the
+# custom ones created for our board. It was custom made for the runner and will
+# not work locally.
+
 os.chdir("/home/runner")
 
 FRAMEWORK_DIR = join(".platformio", "packages", "framework-arduino-samd-adafruit", "variants", "feather_m0")
