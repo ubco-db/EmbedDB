@@ -23,7 +23,7 @@
 
 ## Details
 
-The above parameters created 135 tests which were run 3 times each and had thier averages calculated.
+The above parameters created 135 tests which were run 3 times each and had their averages calculated.
 
 Each test inserted 100,000 records into the database, including a spline index on the keys and a 8 byte bitmap index on the values. Key size was artificially increased when necessary by padding with 0's. Variable data was not inserted with every record, but instead had a chance (1 in $\frac{vardataSize}{10}$) of being inserted with a record such that there would be ~1 MB of variable data total.
 
