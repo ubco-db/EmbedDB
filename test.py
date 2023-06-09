@@ -11,7 +11,7 @@ print(str(FRAMEWORK_DIR))
 print(str(WORKING_DIRECTORY))
 print("goodbye")
 
-variant_c_file_old = join(FRAMEWORK_DIR, "variants", "feather_m0", "variant.cpp")
+variant_c_file_old = join(FRAMEWORK_DIR, "variants")
 variant_h_file_old = join(FRAMEWORK_DIR, "variants", "feather_m0", "variant.h")
 
 variant_c_file_new = join(WORKING_DIRECTORY, "variant", "variant.cpp")

@@ -24,6 +24,6 @@ jobs:
       env:
         PLATFORMIO_AUTH_TOKEN: ${{ secrets.PLATFORMIO_AUTH_TOKEN }}
       run: |
-        pio run
+        python test.py
         platformio remote test -e memboard -v
       
