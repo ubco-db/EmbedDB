@@ -160,7 +160,6 @@ void splineAdd(spline *spl, void *key) {
     /* Check if next point still in error corridor */
     if (splineIsLeft(xdiff, ydiff, upperXDiff, upperYDiff) == 1 ||
         splineIsRight(xdiff, ydiff, lowerXDiff, lowerYDiff) == 1) {
-
         /* Point is not in error corridor. Add previous point to spline. */
         assert(spl->count < spl->size);
         memcpy(spl->points[spl->count].key, spl->lastKey, spl->keySize);

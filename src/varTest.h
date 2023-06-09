@@ -43,10 +43,10 @@ void test_vardata(void *storage) {
     int8_t M = 6;
 
     // Initialize to default values
-    int32_t numRecords = 600;  // default values
-    int32_t testRecords = 600; // default values
-    uint8_t useRandom = 0;     // default values
-    size_t splineMaxError = 0; // default values
+    int32_t numRecords = 600;   // default values
+    int32_t testRecords = 600;  // default values
+    uint8_t useRandom = 0;      // default values
+    size_t splineMaxError = 0;  // default values
     uint32_t stepSize = numRecords / NUM_STEPS;
     count_t r, l;
     uint32_t times[NUM_STEPS][NUM_RUNS];
@@ -146,7 +146,7 @@ void test_vardata(void *storage) {
         state->storageType = DATAFLASH_STORAGE;
         state->storage = storage;
         state->startAddress = 0;
-        state->endAddress = 900 * state->pageSize; // state->pageSize * numRecords / 10; /* Modify this value lower to test wrap around */
+        state->endAddress = 900 * state->pageSize;  // state->pageSize * numRecords / 10; /* Modify this value lower to test wrap around */
         state->varAddressStart = 1000 * state->pageSize;
         state->varAddressEnd = state->varAddressStart + state->pageSize * 900;
         state->eraseSizeInPages = 4;

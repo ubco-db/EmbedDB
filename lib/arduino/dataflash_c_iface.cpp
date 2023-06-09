@@ -35,8 +35,8 @@
 /******************************************************************************/
 
 #include "dataflash_c_iface.h"
-#include "dataflash.h"
 
+#include "dataflash.h"
 #include "serial_c_iface.h"
 
 memory_t *dflash;

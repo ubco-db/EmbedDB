@@ -94,7 +94,7 @@ void updateBitmapInt16(void *data, void *bm) {
 
     /* Using a demo range of 0 to 100 */
     // int16_t stepSize = 100 / 15;
-    int16_t stepSize = 450 / 15; // Temperature data in F. Scaled by 10. */
+    int16_t stepSize = 450 / 15;  // Temperature data in F. Scaled by 10. */
     int16_t minBase = 320;
     int32_t current = minBase;
     uint16_t num = 32768;
@@ -121,7 +121,7 @@ int8_t inBitmapInt16(void *data, void *bm) {
 void updateBitmapInt64(void *data, void *bm) {
     int32_t val = *((int32_t *)data);
 
-    int16_t stepSize = 10; // Temperature data in F. Scaled by 10. */
+    int16_t stepSize = 10;  // Temperature data in F. Scaled by 10. */
     int32_t current = 320;
     int8_t bmsize = 63;
     int8_t count = 0;

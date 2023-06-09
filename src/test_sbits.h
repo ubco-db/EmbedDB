@@ -117,10 +117,10 @@ uint32_t keyModifier(uint32_t inputKey) { return inputKey * 2; }
 void runalltests_sbits(void *storage) {
     printf("\nSTARTING SBITS TESTS.\n");
     int8_t M = 4;
-    int32_t numRecords = 1000;  // default values
-    int32_t testRecords = 1000; // default values
-    uint8_t useRandom = 0;      // default values
-    size_t splineMaxError = 0;  // default values
+    int32_t numRecords = 1000;   // default values
+    int32_t testRecords = 1000;  // default values
+    uint8_t useRandom = 0;       // default values
+    size_t splineMaxError = 0;   // default values
     uint32_t numSteps = 10;
     uint32_t stepSize = numRecords / numSteps;
     count_t r, numRuns = 1, l;
@@ -193,7 +193,7 @@ void runalltests_sbits(void *storage) {
         // fopen("data/uwa_data_only_2000_500KSorted_randomized.bin", "r+b");
         minRange = 946713600;
         maxRange = 977144040;
-        numRecords = 20000; // 500000;
+        numRecords = 20000;  // 500000;
         testRecords = 500000;
 
         splineMaxError = 1;
@@ -231,7 +231,7 @@ void runalltests_sbits(void *storage) {
         state->storageType = FILE_STORAGE;
         state->storage = storage;
         state->startAddress = 0;
-        state->endAddress = 6000 * state->pageSize; // state->pageSize * numRecords / 10; /* Modify this value lower to test wrap around */
+        state->endAddress = 6000 * state->pageSize;  // state->pageSize * numRecords / 10; /* Modify this value lower to test wrap around */
         state->eraseSizeInPages = 4;
         // state->parameters = SBITS_USE_MAX_MIN | SBITS_USE_BMAP |
         // SBITS_USE_INDEX;
@@ -257,7 +257,7 @@ void runalltests_sbits(void *storage) {
         /* Data record is empty. Only need to reset to 0 once as reusing struct.
          */
         int32_t i;
-        for (i = 0; i < state->recordSize - 4; i++) { // 4 is the size of the key
+        for (i = 0; i < state->recordSize - 4; i++) {  // 4 is the size of the key
             recordBuffer[i + sizeof(int32_t)] = 0;
         }
 
@@ -486,7 +486,7 @@ void runalltests_sbits(void *storage) {
                 mv = 280;
                 // for (int i = 0; i < 1000; i++)
                 // for (int i = 0; i < 16; i++)
-                for (int i = 0; i < 65; i++) // 65
+                for (int i = 0; i < 65; i++)  // 65
                 {
                     // mv = (rand() % 60 + 30) * 10;
                     // mv += 30;
