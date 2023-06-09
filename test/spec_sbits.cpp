@@ -1,7 +1,6 @@
 
 #include "Arduino.h"
 #include "SPI.h"
-
 #include "dataflash_c_iface.h"
 #include "sdcard_c_iface.h"
 
@@ -25,7 +24,6 @@ static ArduinoOutStream cout(Serial);
 #include "../src/sbits/sbits.h"
 #include "SdFat.h"
 #include "sd_test.h"
-
 #include "unity.h"
 
 #define ENABLE_DEDICATED_SPI 1
@@ -134,7 +132,7 @@ void setupSbits(void *storage) {
     state->storageType = FILE_STORAGE;
     state->storage = storage;
     state->startAddress = 0;
-    state->endAddress = 6000 * state->pageSize; // state->pageSize * numRecords / 10; /* Modify this value lower to test wrap around */
+    state->endAddress = 6000 * state->pageSize;  // state->pageSize * numRecords / 10; /* Modify this value lower to test wrap around */
     state->eraseSizeInPages = 4;
     // state->parameters = SBITS_USE_MAX_MIN | SBITS_USE_BMAP |
     // SBITS_USE_INDEX;
@@ -246,7 +244,7 @@ void updateBitmapInt16(void *data, void *bm) {
 
     /* Using a demo range of 0 to 100 */
     // int16_t stepSize = 100 / 15;
-    int16_t stepSize = 450 / 15; // Temperature data in F. Scaled by 10. */
+    int16_t stepSize = 450 / 15;  // Temperature data in F. Scaled by 10. */
     int16_t minBase = 320;
     int32_t current = minBase;
     uint16_t num = 32768;
@@ -273,7 +271,7 @@ int8_t inBitmapInt16(void *data, void *bm) {
 void updateBitmapInt64(void *data, void *bm) {
     int32_t val = *((int32_t *)data);
 
-    int16_t stepSize = 10; // Temperature data in F. Scaled by 10. */
+    int16_t stepSize = 10;  // Temperature data in F. Scaled by 10. */
     int32_t current = 320;
     int8_t bmsize = 63;
     int8_t count = 0;
@@ -334,7 +332,7 @@ bool test_sd_card() {
         errorPrint(sd);
     }
     printCardType(sd);
-     cidDmp();
+    cidDmp();
     csdDmp();
     cout << F("\nOCR: ") << uppercase << showbase;
     cout << hex << m_ocr << dec << endl;
