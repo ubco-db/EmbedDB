@@ -19,7 +19,7 @@ os.remove(variant_h_file_old)
 variant_c_file_new = join(VARIANT_DIR, "variant.cpp")
 variant_h_file_new = join(VARIANT_DIR, "variant.h")
 
-os.repalce(variant_c_file_new, variant_c_file_old)
-os.repalce(variant_h_file_new, variant_h_file_old)
+os.replace(variant_c_file_new, variant_c_file_old)
+os.replace(variant_h_file_new, variant_h_file_old)
 
 print("Python End")
