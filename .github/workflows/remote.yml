@@ -24,7 +24,6 @@ jobs:
       env:
         PLATFORMIO_AUTH_TOKEN: ${{ secrets.PLATFORMIO_AUTH_TOKEN }}
       run: |
-        cd ~/.platformio
-        pwd
+        python -c "import site; print(site.getsitepackages())"
         platformio remote test -e memboard -v
       
