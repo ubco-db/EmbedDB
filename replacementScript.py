@@ -1,12 +1,9 @@
 import os
 from os.path import join
 
-# FILE_DIRECTORY = join("..", "..", "..","home", "runner")
-# os.chdir('../../../')
 os.chdir("/home/runner")
 
-print("Python File")
-print(os.getcwd())
-files = os.listdir()
+FRAMEWORK_DIR = join(".platformio", "packages", "framework-arduino-samd-adafruit", "variants", "feather_m0")
 
-print(files)
+variant_c_file_old = join(FRAMEWORK_DIR, "variant.cpp")
+variant_h_file_old = join(FRAMEWORK_DIR, "variant.h")
