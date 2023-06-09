@@ -44,9 +44,9 @@ extern "C" {
 #include <stdio.h>
 
 #if defined(ARDUINO)
-#include "file/dataflash_c_iface.h"
-#include "file/sdcard_c_iface.h"
-#include "file/serial_c_iface.h"
+#include "dataflash_c_iface.h"
+#include "sdcard_c_iface.h"
+#include "serial_c_iface.h"
 #endif
 
 /* Define type for keys and location ids. */

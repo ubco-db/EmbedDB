@@ -34,6 +34,8 @@
  */
 /******************************************************************************/
 
+#ifndef PIO_UNIT_TESTING
+
 #include "Arduino.h"
 #include "SPI.h"
 
@@ -103,6 +105,7 @@ void setup() {
     /* Setup for data flash memory (DB32 512 byte pages) */
     pinMode(CS_DB32, OUTPUT);
     digitalWrite(CS_DB32, HIGH);
+
     at45db32_m.spi->begin();
 
     df_initialize(&at45db32_m);
@@ -181,3 +184,5 @@ bool test_sd_card() {
     dmpVol(sd);
     return true;
 }
+
+#endif

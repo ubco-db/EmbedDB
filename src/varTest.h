@@ -1,3 +1,5 @@
+#ifndef PIO_UNIT_TESTING
+
 #include <errno.h>
 #include <math.h>
 #include <stdint.h>
@@ -5,7 +7,8 @@
 #include <string.h>
 #include <time.h>
 
-#include "sbits.h"
+#include "sbits/sbits.h"
+#include "sbits/utilityFunctions.h"
 
 #define NUM_STEPS 10
 #define NUM_RUNS 1
@@ -25,14 +28,6 @@ typedef struct Node {
     struct Node *next;
 } Node;
 
-void updateBitmapInt8Bucket(void *data, void *bm);
-void buildBitmapInt8BucketWithRange(void *min, void *max, void *bm);
-int8_t inBitmapInt8Bucket(void *data, void *bm);
-void updateBitmapInt16(void *data, void *bm);
-int8_t inBitmapInt16(void *data, void *bm);
-void updateBitmapInt64(void *data, void *bm);
-int8_t inBitmapInt64(void *data, void *bm);
-int8_t int32Comparator(void *a, void *b);
 uint32_t keyModifier(uint32_t inputKey);
 uint32_t readImageFromFile(void **data, char *filename);
 void writeDataToFile(void *data, char *filename, uint32_t length);
@@ -48,10 +43,10 @@ void test_vardata(void *storage) {
     int8_t M = 6;
 
     // Initialize to default values
-    int32_t numRecords = 600;  // default values
-    int32_t testRecords = 600; // default values
-    uint8_t useRandom = 0;     // default values
-    size_t splineMaxError = 0; // default values
+    int32_t numRecords = 600;   // default values
+    int32_t testRecords = 600;  // default values
+    uint8_t useRandom = 0;      // default values
+    size_t splineMaxError = 0;  // default values
     uint32_t stepSize = numRecords / NUM_STEPS;
     count_t r, l;
     uint32_t times[NUM_STEPS][NUM_RUNS];
@@ -151,7 +146,7 @@ void test_vardata(void *storage) {
         state->storageType = DATAFLASH_STORAGE;
         state->storage = storage;
         state->startAddress = 0;
-        state->endAddress = 900 * state->pageSize; // state->pageSize * numRecords / 10; /* Modify this value lower to test wrap around */
+        state->endAddress = 900 * state->pageSize;  // state->pageSize * numRecords / 10; /* Modify this value lower to test wrap around */
         state->varAddressStart = 1000 * state->pageSize;
         state->varAddressEnd = state->varAddressStart + state->pageSize * 900;
         state->eraseSizeInPages = 4;
@@ -712,160 +707,6 @@ void test_vardata(void *storage) {
     }
 }
 
-/* A bitmap with 8 buckets (bits). Range 0 to 100. */
-void updateBitmapInt8Bucket(void *data, void *bm) {
-    // Note: Assuming int key is right at the start of the data record
-    int32_t val = *((int16_t *)data);
-    uint8_t *bmval = (uint8_t *)bm;
-
-    if (val < 10)
-        *bmval = *bmval | 128;
-    else if (val < 20)
-        *bmval = *bmval | 64;
-    else if (val < 30)
-        *bmval = *bmval | 32;
-    else if (val < 40)
-        *bmval = *bmval | 16;
-    else if (val < 50)
-        *bmval = *bmval | 8;
-    else if (val < 60)
-        *bmval = *bmval | 4;
-    else if (val < 100)
-        *bmval = *bmval | 2;
-    else
-        *bmval = *bmval | 1;
-}
-
-/* A bitmap with 8 buckets (bits). Range 0 to 100. Build bitmap based on min and
- * max value.
- */
-void buildBitmapInt8BucketWithRange(void *min, void *max, void *bm) {
-    /* Note: Assuming int key is right at the start of the data record */
-    uint8_t *bmval = (uint8_t *)bm;
-
-    if (min == NULL && max == NULL) {
-        *bmval = 255; /* Everything */
-    } else {
-        int8_t i = 0;
-        uint8_t val = 128;
-        if (min != NULL) {
-            /* Set bits based on min value */
-            updateBitmapInt8Bucket(min, bm);
-
-            /* Assume here that bits are set in increasing order based on
-             * smallest value */
-            /* Find first set bit */
-            while ((val & *bmval) == 0 && i < 8) {
-                i++;
-                val = val / 2;
-            }
-            val = val / 2;
-            i++;
-        }
-        if (max != NULL) {
-            /* Set bits based on min value */
-            updateBitmapInt8Bucket(max, bm);
-
-            while ((val & *bmval) == 0 && i < 8) {
-                i++;
-                *bmval = *bmval + val;
-                val = val / 2;
-            }
-        } else {
-            while (i < 8) {
-                i++;
-                *bmval = *bmval + val;
-                val = val / 2;
-            }
-        }
-    }
-}
-
-int8_t inBitmapInt8Bucket(void *data, void *bm) {
-    uint8_t *bmval = (uint8_t *)bm;
-
-    uint8_t tmpbm = 0;
-    updateBitmapInt8Bucket(data, &tmpbm);
-
-    // Return a number great than 1 if there is an overlap
-    return tmpbm & *bmval;
-}
-
-/* A 16-bit bitmap on a 32-bit int value */
-void updateBitmapInt16(void *data, void *bm) {
-    int32_t val = *((int32_t *)data);
-    uint16_t *bmval = (uint16_t *)bm;
-
-    /* Using a demo range of 0 to 100 */
-
-    // int16_t stepSize = 100 / 15;
-    int16_t stepSize = 450 / 15; // Temperature data in F. Scaled by 10. */
-    int16_t minBase = 320;
-    int32_t current = minBase;
-    uint16_t num = 32768;
-    while (val > current) {
-        current += stepSize;
-        num = num / 2;
-    }
-
-    /* Always set last bit if value bigger than largest cutoff */
-    if (num == 0)
-        num = 1;
-    *bmval = *bmval | num;
-}
-
-int8_t inBitmapInt16(void *data, void *bm) {
-    uint16_t *bmval = (uint16_t *)bm;
-
-    uint16_t tmpbm = 0;
-    updateBitmapInt16(data, &tmpbm);
-
-    // Return a number great than 1 if there is an overlap
-    return tmpbm & *bmval;
-}
-
-/* A 64-bit bitmap on a 32-bit int value */
-void updateBitmapInt64(void *data, void *bm) {
-    int32_t val = *((int32_t *)data);
-
-    // Temperature data in F. Scaled by 10. */
-    int16_t stepSize = 10;
-
-    int32_t current = 320;
-    int8_t count = 0;
-
-    while (val > current && count < 63) {
-        current += stepSize;
-        count++;
-    }
-    uint8_t b = 128;
-    int8_t offset = count / 8;
-    b = b >> (count & 7);
-
-    *((char *)((char *)bm + offset)) = *((char *)((char *)bm + offset)) | b;
-}
-
-int8_t inBitmapInt64(void *data, void *bm) {
-    uint64_t *bmval = (uint64_t *)bm;
-
-    uint64_t tmpbm = 0;
-    updateBitmapInt64(data, &tmpbm);
-
-    // Return a number great than 1 if there is an overlap
-    return tmpbm & *bmval;
-}
-
-int8_t int32Comparator(void *a, void *b) {
-    uint32_t a1, a2;
-    memcpy(&a1, a, sizeof(uint32_t));
-    memcpy(&a2, b, sizeof(uint32_t));
-    if (a1 < a2)
-        return -1;
-    if (a1 > a2)
-        return 1;
-    return 0;
-}
-
 uint32_t randomData(void **data, uint32_t sizeLowerBound, uint32_t sizeUpperBound) {
     uint32_t size = rand() % (sizeUpperBound - sizeLowerBound) + sizeLowerBound;
     *data = malloc(size);
@@ -976,3 +817,5 @@ void retrieveImageData(void **varData, uint32_t length, int32_t key, char *filen
 uint8_t dataEquals(void *varData, uint32_t length, Node *node) {
     return length == node->length && memcmp(varData, node->data, length) == 0;
 }
+
+#endif
