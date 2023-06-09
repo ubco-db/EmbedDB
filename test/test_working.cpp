@@ -22,11 +22,10 @@ Includes for DataFlash memory
 #include "sdios.h"
 static ArduinoOutStream cout(Serial);
 
+#include "../src/sbits/sbits.h"
 #include "SdFat.h"
-#include "sbits.h"
 #include "sd_test.h"
 
-#include "sbits.h"
 #include "unity.h"
 
 #define ENABLE_DEDICATED_SPI 1

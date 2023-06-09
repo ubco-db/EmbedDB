@@ -51,8 +51,8 @@ extern "C" {
 #endif
 
 /* If using radix spline indexing */
-#include "radixspline.h"
-#include "spline.h"
+#include "../spline/radixspline.h"
+#include "../spline/spline.h"
 
 /* Define type for page ids (physical and logical). */
 typedef uint32_t id_t;

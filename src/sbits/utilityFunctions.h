@@ -7,6 +7,10 @@
  * differently depending on the application.
  */
 
+#if defined(__cplusplus)
+extern "C" {
+#endif
+
 #include <stdint.h>
 #include <string.h>
 
@@ -18,3 +22,7 @@ int8_t inBitmapInt16(void *data, void *bm);
 void updateBitmapInt64(void *data, void *bm);
 int8_t inBitmapInt64(void *data, void *bm);
 int8_t int32Comparator(void *a, void *b);
+
+#if defined(__cplusplus)
+}
+#endif

@@ -7,8 +7,8 @@
 #include <string.h>
 #include <time.h>
 
-#include "sbits.h"
-#include "utilityFunctions.h"
+#include "sbits/sbits.h"
+#include "sbits/utilityFunctions.h"
 
 #define NUM_STEPS 10
 #define NUM_RUNS 1

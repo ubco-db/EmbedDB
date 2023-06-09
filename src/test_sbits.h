@@ -42,8 +42,8 @@
 #include <string.h>
 #include <time.h>
 
-#include "sbits.h"
-#include "utilityFunctions.h"
+#include "sbits/sbits.h"
+#include "sbits/utilityFunctions.h"
 
 void testIterator(sbitsState *state) {
     /* Iterator with filter on keys */

@@ -1,8 +1,6 @@
 import os
 from os.path import join
 
-print(os.getcwd())
-
 os.chdir("/home/runner")
 
 FRAMEWORK_DIR = join(".platformio", "packages", "framework-arduino-samd-adafruit", "variants", "feather_m0")

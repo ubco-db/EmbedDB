@@ -43,9 +43,9 @@
 #include <string.h>
 #include <time.h>
 
-#include "radixspline.h"
+#include "../spline/radixspline.h"
+#include "../spline/spline.h"
 #include "sbits.h"
-#include "spline.h"
 
 /**
  * 0 = Value-based search
