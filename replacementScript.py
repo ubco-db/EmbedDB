@@ -1,7 +1,7 @@
 import os
 from os.path import join
 
-FILE_DIRECTORY = join("home", "runner", ".platformio", "framework-arduino-samd-adafruit")
+FILE_DIRECTORY = join("home", "runner")
 
 files = os.listdir(FILE_DIRECTORY)
 
