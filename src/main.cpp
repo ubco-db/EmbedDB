@@ -81,7 +81,7 @@ File32 file;
 bool test_sd_card();
 
 void setup() {
-    Serial.begin(115200);
+     Serial.begin(115200);
     while (!Serial) {
         delay(1);
     }

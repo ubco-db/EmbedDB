@@ -334,7 +334,7 @@ bool test_sd_card() {
         errorPrint(sd);
     }
     printCardType(sd);
-    cidDmp();
+     cidDmp();
     csdDmp();
     cout << F("\nOCR: ") << uppercase << showbase;
     cout << hex << m_ocr << dec << endl;
