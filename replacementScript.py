@@ -1,8 +1,6 @@
 import os
 from os.path import join
 
-print("Python Start")
-
 print(os.getcwd())
 
 os.chdir("/home/runner")
@@ -21,5 +19,3 @@ variant_h_file_new = join(VARIANT_DIR, "variant.h")
 
 os.replace(variant_c_file_new, variant_c_file_old)
 os.replace(variant_h_file_new, variant_h_file_old)
-
-print("Python End")
