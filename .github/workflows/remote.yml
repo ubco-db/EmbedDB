@@ -23,6 +23,7 @@ jobs:
     - name: Run tests on the embedded target
       env:
         PLATFORMIO_AUTH_TOKEN: ${{ secrets.PLATFORMIO_AUTH_TOKEN }}
-      run: 
+      run: |
+        pio run
         platformio remote test -e memboard -v
       
