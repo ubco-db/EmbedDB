@@ -10,7 +10,7 @@
 #include "utilityFunctions.h"
 
 /* A bitmap with 8 buckets (bits). Range 0 to 100. */
-void updateBitmapInt8Bucket(void *data, void *bm) {
+void updateBitmapInt8(void *data, void *bm) {
     // Note: Assuming int key is right at the start of the data record
     int32_t val = *((int16_t *)data);
     uint8_t *bmval = (uint8_t *)bm;
@@ -33,55 +33,39 @@ void updateBitmapInt8Bucket(void *data, void *bm) {
         *bmval = *bmval | 1;
 }
 
-/* A bitmap with 8 buckets (bits). Range 0 to 100. Build bitmap based on min and
- * max value. */
-void buildBitmapInt8BucketWithRange(void *min, void *max, void *bm) {
-    /* Note: Assuming int key is right at the start of the data record */
-    uint8_t *bmval = (uint8_t *)bm;
-
+/* A bitmap with 8 buckets (bits). Range 0 to 100. Build bitmap based on min and max value. */
+void buildBitmapInt8FromRange(void *min, void *max, void *bm) {
     if (min == NULL && max == NULL) {
-        *bmval = 255; /* Everything */
+        *(uint8_t *)bm = 255; /* Everything */
     } else {
-        int8_t i = 0;
-        uint8_t val = 128;
+        uint8_t minMap = 0, maxMap = 0;
         if (min != NULL) {
-            /* Set bits based on min value */
-            updateBitmapInt8Bucket(min, bm);
-
-            /* Assume here that bits are set in increasing order based on
-             * smallest value */
-            /* Find first set bit */
-            while ((val & *bmval) == 0 && i < 8) {
-                i++;
-                val = val / 2;
+            updateBitmapInt8(min, &minMap);
+            // Turn on all bits below the bit for min value (cause the lsb are for the higher values)
+            minMap = minMap | (minMap - 1);
+            if (max == NULL) {
+                *(uint8_t *)bm = minMap;
+                return;
             }
-            val = val / 2;
-            i++;
         }
         if (max != NULL) {
-            /* Set bits based on min value */
-            updateBitmapInt8Bucket(max, bm);
-
-            while ((val & *bmval) == 0 && i < 8) {
-                i++;
-                *bmval = *bmval + val;
-                val = val / 2;
-            }
-        } else {
-            while (i < 8) {
-                i++;
-                *bmval = *bmval + val;
-                val = val / 2;
+            updateBitmapInt8(max, &maxMap);
+            // Turn on all bits above the bit for max value (cause the msb are for the lower values)
+            maxMap = ~(maxMap - 1);
+            if (min == NULL) {
+                *(uint8_t *)bm = maxMap;
+                return;
             }
         }
+        *(uint8_t *)bm = minMap & maxMap;
     }
 }
 
-int8_t inBitmapInt8Bucket(void *data, void *bm) {
+int8_t inBitmapInt8(void *data, void *bm) {
     uint8_t *bmval = (uint8_t *)bm;
 
     uint8_t tmpbm = 0;
-    updateBitmapInt8Bucket(data, &tmpbm);
+    updateBitmapInt8(data, &tmpbm);
 
     // Return a number great than 1 if there is an overlap
     return tmpbm & *bmval;
@@ -117,6 +101,41 @@ int8_t inBitmapInt16(void *data, void *bm) {
     return tmpbm & *bmval;
 }
 
+/**
+ * @brief	Builds 16-bit bitmap from (min, max) range.
+ * @param	state	SBITS state structure
+ * @param	min		minimum value (may be NULL)
+ * @param	max		maximum value (may be NULL)
+ * @param	bm		bitmap created
+ */
+void buildBitmapInt16FromRange(void *min, void *max, void *bm) {
+    if (min == NULL && max == NULL) {
+        *(uint16_t *)bm = 65535; /* Everything */
+        return;
+    } else {
+        uint16_t minMap = 0, maxMap = 0;
+        if (min != NULL) {
+            updateBitmapInt8(min, &minMap);
+            // Turn on all bits below the bit for min value (cause the lsb are for the higher values)
+            minMap = minMap | (minMap - 1);
+            if (max == NULL) {
+                *(uint16_t *)bm = minMap;
+                return;
+            }
+        }
+        if (max != NULL) {
+            updateBitmapInt8(max, &maxMap);
+            // Turn on all bits above the bit for max value (cause the msb are for the lower values)
+            maxMap = ~(maxMap - 1);
+            if (min == NULL) {
+                *(uint16_t *)bm = maxMap;
+                return;
+            }
+        }
+        *(uint16_t *)bm = minMap & maxMap;
+    }
+}
+
 /* A 64-bit bitmap on a 32-bit int value */
 void updateBitmapInt64(void *data, void *bm) {
     int32_t val = *((int32_t *)data);
@@ -145,6 +164,41 @@ int8_t inBitmapInt64(void *data, void *bm) {
 
     // Return a number great than 1 if there is an overlap
     return tmpbm & *bmval;
+}
+
+/**
+ * @brief	Builds 64-bit bitmap from (min, max) range.
+ * @param	state	SBITS state structure
+ * @param	min		minimum value (may be NULL)
+ * @param	max		maximum value (may be NULL)
+ * @param	bm		bitmap created
+ */
+void buildBitmapInt64FromRange(void *min, void *max, void *bm) {
+    if (min == NULL && max == NULL) {
+        *(uint64_t *)bm = UINT64_MAX; /* Everything */
+        return;
+    } else {
+        uint64_t minMap = 0, maxMap = 0;
+        if (min != NULL) {
+            updateBitmapInt8(min, &minMap);
+            // Turn on all bits below the bit for min value (cause the lsb are for the higher values)
+            minMap = minMap | (minMap - 1);
+            if (max == NULL) {
+                *(uint64_t *)bm = minMap;
+                return;
+            }
+        }
+        if (max != NULL) {
+            updateBitmapInt8(max, &maxMap);
+            // Turn on all bits above the bit for max value (cause the msb are for the lower values)
+            maxMap = ~(maxMap - 1);
+            if (min == NULL) {
+                *(uint64_t *)bm = maxMap;
+                return;
+            }
+        }
+        *(uint64_t *)bm = minMap & maxMap;
+    }
 }
 
 int8_t int32Comparator(void *a, void *b) {
