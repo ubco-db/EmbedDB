@@ -36,6 +36,8 @@
  */
 /******************************************************************************/
 
+#include "sbits.h"
+
 #include <math.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -43,9 +45,8 @@
 #include <string.h>
 #include <time.h>
 
-#include "sbits.h"
-#include "spline/radixspline.h"
-#include "spline/spline.h"
+#include "../spline/radixspline.h"
+#include "../spline/spline.h"
 
 /**
  * 0 = Value-based search
@@ -400,7 +401,7 @@ int32_t getMaxError(sbitsState *state, void *buffer) {
         memcpy(&minKey, sbitsGetMinKey(state, buffer), state->keySize);
 
         // get slope of keys within page
-        float slope = sbitsCalculateSlope(state, state->buffer); // this is incorrect, should be buffer. TODO: fix
+        float slope = sbitsCalculateSlope(state, state->buffer);  // this is incorrect, should be buffer. TODO: fix
 
         for (int i = 0; i < state->maxRecordsPerPage; i++) {
             // loop all keys in page
@@ -797,7 +798,6 @@ int8_t sbitsGet(sbitsState *state, void *key, void *data) {
     if (state->compareKey(key, (void *)&(state->minKey)) < 0)
         pageId = 0;
     else {
-
         pageId = (thisKey - state->minKey) / (state->maxRecordsPerPage * state->avgKeyDiff);
 
         if (pageId > state->endDataPage || (state->wrappedMemory == 0 && pageId >= state->nextPageWriteId))
@@ -1122,7 +1122,7 @@ int8_t sbitsNext(sbitsState *state, sbitsIterator *it, void **key, void **data) 
                         if (it->lastIdxIterRec >= cnt) {
                             /* Jump ahead pages in the index */
                             /* TODO: Could improve this so do not read first page if know it will not be useful */
-                            it->lastIdxIterPage += it->lastIdxIterRec / state->maxIdxRecordsPerPage - 1; // -1 as already performed increment
+                            it->lastIdxIterPage += it->lastIdxIterRec / state->maxIdxRecordsPerPage - 1;  // -1 as already performed increment
                             printf("Jumping ahead pages to: %d\n", it->lastIdxIterPage);
                         }
                     }
@@ -1293,9 +1293,9 @@ id_t writeIndexPage(sbitsState *state, void *buffer) {
             state->erasedEndIdxPage += state->eraseSizeInPages - 1;
         }
 
-        if (state->wrappedIdxMemory != 0) // pageNum > state->nextPageWriteId)
-        {                                 /* Have went through memory at least once. Whatever is erased is
-                                                 actual data that is no longer available. */
+        if (state->wrappedIdxMemory != 0)  // pageNum > state->nextPageWriteId)
+        {                                  /* Have went through memory at least once. Whatever is erased is
+                                                  actual data that is no longer available. */
             state->firstIdxPage = state->erasedEndIdxPage + 1;
         }
     }
@@ -1360,7 +1360,7 @@ id_t writeVariablePage(sbitsState *state, void *buffer) {
         }
         void *buf = (int8_t *)state->buffer + state->pageSize * SBITS_VAR_READ_BUFFER(state->parameters);
         memcpy(&state->minVarRecordId, buf, state->keySize);
-        state->minVarRecordId += 1; // Add one because the result from the last line is a record that is erased
+        state->minVarRecordId += 1;  // Add one because the result from the last line is a record that is erased
     }
 
     if (state->storageType == FILE_STORAGE) {
@@ -1502,7 +1502,7 @@ void sbitsClose(sbitsState *state) {
             fclose(state->varFile);
         }
     }
-    if (SEARCH_METHOD == 2) { // Spline
+    if (SEARCH_METHOD == 2) {  // Spline
         if (USE_RADIX) {
             radixsplineClose(state->rdix);
             free(state->rdix);

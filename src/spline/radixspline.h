@@ -49,9 +49,9 @@ extern "C" {
 #include <stdlib.h>
 
 #if defined(ARDUINO)
-#include "file/dataflash_c_iface.h"
-#include "file/sdcard_c_iface.h"
-#include "file/serial_c_iface.h"
+#include "dataflash_c_iface.h"
+#include "sdcard_c_iface.h"
+#include "serial_c_iface.h"
 #endif
 
 #include "spline.h"
@@ -77,7 +77,7 @@ typedef struct {
     id_t numPoints;   /* Size of data */
     id_t prevPrefix;  /* Prefix of most recently seen spline point */
     id_t pointsSeen;  /* Number of data points added to radix */
-	uint8_t keySize;  /* Size of key in bytes */
+    uint8_t keySize;  /* Size of key in bytes */
 } radixspline;
 
 typedef struct {

@@ -48,7 +48,6 @@ void test_vardata(void *storage) {
             int VAR_DATA_SIZE = varDataSizes[vardataSizeIndex];
             for (int DATASET = 0; DATASET < 3; DATASET++) {
                 for (int STORAGE_TYPE = 0; STORAGE_TYPE < 2; STORAGE_TYPE++) {
-
                     printf("\nSTARTING SBITS VARIABLE DATA TESTS.\n");
                     printf("KEY_SIZE: %d\n", KEY_SIZE);
                     printf("VAR_DATA_SIZE: %d\n", VAR_DATA_SIZE);
@@ -58,10 +57,10 @@ void test_vardata(void *storage) {
                     int8_t M = 6;
 
                     // Initialize to default values
-                    int32_t numRecords = 600;  // default values
-                    int32_t testRecords = 600; // default values
-                    uint8_t useRandom = 0;     // default values
-                    size_t splineMaxError = 0; // default values
+                    int32_t numRecords = 600;   // default values
+                    int32_t testRecords = 600;  // default values
+                    uint8_t useRandom = 0;      // default values
+                    size_t splineMaxError = 0;  // default values
                     uint32_t stepSize = numRecords / NUM_STEPS;
                     count_t r, l;
                     uint32_t times[NUM_STEPS][NUM_RUNS];
@@ -103,7 +102,7 @@ void test_vardata(void *storage) {
                             // infileRandom = fopen("data/ethylene_CO_randomized.bin", "r+b");
                             minRange = 0;
                             maxRange = 4208755;
-                            numRecords = 100000; // 4085589;
+                            numRecords = 100000;  // 4085589;
                             testRecords = 4085589;
                             printf("DATASET: ethylene_CO.bin\n");
                         }
@@ -145,7 +144,7 @@ void test_vardata(void *storage) {
                             // fopen("data/uwa_data_only_2000_500KSorted_randomized.bin", "r+b");
                             minRange = 946713600;
                             maxRange = 977144040;
-                            numRecords = 100000; // 500000;
+                            numRecords = 100000;  // 500000;
                             testRecords = 500000;
                             printf("DATASET: uwa500K.bin\n");
                         }
@@ -170,7 +169,7 @@ void test_vardata(void *storage) {
                         state->storageType = STORAGE_TYPE == 0 ? DATAFLASH_STORAGE : FILE_STORAGE;
                         state->storage = storage;
                         state->startAddress = 0;
-                        state->endAddress = 5500 * state->pageSize; // state->pageSize * numRecords / 10; /* Modify this value lower to test wrap around */
+                        state->endAddress = 5500 * state->pageSize;  // state->pageSize * numRecords / 10; /* Modify this value lower to test wrap around */
                         state->varAddressStart = 6000 * state->pageSize;
                         state->varAddressEnd = state->varAddressStart + state->pageSize * 4000;
                         state->eraseSizeInPages = 4;
@@ -876,7 +875,7 @@ void updateBitmapInt16(void *data, void *bm) {
     /* Using a demo range of 0 to 100 */
 
     // int16_t stepSize = 100 / 15;
-    int16_t stepSize = 450 / 15; // Temperature data in F. Scaled by 10. */
+    int16_t stepSize = 450 / 15;  // Temperature data in F. Scaled by 10. */
     int16_t minBase = 320;
     int32_t current = minBase;
     uint16_t num = 32768;

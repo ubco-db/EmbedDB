@@ -1,9 +1,0 @@
-{
-    "files.associations": {
-        "cstdio": "cpp",
-        "one_level_append_pgm.h": "c",
-        "math.h": "c"
-    },
-    "clang-format.style": "file",
-    "editor.formatOnSave": true
-}

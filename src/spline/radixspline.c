@@ -38,13 +38,13 @@
  */
 /******************************************************************************/
 
+#include "radixspline.h"
+
 #include <math.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-
-#include "radixspline.h"
 
 /**
  * @brief   Build the radix table
@@ -98,7 +98,7 @@ void radixsplineAddPoint(radixspline *rsidx, void *key) {
 
     // Determine if need to update radix table based on adding point to spline
     if (rsidx->spl->count <= rsidx->pointsSeen)
-        return; // Nothing to do
+        return;  // Nothing to do
 
     // take the last point that was added to spline
     key = rsidx->spl->points[rsidx->spl->count - 1].key;

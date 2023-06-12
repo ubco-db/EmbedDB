@@ -10,7 +10,6 @@ extern csd_t m_csd;
 extern uint32_t m_eraseSize;
 extern uint32_t m_ocr;
 
-
 void errorPrint(SdFat32 sd);
 void printCardType(SdFat32 sd);
 bool cidDmp();
