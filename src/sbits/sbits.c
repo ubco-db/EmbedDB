@@ -187,6 +187,7 @@ int8_t sbitsInit(sbitsState *state, size_t indexMaxError) {
     state->minKey = 0;
     state->bufferedPageId = -1;
     state->bufferedIndexPageId = -1;
+    state->bufferedVarPage = -1;
 
     /* Calculate number of records per page */
     state->maxRecordsPerPage = (state->pageSize - state->headerSize) / state->recordSize;
@@ -1001,15 +1002,8 @@ void sbitsInitIterator(sbitsState *state, sbitsIterator *it) {
     if (SBITS_USING_BMAP(state->parameters)) {
         /* Verify that bitmap index is useful (must have set either min or max data value) */
         if (it->minData != NULL || it->maxData != NULL) {
-            // uint16_t *bm = malloc(sizeof(uint16_t));
-            //  *bm = 0;
-            //  buildBitmapInt16FromRange(state, it->minData, it->maxData, bm);
-            uint64_t *bm = (uint64_t *)malloc(sizeof(uint64_t));
-            *bm = 0;
-            buildBitmapInt64FromRange(state, it->minData, it->maxData, bm);
-
-            // printBitmap((char*) bm);
-            it->queryBitmap = bm;
+            it->queryBitmap = calloc(1, state->bitmapSize);
+            state->buildBitmapFromRange(it->minData, it->maxData, it->queryBitmap);
 
             /* Setup for reading index file */
             if (state->indexFile != NULL) {
@@ -1017,6 +1011,8 @@ void sbitsInitIterator(sbitsState *state, sbitsIterator *it) {
                 it->lastIdxIterRec = 10000; /* Force to read next index page */
                 it->wrappedIdxMemory = 0;
             }
+        } else {
+            printf("WARN: Iterator not using index. If this is not intended, ensure that the sbitsState was initialized with an index file\n");
         }
     }
 
@@ -1024,6 +1020,16 @@ void sbitsInitIterator(sbitsState *state, sbitsIterator *it) {
     it->lastIterPage = state->firstDataPage - 1;
     it->lastIterRec = 10000; /* Force to read next page */
     it->wrappedMemory = 0;
+}
+
+/**
+ * @brief	Close iterator after use.
+ * @param	it		SBITS iterator structure
+ */
+void sbitsCloseIterator(sbitsIterator *it) {
+    if (it->queryBitmap != NULL) {
+        free(it->queryBitmap);
+    }
 }
 
 /**
@@ -1036,7 +1042,7 @@ int8_t sbitsFlush(sbitsState *state) {
 
     indexPage(state);
 
-    if (state->indexFile != NULL) {
+    if (SBITS_USING_INDEX(state->parameters)) {
         void *buf = (int8_t *)state->buffer + state->pageSize * (SBITS_INDEX_WRITE_BUFFER);
         count_t idxcount = SBITS_GET_COUNT(buf);
         SBITS_INC_COUNT(buf);
@@ -1065,10 +1071,11 @@ int8_t sbitsFlush(sbitsState *state) {
  * @brief	Return next key, data pair for iterator.
  * @param	state	SBITS algorithm state structure
  * @param	it		SBITS iterator state structure
- * @param	key		Key for record
- * @param	data	Data for record
+ * @param	key		Return variable for key (Pre-allocated)
+ * @param	data	Return variable for data (Pre-allocated)
+ * @return	1 if successful, 0 if no more records
  */
-int8_t sbitsNext(sbitsState *state, sbitsIterator *it, void **key, void **data) {
+int8_t sbitsNext(sbitsState *state, sbitsIterator *it, void *key, void *data) {
     void *buf = (int8_t *)state->buffer + state->pageSize;
     /* Iterate until find a record that matches search criteria */
     while (1) {
@@ -1159,21 +1166,144 @@ int8_t sbitsNext(sbitsState *state, sbitsIterator *it, void **key, void **data) 
         }
 
         /* Get record */
-        *key = (int8_t *)buf + state->headerSize + it->lastIterRec * state->recordSize;
-        *data = (int8_t *)buf + state->headerSize + it->lastIterRec * state->recordSize + state->keySize;
+        memcpy(key, (int8_t *)buf + state->headerSize + it->lastIterRec * state->recordSize, state->keySize);
+        memcpy(data, (int8_t *)buf + state->headerSize + it->lastIterRec * state->recordSize + state->keySize, state->dataSize);
         it->lastIterRec++;
 
         /* Check that record meets filter constraints */
-        if (it->minKey != NULL && state->compareKey(*key, it->minKey) < 0)
+        if (it->minKey != NULL && state->compareKey(key, it->minKey) < 0)
             continue;
-        if (it->maxKey != NULL && state->compareKey(*key, it->maxKey) > 0)
+        if (it->maxKey != NULL && state->compareKey(key, it->maxKey) > 0)
             return 0;
-        if (it->minData != NULL && state->compareData(*data, it->minData) < 0)
+        if (it->minData != NULL && state->compareData(data, it->minData) < 0)
             continue;
-        if (it->maxData != NULL && state->compareData(*data, it->maxData) > 0)
+        if (it->maxData != NULL && state->compareData(data, it->maxData) > 0)
             continue;
         return 1;
     }
+}
+
+/**
+ * @brief	Return next key, data, variable data set for iterator
+ * @param	state	SBITS algorithm state structure
+ * @param	it		SBITS iterator state structure
+ * @param	key		Return variable for key (Pre-allocated)
+ * @param	data	Return variable for data (Pre-allocated)
+ * @param	varData	Return variable for variable data as a sbitsVarDataStream (Unallocated). Returns NULL if no variable data. **Be sure to free the stream after you are done with it**
+ * @return	1 if successful, 0 if no more records
+ */
+int8_t sbitsNextVar(sbitsState *state, sbitsIterator *it, void *key, void *data, sbitsVarDataStream **varData) {
+    if (SBITS_USING_VDATA(state->parameters)) {
+        int8_t r = sbitsNext(state, it, key, data);
+        if (!r) {
+            return 0;
+        }
+
+        // Get the vardata address from the record
+        count_t recordNum = it->lastIterRec - 1;
+        void *dataBuf = (int8_t *)state->buffer + state->pageSize * SBITS_DATA_READ_BUFFER;
+        void *record = (int8_t *)dataBuf + state->headerSize + recordNum * state->recordSize;
+        uint32_t varDataAddr = 0;
+        memcpy(&varDataAddr, (int8_t *)record + state->keySize + state->dataSize, sizeof(uint32_t));
+
+        if (varDataAddr == SBITS_NO_VAR_DATA) {
+            *varData = NULL;
+            return 1;
+        }
+
+        uint32_t pageNum = (varDataAddr / state->pageSize) % state->numVarPages;
+        uint32_t pageOffset = varDataAddr % state->pageSize;
+
+        // Read in page
+        if (readVariablePage(state, pageNum) != 0) {
+            printf("ERROR: sbitsNextVar failed to read variable page\n");
+            return 0;
+        }
+
+        // Get length of variable data
+        void *varBuf = (int8_t *)state->buffer + state->pageSize * SBITS_VAR_READ_BUFFER(state->parameters);
+        uint32_t dataLen = 0;
+        memcpy(&dataLen, (int8_t *)varBuf + pageOffset, sizeof(uint32_t));
+
+        // Move var data address to the beginning of the data, past the data length
+        varDataAddr = (varDataAddr + sizeof(uint32_t)) % (state->numVarPages * state->pageSize);
+
+        // Create varDataStream
+        sbitsVarDataStream *varDataStream = malloc(sizeof(sbitsVarDataStream));
+        if (varDataStream == NULL) {
+            printf("ERROR: Failed to alloc memory for sbitsVarDataStream\n");
+            return 0;
+        }
+
+        varDataStream->dataStart = varDataAddr;
+        varDataStream->totalBytes = dataLen;
+        varDataStream->bytesRead = 0;
+        varDataStream->pageOffset = UINT16_MAX;  // Set flag that the next read is the first read
+
+        *varData = varDataStream;
+
+        return 1;
+    } else {
+        printf("ERROR: sbitsNextVar called when not using variable data\n");
+        return 0;
+    }
+}
+
+/**
+ * @brief	Reads data from variable data stream into the given buffer.
+ * @param	state	SBITS algorithm state structure
+ * @param	stream	Variable data stream
+ * @param	buffer	Buffer to read data into
+ * @param	length	Number of bytes to read (Must be <= buffer size)
+ * @return	Number of bytes read
+ */
+uint32_t sbitsVarDataStreamRead(sbitsState *state, sbitsVarDataStream *stream, void *buffer, uint32_t length) {
+    if (buffer == NULL) {
+        printf("ERROR: Cannot pass null buffer to sbitsVarDataStreamRead\n");
+        return 0;
+    }
+
+    // Read in var page containing the data to read
+    uint32_t pageNum = ((stream->dataStart + stream->bytesRead) / state->pageSize) % state->numVarPages;
+    uint32_t pageOffset;
+    if (stream->pageOffset == UINT16_MAX) {
+        pageOffset = stream->dataStart % state->pageSize;
+    } else if (stream->pageOffset % state->pageSize == 0) {
+        pageOffset = state->keySize;
+    } else {
+        pageOffset = stream->pageOffset;
+    }
+
+    if (readVariablePage(state, pageNum) != 0) {
+        printf("ERROR: Couldn't read variable data page %d\n", pageNum);
+        return 0;
+    }
+
+    // Keep reading in data until the buffer is full
+    void *varDataBuf = (int8_t *)state->buffer + state->pageSize * SBITS_VAR_READ_BUFFER(state->parameters);
+    uint32_t amtRead = 0;
+    while (amtRead < length && stream->bytesRead < stream->totalBytes) {
+        uint32_t amtToRead = min(stream->totalBytes - stream->bytesRead, min(state->pageSize - pageOffset, length - amtRead));
+        memcpy((int8_t *)buffer + amtRead, (int8_t *)varDataBuf + pageOffset, amtToRead);
+        amtRead += amtToRead;
+        stream->bytesRead += amtRead;
+        pageOffset += amtToRead;
+
+        // If we need to keep reading, read the next page
+        if (amtRead < length && stream->bytesRead < stream->totalBytes) {
+            pageNum = (pageNum + 1) % state->numVarPages;
+            if (readVariablePage(state, pageNum) != 0) {
+                printf("ERROR: Couldn't read variable data page %d\n", pageNum);
+                stream->pageOffset = UINT16_MAX;
+                return 0;
+            }
+            // Skip past the header
+            pageOffset = state->keySize;
+        }
+    }
+
+    stream->pageOffset = pageOffset;
+    return amtRead;
 }
 
 /**
@@ -1454,6 +1584,12 @@ int8_t readIndexPage(sbitsState *state, id_t pageNum) {
  * @return 	Return 0 if success, -1 if error
  */
 int8_t readVariablePage(sbitsState *state, id_t pageNum) {
+    // Check if page is currently in buffer
+    if (pageNum == state->bufferedVarPage) {
+        state->bufferHits++;
+        return 0;
+    }
+
     // Get buffer to read into
     void *buf = (int8_t *)state->buffer + SBITS_VAR_READ_BUFFER(state->parameters) * state->pageSize;
 
@@ -1471,6 +1607,7 @@ int8_t readVariablePage(sbitsState *state, id_t pageNum) {
 
     // Track stats
     state->numReads++;
+    state->bufferedVarPage = pageNum;
     return 0;
 }
 
@@ -1510,111 +1647,5 @@ void sbitsClose(sbitsState *state) {
             splineFree(state->spl);
         }
         free(state->spl);
-    }
-}
-
-/**
- * @brief	Builds 16-bit bitmap from (min, max) range.
- * @param	state	SBITS state structure
- * @param	min		minimum value (may be NULL)
- * @param	max		maximum value (may be NULL)
- * @param	bm		bitmap created
- */
-void buildBitmapInt16FromRange(sbitsState *state, void *min, void *max, void *bm) {
-    uint16_t *bmval = (uint16_t *)bm;
-
-    if (min == NULL && max == NULL) {
-        *bmval = 65535; /* Everything */
-        return;
-    }
-
-    int8_t i = 0;
-    uint16_t val = 32768;
-    if (min != NULL) {
-        /* Set bits based on min value */
-        state->updateBitmap(min, bm);
-
-        /* Assume here that bits are set in increasing order based on smallest
-         * value */
-        /* Find first set bit */
-        while ((val & *bmval) == 0 && i < 16) {
-            i++;
-            val = val / 2;
-        }
-        val = val / 2;
-        i++;
-    }
-    if (max != NULL) {
-        /* Set bits based on min value */
-        uint16_t prev = *bmval;
-        state->updateBitmap(max, bm);
-        if (*bmval == prev)
-            return; /* Min and max bit vector are the same */
-
-        while ((val & *bmval) == 0 && i < 16) {
-            i++;
-            *bmval = *bmval + val;
-            val = val / 2;
-        }
-    } else {
-        while (i < 16) {
-            i++;
-            *bmval = *bmval + val;
-            val = val / 2;
-        }
-    }
-}
-
-/**
- * @brief	Builds 64-bit bitmap from (min, max) range.
- * @param	state	SBITS state structure
- * @param	min		minimum value (may be NULL)
- * @param	max		maximum value (may be NULL)
- * @param	bm		bitmap created
- */
-void buildBitmapInt64FromRange(sbitsState *state, void *min, void *max, void *bm) {
-    uint64_t *bmval = (uint64_t *)bm;
-
-    if (min == NULL && max == NULL) {
-        *bmval = UINT64_MAX; /* Everything */
-        return;
-    }
-
-    int8_t i = 0;
-    uint64_t val = (uint64_t)(INT64_MAX) + 1;
-    if (min != NULL) {
-        /* Set bits based on min value */
-        state->updateBitmap(min, bm);
-
-        /* Assume here that bits are set in increasing order based on smallest
-         * value */
-        /* Find first set bit */
-        while ((val & *bmval) == 0 && i < 64) {
-            i++;
-            val = val / 2;
-        }
-        val = val / 2;
-        i++;
-    }
-    if (max != NULL) {
-        /* Set bits based on min value */
-        uint64_t prev = *bmval;
-        state->updateBitmap(max, bm);
-
-        /* Min and max bit vector are the same */
-        if (*bmval == prev)
-            return;
-
-        while ((val & *bmval) == 0 && i < 64) {
-            i++;
-            *bmval = *bmval + val;
-            val = val / 2;
-        }
-    } else {
-        while (i < 64) {
-            i++;
-            *bmval = *bmval + val;
-            val = val / 2;
-        }
     }
 }

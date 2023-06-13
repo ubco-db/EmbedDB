@@ -14,12 +14,14 @@ extern "C" {
 #include <stdint.h>
 #include <string.h>
 
-void updateBitmapInt8Bucket(void *data, void *bm);
-void buildBitmapInt8BucketWithRange(void *min, void *max, void *bm);
-int8_t inBitmapInt8Bucket(void *data, void *bm);
+void updateBitmapInt8(void *data, void *bm);
+void buildBitmapInt8FromRange(void *min, void *max, void *bm);
+int8_t inBitmapInt8(void *data, void *bm);
 void updateBitmapInt16(void *data, void *bm);
 int8_t inBitmapInt16(void *data, void *bm);
+void buildBitmapInt16FromRange(void *min, void *max, void *bm);
 void updateBitmapInt64(void *data, void *bm);
+void buildBitmapInt64FromRange(void *min, void *max, void *bm);
 int8_t inBitmapInt64(void *data, void *bm);
 int8_t int32Comparator(void *a, void *b);
 
