@@ -2,8 +2,8 @@ import re
 import pandas as pd
 import xlsxwriter
 
-with pd.ExcelWriter('Benchmarking/Benchmarks.xlsx', engine='xlsxwriter') as writer:
-	with open('AllTests.txt', 'r') as f:
+with pd.ExcelWriter('Benchmarking/2023-06-09/Benchmarks.xlsx', engine='xlsxwriter') as writer:
+	with open('Benchmarking/2023-06-09/AllTests.txt', 'r') as f:
 		# Read in as text
 		file_string = f.read()
 		tests = file_string.split('STARTING SBITS VARIABLE DATA TESTS.\n')
@@ -13,7 +13,7 @@ with pd.ExcelWriter('Benchmarking/Benchmarks.xlsx', engine='xlsxwriter') as writ
 			info = re.findall(r'KEY_SIZE: (\d+).*VAR_DATA_SIZE: (\d+).*STORAGE_TYPE: ([\w ]+).*DATASET: ([\w \.]+)', test, re.DOTALL)[0]
 
 			# Parse out stat table
-			text_tables = re.findall(r'(Stats for 10000:.*?)(?=\n\nSTARTING SBITS|$)', file_string, re.DOTALL)
+			text_tables = re.findall(r'(Stats for 10000:.*?)(?=\n\nSTARTING SBITS|$)', test, re.DOTALL)
 			text_tables = [x.strip() for x in text_tables]
 
 			# Regex pattern to match each row of the table
