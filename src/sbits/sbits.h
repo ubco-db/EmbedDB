@@ -133,68 +133,70 @@ typedef uint16_t count_t;
 #define DATAFLASH_STORAGE 2
 
 typedef struct {
-    SD_FILE *file;                              /* File for storing data records. */
-    SD_FILE *indexFile;                         /* File for storing index records. */
-    SD_FILE *varFile;                           /* File for storing variable length data. */
-    int8_t storageType;                         /* Storage type. 1 - for SD card file, 2 - for data flash memory */
-    void *storage;                              /* Storage configuration */
-    id_t startAddress;                          /* Start address in memory space */
-    id_t endAddress;                            /* End address in memory space */
-    count_t eraseSizeInPages;                   /* Erase size in pages */
-    id_t startDataPage;                         /* Start data page number */
-    id_t endDataPage;                           /* End data page number */
-    id_t numAvailVarPages;                      /* Number of writable pages left before needing to delete */
-    id_t varAddressStart;                       /* Start address for the variable data page */
-    id_t varAddressEnd;                         /* End address for the variable data page */
-    count_t numVarPages;                        /* Number of variable pages */
-    id_t startIdxPage;                          /* Start index page number */
-    id_t endIdxPage;                            /* End index page number */
-    id_t firstDataPage;                         /* First data page number (physical location) */
-    id_t firstDataPageId;                       /* First data page number (logical page id) */
-    id_t currentVarLoc;                         /* Current variable address offset to write at (bytes from beginning of file) */
-    id_t nextVarPageId;                         /* Page number of next var page to be written */
-    id_t firstIdxPage;                          /* First data page number (physical location) */
-    id_t erasedEndPage;                         /* Physical page number of last erased page */
-    id_t erasedEndIdxPage;                      /* Physical page number of last erased index page */
-    uint64_t minVarRecordId;                    /* Minimum record id that we still have variable data for */
-    int8_t wrappedMemory;                       /* 1 if have wrapped around in memory, 0 otherwise */
-    int8_t wrappedIdxMemory;                    /* 1 if have wrapped around in index memory, 0 otherwise */
-    int8_t wrappedVariableMemory;               /* 1 if have wrapped around in variable data memory, 0 otherwise */
-    void *buffer;                               /* Pre-allocated memory buffer for use by algorithm */
-    spline *spl;                                /* Spline model */
-    radixspline *rdix;                          /* Radix Spline search model */
-    int32_t indexMaxError;                      /* Max error for indexing structure (Spline or PGM) */
-    int8_t bufferSizeInBlocks;                  /* Size of buffer in blocks */
-    count_t pageSize;                           /* Size of physical page on device */
-    int8_t parameters;                          /* Parameter flags for indexing and bitmaps */
-    int8_t keySize;                             /* Size of key in bytes (fixed-size records) */
-    int8_t dataSize;                            /* Size of data in bytes (fixed-size records). Do not include space for variable size records if you are using them. */
-    int8_t recordSize;                          /* Size of record in bytes (fixed-size records) */
-    int8_t headerSize;                          /* Size of header in bytes (calculated during init()) */
-    int8_t bitmapSize;                          /* Size of bitmap in bytes */
-    id_t avgKeyDiff;                            /* Estimate for difference between key values. Used for get() to predict location of record. */
-    id_t nextPageId;                            /* Next logical page id. Page id is an incrementing value and may not always be same as physical page id. */
-    id_t nextPageWriteId;                       /* Physical page id of next page to write. */
-    id_t nextIdxPageId;                         /* Next logical page id for index. Page id is an incrementing value and may not always be same as physical page id. */
-    id_t nextIdxPageWriteId;                    /* Physical index page id of next page to write. */
-    count_t maxRecordsPerPage;                  /* Maximum records per page */
-    count_t maxIdxRecordsPerPage;               /* Maximum index records per page */
-    int8_t (*compareKey)(void *a, void *b);     /* Function that compares two arbitrary keys passed as parameters */
-    int8_t (*compareData)(void *a, void *b);    /* Function that compares two arbitrary data values passed as parameters */
-    void (*extractData)(void *data);            /* Given a record, function that extracts the data (key) value from that record */
-    void (*updateBitmap)(void *data, void *bm); /* Given a record, updates bitmap based on its data (key) value */
-    int8_t (*inBitmap)(void *data, void *bm);   /* Returns 1 if data (key) value is a valid value given the bitmap */
-    uint64_t minKey;                            /* Minimum key */
-    uint64_t maxKey;                            /* Maximum key */
-    int32_t maxError;                           /* Maximum key error */
-    id_t numWrites;                             /* Number of page writes */
-    id_t numReads;                              /* Number of page reads */
-    id_t numIdxWrites;                          /* Number of index page writes */
-    id_t numIdxReads;                           /* Number of index page reads */
-    id_t bufferHits;                            /* Number of pages returned from buffer rather than storage */
-    id_t bufferedPageId;                        /* Page id currently in read buffer */
-    id_t bufferedIndexPageId;                   /* Index page id currently in index read buffer */
-    uint8_t recordHasVarData;                   /* Internal flag to signal that the record currently being written has var data */
+    SD_FILE *file;                                                        /* File for storing data records. */
+    SD_FILE *indexFile;                                                   /* File for storing index records. */
+    SD_FILE *varFile;                                                     /* File for storing variable length data. */
+    int8_t storageType;                                                   /* Storage type. 1 - for SD card file, 2 - for data flash memory */
+    void *storage;                                                        /* Storage configuration */
+    id_t startAddress;                                                    /* Start address in memory space */
+    id_t endAddress;                                                      /* End address in memory space */
+    count_t eraseSizeInPages;                                             /* Erase size in pages */
+    id_t startDataPage;                                                   /* Start data page number */
+    id_t endDataPage;                                                     /* End data page number */
+    id_t numAvailVarPages;                                                /* Number of writable pages left before needing to delete */
+    id_t varAddressStart;                                                 /* Start address for the variable data page */
+    id_t varAddressEnd;                                                   /* End address for the variable data page */
+    count_t numVarPages;                                                  /* Number of variable pages */
+    id_t startIdxPage;                                                    /* Start index page number */
+    id_t endIdxPage;                                                      /* End index page number */
+    id_t firstDataPage;                                                   /* First data page number (physical location) */
+    id_t firstDataPageId;                                                 /* First data page number (logical page id) */
+    id_t currentVarLoc;                                                   /* Current variable address offset to write at (bytes from beginning of file) */
+    id_t nextVarPageId;                                                   /* Page number of next var page to be written */
+    id_t firstIdxPage;                                                    /* First data page number (physical location) */
+    id_t erasedEndPage;                                                   /* Physical page number of last erased page */
+    id_t erasedEndIdxPage;                                                /* Physical page number of last erased index page */
+    uint64_t minVarRecordId;                                              /* Minimum record id that we still have variable data for */
+    int8_t wrappedMemory;                                                 /* 1 if have wrapped around in memory, 0 otherwise */
+    int8_t wrappedIdxMemory;                                              /* 1 if have wrapped around in index memory, 0 otherwise */
+    int8_t wrappedVariableMemory;                                         /* 1 if have wrapped around in variable data memory, 0 otherwise */
+    void *buffer;                                                         /* Pre-allocated memory buffer for use by algorithm */
+    spline *spl;                                                          /* Spline model */
+    radixspline *rdix;                                                    /* Radix Spline search model */
+    int32_t indexMaxError;                                                /* Max error for indexing structure (Spline or PGM) */
+    int8_t bufferSizeInBlocks;                                            /* Size of buffer in blocks */
+    count_t pageSize;                                                     /* Size of physical page on device */
+    int8_t parameters;                                                    /* Parameter flags for indexing and bitmaps */
+    int8_t keySize;                                                       /* Size of key in bytes (fixed-size records) */
+    int8_t dataSize;                                                      /* Size of data in bytes (fixed-size records). Do not include space for variable size records if you are using them. */
+    int8_t recordSize;                                                    /* Size of record in bytes (fixed-size records) */
+    int8_t headerSize;                                                    /* Size of header in bytes (calculated during init()) */
+    int8_t bitmapSize;                                                    /* Size of bitmap in bytes */
+    id_t avgKeyDiff;                                                      /* Estimate for difference between key values. Used for get() to predict location of record. */
+    id_t nextPageId;                                                      /* Next logical page id. Page id is an incrementing value and may not always be same as physical page id. */
+    id_t nextPageWriteId;                                                 /* Physical page id of next page to write. */
+    id_t nextIdxPageId;                                                   /* Next logical page id for index. Page id is an incrementing value and may not always be same as physical page id. */
+    id_t nextIdxPageWriteId;                                              /* Physical index page id of next page to write. */
+    count_t maxRecordsPerPage;                                            /* Maximum records per page */
+    count_t maxIdxRecordsPerPage;                                         /* Maximum index records per page */
+    int8_t (*compareKey)(void *a, void *b);                               /* Function that compares two arbitrary keys passed as parameters */
+    int8_t (*compareData)(void *a, void *b);                              /* Function that compares two arbitrary data values passed as parameters */
+    void (*extractData)(void *data);                                      /* Given a record, function that extracts the data (key) value from that record */
+    void (*buildBitmapFromRange)(void *minData, void *maxData, void *bm); /* Given a record, builds bitmap based on its data (key) value */
+    void (*updateBitmap)(void *data, void *bm);                           /* Given a record, updates bitmap based on its data (key) value */
+    int8_t (*inBitmap)(void *data, void *bm);                             /* Returns 1 if data (key) value is a valid value given the bitmap */
+    uint64_t minKey;                                                      /* Minimum key */
+    uint64_t maxKey;                                                      /* Maximum key */
+    int32_t maxError;                                                     /* Maximum key error */
+    id_t numWrites;                                                       /* Number of page writes */
+    id_t numReads;                                                        /* Number of page reads */
+    id_t numIdxWrites;                                                    /* Number of index page writes */
+    id_t numIdxReads;                                                     /* Number of index page reads */
+    id_t bufferHits;                                                      /* Number of pages returned from buffer rather than storage */
+    id_t bufferedPageId;                                                  /* Page id currently in read buffer */
+    id_t bufferedIndexPageId;                                             /* Index page id currently in index read buffer */
+    id_t bufferedVarPage;                                                 /* Variable page id currently in variable read buffer */
+    uint8_t recordHasVarData;                                             /* Internal flag to signal that the record currently being written has var data */
 } sbitsState;
 
 typedef struct {
@@ -210,6 +212,13 @@ typedef struct {
     void *maxData;
     void *queryBitmap;
 } sbitsIterator;
+
+typedef struct {
+    uint32_t totalBytes; /* Total number of bytes in the stream */
+    uint32_t bytesRead;  /* Number of bytes read so far */
+    uint32_t dataStart;  /* Start of data as an offset in bytes from the beginning of the file */
+    uint16_t pageOffset; /* Where the iterator should start reading data next time (offset from start of page) */
+} sbitsVarDataStream;
 
 /**
  * @brief	Initialize SBITS structure.
@@ -271,23 +280,41 @@ int8_t sbitsGetVar(sbitsState *state, void *key, void *data, void **varData, uin
 void sbitsInitIterator(sbitsState *state, sbitsIterator *it);
 
 /**
+ * @brief	Close iterator after use.
+ * @param	it		SBITS iterator structure
+ */
+void sbitsCloseIterator(sbitsIterator *it);
+
+/**
  * @brief	Return next key, data pair for iterator.
  * @param	state	SBITS algorithm state structure
  * @param	it		SBITS iterator state structure
- * @param	key		Key for record
- * @param	data	Data for record
+ * @param	key		Return variable for key (Pre-allocated)
+ * @param	data	Return variable for data (Pre-allocated)
+ * @return	1 if successful, 0 if no more records
  */
-int8_t sbitsNext(sbitsState *state, sbitsIterator *it, void **key, void **data);
+int8_t sbitsNext(sbitsState *state, sbitsIterator *it, void *key, void *data);
 
 /**
  * @brief	Return next key, data, variable data set for iterator
  * @param	state	SBITS algorithm state structure
  * @param	it		SBITS iterator state structure
- * @param	key		Key for record
- * @param	data	Data for record
- * @param	varData	Data for variable portion of record
+ * @param	key		Return variable for key (Pre-allocated)
+ * @param	data	Return variable for data (Pre-allocated)
+ * @param	varData	Return variable for variable data as a sbitsVarDataStream (Unallocated). Returns NULL if no variable data. **Be sure to free the stream after you are done with it**
+ * @return	1 if successful, 0 if no more records
  */
-int8_t sbitsNextVar(sbitsState *state, sbitsIterator *it, void **key, void **data, void **varData);
+int8_t sbitsNextVar(sbitsState *state, sbitsIterator *it, void *key, void *data, sbitsVarDataStream **varData);
+
+/**
+ * @brief	Reads data from variable data stream into the given buffer.
+ * @param	state	SBITS algorithm state structure
+ * @param	stream	Variable data stream
+ * @param	buffer	Buffer to read data into
+ * @param	length	Number of bytes to read (Must be <= buffer size)
+ * @return	Number of bytes read
+ */
+uint32_t sbitsVarDataStreamRead(sbitsState *state, sbitsVarDataStream *stream, void *buffer, uint32_t length);
 
 /**
  * @brief	Flushes output buffer.
@@ -360,27 +387,6 @@ void resetStats(sbitsState *state);
  * @param	state	SBITS state structure
  */
 void sbitsClose(sbitsState *state);
-
-/*
-Bitmap related functions
-*/
-/**
- * @brief	Builds 16-bit bitmap from (min, max) range.
- * @param	state	SBITS state structure
- * @param	min		minimum value (may be NULL)
- * @param	max		maximum value (may be NULL)
- * @param	bm		bitmap created
- */
-void buildBitmapInt16FromRange(sbitsState *state, void *min, void *max, void *bm);
-
-/**
- * @brief	Builds 64-bit bitmap from (min, max) range.
- * @param	state	SBITS state structure
- * @param	min		minimum value (may be NULL)
- * @param	max		maximum value (may be NULL)
- * @param	bm		bitmap created
- */
-void buildBitmapInt64FromRange(sbitsState *state, void *min, void *max, void *bm);
 
 #if defined(__cplusplus)
 }
