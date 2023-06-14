@@ -1,8 +1,7 @@
 import re
 import pandas as pd
-import xlsxwriter
 
-with pd.ExcelWriter('Benchmarking/2023-06-09/Benchmarks.xlsx', engine='xlsxwriter') as writer:
+with pd.ExcelWriter('Benchmarking/2023-06-09/Benchmarks.xlsx', engine='openpyxl') as writer:
 	with open('Benchmarking/2023-06-09/AllTests.txt', 'r') as f:
 		# Read in as text
 		file_string = f.read()
@@ -59,4 +58,4 @@ with pd.ExcelWriter('Benchmarking/2023-06-09/Benchmarks.xlsx', engine='xlsxwrite
 				sheet_name = f'{storage_type}_{dataset}_key={key_size}_var={vardata_size}'
 
 				# Write to excel workbook
-				df.to_excel(writer, sheet_name=sheet_name, index=False)
+				df.to_excel(writer, sheet_name=sheet_name, index=False, header=False)
