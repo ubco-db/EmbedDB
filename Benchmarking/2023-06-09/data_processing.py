@@ -2,9 +2,18 @@ import re
 import pandas as pd
 import openpyxl
 from openpyxl.styles import Font
+import os
+
+
+resulting_file = 'Benchmarking/2023-06-09/Benchmarks.xlsx'
+if os.path.exists(resulting_file):
+	verify_run = input(f'Running this will overwite "{resulting_file}". Do you wish to continue? (y/n): ')
+	if verify_run.lower() != 'y':
+		print('Program Aborted')
+		exit(1)
 
 ## Parse the text output of test and put it into an excel sheet
-with pd.ExcelWriter('Benchmarking/2023-06-09/Benchmarks.xlsx', engine='openpyxl') as writer:
+with pd.ExcelWriter(resulting_file, engine='openpyxl') as writer:
 	with open('Benchmarking/2023-06-09/AllTests.txt', 'r') as f:
 		# Read in as text
 		file_string = f.read()
@@ -63,7 +72,7 @@ with pd.ExcelWriter('Benchmarking/2023-06-09/Benchmarks.xlsx', engine='openpyxl'
 				# Write to excel workbook
 				df.to_excel(writer, sheet_name=sheet_name, index=False, header=False)
 
-wb = openpyxl.load_workbook('Benchmarking/2023-06-09/Benchmarks.xlsx')
+wb = openpyxl.load_workbook(resulting_file)
 sheets = wb.sheetnames
 
 equations = [
@@ -92,28 +101,72 @@ for sheet in sheets:
 
 
 ## Put together data into tables for making charts
-insert_chart_sheet = wb.create_sheet('Charts', index=0)
+graph_sheet = wb.create_sheet('Charts', index=0)
 
 # Inserts/sec as vardata size increases
 storage_types = ['df', 'oldSD', 'newSD']
 var_sizes = ['0', '50', '100', '500', '1000']
-
-for type in storage_types:
-	insert_chart_sheet.cell(row=3+storage_types.index(type), column=15).value = type
-for size in var_sizes:
-	insert_chart_sheet.cell(row=2, column=16+var_sizes.index(size)).value = size
+graph_sheet['O2'].value = 'IPS'
+graph_sheet['O2'].font = ft
+for offset, type in enumerate(storage_types):
+	cel = graph_sheet.cell(row=3+offset, column=15)
+	cel.value = type
+	cel.font = ft
+for offset, size in enumerate(var_sizes):
+	cel = graph_sheet.cell(row=2, column=16+offset)
+	cel.value = size
+	cel.font = ft
 for row_offset, type in enumerate(storage_types):
 	for col_offset, size in enumerate(var_sizes):
-		insert_chart_sheet.cell(row=3+row_offset, column=16+col_offset).value = f"='{type}_sea100K_key=4_var={size}'!P12"
+		graph_sheet.cell(row=3+row_offset, column=16+col_offset).value = f"='{type}_sea100K_key=4_var={size}'!P12"
 
 # Queries/sec as vardata size increases
-for type in storage_types:
-	insert_chart_sheet.cell(row=24+storage_types.index(type), column=15).value = type
-for size in var_sizes:
-	insert_chart_sheet.cell(row=23, column=16+var_sizes.index(size)).value = size
+graph_sheet['O23'].value = 'QPS'
+graph_sheet['O23'].font = ft
+for offset, type in enumerate(storage_types):
+	cel = graph_sheet.cell(row=24+offset, column=15)
+	cel.value = type
+	cel.font = ft
+for offset, size in enumerate(var_sizes):
+	cel = graph_sheet.cell(row=23, column=16+offset)
+	cel.value = size
+	cel.font = ft
 for row_offset, type in enumerate(storage_types):
 	for col_offset, size in enumerate(var_sizes):
-		insert_chart_sheet.cell(row=24+row_offset, column=16+col_offset).value = f"='{type}_sea100K_key=4_var={size}'!Q12"
+		graph_sheet.cell(row=24+row_offset, column=16+col_offset).value = f"='{type}_sea100K_key=4_var={size}'!Q12"
+
+# Inserts/sec as key size increases
+key_sizes = ['4', '6', '8']
+graph_sheet['O44'].value = 'IPS'
+graph_sheet['O44'].font = ft
+for offset, type in enumerate(storage_types):
+	cel = graph_sheet.cell(row=45+offset, column=15)
+	cel.value = type
+	cel.font = ft
+for offset, size in enumerate(key_sizes):
+	cel = graph_sheet.cell(row=44, column=16+offset)
+	cel.value = size
+	cel.font = ft
+for row_offset, type in enumerate(storage_types):
+	for col_offset, size in enumerate(key_sizes):
+		graph_sheet.cell(row=45+row_offset, column=16+col_offset).value = f"='{type}_sea100K_key={size}_var=100'!P12"
+
+# Queries/sec as key size increases
+key_sizes = ['4', '6', '8']
+graph_sheet['O65'].value = 'QPS'
+graph_sheet['O65'].font = ft
+for offset, type in enumerate(storage_types):
+	cel = graph_sheet.cell(row=66+offset, column=15)
+	cel.value = type
+	cel.font = ft
+for offset, size in enumerate(key_sizes):
+	cel = graph_sheet.cell(row=65, column=16+offset)
+	cel.value = size
+	cel.font = ft
+for row_offset, type in enumerate(storage_types):
+	for col_offset, size in enumerate(key_sizes):
+		graph_sheet.cell(row=66+row_offset, column=16+col_offset).value = f"='{type}_sea100K_key={size}_var=100'!Q12"
 
 
-wb.save("Benchmarking/2023-06-09/Benchmarks.xlsx")
+wb.save(resulting_file)
+print('Done.')
