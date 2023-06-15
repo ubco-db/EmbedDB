@@ -146,7 +146,7 @@ typedef struct {
     id_t numAvailVarPages;                                                /* Number of writable pages left before needing to delete */
     id_t varAddressStart;                                                 /* Start address for the variable data page */
     id_t varAddressEnd;                                                   /* End address for the variable data page */
-    count_t numVarPages;                                                  /* Number of variable pages */
+    uint32_t numVarPages;                                                 /* Number of variable pages */
     id_t startIdxPage;                                                    /* Start index page number */
     id_t endIdxPage;                                                      /* End index page number */
     id_t firstDataPage;                                                   /* First data page number (physical location) */
