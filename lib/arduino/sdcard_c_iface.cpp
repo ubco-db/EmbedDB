@@ -82,8 +82,11 @@ SD_FILE *sd_fopen(const char *filename, const char *mode) {
             f = sdcard->open(filename, O_RDWR | O_CREAT);
         else
             f = sdcard->open(filename, O_WRITE | O_CREAT);
-    else
-        f = sdcard->open(filename, O_READ);
+    else if (mode[0] == 'r')
+        if (mode[1] == '+')
+            f = sdcard->open(filename, O_RDWR);
+        else
+            f = sdcard->open(filename, O_READ);
 
     if (f.isOpen() == false)
         return NULL;
