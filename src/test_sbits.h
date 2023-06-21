@@ -280,7 +280,7 @@ void runalltests_sbits(void *storage) {
 
     doneread:
         sbitsFlush(state);
-        fflush(state->file);
+        fflush(state->dataFile);
         uint32_t end = millis();
 
         l = numSteps - 1;

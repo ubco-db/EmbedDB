@@ -64,6 +64,8 @@ static ArduinoOutStream cout(Serial);
 #include "test_sbits.h"
 #elif TEST == 1
 #include "varTest.h"
+#elif TEST == 2
+#include "sdTest.h"
 #endif
 
 #define ENABLE_DEDICATED_SPI 1
@@ -131,6 +133,8 @@ void setup() {
     runalltests_sbits(&at45db32_m);
 #elif TEST == 1
     test_vardata(&at45db32_m);
+#elif TEST == 2
+    test();
 #endif
 }
 

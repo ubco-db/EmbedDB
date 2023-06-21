@@ -14,6 +14,11 @@
 #define NUM_RUNS 1
 #define VALIDATE_VAR_DATA 0
 /**
+ * 0 = SD Card
+ * 1 = Dataflash
+ */
+#define STORAGE_TYPE 0
+/**
  * 0 = Random data
  * 1 = Image data
  * 2 = Set length string
@@ -142,18 +147,26 @@ void test_vardata(void *storage) {
         state->buffer = malloc((size_t)state->bufferSizeInBlocks * state->pageSize);
 
         /* Address level parameters */
-        state->storageType = FILE_STORAGE;
-        state->storage = storage;
-        state->startAddress = 0;
-        state->endAddress = 5500 * state->pageSize;  // state->pageSize * numRecords / 10; /* Modify this value lower to test wrap around */
-        state->varAddressStart = 6000 * state->pageSize;
-        state->varAddressEnd = state->varAddressStart + state->pageSize * 4000;
+        state->numDataPages = 1000;
+        state->numIndexPages = 50;
+        state->numVarPages = 1000;
         state->eraseSizeInPages = 4;
+
+        if (STORAGE_TYPE == 0) {
+            char dataPath[] = "dataFile.bin", indexPath[] = "indexFile.bin", varPath[] = "varFile.bin";
+            state->fileInterface = getSDInterface();
+            state->dataFile = setupSDFile(dataPath);
+            state->indexFile = setupSDFile(indexPath);
+            state->varFile = setupSDFile(varPath);
+        } else if (STORAGE_TYPE == 1) {
+            state->fileInterface = getDataflashInterface();
+            state->dataFile = setupDataflashFile(0, state->numDataPages);
+            state->indexFile = setupDataflashFile(state->numDataPages, state->numIndexPages);
+            state->varFile = setupDataflashFile(state->numDataPages + state->numIndexPages, state->numVarPages);
+        }
 
         state->parameters = SBITS_USE_INDEX | SBITS_USE_VDATA | SBITS_USE_BMAP;
 
-        if (SBITS_USING_INDEX(state->parameters) == 1)
-            state->endAddress += state->pageSize * (state->eraseSizeInPages * 2);
         if (SBITS_USING_BMAP(state->parameters))
             state->bitmapSize = 1;
 
@@ -368,8 +381,10 @@ void test_vardata(void *storage) {
 
     doneread:
         sbitsFlush(state);
-        fflush(state->file);
-        fflush(state->varFile);
+        if (STORAGE_TYPE == 0) {
+            fflush((SD_FILE *)state->dataFile);
+            fflush((SD_FILE *)state->varFile);
+        }
         uint32_t end = millis();
 
         l = NUM_STEPS - 1;
@@ -398,7 +413,7 @@ void test_vardata(void *storage) {
          * 2: Query random records in the range of original data set.
          * 3: Query range of records using an iterator.
          */
-        int8_t queryType = 3;
+        int8_t queryType = 1;
 
         if (seqdata == 1) {
             if (queryType == 1) {
@@ -715,6 +730,15 @@ void test_vardata(void *storage) {
 
         // Free memory
         sbitsClose(state);
+        if (STORAGE_TYPE == 0) {
+            tearDownSDFile(state->dataFile);
+            tearDownSDFile(state->indexFile);
+            tearDownSDFile(state->varFile);
+        } else {
+            tearDownDataflashFile(state->dataFile);
+            tearDownDataflashFile(state->indexFile);
+            tearDownDataflashFile(state->varFile);
+        }
         free(recordBuffer);
         free(state->buffer);
         free(state);
