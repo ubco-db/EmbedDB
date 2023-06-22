@@ -169,6 +169,12 @@ typedef struct {
      * @return	1 for success and 0 for failure
      */
     int8_t (*open)(void *file, uint8_t mode);
+
+    /**
+     * @brief	Flushes file
+     * @return	1 for success and 0 for failure
+     */
+    int8_t (*flush)(void *file);
 } sbitsFileInterface;
 
 typedef struct {
@@ -229,12 +235,8 @@ typedef struct {
 } sbitsState;
 
 typedef struct {
-    id_t lastIterPage;       /* Last page read by iterator */
-    count_t lastIterRec;     /* Last record read by iterator */
-    id_t lastIdxIterPage;    /* Last index page read by iterator */
-    count_t lastIdxIterRec;  /* Last index record read by iterator */
-    int8_t wrappedMemory;    /* 1 if have wrapped around in memory during iterator search, 0 otherwise */
-    int8_t wrappedIdxMemory; /* 1 if have wrapped around in memory during index iterator search, 0 otherwise */
+    uint32_t nextDataPage; /* Next data page that the iterator should read */
+    uint16_t nextDataRec;  /* Next record on the data page tat the iterator should read */
     void *minKey;
     void *maxKey;
     void *minData;
