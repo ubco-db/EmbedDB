@@ -31,17 +31,22 @@ static ArduinoOutStream cout(Serial);
 #define SPI_DRIVER_SELECT 1
 #define SD_FAT_TYPE 1
 #define SD_CONFIG SdSpiConfig(CS_SD, DEDICATED_SPI, SD_SCK_MHZ(12), &spi_0)
+/**
+ * 0 = SD Card
+ * 1 = Dataflash
+ */
+#define STORAGE_TYPE 0
 
 sbitsState *state;
 
-void updateBitmapInt8Bucket(void *data, void *bm);
-void buildBitmapInt8BucketWithRange(void *min, void *max, void *bm);
-int8_t inBitmapInt8Bucket(void *data, void *bm);
-void updateBitmapInt16(void *data, void *bm);
-int8_t inBitmapInt16(void *data, void *bm);
-void updateBitmapInt64(void *data, void *bm);
-int8_t inBitmapInt64(void *data, void *bm);
-int8_t int32Comparator(void *a, void *b);
+// void updateBitmapInt8Bucket(void *data, void *bm);
+// void buildBitmapInt8BucketWithRange(void *min, void *max, void *bm);
+// int8_t inBitmapInt8Bucket(void *data, void *bm);
+// void updateBitmapInt16(void *data, void *bm);
+// int8_t inBitmapInt16(void *data, void *bm);
+// void updateBitmapInt64(void *data, void *bm);
+// int8_t inBitmapInt64(void *data, void *bm);
+// int8_t int32Comparator(void *a, void *b);
 bool test_sd_card();
 
 SdFat32 sd;
@@ -130,23 +135,33 @@ void setupSbits(void *storage) {
     }
 
     /* Address level parameters */
-    state->storageType = FILE_STORAGE;
-    state->storage = storage;
-    state->startAddress = 0;
-    state->endAddress = 6000 * state->pageSize;  // state->pageSize * numRecords / 10; /* Modify this value lower to test wrap around */
+    state->numDataPages = 1000;
+    state->numIndexPages = 48;
+    state->numVarPages = 1000;
     state->eraseSizeInPages = 4;
-    // state->parameters = SBITS_USE_MAX_MIN | SBITS_USE_BMAP |
-    // SBITS_USE_INDEX;
+
+    if (STORAGE_TYPE == 0) {
+        char dataPath[] = "dataFile.bin", indexPath[] = "indexFile.bin", varPath[] = "varFile.bin";
+        state->fileInterface = getSDInterface();
+        state->dataFile = setupSDFile(dataPath);
+        state->indexFile = setupSDFile(indexPath);
+        state->varFile = setupSDFile(varPath);
+    } else if (STORAGE_TYPE == 1) {
+        state->fileInterface = getDataflashInterface();
+        state->dataFile = setupDataflashFile(0, state->numDataPages);
+        state->indexFile = setupDataflashFile(state->numDataPages, state->numIndexPages);
+        state->varFile = setupDataflashFile(state->numDataPages + state->numIndexPages, state->numVarPages);
+    }
+
     state->parameters = SBITS_USE_BMAP | SBITS_USE_INDEX;
-    // state->parameters =  0;
-    if (SBITS_USING_INDEX(state->parameters) == 1)
-        state->endAddress += state->pageSize * (state->eraseSizeInPages * 2);
+
     if (SBITS_USING_BMAP(state->parameters))
         state->bitmapSize = 8;
 
     /* Setup for data and bitmap comparison functions */
     state->inBitmap = inBitmapInt64;
     state->updateBitmap = updateBitmapInt64;
+	state->buildBitmapFromRange = buildBitmapInt64FromRange;
     state->compareKey = int32Comparator;
     state->compareData = int32Comparator;
 }
