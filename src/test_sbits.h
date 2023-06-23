@@ -511,6 +511,7 @@ void runalltests_sbits(void *storage) {
         free(recordBuffer);
         free(state->buffer);
         sbitsClose(state);
+        free(state->fileInterface);
         free(state);
     }
 

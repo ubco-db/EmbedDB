@@ -745,6 +745,7 @@ void test_vardata(void *storage) {
         }
         free(recordBuffer);
         free(state->buffer);
+        free(state->fileInterface);
         free(state);
     }
 
