@@ -47,32 +47,44 @@ state->compareKey = int32Comparator;
 state->compareData = dataComparator;
 ```
 
-### Configure storage addresses
+### Configure file storage
+
+Set the number of bytes per page and what the minimum erase size for your storage medium.
 
 ```c
 state->pageSize = 512;
 state->eraseSizeInPages = 4;
+```
 
-// If your storage medium has a file system (e.g. sd card) then the start address doesn't matter, only the different between the start and end.
-// If you do not have a file system, then be sure that you do not overlap memory regions.
-state->startAddress = 0;
-state->endAddress = 1000 * state->pageSize;
+Set the number of allocated file pages for each of the relevant files
 
-// If variable sized data will be stored
-state->varAddressStart = 2000 * state->pageSize;
-state->varAddressEnd = state->varAddressStart + 1000 * state->pageSize;
+```c
+state->numDataPages = 1000;
+state->numIndexPages = 48;
+state->numVarPages = 1000;
+```
+
+Setup the file interface that allows SBITS to work with any storage device. More info on setting this up: [Setting up a file interface](fileInterface.md)
+
+```c
+char dataPath[] = "dataFile.bin", indexPath[] = "indexFile.bin", varPath[] = "varFile.bin";
+state->fileInterface = getSDInterface();
+state->dataFile = setupSDFile(dataPath);
+state->indexFile = setupSDFile(indexPath);
+state->varFile = setupSDFile(varPath);
 ```
 
 ### Configure memory buffers
 
+How to choose the number of blocks to use:
+
+-   Required:
+    -   2 blocks for record read/write buffers
+-   Optional:
+    -   2 blocks for index read/write buffers (Writing the bitmap index to file)
+    -   2 blocks for variable data read/write buffers (If you need to have a variable sized portion of the record)
+
 ```c
-/* How to choose the number of blocks to use:
-* Required:
-*     - 2 blocks for record read/write buffers
-* Optional:
-*     - 2 blocks for index read/write buffers (Writing the bitmap index to file)
-*     - 2 blocks for variable data read/write buffers (If you need to have a variable sized portion of the record)
-*/
 state->bufferSizeInBlocks = 6;
 state->buffer = malloc((size_t) state->bufferSizeInBlocks * state->pageSize);
 ```
@@ -250,5 +262,6 @@ sbitsCloseIterator(&it);
 ```c
 free(state->buffer);
 sbitsClose(state);
+free(state->fileInterface);
 free(state);
 ```
