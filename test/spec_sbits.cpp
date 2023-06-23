@@ -161,7 +161,7 @@ void setupSbits(void *storage) {
     /* Setup for data and bitmap comparison functions */
     state->inBitmap = inBitmapInt64;
     state->updateBitmap = updateBitmapInt64;
-	state->buildBitmapFromRange = buildBitmapInt64FromRange;
+    state->buildBitmapFromRange = buildBitmapInt64FromRange;
     state->compareKey = int32Comparator;
     state->compareData = int32Comparator;
 }
