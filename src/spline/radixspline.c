@@ -59,7 +59,7 @@ void radixsplineBuild(radixspline *rsidx, void **keys, uint32_t numKeys) {
     for (uint32_t i = 0; i < numKeys; i++) {
         void *key;
         memcpy(&key, keys + i, sizeof(void *));
-        radixsplineAddPoint(rsidx, key);
+        radixsplineAddPoint(rsidx, key, i);
     }
 }
 
@@ -88,13 +88,16 @@ void radixsplineRebuild(radixspline *rsidx, int8_t radixSize, int8_t shiftAmount
  * @param	rsdix	Radix spline structure
  * @param	key		New point to be indexed by radix spline
  */
-void radixsplineAddPoint(radixspline *rsidx, void *key) {
-    splineAdd(rsidx->spl, key);
+void radixsplineAddPoint(radixspline *rsidx, void *key, uint32_t page) {
+    splineAdd(rsidx->spl, key, page);
 
     // Return if not using Radix table
     if (rsidx->radixSize == 0) {
         return;
     }
+
+    // Add spline point
+    void *lastKey = rsidx->spl->lastKey;
 
     // Determine if need to update radix table based on adding point to spline
     if (rsidx->spl->count <= rsidx->pointsSeen)
@@ -154,7 +157,6 @@ void radixsplineAddPoint(radixspline *rsidx, void *key) {
     memcpy(rsidx->table + prefix, &rsidx->pointsSeen, sizeof(id_t));
 
     rsidx->pointsSeen++;
-    rsidx->numPoints = rsidx->spl->currentPointLoc;
 }
 
 /**
@@ -168,7 +170,6 @@ void radixsplineInit(radixspline *rsidx, spline *spl, int8_t radixSize, uint8_t 
     rsidx->spl = spl;
     rsidx->radixSize = radixSize;
     rsidx->keySize = keySize;
-    rsidx->numPoints = 0;
     rsidx->shiftSize = 0;
     rsidx->size = pow(2, radixSize);
 
@@ -205,8 +206,6 @@ size_t radixBinarySearch(radixspline *rsidx, int low, int high, void *key, int8_
         return radixBinarySearch(rsidx, mid + 1, high, key, compareKey);
     }
 
-    // We reach here when element is not present in array.
-    // return the limiting upper/lower bound
     mid = low + (high - low) / 2;
     if (mid >= high) {
         return high;
@@ -380,6 +379,7 @@ size_t radixsplineSize(radixspline *rsidx) {
  * @param	rsidx	Radix spline structure
  */
 void radixsplineClose(radixspline *rsidx) {
-    free(rsidx->spl->points);
+    splineClose(rsidx->spl);
+    free(rsidx->spl);
     free(rsidx->table);
 }

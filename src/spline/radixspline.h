@@ -74,7 +74,6 @@ typedef struct {
     int8_t shiftSize; /* Size of prefix/shift (in bits) */
     int8_t radixSize; /* Size of radix (in bits) */
     void *minKey;     /* Minimum key */
-    id_t numPoints;   /* Size of data */
     id_t prevPrefix;  /* Prefix of most recently seen spline point */
     id_t pointsSeen;  /* Number of data points added to radix */
     uint8_t keySize;  /* Size of key in bytes */
@@ -117,8 +116,9 @@ void radixsplineInitBuild(radixspline *rsidx, spline *spl, uint32_t radixSize, v
  * @brief	Add a point to be indexed by the radix spline structure
  * @param	rsdix	Radix spline structure
  * @param	key		New point to be indexed by radix spline
+ * @param	page	The page number to add a spline point at
  */
-void radixsplineAddPoint(radixspline *rsidx, void *key);
+void radixsplineAddPoint(radixspline *rsidx, void *key, uint32_t page);
 
 /**
  * @brief	Finds a value using index. Returns predicted location and low and high error bounds.
