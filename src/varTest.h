@@ -14,6 +14,11 @@
 #define NUM_RUNS 1
 #define VALIDATE_VAR_DATA 0
 /**
+ * 0 = SD Card
+ * 1 = Dataflash
+ */
+#define STORAGE_TYPE 0
+/**
  * 0 = Random data
  * 1 = Image data
  * 2 = Set length string
@@ -142,18 +147,26 @@ void test_vardata(void *storage) {
         state->buffer = malloc((size_t)state->bufferSizeInBlocks * state->pageSize);
 
         /* Address level parameters */
-        state->storageType = FILE_STORAGE;
-        state->storage = storage;
-        state->startAddress = 0;
-        state->endAddress = 5500 * state->pageSize;  // state->pageSize * numRecords / 10; /* Modify this value lower to test wrap around */
-        state->varAddressStart = 6000 * state->pageSize;
-        state->varAddressEnd = state->varAddressStart + state->pageSize * 4000;
+        state->numDataPages = 1000;
+        state->numIndexPages = 48;
+        state->numVarPages = 1000;
         state->eraseSizeInPages = 4;
 
-        state->parameters = SBITS_USE_INDEX | SBITS_USE_VDATA | SBITS_USE_BMAP;
+        if (STORAGE_TYPE == 0) {
+            char dataPath[] = "dataFile.bin", indexPath[] = "indexFile.bin", varPath[] = "varFile.bin";
+            state->fileInterface = getSDInterface();
+            state->dataFile = setupSDFile(dataPath);
+            state->indexFile = setupSDFile(indexPath);
+            state->varFile = setupSDFile(varPath);
+        } else if (STORAGE_TYPE == 1) {
+            state->fileInterface = getDataflashInterface();
+            state->dataFile = setupDataflashFile(0, state->numDataPages);
+            state->indexFile = setupDataflashFile(state->numDataPages, state->numIndexPages);
+            state->varFile = setupDataflashFile(state->numDataPages + state->numIndexPages, state->numVarPages);
+        }
 
-        if (SBITS_USING_INDEX(state->parameters) == 1)
-            state->endAddress += state->pageSize * (state->eraseSizeInPages * 2);
+        state->parameters = SBITS_USE_BMAP | SBITS_USE_INDEX | SBITS_USE_VDATA | SBITS_RESET_DATA;
+
         if (SBITS_USING_BMAP(state->parameters))
             state->bitmapSize = 1;
 
@@ -368,8 +381,6 @@ void test_vardata(void *storage) {
 
     doneread:
         sbitsFlush(state);
-        fflush(state->file);
-        fflush(state->varFile);
         uint32_t end = millis();
 
         l = NUM_STEPS - 1;
@@ -479,13 +490,13 @@ void test_vardata(void *storage) {
                     } else {
                         printf("Key: %d  Data: %d\n", itKey, *(uint32_t *)itData);
                         if (varStream != NULL) {
-                            printf("Var data: ");
-                            uint32_t bytesRead;
+                            char reconstructed[15];
+                            uint32_t bytesRead, total = 0;
                             while ((bytesRead = sbitsVarDataStreamRead(state, varStream, varDataBuf, varBufSize)) > 0) {
-                                printf("%8s", varDataBuf);
+                                memcpy(reconstructed + total, varDataBuf, bytesRead);
+                                total += bytesRead;
                             }
-                            printf("\n");
-
+                            printf("Var data: %s\n", reconstructed);
                             free(varStream);
                             varStream = NULL;
                         }
@@ -493,7 +504,7 @@ void test_vardata(void *storage) {
                     rec++;
                 }
                 printf("Read records: %d\n", rec);
-                printf("Num: %lu KEY: %lu Perc: %d Records: %d Reads: %d \n", i, mv, ((state->numReads - reads) * 1000 / (state->nextPageWriteId - 1)), rec, (state->numReads - reads));
+                printf("Num: %lu KEY: %lu Perc: %d Records: %d Reads: %d \n", i, mv, ((state->numReads - reads) * 1000 / (state->nextDataPageId - state->minDataPageId + state->nextVarPageId)), rec, (state->numReads - reads));
 
                 sbitsCloseIterator(&it);
                 free(varDataBuf);
@@ -672,11 +683,13 @@ void test_vardata(void *storage) {
                     } else {
                         printf("Key: %d  Data: %d\n", itKey, *(uint32_t *)itData);
                         if (varStream != NULL) {
-                            while (sbitsVarDataStreamRead(state, varStream, varDataBuf, varBufSize) > 0) {
-                                printf("%8x", varDataBuf);
+                            char reconstructed[15];
+                            uint32_t bytesRead, total = 0;
+                            while ((bytesRead = sbitsVarDataStreamRead(state, varStream, varDataBuf, varBufSize)) > 0) {
+                                memcpy(reconstructed + total, varDataBuf, bytesRead);
+                                total += bytesRead;
                             }
-                            printf("\n");
-
+                            printf("Var data: %s\n", reconstructed);
                             free(varStream);
                             varStream = NULL;
                         }
@@ -685,7 +698,7 @@ void test_vardata(void *storage) {
                 }
                 printf("Read records: %d\n", rec);
                 // printStats(state);
-                printf("Num: %lu KEY: %lu Perc: %d Records: %d Reads: %d \n", i, mv, ((state->numReads - reads) * 1000 / (state->nextPageWriteId - 1)), rec, (state->numReads - reads));
+                printf("Num: %lu KEY: %lu Perc: %.1f Records: %d Reads: %d \n", i, mv, ((state->numReads - reads) * 1000 / (state->nextDataPageId - state->minDataPageId + state->nextVarPageId - state->minVarRecordId)) / 10.0, rec, (state->numReads - reads));
 
                 sbitsCloseIterator(&it);
                 free(varDataBuf);
@@ -715,8 +728,18 @@ void test_vardata(void *storage) {
 
         // Free memory
         sbitsClose(state);
+        if (STORAGE_TYPE == 0) {
+            tearDownSDFile(state->dataFile);
+            tearDownSDFile(state->indexFile);
+            tearDownSDFile(state->varFile);
+        } else {
+            tearDownDataflashFile(state->dataFile);
+            tearDownDataflashFile(state->indexFile);
+            tearDownDataflashFile(state->varFile);
+        }
         free(recordBuffer);
         free(state->buffer);
+        free(state->fileInterface);
         free(state);
     }
 

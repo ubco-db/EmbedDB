@@ -46,6 +46,12 @@
 #include "sbits/utilityFunctions.h"
 
 /**
+ * 0 = SD Card
+ * 1 = Dataflash
+ */
+#define STORAGE_TYPE 0
+
+/**
  * Runs all tests and collects benchmarks
  */
 void runalltests_sbits(void *storage) {
@@ -162,17 +168,26 @@ void runalltests_sbits(void *storage) {
         }
 
         /* Address level parameters */
-        state->storageType = FILE_STORAGE;
-        state->storage = storage;
-        state->startAddress = 0;
-        state->endAddress = 6000 * state->pageSize;  // state->pageSize * numRecords / 10; /* Modify this value lower to test wrap around */
+        state->numDataPages = 1000;
+        state->numIndexPages = 48;
+        state->numVarPages = 1000;
         state->eraseSizeInPages = 4;
-        // state->parameters = SBITS_USE_MAX_MIN | SBITS_USE_BMAP |
-        // SBITS_USE_INDEX;
-        state->parameters = SBITS_USE_BMAP | SBITS_USE_INDEX;
-        // state->parameters =  0;
-        if (SBITS_USING_INDEX(state->parameters) == 1)
-            state->endAddress += state->pageSize * (state->eraseSizeInPages * 2);
+
+        if (STORAGE_TYPE == 0) {
+            char dataPath[] = "dataFile.bin", indexPath[] = "indexFile.bin", varPath[] = "varFile.bin";
+            state->fileInterface = getSDInterface();
+            state->dataFile = setupSDFile(dataPath);
+            state->indexFile = setupSDFile(indexPath);
+            state->varFile = setupSDFile(varPath);
+        } else if (STORAGE_TYPE == 1) {
+            state->fileInterface = getDataflashInterface();
+            state->dataFile = setupDataflashFile(0, state->numDataPages);
+            state->indexFile = setupDataflashFile(state->numDataPages, state->numIndexPages);
+            state->varFile = setupDataflashFile(state->numDataPages + state->numIndexPages, state->numVarPages);
+        }
+
+        state->parameters = SBITS_USE_BMAP | SBITS_USE_INDEX | SBITS_RESET_DATA;
+
         if (SBITS_USING_BMAP(state->parameters))
             state->bitmapSize = 8;
 
@@ -280,7 +295,7 @@ void runalltests_sbits(void *storage) {
 
     doneread:
         sbitsFlush(state);
-        fflush(state->file);
+
         uint32_t end = millis();
 
         l = numSteps - 1;
@@ -413,10 +428,10 @@ void runalltests_sbits(void *storage) {
                             }
                         }
                         i++;
-                        if (i == numRecords || i == testRecords) /* Allows ending test after set
-                                                 number of records rather than
-                                                 processing entire file */
+                        /* Allows ending test after set number of records rather than processing entire file */
+                        if (i == numRecords || i == testRecords) {
                             goto donetest;
+                        }
                     }
                 }
             donetest:
@@ -447,7 +462,8 @@ void runalltests_sbits(void *storage) {
                     }
                     i++;
                 }
-            } else { /* Data value query for given value range */
+            } else {
+                /* Data value query for given value range */
                 uint32_t itKey;
                 void *itData = calloc(1, state->dataSize);
                 sbitsIterator it;
@@ -472,7 +488,7 @@ void runalltests_sbits(void *storage) {
                     rec++;
                 }
                 printf("Read records: %d\n", rec);
-                printf("Num: %lu KEY: %lu Perc: %d Records: %d Reads: %d \n", i, mv, ((state->numReads - reads) * 1000 / (state->nextPageWriteId - 1)), rec, (state->numReads - reads));
+                printf("Num: %lu KEY: %lu Perc: %d Records: %d Reads: %d \n", i, mv, ((state->numReads - reads) * 1000 / (state->nextDataPageId - state->minDataPageId)), rec, (state->numReads - reads));
 
                 sbitsCloseIterator(&it);
                 free(itData);
@@ -496,6 +512,16 @@ void runalltests_sbits(void *storage) {
         free(recordBuffer);
         free(state->buffer);
         sbitsClose(state);
+        free(state->fileInterface);
+        if (STORAGE_TYPE == 0) {
+            tearDownSDFile(state->dataFile);
+            tearDownSDFile(state->indexFile);
+            tearDownSDFile(state->varFile);
+        } else {
+            tearDownDataflashFile(state->dataFile);
+            tearDownDataflashFile(state->indexFile);
+            tearDownDataflashFile(state->varFile);
+        }
         free(state);
     }
 

@@ -58,17 +58,17 @@ typedef struct {
 } point;
 
 struct spline_s {
-    size_t count;           /* Number of points in spline */
-    size_t currentPointLoc; /* Location of current point */
-    size_t size;            /* Maximum number of points */
-    point *points;          /* Array of points */
-    point upper;            /* Upper spline limit */
-    point lower;            /* Lower spline limit */
-    id_t lastLoc;           /* Location of previous spline key */
-    void *lastKey;          /* Previous spline key */
-    uint32_t maxError;      /* Maximum error */
-    id_t tempLastPoint;     /* Last spline point is temporary if value is not 0 */
-    uint8_t keySize;        /* Size of key in bytes */
+    size_t count;         /* Number of points in spline */
+    size_t size;          /* Maximum number of points */
+    point *points;        /* Array of points */
+    point upper;          /* Upper spline limit */
+    point lower;          /* Lower spline limit */
+    id_t lastLoc;         /* Location of previous spline key */
+    void *lastKey;        /* Previous spline key */
+    uint32_t maxError;    /* Maximum error */
+    uint32_t numAddCalls; /* Number of times the add method has been called */
+    id_t tempLastPoint;   /* Last spline point is temporary if value is not 0 */
+    uint8_t keySize;      /* Size of key in bytes */
 };
 
 typedef struct spline_s spline;
@@ -83,15 +83,9 @@ typedef struct spline_s spline;
 void splineInit(spline *spl, id_t size, size_t maxError, uint8_t keySize);
 
 /**
- * @brief    Free memory allocated for spline structure.
- * @param    spl        Spline structure
- */
-void splineFree(spline *spl);
-
-/**
- * @brief	Builds a spline structure given a sorted data set.
- * 			GreedySplineCorridor implementation from "Smooth interpolating histograms
- * 			with error guarantees" (BNCOD'08) by T. Neumann and S. Michel.
+ * @brief	Builds a spline structure given a sorted data set. GreedySplineCorridor
+ * implementation from "Smooth interpolating histograms with error guarantees"
+ * (BNCOD'08) by T. Neumann and S. Michel.
  * @param	spl			Spline structure
  * @param	data		Array of sorted data
  * @param	size		Number of values in array
@@ -100,11 +94,12 @@ void splineFree(spline *spl);
 void splineBuild(spline *spl, void **data, id_t size, size_t maxError);
 
 /**
- * @brief    Adds point to spline structure
- * @param    spl     Spline structure
- * @param    key     Data key to be added (must be incrementing)
+ * @brief   Adds point to spline structure
+ * @param   spl     Spline structure
+ * @param   key     Data key to be added (must be incrementing)
+ * @param	page 	The page number to add a spline point at
  */
-void splineAdd(spline *spl, void *key);
+void splineAdd(spline *spl, void *key, uint32_t page);
 
 /**
  * @brief	Print a spline structure.
@@ -128,6 +123,12 @@ uint32_t splineSize(spline *spl);
  * @param	high		A return value for the largest page it could be on
  */
 void splineFind(spline *spl, void *key, int8_t compareKey(void *, void *), id_t *loc, id_t *low, id_t *high);
+
+/**
+ * @brief    Free memory allocated for spline structure.
+ * @param    spl        Spline structure
+ */
+void splineClose(spline *spl);
 
 #ifdef __cplusplus
 }
