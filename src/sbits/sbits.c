@@ -57,16 +57,15 @@
 
 /**
  * Number of bits to be indexed by the Radix Search structure
- * Note: The Radix search structure is only used with Spline (SEARCH_METHOD ==
- * 2) To use a pure Spline index without a Radix table, set RADIX_BITS to 0
+ * Note: The Radix search structure is only used with Spline (SEARCH_METHOD == 2) To use a pure Spline index without a Radix table, set RADIX_BITS to 0
  */
 #define RADIX_BITS 0
 
-/*
- * Defines if the radix table should be use, or just the spline structure. It is
- * only applicable for search method 2.
+/**
+ * Number of spline points to be allocated. This is a set amount and will not grow.
+ * The amount you need will depend on how much your key rate varies and what maxSplineError is set during sbits initialization.
  */
-#define USE_RADIX 0
+#define ALLOCATED_SPLINE_POINTS 300
 
 void printBitmap(char *bm) {
     for (int8_t i = 0; i <= 7; i++) {
@@ -154,7 +153,7 @@ void *sbitsGetMaxKey(sbitsState *state, void *buffer) {
 /**
  * @brief   Initialize SBITS structure.
  * @param   state           SBITS algorithm state structure
- * @param   indexMaxError   max error of indexing structure (spline or PGM)
+ * @param   indexMaxError   max error of indexing structure (spline)
  * @return  Return 0 if success. Non-zero value if error.
  */
 int8_t sbitsInit(sbitsState *state, size_t indexMaxError) {
@@ -305,11 +304,11 @@ int8_t sbitsInit(sbitsState *state, size_t indexMaxError) {
     }
 
     if (SEARCH_METHOD == 2) {
-        if (USE_RADIX) {
-            initRadixSpline(state, 300, RADIX_BITS);
+        if (RADIX_BITS > 0) {
+            initRadixSpline(state, ALLOCATED_SPLINE_POINTS, RADIX_BITS);
         } else {
             state->spl = malloc(sizeof(spline));
-            splineInit(state->spl, 300, indexMaxError, state->keySize);
+            splineInit(state->spl, ALLOCATED_SPLINE_POINTS, indexMaxError, state->keySize);
         }
     }
 
@@ -437,7 +436,7 @@ int32_t getMaxError(sbitsState *state, void *buffer) {
  */
 void indexPage(sbitsState *state) {
     if (SEARCH_METHOD == 2) {
-        if (USE_RADIX) {
+        if (RADIX_BITS > 0) {
             radixsplineAddPoint(state->rdix, sbitsGetMinKey(state, state->buffer));
         } else {
             splineAdd(state->spl, sbitsGetMinKey(state, state->buffer));
@@ -770,6 +769,11 @@ int8_t linearSearch(sbitsState *state, int16_t *numReads, void *buf, void *key, 
  * @return	Return 0 if success. Non-zero value if error.
  */
 int8_t sbitsGet(sbitsState *state, void *key, void *data) {
+    if (state->nextPageId == 0) {
+        printf("ERROR: No data in database.\n");
+        return -1;
+    }
+
     void *buf = (int8_t *)state->buffer + state->pageSize;
     int16_t numReads = 0;
 
@@ -854,7 +858,7 @@ int8_t sbitsGet(sbitsState *state, void *key, void *data) {
 #elif SEARCH_METHOD == 2
     /* Spline search */
     uint32_t location, lowbound, highbound;
-    if (USE_RADIX) {
+    if (RADIX_BITS > 0) {
         radixsplineFind(state->rdix, key, state->compareKey, &location, &lowbound, &highbound);
     } else {
         splineFind(state->spl, key, state->compareKey, &location, &lowbound, &highbound);
@@ -1010,7 +1014,7 @@ void sbitsCloseIterator(sbitsIterator *it) {
  */
 int8_t sbitsFlush(sbitsState *state) {
     // As the first buffer is the data write buffer, no address change is required
-    writePage(state, state->buffer + SBITS_DATA_WRITE_BUFFER * state->pageSize);
+    writePage(state, (int8_t *)state->buffer + SBITS_DATA_WRITE_BUFFER * state->pageSize);
     state->fileInterface->flush(state->dataFile);
 
     indexPage(state);
@@ -1252,7 +1256,7 @@ void printStats(sbitsState *state) {
     printf("Max Error: %d\n", state->maxError);
 
     if (SEARCH_METHOD == 2) {
-        if (USE_RADIX) {
+        if (RADIX_BITS > 0) {
             splinePrint(state->rdix->spl);
             radixsplinePrint(state->rdix);
         } else {
@@ -1487,12 +1491,16 @@ void sbitsClose(sbitsState *state) {
         state->fileInterface->close(state->varFile);
     }
     if (SEARCH_METHOD == 2) {  // Spline
-        if (USE_RADIX) {
+        if (RADIX_BITS > 0) {
             radixsplineClose(state->rdix);
             free(state->rdix);
+            state->rdix = NULL;
+            // Spl already freed by radixsplineClose
+            state->spl = NULL;
         } else {
-            splineFree(state->spl);
+            splineClose(state->spl);
+            free(state->spl);
+            state->spl = NULL;
         }
-        free(state->spl);
     }
 }

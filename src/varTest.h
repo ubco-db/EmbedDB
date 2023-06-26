@@ -689,13 +689,15 @@ void test_vardata(void *storage) {
                         *((int32_t *)itData) > *((int32_t *)it.maxData)) {
                         printf("Key: %d Data: %d Error\n", itKey, *(uint32_t *)itData);
                     } else {
-                        printf("Key: %d  Data: %d\n", itKey, *(uint32_t *)itData);
+                        // printf("Key: %d  Data: %d\n", itKey, *(uint32_t *)itData);
                         if (varStream != NULL) {
-                            while (sbitsVarDataStreamRead(state, varStream, varDataBuf, varBufSize) > 0) {
-                                printf("%8x", varDataBuf);
+                            char reconstructed[15];
+                            uint32_t bytesRead, total = 0;
+                            while ((bytesRead = sbitsVarDataStreamRead(state, varStream, varDataBuf, varBufSize)) > 0) {
+                                memcpy(reconstructed + total, varDataBuf, bytesRead);
+                                total += bytesRead;
                             }
-                            printf("\n");
-
+                            // printf("Var data: %s\n", reconstructed);
                             free(varStream);
                             varStream = NULL;
                         }

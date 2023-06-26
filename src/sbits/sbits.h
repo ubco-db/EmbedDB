@@ -36,7 +36,7 @@
 #ifndef SBITS_H_
 #define SBITS_H_
 
-#if defined(__cplusplus)
+#ifdef __cplusplus
 extern "C" {
 #endif
 
@@ -254,7 +254,7 @@ typedef struct {
 /**
  * @brief	Initialize SBITS structure.
  * @param	state			SBITS algorithm state structure
- * @param	indexMaxError	Max error of indexing structure (spline or PGM)
+ * @param	indexMaxError	Max error of indexing structure (spline)
  * @return	Return 0 if success. Non-zero value if error.
  */
 int8_t sbitsInit(sbitsState *state, size_t indexMaxError);
@@ -419,8 +419,7 @@ void resetStats(sbitsState *state);
  */
 void sbitsClose(sbitsState *state);
 
-#if defined(__cplusplus)
+#ifdef __cplusplus
 }
 #endif
-
 #endif

@@ -237,31 +237,31 @@ void tearDownSDFile(void *file) {
     free(file);
 }
 
-int8_t SD_READ(void *buffer, uint32_t pageNum, uint32_t pageSize, void *file) {
+int8_t FILE_READ(void *buffer, uint32_t pageNum, uint32_t pageSize, void *file) {
     SD_FILE_INFO *fileInfo = (SD_FILE_INFO *)file;
     sd_fseek(fileInfo->sdFile, pageSize * pageNum, SEEK_SET);
     return sd_fread(buffer, pageSize, 1, fileInfo->sdFile);
 }
 
-int8_t SD_WRITE(void *buffer, uint32_t pageNum, uint32_t pageSize, void *file) {
+int8_t FILE_WRITE(void *buffer, uint32_t pageNum, uint32_t pageSize, void *file) {
     SD_FILE_INFO *fileInfo = (SD_FILE_INFO *)file;
     sd_fseek(fileInfo->sdFile, pageNum * pageSize, SEEK_SET);
     return sd_fwrite(buffer, pageSize, 1, fileInfo->sdFile) == pageSize;
 }
 
-int8_t SD_CLOSE(void *file) {
+int8_t FILE_CLOSE(void *file) {
     SD_FILE_INFO *fileInfo = (SD_FILE_INFO *)file;
     sd_fclose(fileInfo->sdFile);
     fileInfo->sdFile = NULL;
     return 1;
 }
 
-int8_t SD_FLUSH(void *file) {
+int8_t FILE_FLUSH(void *file) {
     SD_FILE_INFO *fileInfo = (SD_FILE_INFO *)file;
     return sd_fflush(fileInfo->sdFile) == 0;
 }
 
-int8_t SD_OPEN(void *file, uint8_t mode) {
+int8_t FILE_OPEN(void *file, uint8_t mode) {
     SD_FILE_INFO *fileInfo = (SD_FILE_INFO *)file;
 
     if (mode == SBITS_FILE_MODE_W_PLUS_B) {
@@ -339,11 +339,11 @@ int8_t DF_FLUSH(void *file) {
 
 sbitsFileInterface *getSDInterface() {
     sbitsFileInterface *fileInterface = malloc(sizeof(sbitsFileInterface));
-    fileInterface->close = SD_CLOSE;
-    fileInterface->read = SD_READ;
-    fileInterface->write = SD_WRITE;
-    fileInterface->open = SD_OPEN;
-    fileInterface->flush = SD_FLUSH;
+    fileInterface->close = FILE_CLOSE;
+    fileInterface->read = FILE_READ;
+    fileInterface->write = FILE_WRITE;
+    fileInterface->open = FILE_OPEN;
+    fileInterface->flush = FILE_FLUSH;
     return fileInterface;
 }
 

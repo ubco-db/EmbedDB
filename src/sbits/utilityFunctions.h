@@ -7,7 +7,7 @@
  * differently depending on the application.
  */
 
-#if defined(__cplusplus)
+#ifdef __cplusplus
 extern "C" {
 #endif
 
@@ -23,8 +23,8 @@ void updateBitmapInt16(void *data, void *bm);
 int8_t inBitmapInt16(void *data, void *bm);
 void buildBitmapInt16FromRange(void *min, void *max, void *bm);
 void updateBitmapInt64(void *data, void *bm);
-void buildBitmapInt64FromRange(void *min, void *max, void *bm);
 int8_t inBitmapInt64(void *data, void *bm);
+void buildBitmapInt64FromRange(void *min, void *max, void *bm);
 int8_t int32Comparator(void *a, void *b);
 
 sbitsFileInterface *getSDInterface();
@@ -34,6 +34,6 @@ void tearDownDataflashFile(void *file);
 void *setupSDFile(char *filename);
 void tearDownSDFile(void *file);
 
-#if defined(__cplusplus)
+#ifdef __cplusplus
 }
 #endif

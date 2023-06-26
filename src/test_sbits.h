@@ -428,10 +428,10 @@ void runalltests_sbits(void *storage) {
                             }
                         }
                         i++;
-                        if (i == numRecords || i == testRecords) /* Allows ending test after set
-                                                 number of records rather than
-                                                 processing entire file */
+                        /* Allows ending test after set number of records rather than processing entire file */
+                        if (i == numRecords || i == testRecords) {
                             goto donetest;
+                        }
                     }
                 }
             donetest:
@@ -462,7 +462,8 @@ void runalltests_sbits(void *storage) {
                     }
                     i++;
                 }
-            } else { /* Data value query for given value range */
+            } else {
+                /* Data value query for given value range */
                 uint32_t itKey;
                 void *itData = calloc(1, state->dataSize);
                 sbitsIterator it;
@@ -512,6 +513,15 @@ void runalltests_sbits(void *storage) {
         free(state->buffer);
         sbitsClose(state);
         free(state->fileInterface);
+        if (STORAGE_TYPE == 0) {
+            tearDownSDFile(state->dataFile);
+            tearDownSDFile(state->indexFile);
+            tearDownSDFile(state->varFile);
+        } else {
+            tearDownDataflashFile(state->dataFile);
+            tearDownDataflashFile(state->indexFile);
+            tearDownDataflashFile(state->varFile);
+        }
         free(state);
     }
 
