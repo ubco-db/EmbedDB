@@ -96,9 +96,6 @@ void radixsplineAddPoint(radixspline *rsidx, void *key, uint32_t page) {
         return;
     }
 
-    // Add spline point
-    void *lastKey = rsidx->spl->lastKey;
-
     // Determine if need to update radix table based on adding point to spline
     if (rsidx->spl->count <= rsidx->pointsSeen)
         return;  // Nothing to do

@@ -133,7 +133,7 @@ void setupSbits(void *storage) {
     state->indexFile = setupSDFile(indexPath);
     state->varFile = setupSDFile(varPath);
 
-    state->parameters = SBITS_USE_BMAP | SBITS_USE_INDEX;
+    state->parameters = SBITS_USE_BMAP | SBITS_USE_INDEX | SBITS_RESET_DATA;
 
     if (SBITS_USING_BMAP(state->parameters))
         state->bitmapSize = 8;
