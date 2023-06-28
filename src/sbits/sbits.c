@@ -1176,8 +1176,21 @@ void sbitsInitIterator(sbitsState *state, sbitsIterator *it) {
         printf("WARN: Iterator not using index to full extent. If this is not intended, ensure that the sbitsState was initialized with an index file\n");
     }
 
-    /* Read first page into memory */
-    it->nextDataPage = state->minDataPageId;
+    // Determine which data page should be the first examined if there is a min key
+    if (it->minKey != NULL && SEARCH_METHOD == 2) {
+        /* Spline search */
+        uint32_t location, lowbound, highbound;
+        if (RADIX_BITS > 0) {
+            radixsplineFind(state->rdix, it->minKey, state->compareKey, &location, &lowbound, &highbound);
+        } else {
+            splineFind(state->spl, it->minKey, state->compareKey, &location, &lowbound, &highbound);
+        }
+
+        // Use the low bound as the start for our search
+        it->nextDataPage = __max(lowbound, state->minDataPageId);
+    } else {
+        it->nextDataPage = state->minDataPageId;
+    }
     it->nextDataRec = 0;
 }
 
@@ -1243,8 +1256,9 @@ int8_t sbitsNext(sbitsState *state, sbitsIterator *it, void *key, void *data) {
             return 0;
         }
 
-        if (it->nextDataRec != 0) {
-            // Data page in question
+        // If we are just starting to read a new page and we have a query bitmap
+        if (it->nextDataRec == 0 && it->queryBitmap != NULL) {
+            // Find what index page determines if we should read the data page
             uint32_t indexPage = it->nextDataPage / state->maxIdxRecordsPerPage;
             uint16_t indexRec = it->nextDataPage % state->maxIdxRecordsPerPage;
 
@@ -1275,7 +1289,8 @@ int8_t sbitsNext(sbitsState *state, sbitsIterator *it, void *key, void *data) {
 
         // Keep reading record until we find one that matches the query
         int8_t *buf = (int8_t *)state->buffer + SBITS_DATA_READ_BUFFER * state->pageSize;
-        while (it->nextDataRec < state->maxRecordsPerPage) {
+        uint32_t pageRecordCount = SBITS_GET_COUNT(buf);
+        while (it->nextDataRec < pageRecordCount) {
             // Get record
             memcpy(key, buf + state->headerSize + it->nextDataRec * state->recordSize, state->keySize);
             memcpy(data, buf + state->headerSize + it->nextDataRec * state->recordSize + state->keySize, state->dataSize);
