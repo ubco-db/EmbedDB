@@ -150,12 +150,12 @@ int insertRecords(uint32_t n) {
 }
 
 void test_get_when_empty() {
-    uint32_t key = 1, data, length = 0;
-    void *varData = NULL;
-    int8_t result = sbitsGetVar(state, &key, &data, &varData, &length);
+    uint32_t key = 1, data;
+    sbitsVarDataStream *varStream = NULL;
+    int8_t result = sbitsGetVar(state, &key, &data, &varStream);
     TEST_ASSERT_EQUAL_INT8_MESSAGE(-1, result, "sbitsGetVar did not return -1 when the key was not found");
-    if (varData != NULL) {
-        free(varData);
+    if (varStream != NULL) {
+        free(varStream);
     }
 }
 
@@ -190,40 +190,42 @@ void test_get_when_almost_full_page() {
 void test_get_when_full_page() {
     TEST_ASSERT_EQUAL_UINT32_MESSAGE(1, state->nextDataPageId, "sbits should have written a page by now");
 
-    uint32_t key = 23, length;
+    uint32_t key = 23;
     uint64_t expectedData = 23, data = 0;
-    void *varData = NULL;
-    sbitsGetVar(state, &key, &data, &varData, &length);
+    sbitsVarDataStream *varStream = NULL;
+    int result = sbitsGetVar(state, &key, &data, &varStream);
     TEST_ASSERT_EQUAL_CHAR_ARRAY_MESSAGE(&expectedData, &data, state->dataSize, "sbitsGetVar did not return the correct fixed data");
-    TEST_ASSERT_NOT_NULL_MESSAGE(varData, "sbitsGetVar did not return vardata");
+    TEST_ASSERT_NOT_NULL_MESSAGE(varStream, "sbitsGetVar did not return vardata");
+    char buf[20];
+    uint32_t length = sbitsVarDataStreamRead(state, varStream, buf, 20);
     TEST_ASSERT_EQUAL_UINT32_MESSAGE(15, length, "Returned vardata was not the right length");
     char expected[] = "Testing 023...";
-    TEST_ASSERT_EQUAL_CHAR_ARRAY_MESSAGE(expected, varData, 15, "sbitsGetVar did not return the correct vardata");
+    TEST_ASSERT_EQUAL_CHAR_ARRAY_MESSAGE(expected, buf, 15, "sbitsGetVar did not return the correct vardata");
 
-    if (varData != NULL) {
-        free(varData);
+    if (varStream != NULL) {
+        free(varStream);
     }
 }
 
 void test_get_when_all() {
     char expectedVarData[] = "Testing 000...";
-    void *varData = NULL;
-    for (uint32_t key = 0; key < numRecords; key++) {
+    char buf[20];
+    sbitsVarDataStream *varStream = NULL;
+    for (int key = 0; key < numRecords; key++) {
         expectedVarData[10] = (char)(key % 10) + '0';
         expectedVarData[9] = (char)((key / 10) % 10) + '0';
         expectedVarData[8] = (char)((key / 100) % 10) + '0';
-        uint32_t length;
         uint64_t data = 0, expectedData = key % 100;
 
-        sbitsGetVar(state, &key, &data, &varData, &length);
+        int result = sbitsGetVar(state, &key, &data, &varStream);
         TEST_ASSERT_EQUAL_CHAR_ARRAY_MESSAGE(&expectedData, &data, state->dataSize, "sbitsGetVar did not return the correct fixed data");
-        TEST_ASSERT_NOT_NULL_MESSAGE(varData, "sbitsGetVar did not return vardata");
+        TEST_ASSERT_NOT_NULL_MESSAGE(varStream, "sbitsGetVar did not return vardata");
+        uint32_t length = sbitsVarDataStreamRead(state, varStream, buf, 20);
         TEST_ASSERT_EQUAL_UINT32_MESSAGE(15, length, "Returned vardata was not the right length");
-        TEST_ASSERT_EQUAL_CHAR_ARRAY_MESSAGE(expectedVarData, varData, 15, "sbitsGetVar did not return the correct vardata");
-
-        if (varData != NULL) {
-            free(varData);
-            varData = NULL;
+        TEST_ASSERT_EQUAL_CHAR_ARRAY_MESSAGE(expectedVarData, buf, 15, "sbitsGetVar did not return the correct vardata");
+        if (varStream != NULL) {
+            free(varStream);
+            varStream = NULL;
         }
     }
 }
