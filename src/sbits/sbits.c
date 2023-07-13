@@ -687,13 +687,9 @@ int8_t sbitsPut(sbitsState *state, void *key, void *data) {
         }
         if (state->compareKey(key, previousKey) != 1) {
             printf("Keys must be scritcly ascending order. Insert Failed.\n");
-            printf("Non-ascending Key Value: %i\n", *(uint32_t *)(key));
-            // exit(1);
             return 1;
         }
     }
-
-    // printf("Key: %i\n", *(uint32_t *)(key));
 
     /* Write current page if full */
     if (count >= state->maxRecordsPerPage) {
