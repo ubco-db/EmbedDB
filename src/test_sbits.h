@@ -54,13 +54,13 @@
 /**
  * Runs all tests and collects benchmarks
  */
-void runalltests_sbits(void *storage) {
+void runalltests_sbits() {
     printf("\nSTARTING SBITS TESTS.\n");
     int8_t M = 4;
-    int32_t numRecords = 1000;   // default values
-    int32_t testRecords = 1000;  // default values
-    uint8_t useRandom = 0;       // default values
-    size_t splineMaxError = 0;   // default values
+    int32_t numRecords = 1000;     // default values
+    int32_t testRecords = 500000;  // default values
+    uint8_t useRandom = 0;         // default values
+    size_t splineMaxError = 0;     // default values
     uint32_t numSteps = 10;
     uint32_t stepSize = numRecords / numSteps;
     count_t r, numRuns = 1, l;
@@ -133,7 +133,7 @@ void runalltests_sbits(void *storage) {
         // fopen("data/uwa_data_only_2000_500KSorted_randomized.bin", "r+b");
         minRange = 946713600;
         maxRange = 977144040;
-        numRecords = 20000;  // 500000;
+        numRecords = 500000;
         testRecords = 500000;
 
         splineMaxError = 1;
@@ -170,7 +170,6 @@ void runalltests_sbits(void *storage) {
         /* Address level parameters */
         state->numDataPages = 1000;
         state->numIndexPages = 48;
-        state->numVarPages = 1000;
         state->eraseSizeInPages = 4;
 
         if (STORAGE_TYPE == 0) {
@@ -189,18 +188,18 @@ void runalltests_sbits(void *storage) {
         state->parameters = SBITS_USE_BMAP | SBITS_USE_INDEX | SBITS_RESET_DATA;
 
         if (SBITS_USING_BMAP(state->parameters))
-            state->bitmapSize = 8;
+            state->bitmapSize = 1;
 
         /* Setup for data and bitmap comparison functions */
-        // state->inBitmap = inBitmapInt8;
-        // state->updateBitmap = updateBitmapInt8;
-        // state->buildBitmapFromRange = buildBitmapInt8FromRange;
+        state->inBitmap = inBitmapInt8;
+        state->updateBitmap = updateBitmapInt8;
+        state->buildBitmapFromRange = buildBitmapInt8FromRange;
         // state->inBitmap = inBitmapInt16;
         // state->updateBitmap = updateBitmapInt16;
         // state->buildBitmapFromRange = buildBitmapInt16FromRange;
-        state->inBitmap = inBitmapInt64;
-        state->updateBitmap = updateBitmapInt64;
-        state->buildBitmapFromRange = buildBitmapInt64FromRange;
+        // state->inBitmap = inBitmapInt64;
+        // state->updateBitmap = updateBitmapInt64;
+        // state->buildBitmapFromRange = buildBitmapInt64FromRange;
         state->compareKey = int32Comparator;
         state->compareData = int32Comparator;
 
@@ -363,8 +362,8 @@ void runalltests_sbits(void *storage) {
                 reads = state->numReads;
                 while (sbitsNext(state, &it, &itKey, itData)) {
                     printf("Key: %d  Data: %d\n", itKey, *(uint32_t *)itData);
-                    if (*((int32_t *)itData) < *((int32_t *)it.minData) ||
-                        *((int32_t *)itData) > *((int32_t *)it.maxData)) {
+                    if ((it.minData != NULL && *((int32_t *)itData) < *((int32_t *)it.minData)) ||
+                        (it.maxData != NULL && *((int32_t *)itData) > *((int32_t *)it.maxData))) {
                         printf("Key: %d Data: %d Error\n", itKey, *(uint32_t *)itData);
                     }
                     rec++;
@@ -481,8 +480,8 @@ void runalltests_sbits(void *storage) {
                 reads = state->numReads;
                 while (sbitsNext(state, &it, &itKey, itData)) {
                     printf("Key: %d  Data: %d\n", itKey, *(uint32_t *)itData);
-                    if (*((int32_t *)itData) < *((int32_t *)it.minData) ||
-                        *((int32_t *)itData) > *((int32_t *)it.maxData)) {
+                    if ((it.minData != NULL && *((int32_t *)itData) < *((int32_t *)it.minData)) ||
+                        (it.maxData != NULL && *((int32_t *)itData) > *((int32_t *)it.maxData))) {
                         printf("Key: %d Data: %d Error\n", itKey, *(uint32_t *)itData);
                     }
                     rec++;

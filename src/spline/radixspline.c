@@ -87,6 +87,7 @@ void radixsplineRebuild(radixspline *rsidx, int8_t radixSize, int8_t shiftAmount
  * @brief	Add a point to be indexed by the radix spline structure
  * @param	rsdix	Radix spline structure
  * @param	key		New point to be indexed by radix spline
+ * @param   page    Page number for spline point to add
  */
 void radixsplineAddPoint(radixspline *rsidx, void *key, uint32_t page) {
     splineAdd(rsidx->spl, key, page);

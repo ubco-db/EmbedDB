@@ -83,6 +83,9 @@ typedef uint16_t count_t;
 
 #define SBITS_NO_VAR_DATA UINT32_MAX
 
+#define max(a, b) ((a) > (b) ? (a) : (b))
+#define min(a, b) ((a) < (b) ? (a) : (b))
+
 #define SBITS_GET_COUNT(x) *((count_t *)((int8_t *)x + SBITS_COUNT_OFFSET))
 #define SBITS_INC_COUNT(x) *((count_t *)((int8_t *)x + SBITS_COUNT_OFFSET)) = *((count_t *)((int8_t *)x + SBITS_COUNT_OFFSET)) + 1
 
@@ -248,7 +251,7 @@ typedef struct {
     uint32_t totalBytes; /* Total number of bytes in the stream */
     uint32_t bytesRead;  /* Number of bytes read so far */
     uint32_t dataStart;  /* Start of data as an offset in bytes from the beginning of the file */
-    uint16_t pageOffset; /* Where the iterator should start reading data next time (offset from start of page) */
+    uint32_t fileOffset; /* Where the iterator should start reading data next time (offset from start of file) */
 } sbitsVarDataStream;
 
 /**
@@ -296,12 +299,12 @@ int8_t sbitsGet(sbitsState *state, void *key, void *data);
  * @param	state	SBITS algorithm state structure
  * @param	key		Key for record
  * @param	data	Pre-allocated memory to copy data for record
- * @param	varData	Un-allocated memory where the variable length data will be returned
+ * @param	varData	Return variable for variable data as a sbitsVarDataStream (Unallocated). Returns NULL if no variable data. **Be sure to free the stream after you are done with it**
  * @return	Return 0 if success. Non-zero value if error.
  * 			-1 : Error reading file
  * 			1  : Variable data was deleted to make room for newer data
  */
-int8_t sbitsGetVar(sbitsState *state, void *key, void *data, void **varData, uint32_t *length);
+int8_t sbitsGetVar(sbitsState *state, void *key, void *data, sbitsVarDataStream **varData);
 
 /**
  * @brief	Initialize iterator on sbits structure.
