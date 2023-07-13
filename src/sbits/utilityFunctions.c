@@ -117,7 +117,7 @@ void buildBitmapInt16FromRange(void *min, void *max, void *bm) {
     } else {
         uint16_t minMap = 0, maxMap = 0;
         if (min != NULL) {
-            updateBitmapInt8(min, &minMap);
+            updateBitmapInt16(min, &minMap);
             // Turn on all bits below the bit for min value (cause the lsb are for the higher values)
             minMap = minMap | (minMap - 1);
             if (max == NULL) {
@@ -126,7 +126,7 @@ void buildBitmapInt16FromRange(void *min, void *max, void *bm) {
             }
         }
         if (max != NULL) {
-            updateBitmapInt8(max, &maxMap);
+            updateBitmapInt16(max, &maxMap);
             // Turn on all bits above the bit for max value (cause the msb are for the lower values)
             maxMap = ~(maxMap - 1);
             if (min == NULL) {
@@ -182,7 +182,7 @@ void buildBitmapInt64FromRange(void *min, void *max, void *bm) {
     } else {
         uint64_t minMap = 0, maxMap = 0;
         if (min != NULL) {
-            updateBitmapInt8(min, &minMap);
+            updateBitmapInt64(min, &minMap);
             // Turn on all bits below the bit for min value (cause the lsb are for the higher values)
             minMap = minMap | (minMap - 1);
             if (max == NULL) {
@@ -191,7 +191,7 @@ void buildBitmapInt64FromRange(void *min, void *max, void *bm) {
             }
         }
         if (max != NULL) {
-            updateBitmapInt8(max, &maxMap);
+            updateBitmapInt64(max, &maxMap);
             // Turn on all bits above the bit for max value (cause the msb are for the lower values)
             maxMap = ~(maxMap - 1);
             if (min == NULL) {
