@@ -413,8 +413,7 @@ void runalltests_sbits() {
                                    *((uint32_t *)buf),
                                    *((int32_t *)((int8_t *)buf + 4)),
                                    *((int32_t *)((int8_t *)buf + 8)),
-                                   *((int32_t *)((int8_t *)buf + 12))
-                                   );
+                                   *((int32_t *)((int8_t *)buf + 12)));
                             result = sbitsGet(state, key, recordBuffer);
                         }
 

@@ -973,14 +973,14 @@ void randomVarData(uint32_t chance, uint32_t sizeLowerBound, uint32_t sizeUpperB
 
 void retrieveImageData(sbitsState *state, sbitsVarDataStream *varStream, int32_t key, char *filename, char *filetype) {
     int numDigits = log10(key) + 1;
-    char *keyAsString = (char *) calloc(numDigits, sizeof(char));
+    char *keyAsString = (char *)calloc(numDigits, sizeof(char));
     char destinationFolder[17] = "build/artifacts/";
     sprintf(keyAsString, "%i", key);
     uint32_t destinationFolderLength = strlen(destinationFolder);
     uint32_t filenameLength = strlen(filename);
     uint32_t filetypeLength = strlen(filetype);
     uint32_t totalLength = filenameLength + numDigits + filetypeLength + destinationFolderLength + 1;
-    char *file = (char *) calloc(totalLength, sizeof(char));
+    char *file = (char *)calloc(totalLength, sizeof(char));
     strncpy(file, destinationFolder, destinationFolderLength);
     strncpy(file + destinationFolderLength, filename, filenameLength);
     strncpy(file + filenameLength + destinationFolderLength, keyAsString, numDigits);
