@@ -83,9 +83,6 @@ typedef uint16_t count_t;
 
 #define SBITS_NO_VAR_DATA UINT32_MAX
 
-#define max(a, b) ((a) > (b) ? (a) : (b))
-#define min(a, b) ((a) < (b) ? (a) : (b))
-
 #define SBITS_GET_COUNT(x) *((count_t *)((int8_t *)x + SBITS_COUNT_OFFSET))
 #define SBITS_INC_COUNT(x) *((count_t *)((int8_t *)x + SBITS_COUNT_OFFSET)) = *((count_t *)((int8_t *)x + SBITS_COUNT_OFFSET)) + 1
 

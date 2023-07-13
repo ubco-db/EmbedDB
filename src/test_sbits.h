@@ -168,8 +168,8 @@ void runalltests_sbits() {
         }
 
         /* Address level parameters */
-        state->numDataPages = 1000;
-        state->numIndexPages = 48;
+        state->numDataPages = 20000;
+        state->numIndexPages = 1000;
         state->eraseSizeInPages = 4;
 
         if (STORAGE_TYPE == 0) {
@@ -319,7 +319,7 @@ void runalltests_sbits() {
          * 2: Query random records in the range of original data set.
          * 3: Query range of records using an iterator.
          */
-        int8_t queryType = 3;
+        int8_t queryType = 1;
 
         if (seqdata == 1) {
             if (queryType == 1) {
@@ -369,7 +369,7 @@ void runalltests_sbits() {
                     rec++;
                 }
                 printf("Read records: %d\n", rec);
-                printf("Num: %lu KEY: %lu Perc: %d Records: %d Reads: %d \n", i, mv, ((state->numReads - reads) * 1000 / (state->nextPageWriteId - 1)), rec, (state->numReads - reads));
+                printf("Num: %lu KEY: %lu Perc: %d Records: %d Reads: %d \n", i, mv, ((state->numReads - reads) * 1000 / (state->nextDataPageId - state->minDataPageId)), rec, (state->numReads - reads));
 
                 sbitsCloseIterator(&it);
                 free(itData);
@@ -378,7 +378,6 @@ void runalltests_sbits() {
             /* Data from file */
             int8_t headerSize = 16;
             i = 0;
-            int8_t queryType = 1;
 
             if (queryType == 1) {
                 /* Query each record from original data set. */
@@ -410,10 +409,12 @@ void runalltests_sbits() {
                             printf("ERROR: Failed to find key: %lu, i: %lu\n", *key, i);
                         if (*((int32_t *)recordBuffer) != *((int32_t *)((int8_t *)buf + 4))) {
                             printf("ERROR: Wrong data for: Key: %lu Data: %lu\n", *key, *((int32_t *)recordBuffer));
-                            printf("%lu %d %d %d\n", *((uint32_t *)buf),
+                            printf("%lu %d %d %d\n",
+                                   *((uint32_t *)buf),
                                    *((int32_t *)((int8_t *)buf + 4)),
                                    *((int32_t *)((int8_t *)buf + 8)),
-                                   *((int32_t *)((int8_t *)buf + 12)));
+                                   *((int32_t *)((int8_t *)buf + 12))
+                                   );
                             result = sbitsGet(state, key, recordBuffer);
                         }
 
@@ -468,10 +469,10 @@ void runalltests_sbits() {
                 sbitsIterator it;
                 it.minKey = NULL;
                 it.maxKey = NULL;
-                int32_t mv = 26;
-                int32_t v = 49;
-                it.minData = &mv;
-                it.maxData = &v;
+                int32_t minValue = 0;
+                int32_t maxValue = INT32_MAX;
+                it.minData = NULL;
+                it.maxData = NULL;
                 int32_t rec, reads;
 
                 start = clock();
@@ -479,7 +480,6 @@ void runalltests_sbits() {
                 rec = 0;
                 reads = state->numReads;
                 while (sbitsNext(state, &it, &itKey, itData)) {
-                    printf("Key: %d  Data: %d\n", itKey, *(uint32_t *)itData);
                     if ((it.minData != NULL && *((int32_t *)itData) < *((int32_t *)it.minData)) ||
                         (it.maxData != NULL && *((int32_t *)itData) > *((int32_t *)it.maxData))) {
                         printf("Key: %d Data: %d Error\n", itKey, *(uint32_t *)itData);
@@ -487,7 +487,7 @@ void runalltests_sbits() {
                     rec++;
                 }
                 printf("Read records: %d\n", rec);
-                printf("Num: %lu KEY: %lu Perc: %d Records: %d Reads: %d \n", i, mv, ((state->numReads - reads) * 1000 / (state->nextDataPageId - state->minDataPageId)), rec, (state->numReads - reads));
+                printf("Num: %lu KEY: %lu Perc: %d Records: %d Reads: %d \n", rec, minValue, ((state->numReads - reads) * 1000 / (state->nextDataPageId - state->minDataPageId)), rec, (state->numReads - reads));
 
                 sbitsCloseIterator(&it);
                 free(itData);

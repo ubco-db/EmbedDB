@@ -59,7 +59,7 @@ static ArduinoOutStream cout(Serial);
 #include "SdFat.h"
 #include "sd_test.h"
 
-#define TEST 1
+#define TEST 0
 #if TEST == 0
 #include "test_sbits.h"
 #elif TEST == 1
@@ -128,9 +128,9 @@ void setup() {
     init_df((void *)&at45db32_m);
 
 #if TEST == 0
-    runalltests_sbits(&at45db32_m);
+    runalltests_sbits();
 #elif TEST == 1
-    test_vardata(&at45db32_m);
+    test_vardata();
 #endif
 }
 

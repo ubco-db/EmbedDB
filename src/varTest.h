@@ -10,7 +10,7 @@
 #include "sbits/sbits.h"
 #include "sbits/utilityFunctions.h"
 
-#define NUM_STEPS 10
+#define NUM_STEPS 100
 #define NUM_RUNS 1
 #define VALIDATE_VAR_DATA 0
 /**
@@ -40,7 +40,7 @@ void retrieveImageData(sbitsState *state, sbitsVarDataStream *varStream, int32_t
 uint8_t dataEquals(sbitsState *state, sbitsVarDataStream *varStream, Node *node);
 void randomVarData(uint32_t chance, uint32_t sizeLowerBound, uint32_t sizeUpperBound, uint8_t *usingVarData, uint32_t *length, void **varData);
 
-void test_vardata(void *storage) {
+void test_vardata() {
     printf("\nSTARTING SBITS VARIABLE DATA TESTS.\n");
 
     // Two extra bufferes required for variable data
@@ -63,7 +63,7 @@ void test_vardata(void *storage) {
     uint32_t rhits[NUM_STEPS][NUM_RUNS];
 
     /* Determines if generated, sequential data is used, or data from an input file*/
-    int8_t seqdata = 1;
+    int8_t seqdata = 0;
 
     // Files for non-sequentioal data
     SD_FILE *infile = NULL, *infileRandom = NULL;
@@ -140,16 +140,16 @@ void test_vardata(void *storage) {
         sbitsState *state = (sbitsState *)malloc(sizeof(sbitsState));
 
         state->keySize = 4;
-        state->dataSize = 4;
+        state->dataSize = 12;
         state->pageSize = 512;
         state->bitmapSize = 0;
         state->bufferSizeInBlocks = M;
         state->buffer = malloc((size_t)state->bufferSizeInBlocks * state->pageSize);
 
         /* Address level parameters */
-        state->numDataPages = 1000;
+        state->numDataPages = 40000;
         state->numIndexPages = 48;
-        state->numVarPages = 1000;
+        state->numVarPages = 100000;
         state->eraseSizeInPages = 4;
 
         if (STORAGE_TYPE == 0) {
@@ -408,7 +408,7 @@ void test_vardata(void *storage) {
          * 2: Query random records in the range of original data set.
          * 3: Query range of records using an iterator.
          */
-        int8_t queryType = 3;
+        int8_t queryType = 1;
 
         if (seqdata == 1) {
             if (queryType == 1) {
@@ -580,7 +580,7 @@ void test_vardata(void *storage) {
                             }
                             if (validationHead == NULL) {
                                 printf("ERROR: No validation data for: %lu\n", i);
-                                return -1;
+                                return;
                             }
                             // Check that the var data is correct
                             if (!dataEquals(state, varStream, validationHead)) {
@@ -973,14 +973,14 @@ void randomVarData(uint32_t chance, uint32_t sizeLowerBound, uint32_t sizeUpperB
 
 void retrieveImageData(sbitsState *state, sbitsVarDataStream *varStream, int32_t key, char *filename, char *filetype) {
     int numDigits = log10(key) + 1;
-    char *keyAsString = calloc(numDigits, sizeof(char));
+    char *keyAsString = (char *) calloc(numDigits, sizeof(char));
     char destinationFolder[17] = "build/artifacts/";
-    sprintf(keyAsString, "%d", key);
+    sprintf(keyAsString, "%i", key);
     uint32_t destinationFolderLength = strlen(destinationFolder);
     uint32_t filenameLength = strlen(filename);
     uint32_t filetypeLength = strlen(filetype);
     uint32_t totalLength = filenameLength + numDigits + filetypeLength + destinationFolderLength + 1;
-    char *file = calloc(totalLength, sizeof(char));
+    char *file = (char *) calloc(totalLength, sizeof(char));
     strncpy(file, destinationFolder, destinationFolderLength);
     strncpy(file + destinationFolderLength, filename, filenameLength);
     strncpy(file + filenameLength + destinationFolderLength, keyAsString, numDigits);
