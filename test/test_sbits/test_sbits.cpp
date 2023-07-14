@@ -146,6 +146,7 @@ void setupSbits(void *storage) {
 }
 
 void setup() {
+    delay(2000);
     setupBoard();
     setupSbits(&at45db32_m);
     runUnityTests();
