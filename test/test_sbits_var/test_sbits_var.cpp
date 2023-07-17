@@ -37,7 +37,7 @@ sbitsState *state;
 uint32_t numRecords = 1000;
 uint32_t inserted = 0;
 
-int i = 0;
+uint i = 0;
 uint32_t dataSizes[] = {4, 6, 8};
 
 bool test_sd_card();
@@ -182,7 +182,7 @@ void test_get_when_all() {
         expectedVarData[8] = (char)((key / 100) % 10) + '0';
         uint64_t data = 0, expectedData = key % 100;
 
-        int result = sbitsGetVar(state, &key, &data, &varStream);
+        sbitsGetVar(state, &key, &data, &varStream);
         TEST_ASSERT_EQUAL_CHAR_ARRAY_MESSAGE(&expectedData, &data, state->dataSize, "sbitsGetVar did not return the correct fixed data");
         TEST_ASSERT_NOT_NULL_MESSAGE(varStream, "sbitsGetVar did not return vardata");
         uint32_t length = sbitsVarDataStreamRead(state, varStream, buf, 20);
