@@ -5,7 +5,6 @@
 #include "SPI.h"
 #include "dataflash_c_iface.h"
 #include "sdcard_c_iface.h"
-#define UNITY_SUPPORT_64
 /**
  * SPI configurations for memory */
 #include "mem_spi.h"
@@ -260,7 +259,7 @@ void sbits_parameters_initializes_from_data_file_with_twenty_seven_pages_correct
     insertRecordsLinearly(9, 20230614, 1135);
     tearDown();
     initalizeSbitsFromFile();
-    TEST_ASSERT_EQUAL_UINT64_MESSAGE(10, state->minKey, "SBITS minkey is not correctly identified after reload from data file.");
+    TEST_ASSERT_EQUAL_UINT32_MESSAGE(10, state->minKey, "SBITS minkey is not correctly identified after reload from data file.");
     TEST_ASSERT_EQUAL_UINT32_MESSAGE(27, state->nextDataPageId, "SBITS nextDataPageId is not correctly identified after reload from data file.");
     TEST_ASSERT_EQUAL_UINT32_MESSAGE(0, state->minDataPageId, "SBITS minDataPageId was not correctly identified.");
     TEST_ASSERT_EQUAL_UINT32_MESSAGE(66, state->numAvailDataPages, "SBITS numAvailDataPages is not correctly initialized.");
@@ -271,7 +270,7 @@ void sbits_parameters_initializes_from_data_file_with_ninety_three_pages_correct
     insertRecordsLinearly(3456, 2548, 3907);
     tearDown();
     initalizeSbitsFromFile();
-    TEST_ASSERT_EQUAL_UINT64_MESSAGE(3457, state->minKey, "SBITS minkey is not correctly identified after reload from data file.");
+    TEST_ASSERT_EQUAL_UINT32_MESSAGE(3457, state->minKey, "SBITS minkey is not correctly identified after reload from data file.");
     TEST_ASSERT_EQUAL_UINT32_MESSAGE(93, state->nextDataPageId, "SBITS nextDataPageId is not correctly identified after reload from data file.");
     TEST_ASSERT_EQUAL_UINT32_MESSAGE(0, state->minDataPageId, "SBITS minDataPageId was not correctly identified.");
     TEST_ASSERT_EQUAL_UINT32_MESSAGE(0, state->numAvailDataPages, "SBITS numAvailDataPages is not correctly initialized.");
@@ -281,7 +280,7 @@ void sbits_parameters_initializes_from_data_file_with_ninety_four_pages_correctl
     insertRecordsLinearly(1645, 2548, 3949);
     tearDown();
     initalizeSbitsFromFile();
-    TEST_ASSERT_EQUAL_UINT64_MESSAGE(1688, state->minKey, "SBITS minkey is not correctly identified after reload from data file.");
+    TEST_ASSERT_EQUAL_UINT32_MESSAGE(1688, state->minKey, "SBITS minkey is not correctly identified after reload from data file.");
     TEST_ASSERT_EQUAL_UINT32_MESSAGE(94, state->nextDataPageId, "SBITS nextDataPageId is not correctly identified after reload from data file.");
     TEST_ASSERT_EQUAL_UINT32_MESSAGE(1, state->minDataPageId, "SBITS minDataPageId was not correctly identified.");
     TEST_ASSERT_EQUAL_UINT32_MESSAGE(0, state->numAvailDataPages, "SBITS numAvailDataPages is not correctly initialized.");
@@ -291,7 +290,7 @@ void sbits_parameters_initializes_correctly_from_data_file_with_four_hundred_sev
     insertRecordsLinearly(2000, 11205, 17515);
     tearDown();
     initalizeSbitsFromFile();
-    TEST_ASSERT_EQUAL_UINT64_MESSAGE(15609, state->minKey, "SBITS minkey is not correctly identified after reload from data file.");
+    TEST_ASSERT_EQUAL_UINT32_MESSAGE(15609, state->minKey, "SBITS minkey is not correctly identified after reload from data file.");
     TEST_ASSERT_EQUAL_UINT32_MESSAGE(417, state->nextDataPageId, "SBITS nextDataPageId is not correctly identified after reload from data file.");
     TEST_ASSERT_EQUAL_UINT32_MESSAGE(324, state->minDataPageId, "SBITS minDataPageId was not correctly identified.");
     TEST_ASSERT_EQUAL_UINT32_MESSAGE(0, state->numAvailDataPages, "SBITS numAvailDataPages is not correctly initialized.");
@@ -300,7 +299,7 @@ void sbits_parameters_initializes_correctly_from_data_file_with_four_hundred_sev
 void sbits_parameters_initializes_correctly_from_data_file_with_no_data() {
     tearDown();
     initalizeSbitsFromFile();
-    TEST_ASSERT_EQUAL_UINT64_MESSAGE(UINT32_MAX, state->minKey, "SBITS minkey is not correctly identified after reload from data file.");
+    TEST_ASSERT_EQUAL_UINT32_MESSAGE(UINT32_MAX, state->minKey, "SBITS minkey is not correctly identified after reload from data file.");
     TEST_ASSERT_EQUAL_UINT32_MESSAGE(0, state->nextDataPageId, "SBITS nextDataPageId is not correctly identified after reload from data file.");
     TEST_ASSERT_EQUAL_UINT32_MESSAGE(0, state->minDataPageId, "SBITS minDataPageId was not correctly identified.");
     TEST_ASSERT_EQUAL_UINT32_MESSAGE(93, state->numAvailDataPages, "SBITS numAvailDataPages is not ");
@@ -322,7 +321,7 @@ void sbits_inserts_correctly_into_data_file_after_reload() {
         snprintf(keyMessage, 80, "SBITS get encountered an error fetching the data for key %li.", key);
         snprintf(dataMessage, 100, "SBITS get did not return correct data for a record inserted before reloading (key %li).", key);
         TEST_ASSERT_EQUAL_INT8_MESSAGE(0, getResult, keyMessage);
-        TEST_ASSERT_EQUAL_INT64_MESSAGE(data, *((int64_t *)recordBuffer), dataMessage);
+        TEST_ASSERT_EQUAL_MEMORY_MESSAGE(&data, ((int64_t *)recordBuffer), state->dataSize, dataMessage);
         key++;
         data++;
     }
@@ -333,7 +332,7 @@ void sbits_inserts_correctly_into_data_file_after_reload() {
         snprintf(keyMessage, 80, "SBITS get encountered an error fetching the data for key %li.", key);
         snprintf(dataMessage, 100, "SBITS get did not return correct data for a record inserted after reloading (key %li).", key);
         TEST_ASSERT_EQUAL_INT8_MESSAGE(0, getResult, keyMessage);
-        TEST_ASSERT_EQUAL_INT64_MESSAGE(data, *((int64_t *)recordBuffer), dataMessage);
+        TEST_ASSERT_EQUAL_MEMORY_MESSAGE(&data, ((int64_t *)recordBuffer), state->dataSize, dataMessage);
         key++;
         data++;
     }
@@ -345,7 +344,7 @@ void sbits_correctly_gets_records_after_reload_with_wrapped_data() {
     sbitsFlush(state);
     tearDown();
     initalizeSbitsFromFile();
-    TEST_ASSERT_EQUAL_UINT64_MESSAGE(9871, state->minKey, "SBITS minkey is not the correct value after reloading.");
+    TEST_ASSERT_EQUAL_UINT32_MESSAGE(9871, state->minKey, "SBITS minkey is not the correct value after reloading.");
     int8_t *recordBuffer = (int8_t *)malloc(state->dataSize);
     int32_t key = 9871;
     int64_t data = 9871;
@@ -357,7 +356,7 @@ void sbits_correctly_gets_records_after_reload_with_wrapped_data() {
         snprintf(keyMessage, 80, "SBITS get encountered an error fetching the data for key %li.", key);
         snprintf(dataMessage, 100, "SBITS get did not return correct data for a record inserted before reloading (key %li).", key);
         TEST_ASSERT_EQUAL_INT8_MESSAGE(0, getResult, keyMessage);
-        TEST_ASSERT_EQUAL_INT64_MESSAGE(data, *((int64_t *)recordBuffer), dataMessage);
+        TEST_ASSERT_EQUAL_MEMORY_MESSAGE(&data, ((int64_t *)recordBuffer), state->dataSize, dataMessage);
         key++;
         data++;
     }
@@ -378,7 +377,7 @@ void sbits_queries_correctly_with_non_liner_data_after_reload() {
     insertRecordsParabolic(1000, 367, 4495);
     tearDown();
     initalizeSbitsFromFile();
-    TEST_ASSERT_EQUAL_UINT64_MESSAGE(174166, state->minKey, "SBITS minkey is not the correct value after reloading.");
+    TEST_ASSERT_EQUAL_UINT32_MESSAGE(174166, state->minKey, "SBITS minkey is not the correct value after reloading.");
     int8_t *recordBuffer = (int8_t *)malloc(state->dataSize);
     int32_t key = 174166;
     int64_t data = 956;
@@ -390,7 +389,7 @@ void sbits_queries_correctly_with_non_liner_data_after_reload() {
         snprintf(keyMessage, 80, "SBITS get encountered an error fetching the data for key %li.", key);
         snprintf(dataMessage, 100, "SBITS get did not return correct data for a record inserted before reloading (key %li).", key);
         TEST_ASSERT_EQUAL_INT8_MESSAGE(0, getResult, keyMessage);
-        TEST_ASSERT_EQUAL_INT64_MESSAGE(data, *((int64_t *)recordBuffer), dataMessage);
+        TEST_ASSERT_EQUAL_MEMORY_MESSAGE(&data, ((int64_t *)recordBuffer), state->dataSize, dataMessage);
         key += i;
         data += i;
     }
