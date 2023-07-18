@@ -60,7 +60,7 @@ jobs:
       run: |
         pio pkg install
         python scripts/replacementScript.py
-        platformio remote test -e memboard -v --junit-ouput-path './'
+        platformio remote test --junit-ouput-path './' -e memboard -v
 
     - name: Publish Unit Test Results
       if: always()
