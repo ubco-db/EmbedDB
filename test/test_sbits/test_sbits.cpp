@@ -57,11 +57,6 @@ void setupSbits() {
         printf("Unable to allocate buffer. Exiting.\n");
         return;
     }
-    int8_t *recordBuffer = (int8_t *)malloc(state->recordSize);
-    if (recordBuffer == NULL) {
-        printf("Unable to allocate record buffer. Exiting.\n");
-        return;
-    }
 
     /* Address level parameters */
     state->numDataPages = 1000;
