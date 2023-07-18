@@ -36,12 +36,6 @@ jobs:
     name: Build and Run Tests
     runs-on: ubuntu-latest
 
-    permissions:
-      contents: read
-      issues: read
-      checks: write
-      pull-requests: write
-
     steps:
     - uses: actions/checkout@v3
 
@@ -60,12 +54,4 @@ jobs:
       run: |
         pio pkg install
         python scripts/replacementScript.py
-        platformio remote test --junit-ouput-path './' -e memboard -v
-
-    - name: Publish Unit Test Results
-      if: always()
-      uses: EnricoMi/publish-unit-test-result-action/composite@v2
-      with:
-        github_token: ${{ github.token }}
-        files: ./*.xml
-        check_name: Unit Test Results
+        platformio remote test -e memboard -v
