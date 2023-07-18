@@ -313,7 +313,7 @@ void sbits_variable_data_reloads_and_queries_with_two_hundred_forty_seven_pages_
     char dataMessage[100];
     char varDataMessage[80];
     char nullReturnMessage[100];
-    char *variableData = "Hello World!";
+    char variableData[] = "Hello World!";
     char *variableDataBuffer = (char *)calloc(13, sizeof(char));
     sbitsVarDataStream *stream = NULL;
     key = 9277;
