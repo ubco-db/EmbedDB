@@ -54,4 +54,4 @@ jobs:
       run: |
         pio pkg install
         python scripts/replacementScript.py
-        platformio remote test -r -e memboard -v
+        pio remote test -r -e memboard -v
