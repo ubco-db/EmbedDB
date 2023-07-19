@@ -54,4 +54,4 @@ jobs:
       run: |
         pio pkg install
         python scripts/replacementScript.py
-        pio remote test -e memboard -v
+        pio remote test -r -e memboard -v

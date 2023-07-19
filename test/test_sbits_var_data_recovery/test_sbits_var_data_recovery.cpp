@@ -271,10 +271,7 @@ void sbits_variable_data_reloads_and_queries_with_thirty_one_pages_of_data_corre
     tearDown();
     initalizeSbitsFromFile();
     int8_t *recordBuffer = (int8_t *)malloc(state->dataSize);
-    char keyMessage[80];
-    char dataMessage[100];
-    char varDataMessage[80];
-    char nullReturnMessage[60];
+    char message[100];
     char variableData[13] = "Hello World!";
     char variableDataBuffer[13];
     sbitsVarDataStream *stream = NULL;
@@ -283,18 +280,18 @@ void sbits_variable_data_reloads_and_queries_with_thirty_one_pages_of_data_corre
     /* Records inserted before reload */
     for (int i = 0; i < 650; i++) {
         int8_t getResult = sbitsGetVar(state, &key, recordBuffer, &stream);
-        snprintf(keyMessage, 80, "SBITS get encountered an error fetching the data for key %li.", key);
-        TEST_ASSERT_EQUAL_INT8_MESSAGE(0, getResult, keyMessage);
+        snprintf(message, 100, "SBITS get encountered an error fetching the data for key %li.", key);
+        TEST_ASSERT_EQUAL_INT8_MESSAGE(0, getResult, message);
         uint32_t streamBytesRead = 0;
-        snprintf(nullReturnMessage, 60, "SBITS get var returned null stream for key %li.", key);
-        TEST_ASSERT_NOT_NULL_MESSAGE(stream, nullReturnMessage);
+        snprintf(message, 100, "SBITS get var returned null stream for key %li.", key);
+        TEST_ASSERT_NOT_NULL_MESSAGE(stream, message);
         streamBytesRead = sbitsVarDataStreamRead(state, stream, variableDataBuffer, 13);
-        snprintf(dataMessage, 100, "SBITS get did not return correct data for a record inserted before reloading (key %li).", key);
-        snprintf(varDataMessage, 80, "SBITS get var did not return the correct variable data for key %li.", key);
-        TEST_ASSERT_EQUAL_INT8_MESSAGE(0, getResult, keyMessage);
-        TEST_ASSERT_EQUAL_INT32_MESSAGE(data, *((int32_t *)recordBuffer), dataMessage);
+        snprintf(message, 100, "SBITS get did not return correct data for a record inserted before reloading (key %li).", key);
+        TEST_ASSERT_EQUAL_INT32_MESSAGE(data, *((int32_t *)recordBuffer), message);
         TEST_ASSERT_EQUAL_UINT32_MESSAGE(13, streamBytesRead, "SBITS var data stream did not read the correct number of bytes.");
-        TEST_ASSERT_EQUAL_CHAR_ARRAY_MESSAGE(variableData, variableDataBuffer, 13, varDataMessage);
+        snprintf(message, 100, "SBITS get var did not return the correct variable data for key %li.", key);
+        TEST_ASSERT_EQUAL_CHAR_ARRAY_MESSAGE(variableData, variableDataBuffer, 13, message);
+        free(stream);
         key++;
         data++;
     }
@@ -309,10 +306,7 @@ void sbits_variable_data_reloads_and_queries_with_two_hundred_forty_seven_pages_
     tearDown();
     initalizeSbitsFromFile();
     int8_t *recordBuffer = (int8_t *)malloc(state->dataSize);
-    char keyMessage[120];
-    char dataMessage[100];
-    char varDataMessage[80];
-    char nullReturnMessage[100];
+    char messageBuffer[120];
     char variableData[] = "Hello World!";
     char *variableDataBuffer = (char *)calloc(13, sizeof(char));
     sbitsVarDataStream *stream = NULL;
@@ -322,23 +316,24 @@ void sbits_variable_data_reloads_and_queries_with_two_hundred_forty_seven_pages_
     for (int i = 0; i < 2708; i++) {
         int8_t getResult = sbitsGetVar(state, &key, recordBuffer, &stream);
         if (i > 1163) {
-            snprintf(keyMessage, 120, "SBITS get encountered an error fetching the data for key %li.", key);
-            TEST_ASSERT_EQUAL_INT8_MESSAGE(0, getResult, keyMessage);
-            snprintf(dataMessage, 100, "SBITS get did not return correct data for a record inserted before reloading (key %li).", key);
-            TEST_ASSERT_EQUAL_INT32_MESSAGE(data, *((int32_t *)recordBuffer), dataMessage);
-            snprintf(varDataMessage, 80, "SBITS get var did not return the correct variable data for key %li.", key);
-            snprintf(nullReturnMessage, 100, "SBITS get var returned null stream for key %li.", key);
-            TEST_ASSERT_NOT_NULL_MESSAGE(stream, nullReturnMessage);
+            snprintf(messageBuffer, 120, "SBITS get encountered an error fetching the data for key %li.", key);
+            TEST_ASSERT_EQUAL_INT8_MESSAGE(0, getResult, messageBuffer);
+            snprintf(messageBuffer, 100, "SBITS get did not return correct data for a record inserted before reloading (key %li).", key);
+            TEST_ASSERT_EQUAL_INT32_MESSAGE(data, *((int32_t *)recordBuffer), messageBuffer);
+            snprintf(messageBuffer, 80, "SBITS get var did not return the correct variable data for key %li.", key);
+            TEST_ASSERT_NOT_NULL_MESSAGE(stream, messageBuffer);
             uint32_t streamBytesRead = sbitsVarDataStreamRead(state, stream, variableDataBuffer, 13);
             TEST_ASSERT_EQUAL_UINT32_MESSAGE(13, streamBytesRead, "SBITS var data stream did not read the correct number of bytes.");
-            TEST_ASSERT_EQUAL_MEMORY_MESSAGE(variableData, variableDataBuffer, 13, varDataMessage);
+            snprintf(messageBuffer, 100, "SBITS get var returned null stream for key %li.", key);
+            TEST_ASSERT_EQUAL_MEMORY_MESSAGE(variableData, variableDataBuffer, 13, messageBuffer);
+            free(stream);
         } else {
-            snprintf(keyMessage, 120, "SBITS get encountered an error fetching the data for key %li. The var data was not detected as being overwritten.", key);
-            TEST_ASSERT_EQUAL_INT8_MESSAGE(1, getResult, keyMessage);
-            snprintf(dataMessage, 100, "SBITS get did not return correct data for a record inserted before reloading (key %li).", key);
-            TEST_ASSERT_EQUAL_INT32_MESSAGE(data, *((int32_t *)recordBuffer), dataMessage);
-            snprintf(nullReturnMessage, 100, "SBITS get var did not return null stream for key %li when it should have no variable data.", key);
-            TEST_ASSERT_NULL_MESSAGE(stream, nullReturnMessage);
+            snprintf(messageBuffer, 120, "SBITS get encountered an error fetching the data for key %li. The var data was not detected as being overwritten.", key);
+            TEST_ASSERT_EQUAL_INT8_MESSAGE(1, getResult, messageBuffer);
+            snprintf(messageBuffer, 100, "SBITS get did not return correct data for a record inserted before reloading (key %li).", key);
+            TEST_ASSERT_EQUAL_INT32_MESSAGE(data, *((int32_t *)recordBuffer), messageBuffer);
+            snprintf(messageBuffer, 100, "SBITS get var did not return null stream for key %li when it should have no variable data.", key);
+            TEST_ASSERT_NULL_MESSAGE(stream, messageBuffer);
         }
         key++;
         data++;
@@ -346,7 +341,8 @@ void sbits_variable_data_reloads_and_queries_with_two_hundred_forty_seven_pages_
     free(recordBuffer);
 }
 
-void runUnityTests() {
+int runUnityTests() {
+    UNITY_BEGIN();
     RUN_TEST(sbits_variable_data_page_numbers_are_correct);
     RUN_TEST(sbits_variable_data_reloads_with_no_data_correctly);
     RUN_TEST(sbits_variable_data_reloads_with_one_page_of_data_correctly);
@@ -354,6 +350,7 @@ void runUnityTests() {
     RUN_TEST(sbits_variable_data_reloads_with_one_hundred_six_pages_of_data_correctly);
     RUN_TEST(sbits_variable_data_reloads_and_queries_with_thirty_one_pages_of_data_correctly);
     RUN_TEST(sbits_variable_data_reloads_and_queries_with_two_hundred_forty_seven_pages_of_data_correctly);
+    return UNITY_END();
 }
 
 void loop() {}
