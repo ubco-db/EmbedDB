@@ -51,4 +51,4 @@ jobs:
       env:
         PLATFORMIO_AUTH_TOKEN: ${{ secrets.PLATFORMIO_AUTH_TOKEN }}
       run: 
-        pio remote test --force-remote -e memboard
+        pio remote test -r -e memboard
