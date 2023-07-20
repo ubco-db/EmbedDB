@@ -77,13 +77,19 @@ int sd_fflush(SD_FILE *stream) {
 
 SD_FILE *sd_fopen(const char *filename, const char *mode) {
     File32 f;
-    if (mode[0] == 'w')
-        if (mode[1] == '+')
-            f = sdcard->open(filename, O_RDWR | O_CREAT);
-        else
-            f = sdcard->open(filename, O_WRITE | O_CREAT);
-    else
-        f = sdcard->open(filename, O_READ);
+    if (mode[0] == 'w') {
+        if (mode[1] == '+') {
+            f = sdcard->open(filename, O_RDWR | O_CREAT | O_TRUNC);
+        } else {
+            f = sdcard->open(filename, O_WRITE | O_CREAT | O_TRUNC);
+        }
+    } else if (mode[0] == 'r') {
+        if (mode[1] == '+') {
+            f = sdcard->open(filename, O_RDWR);
+        } else {
+            f = sdcard->open(filename, O_READ);
+        }
+    }
 
     if (f.isOpen() == false)
         return NULL;
