@@ -313,15 +313,14 @@ void sbits_inserts_correctly_into_data_file_after_reload() {
     int8_t *recordBuffer = (int8_t *)malloc(state->dataSize);
     int32_t key = 1001;
     int64_t data = 5601;
-    char keyMessage[80];
-    char dataMessage[100];
+    char message[100];
     /* Records inserted before reload */
     for (int i = 0; i < 3654; i++) {
         int8_t getResult = sbitsGet(state, &key, recordBuffer);
-        snprintf(keyMessage, 80, "SBITS get encountered an error fetching the data for key %li.", key);
-        snprintf(dataMessage, 100, "SBITS get did not return correct data for a record inserted before reloading (key %li).", key);
-        TEST_ASSERT_EQUAL_INT8_MESSAGE(0, getResult, keyMessage);
-        TEST_ASSERT_EQUAL_MEMORY_MESSAGE(&data, ((int64_t *)recordBuffer), state->dataSize, dataMessage);
+        snprintf(message, 100, "SBITS get encountered an error fetching the data for key %li.", key);
+        TEST_ASSERT_EQUAL_INT8_MESSAGE(0, getResult, message);
+        snprintf(message, 100, "SBITS get did not return correct data for a record inserted before reloading (key %li).", key);
+        TEST_ASSERT_EQUAL_MEMORY_MESSAGE(&data, ((int64_t *)recordBuffer), state->dataSize, message);
         key++;
         data++;
     }
@@ -329,10 +328,10 @@ void sbits_inserts_correctly_into_data_file_after_reload() {
     data = 11;
     for (int i = 0; i < 42; i++) {
         int8_t getResult = sbitsGet(state, &key, recordBuffer);
-        snprintf(keyMessage, 80, "SBITS get encountered an error fetching the data for key %li.", key);
-        snprintf(dataMessage, 100, "SBITS get did not return correct data for a record inserted after reloading (key %li).", key);
-        TEST_ASSERT_EQUAL_INT8_MESSAGE(0, getResult, keyMessage);
-        TEST_ASSERT_EQUAL_MEMORY_MESSAGE(&data, ((int64_t *)recordBuffer), state->dataSize, dataMessage);
+        snprintf(message, 100, "SBITS get encountered an error fetching the data for key %li.", key);
+        TEST_ASSERT_EQUAL_INT8_MESSAGE(0, getResult, message);
+        snprintf(message, 100, "SBITS get did not return correct data for a record inserted after reloading (key %li).", key);
+        TEST_ASSERT_EQUAL_MEMORY_MESSAGE(&data, ((int64_t *)recordBuffer), state->dataSize, message);
         key++;
         data++;
     }
@@ -348,15 +347,14 @@ void sbits_correctly_gets_records_after_reload_with_wrapped_data() {
     int8_t *recordBuffer = (int8_t *)malloc(state->dataSize);
     int32_t key = 9871;
     int64_t data = 9871;
-    char keyMessage[80];
-    char dataMessage[100];
+    char message[100];
     /* Records inserted before reload */
     for (int i = 0; i < 3888; i++) {
         int8_t getResult = sbitsGet(state, &key, recordBuffer);
-        snprintf(keyMessage, 80, "SBITS get encountered an error fetching the data for key %li.", key);
-        snprintf(dataMessage, 100, "SBITS get did not return correct data for a record inserted before reloading (key %li).", key);
-        TEST_ASSERT_EQUAL_INT8_MESSAGE(0, getResult, keyMessage);
-        TEST_ASSERT_EQUAL_MEMORY_MESSAGE(&data, ((int64_t *)recordBuffer), state->dataSize, dataMessage);
+        snprintf(message, 100, "SBITS get encountered an error fetching the data for key %li.", key);
+        TEST_ASSERT_EQUAL_INT8_MESSAGE(0, getResult, message);
+        snprintf(message, 100, "SBITS get did not return correct data for a record inserted before reloading (key %li).", key);
+        TEST_ASSERT_EQUAL_MEMORY_MESSAGE(&data, ((int64_t *)recordBuffer), state->dataSize, message);
         key++;
         data++;
     }
@@ -381,15 +379,14 @@ void sbits_queries_correctly_with_non_liner_data_after_reload() {
     int8_t *recordBuffer = (int8_t *)malloc(state->dataSize);
     int32_t key = 174166;
     int64_t data = 956;
-    char keyMessage[80];
-    char dataMessage[100];
+    char message[100];
     /* Records inserted before reload */
     for (int i = 174166; i < 4494; i++) {
         int8_t getResult = sbitsGet(state, &key, recordBuffer);
-        snprintf(keyMessage, 80, "SBITS get encountered an error fetching the data for key %li.", key);
-        snprintf(dataMessage, 100, "SBITS get did not return correct data for a record inserted before reloading (key %li).", key);
-        TEST_ASSERT_EQUAL_INT8_MESSAGE(0, getResult, keyMessage);
-        TEST_ASSERT_EQUAL_MEMORY_MESSAGE(&data, ((int64_t *)recordBuffer), state->dataSize, dataMessage);
+        snprintf(message, 100, "SBITS get encountered an error fetching the data for key %li.", key);
+        TEST_ASSERT_EQUAL_INT8_MESSAGE(0, getResult, message);
+        snprintf(message, 100, "SBITS get did not return correct data for a record inserted before reloading (key %li).", key);
+        TEST_ASSERT_EQUAL_MEMORY_MESSAGE(&data, ((int64_t *)recordBuffer), state->dataSize, message);
         key += i;
         data += i;
     }
