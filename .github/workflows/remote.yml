@@ -50,5 +50,7 @@ jobs:
     - name: Run tests on the embedded target
       env:
         PLATFORMIO_AUTH_TOKEN: ${{ secrets.PLATFORMIO_AUTH_TOKEN }}
-      run: 
+      run: |
+        pio pkg install
+        python scripts/replacementScript.py
         pio remote test -r -e memboard
