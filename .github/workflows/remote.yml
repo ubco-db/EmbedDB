@@ -1,4 +1,4 @@
-name: Lint and Test
+name: build / lint
 
 on:
   push:
@@ -33,24 +33,23 @@ jobs:
           check_name: lint  ${{ matrix.subdir }}
 
   build:
-    name: Build and Run Tests
+
     runs-on: ubuntu-latest
 
     steps:
     - uses: actions/checkout@v3
-
     - name: Set up Python
       uses: actions/setup-python@v4
-
     - name: Install PlatformIO
       run: |
         python -m pip install --upgrade pip
         pip install platformio
-
+        git submodule update --init --recursive
     - name: Run tests on the embedded target
       env:
         PLATFORMIO_AUTH_TOKEN: ${{ secrets.PLATFORMIO_AUTH_TOKEN }}
       run: |
         pio pkg install
         python scripts/replacementScript.py
-        pio remote test -r -e memboard
+        platformio remote test -e memboard -v
+        
