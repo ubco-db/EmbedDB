@@ -23,12 +23,12 @@
     ],
     "mcu": "samd21J18a",
     "system": "samd",
-    "usb_product": "Adafruit Feather M0",
+    "usb_product": "Generic",
     "variant":"memboard"
   },
   "debug": {
     "jlink_device": "ATSAMD21G18",
-    "openocd_chipname": "at91samd21g18",
+    "openocd_chipname": "at91samd21G18",
     "openocd_target": "at91samdXX",
     "svd_path": "ATSAMD21G18A.svd"
   },
