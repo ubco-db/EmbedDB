@@ -42,7 +42,7 @@
 #include "SdFat.h"
 
 #if defined(ARDUINO)
-#include "serial_c_iface.h"
+#include "Serial-Wrapper/serial_c_iface.h"
 #endif
 
 /**

@@ -37,7 +37,7 @@
 #include "dataflash_c_iface.h"
 
 #include "dataflash.h"
-#include "serial_c_iface.h"
+#include "Serial-Wrapper/serial_c_iface.h"
 
 memory_t *dflash;
 

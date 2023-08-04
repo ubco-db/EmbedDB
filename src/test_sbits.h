@@ -43,7 +43,14 @@
 #include <time.h>
 
 #include "sbits/sbits.h"
-#include "sbits/utilityFunctions.h"
+#include "sbits-utility.h"
+
+#if defined(MEMBOARD)
+#include "SD-Wrapper/sdcard_c_iface.h"
+#include "SDFileInterface.h"
+#include "dataflashFileInterface.h"
+#include "Serial-Wrapper/serial_c_iface.h"
+#endif
 
 /**
  * 0 = SD Card

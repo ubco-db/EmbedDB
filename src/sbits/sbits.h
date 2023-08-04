@@ -44,12 +44,6 @@ extern "C" {
 #include <stdio.h>
 #include <stdlib.h>
 
-#if defined(ARDUINO)
-#include "dataflash_c_iface.h"
-#include "sdcard_c_iface.h"
-#include "serial_c_iface.h"
-#endif
-
 /* If using radix spline indexing */
 #include "../spline/radixspline.h"
 #include "../spline/spline.h"

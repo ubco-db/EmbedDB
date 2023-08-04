@@ -48,6 +48,7 @@ Includes for DataFlash memory
 */
 // #include "at45db32_test.h"
 #include "dataflash.h"
+#include "Dataflash-Wrapper/dataflash_c_iface.h"
 
 /**
  * Includes for SD card
