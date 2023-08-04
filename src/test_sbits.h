@@ -46,10 +46,8 @@
 #include "sbits-utility.h"
 
 #if defined(MEMBOARD)
-#include "SD-Wrapper/sdcard_c_iface.h"
 #include "SDFileInterface.h"
 #include "dataflashFileInterface.h"
-#include "Serial-Wrapper/serial_c_iface.h"
 #endif
 
 /**

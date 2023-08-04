@@ -43,6 +43,12 @@ extern "C" {
 #include <stdint.h>
 #include <stdio.h>
 
+#if defined(MEMBOARD)
+#include "Dataflash-Wrapper/dataflash_c_iface.h"
+#include "SD-Wrapper/sdcard_c_iface.h"
+#include "Serial-Wrapper/serial_c_iface.h"
+#endif
+
 /* Define type for keys and location ids. */
 typedef uint32_t id_t;
 
