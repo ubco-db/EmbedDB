@@ -79,10 +79,11 @@ SD_FILE *sd_fopen(const char *filename, const char *mode) {
     File32 f;
     if (mode[0] == 'w') {
         if (mode[1] == '+') {
-            f = sdcard->open(filename, O_RDWR | O_CREAT | O_TRUNC);
+            f = sdcard->open(filename, O_RDWR | O_CREAT);
         } else {
-            f = sdcard->open(filename, O_WRITE | O_CREAT | O_TRUNC);
+            f = sdcard->open(filename, O_WRITE | O_CREAT);
         }
+        f.truncate(0);
     } else if (mode[0] == 'r') {
         if (mode[1] == '+') {
             f = sdcard->open(filename, O_RDWR);
