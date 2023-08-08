@@ -45,9 +45,13 @@
 #include "sbits/sbits.h"
 #include "sbits-utility.h"
 
-#if defined(MEMBOARD)
+#if defined(MEGA)
 #include "SDFileInterface.h"
+#endif
+
+#if defined(MEMBOARD)
 #include "dataflashFileInterface.h"
+#include "SDFileInterface.h"
 #endif
 
 /**
