@@ -48,11 +48,7 @@ extern "C" {
 #include <stdio.h>
 #include <stdlib.h>
 
-#if defined(MEMBOARD)
-#include "Dataflash-Wrapper/dataflash_c_iface.h"
-#include "SD-Wrapper/sdcard_c_iface.h"
 #include "Serial-Wrapper/serial_c_iface.h"
-#endif
 
 #include "spline.h"
 

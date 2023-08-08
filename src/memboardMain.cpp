@@ -38,7 +38,6 @@
 
 #include "Arduino.h"
 #include "SPI.h"
-
 /**
  * SPI configurations for memory */
 #include "mem_spi.h"
@@ -58,6 +57,9 @@ static ArduinoOutStream cout(Serial);
 
 #include "SdFat.h"
 #include "sd_test.h"
+
+#include "Dataflash-Wrapper/dataflash_c_iface.h"
+#include "SD-Wrapper/sdcard_c_iface.h"
 
 #define TEST 0
 #if TEST == 0
