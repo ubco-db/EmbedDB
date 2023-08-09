@@ -188,12 +188,16 @@ void runalltests_sbits() {
             state->dataFile = setupSDFile(dataPath);
             state->indexFile = setupSDFile(indexPath);
             state->varFile = setupSDFile(varPath);
-        } else if (STORAGE_TYPE == 1) {
-            state->fileInterface = getDataflashInterface();
-            state->dataFile = setupDataflashFile(0, state->numDataPages);
-            state->indexFile = setupDataflashFile(state->numDataPages, state->numIndexPages);
-            state->varFile = setupDataflashFile(state->numDataPages + state->numIndexPages, state->numVarPages);
-        }
+        } 
+
+        #if defined(MEMBOARD)
+            if (STORAGE_TYPE == 1) {
+                state->fileInterface = getDataflashInterface();
+                state->dataFile = setupDataflashFile(0, state->numDataPages);
+                state->indexFile = setupDataflashFile(state->numDataPages, state->numIndexPages);
+                state->varFile = setupDataflashFile(state->numDataPages + state->numIndexPages, state->numVarPages);
+            }
+        #endif
 
         state->parameters = SBITS_USE_BMAP | SBITS_USE_INDEX | SBITS_RESET_DATA;
 
@@ -525,11 +529,14 @@ void runalltests_sbits() {
             tearDownSDFile(state->dataFile);
             tearDownSDFile(state->indexFile);
             tearDownSDFile(state->varFile);
-        } else {
-            tearDownDataflashFile(state->dataFile);
-            tearDownDataflashFile(state->indexFile);
-            tearDownDataflashFile(state->varFile);
         }
+        #if defined(MEMBOARD)
+            if(STORAGE_TYPE == 1) {
+                tearDownDataflashFile(state->dataFile);
+                tearDownDataflashFile(state->indexFile);
+                tearDownDataflashFile(state->varFile);
+            }
+        #endif
         free(state);
     }
 
