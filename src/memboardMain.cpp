@@ -58,9 +58,9 @@ static ArduinoOutStream cout(Serial);
 #include "SdFat.h"
 #include "sd_test.h"
 
-#include "Dataflash-Wrapper/dataflash_c_iface.h"
-#include "SD-Wrapper/sdcard_c_iface.h"
-#include "Serial-Wrapper/serial_c_iface.h"
+#include "dataflash_c_iface.h"
+#include "sdcard_c_iface.h"
+#include "serial_c_iface.h"
 
 #define TEST 0
 #if TEST == 0

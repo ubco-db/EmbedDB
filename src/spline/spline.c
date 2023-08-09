@@ -41,7 +41,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "Serial-Wrapper/serial_c_iface.h"
+#include "serial_c_iface.h"
 
 /**
  * @brief    Initialize a spline structure with given maximum size and error.

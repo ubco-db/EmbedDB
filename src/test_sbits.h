@@ -44,7 +44,7 @@
 
 #include "sbits/sbits.h"
 #include "sbits-utility.h"
-#include "SD-Wrapper/sdcard_c_iface.h"
+#include "sdcard_c_iface.h"
 
 #if defined(MEGA)
 #include "SDFileInterface.h"

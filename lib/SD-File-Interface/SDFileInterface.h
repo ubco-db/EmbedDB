@@ -6,7 +6,7 @@ extern "C" {
 #include <string.h>
 
 #include "../../src/sbits/sbits.h"
-#include "SD-Wrapper/sdcard_c_iface.h"
+#include "sdcard_c_iface.h"
 
 sbitsFileInterface *getSDInterface();
 void *setupSDFile(char *filename);

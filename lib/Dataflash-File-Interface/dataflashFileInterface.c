@@ -1,5 +1,5 @@
 #include "dataflashFileInterface.h"
-#include "Dataflash-Wrapper/dataflash_c_iface.h"
+#include "dataflash_c_iface.h"
 
 typedef struct {
     uint32_t startPage;
