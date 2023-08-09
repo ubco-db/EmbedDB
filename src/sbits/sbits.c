@@ -48,6 +48,7 @@
 
 #include "../spline/radixspline.h"
 #include "../spline/spline.h"
+#include "Serial-Wrapper/serial_c_iface.h"
 
 /**
  * 0 = Modified binary search

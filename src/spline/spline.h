@@ -43,8 +43,6 @@ extern "C" {
 #include <stdint.h>
 #include <stdio.h>
 
-#include "Serial-Wrapper/serial_c_iface.h"
-
 /* Define type for keys and location ids. */
 typedef uint32_t id_t;
 

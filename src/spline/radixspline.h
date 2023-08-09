@@ -48,8 +48,6 @@ extern "C" {
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "Serial-Wrapper/serial_c_iface.h"
-
 #include "spline.h"
 
 #define TO_BINARY_PATTERN "%c%c%c%c%c%c%c%c"
