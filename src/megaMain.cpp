@@ -23,12 +23,10 @@ static ArduinoOutStream cout(Serial);
 #endif
 
 #define ENABLE_DEDICATED_SPI 1
-#define SPI_DRIVER_SELECT 1
-// SD_FAT_TYPE = 0 for SdFat/File as defined in SdFatConfig.h,
-// 1 for FAT16/FAT32, 2 for exFAT, 3 for FAT16/FAT32 and exFAT.
 #define SD_FAT_TYPE 1
 /** @TODO Update max SPI speed for SD card */
-#define SD_CONFIG SdSpiConfig(CS_SD, DEDICATED_SPI, SD_SCK_MHZ(12), &(SPISettings()))
+const uint8_t SD_CS_PIN = SS;
+#define SD_CONFIG SdSpiConfig(SD_CS_PIN, SHARED_SPI, SD_SCK_MHZ(12))
 
 SdFat32 sd;
 File32 file;
@@ -37,15 +35,13 @@ File32 file;
 bool test_sd_card();
 
 void setup() {
-    Serial.begin(115200);
+    Serial.begin(9600);
     while (!Serial) {
         delay(1);
     }
 
     delay(1000);
     Serial.println("Skeleton startup");
-
-    pinMode(LED_BUILTIN, OUTPUT);
 
     /* Setup for SD card */
     Serial.print("\nInitializing SD card...");
@@ -64,6 +60,7 @@ void setup() {
 }
 
 void loop() {
+    // Serial.println("Finished\n");
     digitalWrite(LED_BUILTIN, HIGH);  // turn the LED on (HIGH is the voltage level)
     delay(1000);                      // wait for a second
     digitalWrite(LED_BUILTIN, LOW);   // turn the LED off by making the voltage LOW
@@ -73,7 +70,7 @@ void loop() {
 /**
  * Testing for SD card -> Can be removed as needed */
 bool test_sd_card() {
-    if (!sd.cardBegin(SD_CHIP_SELECT, SD_SCK_MHZ(50))) {
+    if (!sd.cardBegin(SD_CONFIG)) {
         Serial.println(F(
             "\nSD initialization failed.\n"
             "Do not reformat the card!\n"
