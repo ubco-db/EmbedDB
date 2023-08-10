@@ -23,9 +23,11 @@ Includes for DataFlash memory
 static ArduinoOutStream cout(Serial);
 
 #include "../src/sbits/sbits.h"
-#include "../src/sbits/utilityFunctions.h"
+#include "sbits-utility.h"
 #include "SdFat.h"
 #include "sd_test.h"
+#include "dataflashFileInterface.h"
+#include "SDFileInterface.h"
 #include "unity.h"
 
 #define ENABLE_DEDICATED_SPI 1

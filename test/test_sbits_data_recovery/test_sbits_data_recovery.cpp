@@ -23,10 +23,12 @@ Includes for DataFlash memory
 static ArduinoOutStream cout(Serial);
 
 #include "../src/sbits/sbits.h"
-#include "../src/sbits/utilityFunctions.h"
+#include "sbits-utility.h"
 #include "SdFat.h"
 #include "sd_test.h"
-#include "unity.h"
+#include "dataflashFileInterface.h"
+#include "SDFileInterface.h"
+#include <unity.h>
 
 #define ENABLE_DEDICATED_SPI 1
 #define SPI_DRIVER_SELECT 1
@@ -114,29 +116,6 @@ void insertRecordsParabolic(int32_t startingKey, int64_t startingData, int32_t n
         TEST_ASSERT_EQUAL_INT8_MESSAGE(0, result, "sbitsPut did not correctly insert data (returned non-zero code)");
     }
     free(data);
-}
-
-int queryRecordsLinearly(sbitsState *state, uint32_t numberOfRecords, int32_t startingKey, int64_t startingData) {
-    int64_t *result = (int64_t *)malloc(state->recordSize);
-    int32_t key = startingKey;
-    int64_t data = startingData;
-    for (uint32_t i = 0; i < numberOfRecords; i++) {
-        key = startingKey += 1;
-        data += 1;
-        int8_t getStatus = sbitsGet(state, &key, (void *)result);
-        if (getStatus != 0) {
-            printf("ERROR: Failed to find: %lu\n", key);
-            return 1;
-        }
-        if (*((int64_t *)result) != data) {
-            printf("ERROR: Wrong data for: %lu\n", key);
-            printf("Key: %lu Data: %lu\n", key, *((int64_t *)result));
-            free(result);
-            return 1;
-        }
-    }
-    free(result);
-    return 0;
 }
 
 void setupBoard() {
