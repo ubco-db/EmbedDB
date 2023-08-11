@@ -1,32 +1,6 @@
-
-#include "Arduino.h"
-#include "SPI.h"
-#include "dataflash_c_iface.h"
-#include "sdcard_c_iface.h"
-
-/**
- * SPI configurations for memory */
-#include "mem_spi.h"
-
-/*
-Includes for DataFlash memory
-*/
-// #include "at45db32_test.h"
-#include "dataflash.h"
-
-/**
- * Includes for SD card
- */
-/** @TODO optimize for clock speed */
-#include "sdios.h"
-static ArduinoOutStream cout(Serial);
-
 #include "../src/sbits/sbits.h"
 #include "sbits-utility.h"
-#include "SdFat.h"
-#include "sd_test.h"
 #include "memboard-test-steup.h"
-#include "dataflashFileInterface.h"
 #include "SDFileInterface.h"
 #include "unity.h"
 
