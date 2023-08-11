@@ -5,6 +5,10 @@
 #include "memboard-test-setup.h"
 #endif
 
+#if defined(MEGA)
+#include "mega-test-setup.h"
+#endif
+
 #include "SDFileInterface.h"
 #include "unity.h"
 

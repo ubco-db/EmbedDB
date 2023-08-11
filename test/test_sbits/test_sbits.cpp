@@ -5,6 +5,10 @@
 #include "memboard-test-setup.h"
 #endif
 
+#if defined(MEGA)
+#include "mega-test-setup.h"
+#endif
+
 #include "SDFileInterface.h"
 #include "unity.h"
 
@@ -12,7 +16,7 @@ sbitsState *state;
 
 void setupSbits() {
     state = (sbitsState *)malloc(sizeof(sbitsState));
-    int8_t M = 6;
+    int8_t M = 2;
     if (state == NULL) {
         printf("Unable to allocate state. Exiting.\n");
         return;
@@ -33,22 +37,19 @@ void setupSbits() {
     state->numDataPages = 1000;
     state->eraseSizeInPages = 4;
 
-    char dataPath[] = "dataFile.bin", indexPath[] = "indexFile.bin", varPath[] = "varFile.bin";
+    char dataPath[] = "dataFile.bin";
     state->fileInterface = getSDInterface();
     state->dataFile = setupSDFile(dataPath);
-    state->indexFile = setupSDFile(indexPath);
-    state->varFile = setupSDFile(varPath);
 
     state->parameters = SBITS_RESET_DATA;
 
-    /* Setup for data and bitmap comparison functions */
-    state->inBitmap = inBitmapInt8;
-    state->updateBitmap = updateBitmapInt8;
-    state->buildBitmapFromRange = buildBitmapInt8FromRange;
+    /* Setup for datacomparison functions */
     state->compareKey = int32Comparator;
     state->compareData = int32Comparator;
+    
     int8_t result = sbitsInit(state, 1);
     TEST_ASSERT_EQUAL_INT8_MESSAGE(0, result, "SBITS did not initialize correctly.");
+    printf("Init success\n");
 }
 
 void setUp(void) {
@@ -56,10 +57,10 @@ void setUp(void) {
 }
 
 void tearDown(void) {
-    free(state->buffer);
     sbitsClose(state);
     tearDownSDFile(state->dataFile);
     free(state->fileInterface);
+    free(state->buffer);
     free(state);
 }
 
@@ -206,6 +207,7 @@ void iteratorReturnsCorrectRecords(void) {
         expectedNum++;
     }
     TEST_ASSERT_EQUAL_UINT32_MESSAGE(expectedNum, numRecordsRead, "Iterator did not read the correct number of records");
+    sbitsCloseIterator(&it);
 }
 
 int runUnityTests(void) {

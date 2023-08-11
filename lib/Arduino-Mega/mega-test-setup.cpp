@@ -1,41 +1,12 @@
-#ifndef PIO_UNIT_TESTING
+#include "mega-test-setup.h"
 
-#include "Arduino.h"
-#include "SPI.h"
-
-/**
- * Includes for SD card
- */
-/** @TODO optimize for clock speed */
-#include "sdios.h"
 static ArduinoOutStream cout(Serial);
-
-#include "SdFat.h"
-#include "sd_test.h"
-#include "sdcard_c_iface.h"
-#include "serial_c_iface.h"
-#include <math.h>
-
-#define TEST 0
-#if TEST == 0
-#include "test_sbits.h"
-#elif TEST == 1
-#include "varTest.h"
-#endif
-
-#define ENABLE_DEDICATED_SPI 1
-#define SD_FAT_TYPE 1
-/** @TODO Update max SPI speed for SD card */
-const uint8_t SD_CS_PIN = SS;
-#define SD_CONFIG SdSpiConfig(SD_CS_PIN, SHARED_SPI, SD_SCK_MHZ(12))
 
 SdFat32 sd;
 File32 file;
+const uint8_t SD_CS_PIN = SS;
 
-// Headers
-bool test_sd_card();
-
-void setup() {
+void setupBoard() {
     Serial.begin(9600);
     while (!Serial) {
         delay(1);
@@ -53,23 +24,8 @@ void setup() {
     }
 
     init_sdcard((void *)&sd);
-#if TEST == 0
-    runalltests_sbits();
-#elif TEST == 1
-    test_vardata();
-#endif
 }
 
-void loop() {
-    // Serial.println("Finished\n");
-    digitalWrite(LED_BUILTIN, HIGH);  // turn the LED on (HIGH is the voltage level)
-    delay(1000);                      // wait for a second
-    digitalWrite(LED_BUILTIN, LOW);   // turn the LED off by making the voltage LOW
-    delay(1000);                      // wait for a second
-}
-
-/**
- * Testing for SD card -> Can be removed as needed */
 bool test_sd_card() {
     if (!sd.cardBegin(SD_CONFIG)) {
         Serial.println(F(
@@ -108,5 +64,3 @@ bool test_sd_card() {
     dmpVol(sd);
     return true;
 }
-
-#endif
