@@ -1,3 +1,6 @@
+#if !defined(MEMBOARD_TEST_SETUP)
+#define MEMBOARD_TEST_SETUP
+
 #include "Arduino.h"
 #include "SPI.h"
 #include "dataflash_c_iface.h"
@@ -17,11 +20,11 @@ Includes for DataFlash memory
  * Includes for SD card
  */
 /** @TODO optimize for clock speed */
-#include "sdios.h"
-
 #include "SdFat.h"
-#include "sbits-utility.h"
 #include "sd_test.h"
+#include "sdios.h"
 
 bool test_sd_card();
 void setupBoard();
+
+#endif

@@ -1,3 +1,6 @@
+#if !defined(DATAFLASH_FILE_INTERFACE)
+#define DATAFLASH_FILE_INTERFACE
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -13,4 +16,6 @@ void tearDownDataflashFile(void *file);
 
 #ifdef __cplusplus
 }
+#endif
+
 #endif

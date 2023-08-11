@@ -1,6 +1,10 @@
 #include "../src/sbits/sbits.h"
 #include "sbits-utility.h"
-#include "memboard-test-steup.h"
+
+#if defined(MEMBOARD)
+#include "memboard-test-setup.h"
+#endif
+
 #include "SDFileInterface.h"
 #include "unity.h"
 

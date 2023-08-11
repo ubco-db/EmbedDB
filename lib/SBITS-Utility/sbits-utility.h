@@ -7,6 +7,9 @@
  * differently depending on the application.
  */
 
+#if !defined(SBITS_UTILITY)
+#define SBITS_UTILITY
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -28,4 +31,6 @@ int8_t int64Comparator(void *a, void *b);
 
 #ifdef __cplusplus
 }
+#endif
+
 #endif
