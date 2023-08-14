@@ -1,4 +1,4 @@
-#include "memboard-test-setup.h"
+#include "memboardTestSetup.h"
 
 static ArduinoOutStream cout(Serial);
 

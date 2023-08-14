@@ -1,8 +1,8 @@
 /******************************************************************************/
 /**
- * @file		    main.cpp
- * @author		  Ramon Lawrence, Scott Fazackerley
- * @brief		  Main Arduino program for testing SBITS implementation on custom hardware.
+ * @file	    memboardMain.cpp
+ * @author		Ramon Lawrence, Scott Fazackerley
+ * @brief		Main Arduino program for testing SBITS implementation on custom hardware.
  * @copyright	Copyright 2021
  *                               The University of British Columbia,
  *             Ramon Lawrence
@@ -61,9 +61,9 @@ static ArduinoOutStream cout(Serial);
 #include "sdcard_c_iface.h"
 #include "serial_c_iface.h"
 
-#define TEST 0
+#define TEST 1
 #if TEST == 0
-#include "test_sbits.h"
+#include "testSbits.h"
 #elif TEST == 1
 #include "varTest.h"
 #endif

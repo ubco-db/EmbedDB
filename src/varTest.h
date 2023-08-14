@@ -8,7 +8,21 @@
 #include <time.h>
 
 #include "sbits/sbits.h"
-#include "sbits/utilityFunctions.h"
+#include "sbitsUtility.h"
+#include "sdcard_c_iface.h"
+
+#if defined(MEGA)
+#include "SDFileInterface.h"
+#endif
+
+#if defined(DUE)
+#include "SDFileInterface.h"
+#endif
+
+#if defined(MEMBOARD)
+#include "SDFileInterface.h"
+#include "dataflashFileInterface.h"
+#endif
 
 #define NUM_STEPS 100
 #define NUM_RUNS 1
@@ -18,6 +32,7 @@
  * 1 = Dataflash
  */
 #define STORAGE_TYPE 0
+
 /**
  * 0 = Random data
  * 1 = Image data
@@ -158,13 +173,16 @@ void test_vardata() {
             state->dataFile = setupSDFile(dataPath);
             state->indexFile = setupSDFile(indexPath);
             state->varFile = setupSDFile(varPath);
-        } else if (STORAGE_TYPE == 1) {
+        }
+
+#if defined(MEMBOARD)
+        if (STORAGE_TYPE == 1) {
             state->fileInterface = getDataflashInterface();
             state->dataFile = setupDataflashFile(0, state->numDataPages);
             state->indexFile = setupDataflashFile(state->numDataPages, state->numIndexPages);
             state->varFile = setupDataflashFile(state->numDataPages + state->numIndexPages, state->numVarPages);
         }
-
+#endif
         state->parameters = SBITS_USE_BMAP | SBITS_USE_INDEX | SBITS_USE_VDATA | SBITS_RESET_DATA;
 
         if (SBITS_USING_BMAP(state->parameters))
@@ -461,7 +479,7 @@ void test_vardata() {
                                 memcpy(reconstructed + total, varDataBuf, bytesRead);
                                 total += bytesRead;
                             }
-                            printf("Var data: %s\n", reconstructed);
+                            // printf("Var data: %s\n", reconstructed);
                         }
                         free(varStream);
                         varStream = NULL;
@@ -509,7 +527,7 @@ void test_vardata() {
                                 memcpy(reconstructed + total, varDataBuf, bytesRead);
                                 total += bytesRead;
                             }
-                            printf("Var data: %s\n", reconstructed);
+                            // printf("Var data: %s\n", reconstructed);
                             free(varStream);
                             varStream = NULL;
                         }
@@ -602,7 +620,7 @@ void test_vardata() {
                                     memcpy(reconstructed + total, varDataBuf, bytesRead);
                                     total += bytesRead;
                                 }
-                                printf("Var data: %s\n", reconstructed);
+                                // printf("Var data: %s\n", reconstructed);
                             }
                             free(varStream);
                             varStream = NULL;
@@ -673,7 +691,7 @@ void test_vardata() {
                                 memcpy(reconstructed + total, varDataBuf, bytesRead);
                                 total += bytesRead;
                             }
-                            printf("Var data: %s\n", reconstructed);
+                            // printf("Var data: %s\n", reconstructed);
                         }
                         free(varStream);
                         varStream = NULL;
@@ -723,7 +741,7 @@ void test_vardata() {
                                 memcpy(reconstructed + total, varDataBuf, bytesRead);
                                 total += bytesRead;
                             }
-                            printf("Var data: %s\n", reconstructed);
+                            // printf("Var data: %s\n", reconstructed);
                             free(varStream);
                             varStream = NULL;
                         }
@@ -766,11 +784,16 @@ void test_vardata() {
             tearDownSDFile(state->dataFile);
             tearDownSDFile(state->indexFile);
             tearDownSDFile(state->varFile);
-        } else {
+        }
+
+#if defined(MEMBOARD)
+        if (STORAGE_TYPE == 1) {
             tearDownDataflashFile(state->dataFile);
             tearDownDataflashFile(state->indexFile);
             tearDownDataflashFile(state->varFile);
         }
+#endif
+
         free(recordBuffer);
         free(state->buffer);
         free(state->fileInterface);
@@ -989,8 +1012,19 @@ void retrieveImageData(sbitsState *state, sbitsVarDataStream *varStream, int32_t
     writeDataToFile(state, varStream, file);
 }
 
-uint8_t dataEquals(void *varData, uint32_t length, Node *node) {
-    return length == node->length && memcmp(varData, node->data, length) == 0;
+uint8_t dataEquals(sbitsState *state, sbitsVarDataStream *varStream, Node *node) {
+    if (varStream == NULL) {
+        return 0;
+    } else {
+        void *data = malloc(node->length + 1);
+        uint32_t length = sbitsVarDataStreamRead(state, varStream, data, node->length + 1);
+
+        // Reset iterator
+        varStream->bytesRead = 0;
+        varStream->fileOffset = varStream->dataStart;  // Set flag that the next read is the first read
+
+        return length == node->length && memcmp(data, node->data, length) == 0;
+    }
 }
 
 #endif

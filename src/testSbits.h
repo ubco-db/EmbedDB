@@ -42,7 +42,7 @@
 #include <string.h>
 #include <time.h>
 
-#include "sbits-utility.h"
+#include "sbitsUtility.h"
 #include "sbits/sbits.h"
 #include "sdcard_c_iface.h"
 

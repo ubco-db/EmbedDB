@@ -1,12 +1,12 @@
 #include "../src/sbits/sbits.h"
-#include "sbits-utility.h"
+#include "sbitsUtility.h"
 
 #if defined(MEMBOARD)
-#include "memboard-test-setup.h"
+#include "memboardTestSetup.h"
 #endif
 
 #if defined(MEGA)
-#include "mega-test-setup.h"
+#include "megaTestSetup.h"
 #endif
 
 #if defined(DUE)

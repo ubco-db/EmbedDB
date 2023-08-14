@@ -1,4 +1,4 @@
-#include "mega-test-setup.h"
+#include "megaTestSetup.h"
 
 static ArduinoOutStream cout(Serial);
 

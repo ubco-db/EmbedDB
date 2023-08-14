@@ -1,5 +1,5 @@
-#if !defined(MEGA_TEST_SETUP)
-#define MEGA_TEST_SETUP
+#if !defined(DUE_TEST_SETUP)
+#define DUE_TEST_SETUP
 
 #include "Arduino.h"
 #include "SPI.h"

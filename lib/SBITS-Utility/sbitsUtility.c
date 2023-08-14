@@ -7,7 +7,7 @@
  * differently depending on the application.
  */
 
-#include "sbits-utility.h"
+#include "sbitsUtility.h"
 
 #include <string.h>
 

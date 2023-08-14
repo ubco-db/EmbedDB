@@ -1,12 +1,12 @@
 #include "../src/sbits/sbits.h"
-#include "sbits-utility.h"
+#include "sbitsUtility.h"
 
 #if defined(MEMBOARD)
-#include "memboard-test-setup.h"
+#include "memboardTestSetup.h"
 #endif
 
 #if defined(MEGA)
-#include "mega-test-setup.h"
+#include "megaTestSetup.h"
 #endif
 
 #if defined(DUE)
@@ -50,7 +50,7 @@ void setupSbits() {
     /* Setup for datacomparison functions */
     state->compareKey = int32Comparator;
     state->compareData = int32Comparator;
-    
+
     int8_t result = sbitsInit(state, 1);
     TEST_ASSERT_EQUAL_INT8_MESSAGE(0, result, "SBITS did not initialize correctly.");
     printf("Init success\n");
