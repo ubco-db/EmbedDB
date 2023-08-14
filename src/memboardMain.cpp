@@ -61,7 +61,7 @@ static ArduinoOutStream cout(Serial);
 #include "sdcard_c_iface.h"
 #include "serial_c_iface.h"
 
-#define TEST 1
+#define TEST 0
 #if TEST == 0
 #include "testSbits.h"
 #elif TEST == 1
