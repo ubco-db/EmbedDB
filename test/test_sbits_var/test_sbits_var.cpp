@@ -9,6 +9,10 @@
 #include "mega-test-setup.h"
 #endif
 
+#if defined(DUE)
+#include "dueTestSetup.h"
+#endif
+
 #include "SDFileInterface.h"
 #include "unity.h"
 

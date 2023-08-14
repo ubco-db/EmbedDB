@@ -50,6 +50,10 @@
 #include "SDFileInterface.h"
 #endif
 
+#if defined(DUE)
+#include "SDFileInterface.h"
+#endif
+
 #if defined(MEMBOARD)
 #include "dataflashFileInterface.h"
 #include "SDFileInterface.h"
