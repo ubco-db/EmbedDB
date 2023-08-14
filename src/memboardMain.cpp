@@ -56,9 +56,8 @@ Includes for DataFlash memory
 static ArduinoOutStream cout(Serial);
 
 #include "SdFat.h"
-#include "sd_test.h"
-
 #include "dataflash_c_iface.h"
+#include "sd_test.h"
 #include "sdcard_c_iface.h"
 #include "serial_c_iface.h"
 

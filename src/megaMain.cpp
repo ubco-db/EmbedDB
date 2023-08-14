@@ -10,11 +10,12 @@
 #include "sdios.h"
 static ArduinoOutStream cout(Serial);
 
+#include <math.h>
+
 #include "SdFat.h"
 #include "sd_test.h"
 #include "sdcard_c_iface.h"
 #include "serial_c_iface.h"
-#include <math.h>
 
 #define TEST 0
 #if TEST == 0
