@@ -20,7 +20,6 @@ sbitsState *state;
 
 void setupSbits() {
     state = (sbitsState *)malloc(sizeof(sbitsState));
-    int8_t M = 2;
     if (state == NULL) {
         printf("Unable to allocate state. Exiting.\n");
         return;
@@ -29,14 +28,10 @@ void setupSbits() {
     state->keySize = 4;
     state->dataSize = 4;
     state->pageSize = 512;
-    state->bitmapSize = 0;
-    state->bufferSizeInBlocks = M;
+    state->bufferSizeInBlocks = 2;
     state->buffer = malloc((size_t)state->bufferSizeInBlocks * state->pageSize);
-    if (state->buffer == NULL) {
-        printf("Unable to allocate buffer. Exiting.\n");
-        return;
-    }
-
+    TEST_ASSERT_NOT_NULL_MESSAGE(state->buffer, "Failed to allocate SBITS buffer.");
+    
     /* Address level parameters */
     state->numDataPages = 1000;
     state->eraseSizeInPages = 4;
@@ -53,7 +48,6 @@ void setupSbits() {
 
     int8_t result = sbitsInit(state, 1);
     TEST_ASSERT_EQUAL_INT8_MESSAGE(0, result, "SBITS did not initialize correctly.");
-    printf("Init success\n");
 }
 
 void setUp(void) {
@@ -61,10 +55,10 @@ void setUp(void) {
 }
 
 void tearDown(void) {
+    free(state->buffer);
     sbitsClose(state);
     tearDownSDFile(state->dataFile);
     free(state->fileInterface);
-    free(state->buffer);
     free(state);
 }
 

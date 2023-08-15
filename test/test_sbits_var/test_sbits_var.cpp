@@ -38,6 +38,7 @@ void initState(uint32_t dataSize) {
     state->pageSize = 512;
     state->bufferSizeInBlocks = 6;
     state->buffer = calloc(1, state->pageSize * state->bufferSizeInBlocks);
+    TEST_ASSERT_NOT_NULL_MESSAGE(state->buffer, "Failed to allocate SBITS buffer.");
     state->numDataPages = 1000;
     state->numIndexPages = 48;
     state->numVarPages = 1000;

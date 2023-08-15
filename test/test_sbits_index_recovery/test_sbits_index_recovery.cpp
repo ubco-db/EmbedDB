@@ -23,8 +23,9 @@ void setupSbits() {
     state->keySize = 4;
     state->dataSize = 4;
     state->pageSize = 512;
-    state->bufferSizeInBlocks = 6;
+    state->bufferSizeInBlocks = 4;
     state->buffer = calloc(1, state->pageSize * state->bufferSizeInBlocks);
+    TEST_ASSERT_NOT_NULL_MESSAGE(state->buffer, "Failed to allocate SBITS buffer.");
 
     state->fileInterface = getSDInterface();
     char dataPath[] = "dataFile.bin", indexPath[] = "indexFile.bin";
@@ -50,8 +51,9 @@ void initalizeSbitsFromFile() {
     state->keySize = 4;
     state->dataSize = 4;
     state->pageSize = 512;
-    state->bufferSizeInBlocks = 6;
+    state->bufferSizeInBlocks = 4;
     state->buffer = calloc(1, state->pageSize * state->bufferSizeInBlocks);
+    TEST_ASSERT_NOT_NULL_MESSAGE(state->buffer, "Failed to allocate SBITS buffer.");
 
     state->fileInterface = getSDInterface();
     char dataPath[] = "dataFile.bin", indexPath[] = "indexFile.bin";

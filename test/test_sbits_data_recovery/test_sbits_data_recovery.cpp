@@ -28,17 +28,13 @@ void setupSbits() {
     state->keySize = 4;
     state->dataSize = 8;
     state->pageSize = 512;
-    state->bufferSizeInBlocks = 6;
+    state->bufferSizeInBlocks = 4;
     state->buffer = malloc((size_t)state->bufferSizeInBlocks * state->pageSize);
-    if (state->buffer == NULL) {
-        printf("Unable to allocate buffer. Exiting.\n");
-        return;
-    }
+    TEST_ASSERT_NOT_NULL_MESSAGE(state->buffer, "Failed to allocate SBITS buffer.");
 
     /* Address level parameters */
     state->numDataPages = 93;
     state->eraseSizeInPages = 4;
-    state->bitmapSize = 0;
     state->parameters = SBITS_RESET_DATA;
 
     char dataPath[] = "dataFile.bin";
@@ -46,9 +42,6 @@ void setupSbits() {
     state->dataFile = setupSDFile(dataPath);
 
     /* Setup for data and bitmap comparison functions */
-    state->inBitmap = inBitmapInt8;
-    state->updateBitmap = updateBitmapInt8;
-    state->buildBitmapFromRange = buildBitmapInt8FromRange;
     state->compareKey = int32Comparator;
     state->compareData = int64Comparator;
 
@@ -104,12 +97,9 @@ void initalizeSbitsFromFile(void) {
     state->keySize = 4;
     state->dataSize = 8;
     state->pageSize = 512;
-    state->bufferSizeInBlocks = 6;
+    state->bufferSizeInBlocks = 4;
     state->buffer = malloc((size_t)state->bufferSizeInBlocks * state->pageSize);
-    if (state->buffer == NULL) {
-        printf("Unable to allocate buffer. Exiting.\n");
-        return;
-    }
+    TEST_ASSERT_NOT_NULL_MESSAGE(state->buffer, "Failed to allocate SBITS buffer.");
 
     char dataPath[] = "dataFile.bin";
     state->fileInterface = getSDInterface();
@@ -117,12 +107,8 @@ void initalizeSbitsFromFile(void) {
 
     state->numDataPages = 93;
     state->eraseSizeInPages = 4;
-    state->bitmapSize = 0;
     state->parameters = 0;
 
-    state->inBitmap = inBitmapInt8;
-    state->updateBitmap = updateBitmapInt8;
-    state->buildBitmapFromRange = buildBitmapInt8FromRange;
     state->compareKey = int32Comparator;
     state->compareData = int64Comparator;
     int8_t result = sbitsInit(state, 1);

@@ -23,8 +23,9 @@ void setupSbits() {
     state->keySize = 4;
     state->dataSize = 4;
     state->pageSize = 512;
-    state->bufferSizeInBlocks = 6;
+    state->bufferSizeInBlocks = 4;
     state->buffer = calloc(1, state->pageSize * state->bufferSizeInBlocks);
+    TEST_ASSERT_NOT_NULL_MESSAGE(state->buffer, "Failed to allocate SBITS buffer.");
 
     state->fileInterface = getSDInterface();
     char dataPath[] = "dataFile.bin", varPath[] = "varFile.bin";
@@ -34,11 +35,7 @@ void setupSbits() {
     state->numDataPages = 65;
     state->numVarPages = 75;
     state->eraseSizeInPages = 4;
-    state->bitmapSize = 0;
     state->parameters = SBITS_USE_VDATA | SBITS_RESET_DATA;
-    state->inBitmap = inBitmapInt8;
-    state->updateBitmap = updateBitmapInt8;
-    state->buildBitmapFromRange = buildBitmapInt8FromRange;
     state->compareKey = int32Comparator;
     state->compareData = int32Comparator;
     int8_t result = sbitsInit(state, 1);
@@ -51,8 +48,9 @@ void initalizeSbitsFromFile() {
     state->keySize = 4;
     state->dataSize = 4;
     state->pageSize = 512;
-    state->bufferSizeInBlocks = 6;
+    state->bufferSizeInBlocks = 4;
     state->buffer = calloc(1, state->pageSize * state->bufferSizeInBlocks);
+    TEST_ASSERT_NOT_NULL_MESSAGE(state->buffer, "Failed to allocate SBITS buffer.");
 
     state->fileInterface = getSDInterface();
     char dataPath[] = "dataFile.bin", varPath[] = "varFile.bin";
@@ -63,11 +61,7 @@ void initalizeSbitsFromFile() {
     state->numVarPages = 75;
     state->eraseSizeInPages = 4;
 
-    state->bitmapSize = 0;
     state->parameters = SBITS_USE_VDATA;
-    state->inBitmap = inBitmapInt8;
-    state->updateBitmap = updateBitmapInt8;
-    state->buildBitmapFromRange = buildBitmapInt8FromRange;
     state->compareKey = int32Comparator;
     state->compareData = int32Comparator;
     int8_t result = sbitsInit(state, 1);
