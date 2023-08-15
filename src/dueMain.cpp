@@ -1,8 +1,8 @@
 /******************************************************************************/
 /**
- * @file		    main.cpp
- * @author		  Ramon Lawrence, Scott Fazackerley
- * @brief		  Main Arduino program for testing SBITS implementation on custom hardware.
+ * @file	    dueMain.cpp
+ * @author		Ramon Lawrence, Scott Fazackerley
+ * @brief		Main Arduino program for testing SBITS implementation on custom hardware.
  * @copyright	Copyright 2021
  *                               The University of British Columbia,
  *             Ramon Lawrence
@@ -40,39 +40,31 @@
 #include "SPI.h"
 
 /**
- * SPI configurations for memory */
-#include "mem_spi.h"
-
-/*
-Includes for DataFlash memory
-*/
-// #include "at45db32_test.h"
-#include "dataflash.h"
-
-/**
  * Includes for SD card
  */
 /** @TODO optimize for clock speed */
 #include "sdios.h"
 static ArduinoOutStream cout(Serial);
 
+#include <math.h>
+
 #include "SdFat.h"
 #include "sd_test.h"
+#include "sdcard_c_iface.h"
+#include "serial_c_iface.h"
 
 #define TEST 0
 #if TEST == 0
-#include "test_sbits.h"
+#include "testSbits.h"
 #elif TEST == 1
 #include "varTest.h"
 #endif
 
 #define ENABLE_DEDICATED_SPI 1
-#define SPI_DRIVER_SELECT 1
-// SD_FAT_TYPE = 0 for SdFat/File as defined in SdFatConfig.h,
-// 1 for FAT16/FAT32, 2 for exFAT, 3 for FAT16/FAT32 and exFAT.
 #define SD_FAT_TYPE 1
 /** @TODO Update max SPI speed for SD card */
-#define SD_CONFIG SdSpiConfig(CS_SD, DEDICATED_SPI, SD_SCK_MHZ(12), &spi_0)
+const uint8_t SD_CS_PIN = 4;
+#define SD_CONFIG SdSpiConfig(SD_CS_PIN, SHARED_SPI, SD_SCK_MHZ(12))
 
 SdFat32 sd;
 File32 file;
@@ -81,16 +73,13 @@ File32 file;
 bool test_sd_card();
 
 void setup() {
-    Serial.begin(115200);
+    Serial.begin(9600);
     while (!Serial) {
         delay(1);
     }
 
     delay(1000);
     Serial.println("Skeleton startup");
-
-    pinMode(CHK_LED, OUTPUT);
-    pinMode(PULSE_LED, OUTPUT);
 
     /* Setup for SD card */
     Serial.print("\nInitializing SD card...");
@@ -101,32 +90,6 @@ void setup() {
     }
 
     init_sdcard((void *)&sd);
-
-    /* Setup for data flash memory (DB32 512 byte pages) */
-    pinMode(CS_DB32, OUTPUT);
-    digitalWrite(CS_DB32, HIGH);
-
-    at45db32_m.spi->begin();
-
-    df_initialize(&at45db32_m);
-    cout << "AT45DF32"
-         << "\n";
-    cout << "page size: " << (at45db32_m.actual_page_size = get_page_size(&at45db32_m)) << "\n";
-    cout << "status: " << get_ready_status(&at45db32_m) << "\n";
-    cout << "page size: " << (at45db32_m.actual_page_size) << "\n";
-    at45db32_m.bits_per_page = (uint8_t)ceil(log2(at45db32_m.actual_page_size));
-    cout << "bits per page: " << (unsigned int)at45db32_m.bits_per_page << "\n";
-    /*
-    char *result = at45db32_all_tests();
-
-    if (result != 0)
-       cout << result << "\n";
-    else
-      cout << "ALL TESTS PASSED\n";
-    */
-
-    init_df((void *)&at45db32_m);
-
 #if TEST == 0
     runalltests_sbits();
 #elif TEST == 1
@@ -135,13 +98,11 @@ void setup() {
 }
 
 void loop() {
-    digitalWrite(CHK_LED, HIGH);
-    digitalWrite(PULSE_LED, HIGH);
-
-    delay(1000);
-    digitalWrite(CHK_LED, LOW);
-    digitalWrite(PULSE_LED, LOW);
-    delay(1000);
+    // Serial.println("Finished\n");
+    digitalWrite(LED_BUILTIN, HIGH);  // turn the LED on (HIGH is the voltage level)
+    delay(1000);                      // wait for a second
+    digitalWrite(LED_BUILTIN, LOW);   // turn the LED off by making the voltage LOW
+    delay(1000);                      // wait for a second
 }
 
 /**

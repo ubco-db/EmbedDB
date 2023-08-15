@@ -9,6 +9,7 @@
 
 #include "mem_spi.h"
 
+
 /** @TODO better name? **/
 SPIClass spi_0(&sercom0, MISO_SD, SCLK_SD, MOSI_SD, SPI_PAD_0_SCK_1, SERCOM_RX_PAD_2);
 

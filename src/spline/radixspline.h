@@ -44,15 +44,10 @@
 extern "C" {
 #endif
 
+#include <math.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
-
-#if defined(ARDUINO)
-#include "dataflash_c_iface.h"
-#include "sdcard_c_iface.h"
-#include "serial_c_iface.h"
-#endif
 
 #include "spline.h"
 

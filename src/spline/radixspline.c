@@ -46,6 +46,8 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "serial_c_iface.h"
+
 /**
  * @brief   Build the radix table
  * @param   rsdix       Radix spline structure

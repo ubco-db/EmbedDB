@@ -1,44 +1,22 @@
-#include <math.h>
-#include <string.h>
-
-#include "Arduino.h"
-#include "SPI.h"
-#include "dataflash_c_iface.h"
-#include "sdcard_c_iface.h"
-/**
- * SPI configurations for memory */
-#include "mem_spi.h"
-
-/*
-Includes for DataFlash memory
-*/
-// #include "at45db32_test.h"
-#include "dataflash.h"
-
-/**
- * Includes for SD card
- */
-/** @TODO optimize for clock speed */
-#include "sdios.h"
-static ArduinoOutStream cout(Serial);
-
 #include "../src/sbits/sbits.h"
-#include "../src/sbits/utilityFunctions.h"
-#include "SdFat.h"
-#include "sd_test.h"
+#include "sbitsUtility.h"
+
+#if defined(MEMBOARD)
+#include "memboardTestSetup.h"
+#endif
+
+#if defined(MEGA)
+#include "megaTestSetup.h"
+#endif
+
+#if defined(DUE)
+#include "dueTestSetup.h"
+#endif
+
+#include "SDFileInterface.h"
 #include "unity.h"
 
-#define ENABLE_DEDICATED_SPI 1
-#define SPI_DRIVER_SELECT 1
-#define SD_FAT_TYPE 1
-#define SD_CONFIG SdSpiConfig(CS_SD, DEDICATED_SPI, SD_SCK_MHZ(12), &spi_0)
-
 sbitsState *state;
-
-bool test_sd_card();
-
-SdFat32 sd;
-File32 file;
 
 void setupSbits() {
     state = (sbitsState *)malloc(sizeof(sbitsState));
@@ -116,69 +94,6 @@ void insertRecordsParabolic(int32_t startingKey, int64_t startingData, int32_t n
     free(data);
 }
 
-int queryRecordsLinearly(sbitsState *state, uint32_t numberOfRecords, int32_t startingKey, int64_t startingData) {
-    int64_t *result = (int64_t *)malloc(state->recordSize);
-    int32_t key = startingKey;
-    int64_t data = startingData;
-    for (uint32_t i = 0; i < numberOfRecords; i++) {
-        key = startingKey += 1;
-        data += 1;
-        int8_t getStatus = sbitsGet(state, &key, (void *)result);
-        if (getStatus != 0) {
-            printf("ERROR: Failed to find: %lu\n", key);
-            return 1;
-        }
-        if (*((int64_t *)result) != data) {
-            printf("ERROR: Wrong data for: %lu\n", key);
-            printf("Key: %lu Data: %lu\n", key, *((int64_t *)result));
-            free(result);
-            return 1;
-        }
-    }
-    free(result);
-    return 0;
-}
-
-void setupBoard() {
-    // Setup Board
-    Serial.begin(115200);
-    while (!Serial) {
-        delay(1);
-    }
-
-    delay(1000);
-    Serial.println("Skeleton startup");
-
-    pinMode(CHK_LED, OUTPUT);
-    pinMode(PULSE_LED, OUTPUT);
-
-    /* Setup for SD card */
-    Serial.print("\nInitializing SD card...");
-    if (test_sd_card()) {
-        file = sd.open("/");
-        cout << F("\nList of files on the SD.\n");
-        sd.ls("/", LS_R);
-    }
-
-    init_sdcard((void *)&sd);
-
-    /* Setup for data flash memory (DB32 512 byte pages) */
-    pinMode(CS_DB32, OUTPUT);
-    digitalWrite(CS_DB32, HIGH);
-    at45db32_m.spi->begin();
-
-    df_initialize(&at45db32_m);
-    cout << "AT45DF32"
-         << "\n";
-    cout << "page size: " << (at45db32_m.actual_page_size = get_page_size(&at45db32_m)) << "\n";
-    cout << "status: " << get_ready_status(&at45db32_m) << "\n";
-    cout << "page size: " << (at45db32_m.actual_page_size) << "\n";
-    at45db32_m.bits_per_page = (uint8_t)ceil(log2(at45db32_m.actual_page_size));
-    cout << "bits per page: " << (unsigned int)at45db32_m.bits_per_page << "\n";
-
-    init_df((void *)&at45db32_m);
-}
-
 void initalizeSbitsFromFile(void) {
     state = (sbitsState *)malloc(sizeof(sbitsState));
     if (state == NULL) {
@@ -212,47 +127,6 @@ void initalizeSbitsFromFile(void) {
     state->compareData = int64Comparator;
     int8_t result = sbitsInit(state, 1);
     TEST_ASSERT_EQUAL_INT8_MESSAGE(0, result, "SBITS did not initialize correctly.");
-}
-
-void loop() {}
-
-bool test_sd_card() {
-    if (!sd.cardBegin(SD_CONFIG)) {
-        Serial.println(F(
-            "\nSD initialization failed.\n"
-            "Do not reformat the card!\n"
-            "Is the card correctly inserted?\n"
-            "Is there a wiring/soldering problem?\n"));
-        if (isSpi(SD_CONFIG)) {
-            Serial.println(F(
-                "Is SD_CS_PIN set to the correct value?\n"
-                "Does another SPI device need to be disabled?\n"));
-        }
-        errorPrint(sd);
-        return false;
-    }
-
-    if (!sd.card()->readCID(&m_cid) ||
-        !sd.card()->readCSD(&m_csd) ||
-        !sd.card()->readOCR(&m_ocr)) {
-        cout << F("readInfo failed\n");
-        errorPrint(sd);
-    }
-    printCardType(sd);
-    cidDmp();
-    csdDmp();
-    cout << F("\nOCR: ") << uppercase << showbase;
-    cout << hex << m_ocr << dec << endl;
-    if (!mbrDmp(sd)) {
-        return false;
-    }
-    if (!sd.volumeBegin()) {
-        cout << F("\nvolumeBegin failed. Is the card formatted?\n");
-        errorPrint(sd);
-        return false;
-    }
-    dmpVol(sd);
-    return true;
 }
 
 void sbits_parameters_initializes_from_data_file_with_twenty_seven_pages_correctly() {
@@ -412,3 +286,5 @@ void setup() {
     setupBoard();
     runUnityTests();
 }
+
+void loop() {}
