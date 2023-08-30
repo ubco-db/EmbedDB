@@ -1,40 +1,40 @@
 /******************************************************************************/
 /**
- * @file		sbits.h
- * @author		Ramon Lawrence
- * @brief		This file is for sequential bitmap indexing for time series (SBITS).
- * @copyright	Copyright 2022
- *                         The University of British Columbia
- *                         Ramon Lawrence
+ * @file		embedDB.h
+ * @author		EmbedDB Team (See Authors.md)
+ * @brief		Header file for EmbeDB.
+ * @copyright	Copyright 2023
+ * 			    EmbedDB Team
  * @par Redistribution and use in source and binary forms, with or without
- *         modification, are permitted provided that the following conditions are met:
+ * 	modification, are permitted provided that the following conditions are met:
  *
  * @par 1.Redistributions of source code must retain the above copyright notice,
- *         this list of conditions and the following disclaimer.
+ * 	this list of conditions and the following disclaimer.
  *
  * @par 2.Redistributions in binary form must reproduce the above copyright notice,
- *         this list of conditions and the following disclaimer in the documentation
- *         and/or other materials provided with the distribution.
+ * 	this list of conditions and the following disclaimer in the documentation
+ * 	and/or other materials provided with the distribution.
  *
  * @par 3.Neither the name of the copyright holder nor the names of its contributors
- *         may be used to endorse or promote products derived from this software without
- *         specific prior written permission.
+ * 	may be used to endorse or promote products derived from this software without
+ * 	specific prior written permission.
  *
  * @par THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
- *         AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
- *         IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
- *         ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE
- *         LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
- *         CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
- *         SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
- *         INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
- *         CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
- *         ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
- *         POSSIBILITY OF SUCH DAMAGE.
+ * 	AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ * 	IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+ * 	ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE
+ * 	LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+ * 	CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+ * 	SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+ * 	INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+ * 	CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+ * 	ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+ * 	POSSIBILITY OF SUCH DAMAGE.
  */
 /******************************************************************************/
-#ifndef SBITS_H_
-#define SBITS_H_
+
+#ifndef embedDB_H_
+#define embedDB_H_
 
 #ifdef __cplusplus
 extern "C" {
@@ -44,7 +44,6 @@ extern "C" {
 #include <stdio.h>
 #include <stdlib.h>
 
-/* If using radix spline indexing */
 #include "../spline/radixspline.h"
 #include "../spline/spline.h"
 
@@ -54,49 +53,49 @@ typedef uint32_t id_t;
 /* Define type for page record count. */
 typedef uint16_t count_t;
 
-#define SBITS_USE_INDEX 1
-#define SBITS_USE_MAX_MIN 2
-#define SBITS_USE_SUM 4
-#define SBITS_USE_BMAP 8
-#define SBITS_USE_VDATA 16
-#define SBITS_RESET_DATA 32
+#define EMBEDDB_USE_INDEX 1
+#define EMBEDDB_USE_MAX_MIN 2
+#define EMBEDDB_USE_SUM 4
+#define EMBEDDB_USE_BMAP 8
+#define EMBEDDB_USE_VDATA 16
+#define EMBEDDB_RESET_DATA 32
 
-#define SBITS_USING_INDEX(x) ((x & SBITS_USE_INDEX) > 0 ? 1 : 0)
-#define SBITS_USING_MAX_MIN(x) ((x & SBITS_USE_MAX_MIN) > 0 ? 1 : 0)
-#define SBITS_USING_SUM(x) ((x & SBITS_USE_SUM) > 0 ? 1 : 0)
-#define SBITS_USING_BMAP(x) ((x & SBITS_USE_BMAP) > 0 ? 1 : 0)
-#define SBITS_USING_VDATA(x) ((x & SBITS_USE_VDATA) > 0 ? 1 : 0)
-#define SBITS_RESETING_DATA(x) ((x & SBITS_RESET_DATA) > 0 ? 1 : 0)
+#define EMBEDDB_USING_INDEX(x) ((x & EMBEDDB_USE_INDEX) > 0 ? 1 : 0)
+#define EMBEDDB_USING_MAX_MIN(x) ((x & EMBEDDB_USE_MAX_MIN) > 0 ? 1 : 0)
+#define EMBEDDB_USING_SUM(x) ((x & EMBEDDB_USE_SUM) > 0 ? 1 : 0)
+#define EMBEDDB_USING_BMAP(x) ((x & EMBEDDB_USE_BMAP) > 0 ? 1 : 0)
+#define EMBEDDB_USING_VDATA(x) ((x & EMBEDDB_USE_VDATA) > 0 ? 1 : 0)
+#define EMBEDDB_RESETING_DATA(x) ((x & EMBEDDB_RESET_DATA) > 0 ? 1 : 0)
 
 /* Offsets with header */
-#define SBITS_COUNT_OFFSET 4
-#define SBITS_BITMAP_OFFSET 6
-// #define SBITS_MIN_OFFSET		8
-#define SBITS_MIN_OFFSET 14
-#define SBITS_IDX_HEADER_SIZE 16
+#define EMBEDDB_COUNT_OFFSET 4
+#define EMBEDDB_BITMAP_OFFSET 6
+// #define EMBEDDB_MIN_OFFSET		8
+#define EMBEDDB_MIN_OFFSET 14
+#define EMBEDDB_IDX_HEADER_SIZE 16
 
-#define SBITS_NO_VAR_DATA UINT32_MAX
+#define EMBEDDB_NO_VAR_DATA UINT32_MAX
 
-#define SBITS_GET_COUNT(x) *((count_t *)((int8_t *)x + SBITS_COUNT_OFFSET))
-#define SBITS_INC_COUNT(x) *((count_t *)((int8_t *)x + SBITS_COUNT_OFFSET)) = *((count_t *)((int8_t *)x + SBITS_COUNT_OFFSET)) + 1
+#define EMBEDDB_GET_COUNT(x) *((count_t *)((int8_t *)x + EMBEDDB_COUNT_OFFSET))
+#define EMBEDDB_INC_COUNT(x) *((count_t *)((int8_t *)x + EMBEDDB_COUNT_OFFSET)) = *((count_t *)((int8_t *)x + EMBEDDB_COUNT_OFFSET)) + 1
 
-#define SBITS_GET_BITMAP(x) ((void *)((int8_t *)x + SBITS_BITMAP_OFFSET))
+#define EMBEDDB_GET_BITMAP(x) ((void *)((int8_t *)x + EMBEDDB_BITMAP_OFFSET))
 
-#define SBITS_GET_MIN_KEY(x) ((void *)((int8_t *)x + SBITS_MIN_OFFSET))
-#define SBITS_GET_MAX_KEY(x, y) ((void *)((int8_t *)x + SBITS_MIN_OFFSET + y->keySize))
+#define EMBEDDB_GET_MIN_KEY(x) ((void *)((int8_t *)x + EMBEDDB_MIN_OFFSET))
+#define EMBEDDB_GET_MAX_KEY(x, y) ((void *)((int8_t *)x + EMBEDDB_MIN_OFFSET + y->keySize))
 
-#define SBITS_GET_MIN_DATA(x, y) ((void *)((int8_t *)x + SBITS_MIN_OFFSET + y->keySize * 2))
-#define SBITS_GET_MAX_DATA(x, y) ((void *)((int8_t *)x + SBITS_MIN_OFFSET + y->keySize * 2 + y->dataSize))
+#define EMBEDDB_GET_MIN_DATA(x, y) ((void *)((int8_t *)x + EMBEDDB_MIN_OFFSET + y->keySize * 2))
+#define EMBEDDB_GET_MAX_DATA(x, y) ((void *)((int8_t *)x + EMBEDDB_MIN_OFFSET + y->keySize * 2 + y->dataSize))
 
-#define SBITS_DATA_WRITE_BUFFER 0
-#define SBITS_DATA_READ_BUFFER 1
-#define SBITS_INDEX_WRITE_BUFFER 2
-#define SBITS_INDEX_READ_BUFFER 3
-#define SBITS_VAR_WRITE_BUFFER(x) ((x & SBITS_USE_INDEX) ? 4 : 2)
-#define SBITS_VAR_READ_BUFFER(x) ((x & SBITS_USE_INDEX) ? 5 : 3)
+#define EMBEDDB_DATA_WRITE_BUFFER 0
+#define EMBEDDB_DATA_READ_BUFFER 1
+#define EMBEDDB_INDEX_WRITE_BUFFER 2
+#define EMBEDDB_INDEX_READ_BUFFER 3
+#define EMBEDDB_VAR_WRITE_BUFFER(x) ((x & EMBEDDB_USE_INDEX) ? 4 : 2)
+#define EMBEDDB_VAR_READ_BUFFER(x) ((x & EMBEDDB_USE_INDEX) ? 5 : 3)
 
-#define SBITS_FILE_MODE_W_PLUS_B 0  // Open file as read/write, creates file if doesn't exist, overwrites if it does. aka "w+b"
-#define SBITS_FILE_MODE_R_PLUS_B 1  // Open file as read/write, file must exist, keeps data if it does. aka "r+b"
+#define EMBEDDB_FILE_MODE_W_PLUS_B 0  // Open file as read/write, creates file if doesn't exist, overwrites if it does. aka "w+b"
+#define EMBEDDB_FILE_MODE_R_PLUS_B 1  // Open file as read/write, file must exist, keeps data if it does. aka "r+b"
 
 #define BYTE_TO_BINARY_PATTERN "%c%c%c%c%c%c%c%c"
 #define BYTE_TO_BINARY(byte)       \
@@ -129,7 +128,7 @@ typedef uint16_t count_t;
         (bm & 0x01 ? '1' : '0')
 
 /**
- * @brief	An interface for sbits to read/write to any storage medium at the page level of granularity
+ * @brief	An interface for embedDB to read/write to any storage medium at the page level of granularity
  */
 typedef struct {
     /**
@@ -137,7 +136,7 @@ typedef struct {
      * @param	buffer		Pre-allocated space where data is read into
      * @param	pageNum		Page number to read. Is treated as an offset from the beginning of the file
      * @param	pageSize	Number of bytes in a page
-     * @param	file		The file to read from. This is the file data that was stored in sbitsState->dataFile etc
+     * @param	file		The file to read from. This is the file data that was stored in embedDBState->dataFile etc
      * @return	1 for success and 0 for failure
      */
     int8_t (*read)(void *buffer, uint32_t pageNum, uint32_t pageSize, void *file);
@@ -147,7 +146,7 @@ typedef struct {
      * @param	buffer		The data to write to file
      * @param	pageNum		Page number to write. Is treated as an offset from the beginning of the file
      * @param	pageSize	Number of bytes in a page
-     * @param	file		The file data that was stored in sbitsState->dataFile etc
+     * @param	file		The file data that was stored in embedDBState->dataFile etc
      * @return	1 for success and 0 for failure
      */
     int8_t (*write)(void *buffer, uint32_t pageNum, uint32_t pageSize, void *file);
@@ -160,7 +159,7 @@ typedef struct {
 
     /**
      * @brief
-     * @param	file	The data that was passed to sbits
+     * @param	file	The data that was passed to embedDB
      * @param	flags	Flags that determine in which mode
      * @return	1 for success and 0 for failure
      */
@@ -171,13 +170,13 @@ typedef struct {
      * @return	1 for success and 0 for failure
      */
     int8_t (*flush)(void *file);
-} sbitsFileInterface;
+} embedDBFileInterface;
 
 typedef struct {
     void *dataFile;                                                       /* File for storing data records. */
     void *indexFile;                                                      /* File for storing index records. */
     void *varFile;                                                        /* File for storing variable length data. */
-    sbitsFileInterface *fileInterface;                                    /* Interface to the file storage */
+    embedDBFileInterface *fileInterface;                                  /* Interface to the file storage */
     uint32_t numDataPages;                                                /* The number of pages will use for storing fixed records*/
     uint32_t numIndexPages;                                               /* The number of pages will use for storing the data index */
     uint32_t numVarPages;                                                 /* The number of pages will use for storing variable data */
@@ -194,6 +193,7 @@ typedef struct {
     id_t currentVarLoc;                                                   /* Current variable address offset to write at (bytes from beginning of file) */
     void *buffer;                                                         /* Pre-allocated memory buffer for use by algorithm */
     spline *spl;                                                          /* Spline model */
+    uint32_t numSplinePoints;                                             /* Number of spline points to allocate */
     radixspline *rdix;                                                    /* Radix Spline search model */
     int32_t indexMaxError;                                                /* Max error for indexing structure (Spline or PGM) */
     int8_t bufferSizeInBlocks;                                            /* Size of buffer in blocks */
@@ -205,6 +205,7 @@ typedef struct {
     int8_t headerSize;                                                    /* Size of header in bytes (calculated during init()) */
     int8_t variableDataHeaderSize;                                        /* Size of page header in variable data files (calculated during init()) */
     int8_t bitmapSize;                                                    /* Size of bitmap in bytes */
+    int8_t cleanSpline;                                                   /* Enables automatic spline cleaning */
     id_t avgKeyDiff;                                                      /* Estimate for difference between key values. Used for get() to predict location of record. */
     count_t maxRecordsPerPage;                                            /* Maximum records per page */
     count_t maxIdxRecordsPerPage;                                         /* Maximum index records per page */
@@ -226,7 +227,7 @@ typedef struct {
     id_t bufferedIndexPageId;                                             /* Index page id currently in index read buffer */
     id_t bufferedVarPage;                                                 /* Variable page id currently in variable read buffer */
     uint8_t recordHasVarData;                                             /* Internal flag to signal that the record currently being written has var data */
-} sbitsState;
+} embedDBState;
 
 typedef struct {
     uint32_t nextDataPage; /* Next data page that the iterator should read */
@@ -236,182 +237,188 @@ typedef struct {
     void *minData;
     void *maxData;
     void *queryBitmap;
-} sbitsIterator;
+} embedDBIterator;
 
 typedef struct {
     uint32_t totalBytes; /* Total number of bytes in the stream */
     uint32_t bytesRead;  /* Number of bytes read so far */
     uint32_t dataStart;  /* Start of data as an offset in bytes from the beginning of the file */
     uint32_t fileOffset; /* Where the iterator should start reading data next time (offset from start of file) */
-} sbitsVarDataStream;
+} embedDBVarDataStream;
 
 /**
- * @brief	Initialize SBITS structure.
- * @param	state			SBITS algorithm state structure
+ * @brief	Initialize embedDB structure.
+ * @param	state			embedDB algorithm state structure
  * @param	indexMaxError	Max error of indexing structure (spline)
  * @return	Return 0 if success. Non-zero value if error.
  */
-int8_t sbitsInit(sbitsState *state, size_t indexMaxError);
+int8_t embedDBInit(embedDBState *state, size_t indexMaxError);
+
+/**
+ * @brief   Prints the initialization stats of the given embedDB state
+ * @param   state   embedDB state structure
+ */
+void embedDBPrintInit(embedDBState *state);
 
 /**
  * @brief	Puts a given key, data pair into structure.
- * @param	state	SBITS algorithm state structure
+ * @param	state	embedDB algorithm state structure
  * @param	key		Key for record
  * @param	data	Data for record
  * @return	Return 0 if success. Non-zero value if error.
  */
-int8_t sbitsPut(sbitsState *state, void *key, void *data);
+int8_t embedDBPut(embedDBState *state, void *key, void *data);
 
 /**
  * @brief	Puts the given key, data, and variable length data into the structure.
- * @param	state			SBITS algorithm state structure
+ * @param	state			embedDB algorithm state structure
  * @param	key				Key for record
  * @param	data			Data for record
  * @param	variableData	Variable length data for record
  * @param	length			Length of the variable length data in bytes
  * @return	Return 0 if success. Non-zero value if error.
  */
-int8_t sbitsPutVar(sbitsState *state, void *key, void *data, void *variableData, uint32_t length);
+int8_t embedDBPutVar(embedDBState *state, void *key, void *data, void *variableData, uint32_t length);
 
 /**
  * @brief	Given a key, returns data associated with key.
  * 			Note: Space for data must be already allocated.
  * 			Data is copied from database into data buffer.
- * @param	state	SBITS algorithm state structure
+ * @param	state	embedDB algorithm state structure
  * @param	key		Key for record
  * @param	data	Pre-allocated memory to copy data for record
  * @return	Return 0 if success. Non-zero value if error.
  */
-int8_t sbitsGet(sbitsState *state, void *key, void *data);
+int8_t embedDBGet(embedDBState *state, void *key, void *data);
 
 /**
  * @brief	Given a key, returns data associated with key.
  * 			Data is copied from database into data buffer.
- * @param	state	SBITS algorithm state structure
+ * @param	state	embedDB algorithm state structure
  * @param	key		Key for record
  * @param	data	Pre-allocated memory to copy data for record
- * @param	varData	Return variable for variable data as a sbitsVarDataStream (Unallocated). Returns NULL if no variable data. **Be sure to free the stream after you are done with it**
+ * @param	varData	Return variable for variable data as a embedDBVarDataStream (Unallocated). Returns NULL if no variable data. **Be sure to free the stream after you are done with it**
  * @return	Return 0 if success. Non-zero value if error.
  * 			-1 : Error reading file
  * 			1  : Variable data was deleted to make room for newer data
  */
-int8_t sbitsGetVar(sbitsState *state, void *key, void *data, sbitsVarDataStream **varData);
+int8_t embedDBGetVar(embedDBState *state, void *key, void *data, embedDBVarDataStream **varData);
 
 /**
- * @brief	Initialize iterator on sbits structure.
- * @param	state	SBITS algorithm state structure
- * @param	it		SBITS iterator state structure
+ * @brief	Initialize iterator on embedDB structure.
+ * @param	state	embedDB algorithm state structure
+ * @param	it		embedDB iterator state structure
  */
-void sbitsInitIterator(sbitsState *state, sbitsIterator *it);
+void embedDBInitIterator(embedDBState *state, embedDBIterator *it);
 
 /**
  * @brief	Close iterator after use.
- * @param	it		SBITS iterator structure
+ * @param	it		embedDB iterator structure
  */
-void sbitsCloseIterator(sbitsIterator *it);
+void embedDBCloseIterator(embedDBIterator *it);
 
 /**
  * @brief	Return next key, data pair for iterator.
- * @param	state	SBITS algorithm state structure
- * @param	it		SBITS iterator state structure
+ * @param	state	embedDB algorithm state structure
+ * @param	it		embedDB iterator state structure
  * @param	key		Return variable for key (Pre-allocated)
  * @param	data	Return variable for data (Pre-allocated)
  * @return	1 if successful, 0 if no more records
  */
-int8_t sbitsNext(sbitsState *state, sbitsIterator *it, void *key, void *data);
+int8_t embedDBNext(embedDBState *state, embedDBIterator *it, void *key, void *data);
 
 /**
  * @brief	Return next key, data, variable data set for iterator
- * @param	state	SBITS algorithm state structure
- * @param	it		SBITS iterator state structure
+ * @param	state	embedDB algorithm state structure
+ * @param	it		embedDB iterator state structure
  * @param	key		Return variable for key (Pre-allocated)
  * @param	data	Return variable for data (Pre-allocated)
- * @param	varData	Return variable for variable data as a sbitsVarDataStream (Unallocated). Returns NULL if no variable data. **Be sure to free the stream after you are done with it**
+ * @param	varData	Return variable for variable data as a embedDBVarDataStream (Unallocated). Returns NULL if no variable data. **Be sure to free the stream after you are done with it**
  * @return	1 if successful, 0 if no more records
  */
-int8_t sbitsNextVar(sbitsState *state, sbitsIterator *it, void *key, void *data, sbitsVarDataStream **varData);
+int8_t embedDBNextVar(embedDBState *state, embedDBIterator *it, void *key, void *data, embedDBVarDataStream **varData);
 
 /**
  * @brief	Reads data from variable data stream into the given buffer.
- * @param	state	SBITS algorithm state structure
+ * @param	state	embedDB algorithm state structure
  * @param	stream	Variable data stream
  * @param	buffer	Buffer to read data into
  * @param	length	Number of bytes to read (Must be <= buffer size)
  * @return	Number of bytes read
  */
-uint32_t sbitsVarDataStreamRead(sbitsState *state, sbitsVarDataStream *stream, void *buffer, uint32_t length);
+uint32_t embedDBVarDataStreamRead(embedDBState *state, embedDBVarDataStream *stream, void *buffer, uint32_t length);
 
 /**
  * @brief	Flushes output buffer.
- * @param	state	SBITS algorithm state structure
+ * @param	state	embedDB algorithm state structure
  */
-int8_t sbitsFlush(sbitsState *state);
+int8_t embedDBFlush(embedDBState *state);
 
 /**
  * @brief	Reads given page from storage.
- * @param	state	SBITS algorithm state structure
+ * @param	state	embedDB algorithm state structure
  * @param	pageNum	Page number to read
  * @return	Return 0 if success, -1 if error.
  */
-int8_t readPage(sbitsState *state, id_t pageNum);
+int8_t readPage(embedDBState *state, id_t pageNum);
 
 /**
  * @brief	Reads given index page from storage.
- * @param	state	SBITS algorithm state structure
+ * @param	state	embedDB algorithm state structure
  * @param	pageNum	Page number to read
  * @return	Return 0 if success, -1 if error.
  */
-int8_t readIndexPage(sbitsState *state, id_t pageNum);
+int8_t readIndexPage(embedDBState *state, id_t pageNum);
 
 /**
  * @brief	Reads given variable data page from storage
- * @param 	state 	SBITS algorithm state structure
+ * @param 	state 	embedDB algorithm state structure
  * @param 	pageNum Page number to read
  * @return 	Return 0 if success, -1 if error
  */
-int8_t readVariablePage(sbitsState *state, id_t pageNum);
+int8_t readVariablePage(embedDBState *state, id_t pageNum);
 
 /**
  * @brief	Writes page in buffer to storage. Returns page number.
- * @param	state	SBITS algorithm state structure
+ * @param	state	embedDB algorithm state structure
  * @param	pageNum	Page number to read
  * @return	Return page number if success, -1 if error.
  */
-id_t writePage(sbitsState *state, void *buffer);
+id_t writePage(embedDBState *state, void *buffer);
 
 /**
  * @brief	Writes index page in buffer to storage. Returns page number.
- * @param	state	SBITS algorithm state structure
+ * @param	state	embedDB algorithm state structure
  * @param	pageNum	Page number to read
  * @return	Return page number if success, -1 if error.
  */
-id_t writeIndexPage(sbitsState *state, void *buffer);
+id_t writeIndexPage(embedDBState *state, void *buffer);
 
 /**
  * @brief	Writes variable data page in buffer to storage. Returns page number.
- * @param	state	SBITS algorithm state structure
+ * @param	state	embedDB algorithm state structure
  * @param	pageNum	Page number to read
  * @return	Return page number if success, -1 if error.
  */
-id_t writeVariablePage(sbitsState *state, void *buffer);
+id_t writeVariablePage(embedDBState *state, void *buffer);
 
 /**
  * @brief	Prints statistics.
- * @param	state	SBITS state structure
+ * @param	state	embedDB state structure
  */
-void printStats(sbitsState *state);
+void embedDBPrintStats(embedDBState *state);
 
 /**
  * @brief	Resets statistics.
- * @param	state	SBITS state structure
+ * @param	state	embedDB state structure
  */
-void resetStats(sbitsState *state);
+void embedDBResetStats(embedDBState *state);
 
 /**
  * @brief	Closes structure and frees any dynamic space.
- * @param	state	SBITS state structure
+ * @param	state	embedDB state structure
  */
-void sbitsClose(sbitsState *state);
+void embedDBClose(embedDBState *state);
 
 #ifdef __cplusplus
 }

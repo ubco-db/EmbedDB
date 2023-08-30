@@ -1,11 +1,10 @@
 /******************************************************************************/
 /**
  * @file		spline.h
- * @author		Ramon Lawrence
+ * @author		EmbedDB Team (See Authors.md)
  * @brief		Implementation of spline for embedded devices.
- * @copyright	Copyright 2021
- * 			The University of British Columbia,
- * 			Ramon Lawrence
+ * @copyright	Copyright 2023
+ * 			    EmbedDB Team
  * @par Redistribution and use in source and binary forms, with or without
  * 	modification, are permitted provided that the following conditions are met:
  *
@@ -46,26 +45,24 @@ extern "C" {
 /* Define type for keys and location ids. */
 typedef uint32_t id_t;
 
-typedef struct {
-    void *key;
-    uint32_t page;
-} point;
+typedef struct spline_s spline;
 
 struct spline_s {
-    size_t count;         /* Number of points in spline */
-    size_t size;          /* Maximum number of points */
-    point *points;        /* Array of points */
-    point upper;          /* Upper spline limit */
-    point lower;          /* Lower spline limit */
-    id_t lastLoc;         /* Location of previous spline key */
-    void *lastKey;        /* Previous spline key */
-    uint32_t maxError;    /* Maximum error */
-    uint32_t numAddCalls; /* Number of times the add method has been called */
-    id_t tempLastPoint;   /* Last spline point is temporary if value is not 0 */
-    uint8_t keySize;      /* Size of key in bytes */
+    size_t count;            /* Number of points in spline */
+    size_t size;             /* Maximum number of points */
+    size_t pointsStartIndex; /* Index of the first spline point */
+    void *points;            /* Array of points */
+    void *upper;             /* Upper spline limit */
+    void *lower;             /* Lower spline limit */
+    void *firstSplinePoint;  /* First Point that was added to the spline */
+    uint32_t lastLoc;        /* Location of previous spline key */
+    void *lastKey;           /* Previous spline key */
+    uint32_t eraseSize;      /* Size of points to erase if none can be cleaned */
+    uint32_t maxError;       /* Maximum error */
+    uint32_t numAddCalls;    /* Number of times the add method has been called */
+    uint32_t tempLastPoint;  /* Last spline point is temporary if value is not 0 */
+    uint8_t keySize;         /* Size of key in bytes */
 };
-
-typedef struct spline_s spline;
 
 /**
  * @brief    Initialize a spline structure with given maximum size and error.
@@ -123,6 +120,21 @@ void splineFind(spline *spl, void *key, int8_t compareKey(void *, void *), id_t 
  * @param    spl        Spline structure
  */
 void splineClose(spline *spl);
+
+/**
+ * @brief   Removes points from the spline
+ * @param   spl         The spline structure to search
+ * @param   numPoints   The number of points to remove from the spline
+ * @return  Returns zero if successful and one if not
+ */
+int splineErase(spline *spl, uint32_t numPoints);
+
+/**
+ * @brief   Returns a pointer to the location of the specified spline point in memory. Note that this method does not check if there is a point there, so it may be garbage data.
+ * @param   spl         The spline structure that contains the points
+ * @param   pointIndex  The index of the point to return a pointer to
+ */
+void *splinePointLocation(spline *spl, size_t pointIndex);
 
 #ifdef __cplusplus
 }

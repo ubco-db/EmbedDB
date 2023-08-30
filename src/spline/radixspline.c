@@ -1,40 +1,39 @@
 /******************************************************************************/
 /**
  * @file		radixspline.c
- * @author		Ramon Lawrence
+ * @author		EmbedDB Team (See Authors.md)
  * @brief		Implementation of radix spline for embedded devices.
  *                         Based on "RadixSpline: a single-pass learned index" by
  *                         A. Kipf, R. Marcus, A. van Renen, M. Stoian, A. Kemper,
  *                         T. Kraska, and T. Neumann
  *                         https://github.com/learnedsystems/RadixSpline
- * @copyright	Copyright 2022
- *                         The University of British Columbia
- *                         Ramon Lawrence
+ * @copyright	Copyright 2023
+ * 			    EmbedDB Team
  * @par Redistribution and use in source and binary forms, with or without
- *         modification, are permitted provided that the following conditions are met:
+ * 	modification, are permitted provided that the following conditions are met:
  *
  * @par 1.Redistributions of source code must retain the above copyright notice,
- *         this list of conditions and the following disclaimer.
+ * 	this list of conditions and the following disclaimer.
  *
  * @par 2.Redistributions in binary form must reproduce the above copyright notice,
- *         this list of conditions and the following disclaimer in the documentation
- *         and/or other materials provided with the distribution.
+ * 	this list of conditions and the following disclaimer in the documentation
+ * 	and/or other materials provided with the distribution.
  *
  * @par 3.Neither the name of the copyright holder nor the names of its contributors
- *         may be used to endorse or promote products derived from this software without
- *         specific prior written permission.
+ * 	may be used to endorse or promote products derived from this software without
+ * 	specific prior written permission.
  *
  * @par THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
- *         AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
- *         IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
- *         ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE
- *         LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
- *         CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
- *         SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
- *         INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
- *         CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
- *         ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
- *         POSSIBILITY OF SUCH DAMAGE.
+ * 	AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ * 	IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+ * 	ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE
+ * 	LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+ * 	CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+ * 	SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+ * 	INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+ * 	CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+ * 	ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+ * 	POSSIBILITY OF SUCH DAMAGE.
  */
 /******************************************************************************/
 
@@ -104,7 +103,7 @@ void radixsplineAddPoint(radixspline *rsidx, void *key, uint32_t page) {
         return;  // Nothing to do
 
     // take the last point that was added to spline
-    key = rsidx->spl->points[rsidx->spl->count - 1].key;
+    key = splinePointLocation(rsidx->spl, rsidx->spl->count - 1);
 
     // Initialize table and minKey on first key added
     if (rsidx->pointsSeen == 0) {
@@ -174,7 +173,7 @@ void radixsplineInit(radixspline *rsidx, spline *spl, int8_t radixSize, uint8_t 
     rsidx->size = pow(2, radixSize);
 
     /* Determine the prefix size (shift bits) based on min and max keys */
-    rsidx->minKey = spl->points[0].key;
+    rsidx->minKey = spl->points;
 
     /* Initialize points seen */
     rsidx->pointsSeen = 0;
@@ -191,16 +190,17 @@ void radixsplineInit(radixspline *rsidx, spline *spl, int8_t radixSize, uint8_t 
  * @return	Index of spline point that is the upper end of the spline segment that contains the key
  */
 size_t radixBinarySearch(radixspline *rsidx, int low, int high, void *key, int8_t compareKey(void *, void *)) {
-    point *arr = rsidx->spl->points;
+    void *arr = rsidx->spl->points;
 
     int32_t mid;
     if (high >= low) {
         mid = low + (high - low) / 2;
-
-        if (compareKey(arr[mid].key, key) >= 0 && compareKey(arr[mid - 1].key, key) <= 0)
+        void *midKey = splinePointLocation(rsidx->spl, mid);
+        void *midKeyMinusOne = splinePointLocation(rsidx->spl, mid - 1);
+        if (compareKey(midKey, key) >= 0 && compareKey(midKeyMinusOne, key) <= 0)
             return mid;
 
-        if (compareKey(arr[mid].key, key) > 0)
+        if (compareKey(midKey, key) > 0)
             return radixBinarySearch(rsidx, low, mid - 1, key, compareKey);
 
         return radixBinarySearch(rsidx, mid + 1, high, key, compareKey);
@@ -308,17 +308,21 @@ size_t radixsplineEstimateLocation(radixspline *rsidx, void *key, int8_t compare
     }
 
     /* Interpolate between two spline points */
-    point down, up;
-    memcpy(&down, rsidx->spl->points + (index - 1), sizeof(point));
-    memcpy(&up, rsidx->spl->points + index, sizeof(point));
+    void *down = splinePointLocation(rsidx->spl, index - 1);
+    void *up = splinePointLocation(rsidx->spl, index);
 
     uint64_t downKey = 0, upKey = 0;
-    memcpy(&downKey, down.key, rsidx->keySize);
-    memcpy(&upKey, up.key, rsidx->keySize);
+    memcpy(&downKey, down, rsidx->keySize);
+    memcpy(&upKey, up, rsidx->keySize);
+
+    uint32_t upPage = 0;
+    uint32_t downPage = 0;
+    memcpy(&upPage, (int8_t *)up + rsidx->spl->keySize, sizeof(uint32_t));
+    memcpy(&downPage, (int8_t *)down + rsidx->spl->keySize, sizeof(uint32_t));
 
     /* Keydiff * slope + y */
-    uint32_t estimatedPage = (uint32_t)((keyVal - downKey) * (up.page - down.page) / (long double)(upKey - downKey)) + down.page;
-    return estimatedPage > up.page ? up.page : estimatedPage;
+    uint32_t estimatedPage = (uint32_t)((keyVal - downKey) * (upPage - downPage) / (long double)(upKey - downKey)) + downPage;
+    return estimatedPage > upPage ? upPage : estimatedPage;
 }
 
 /**
@@ -332,15 +336,17 @@ size_t radixsplineEstimateLocation(radixspline *rsidx, void *key, int8_t compare
  */
 void radixsplineFind(radixspline *rsidx, void *key, int8_t compareKey(void *, void *), id_t *loc, id_t *low, id_t *high) {
     /* Estimate location */
-    *loc = radixsplineEstimateLocation(rsidx, key, compareKey);
+    id_t locationEstimate = radixsplineEstimateLocation(rsidx, key, compareKey);
+    memcpy(loc, &locationEstimate, sizeof(id_t));
 
     /* Set error bounds based on maxError from spline construction */
-    *low = (rsidx->spl->maxError > *loc) ? 0 : *loc - rsidx->spl->maxError;
-    point lastSplinePoint;
-    memcpy(&lastSplinePoint, rsidx->spl->points + (rsidx->spl->count - 1), sizeof(point));
+    id_t lowEstimate = (rsidx->spl->maxError > locationEstimate) ? 0 : locationEstimate - rsidx->spl->maxError;
+    memcpy(low, &lowEstimate, sizeof(id_t));
+    void *lastSplinePoint = splinePointLocation(rsidx->spl, rsidx->spl->count - 1);
     uint64_t lastKey = 0;
-    memcpy(&lastKey, lastSplinePoint.key, rsidx->keySize);
-    *high = (*loc + rsidx->spl->maxError > lastKey) ? lastKey : *loc + rsidx->spl->maxError;
+    memcpy(&lastKey, lastSplinePoint, rsidx->keySize);
+    id_t highEstimate = (locationEstimate + rsidx->spl->maxError > lastKey) ? lastKey : locationEstimate + rsidx->spl->maxError;
+    memcpy(high, &highEstimate, sizeof(id_t));
 }
 
 /**
