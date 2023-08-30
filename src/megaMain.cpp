@@ -2,7 +2,7 @@
 /**
  * @file		megaMain.cpp
  * @author		Ramon Lawrence, Scott Fazackerley
- * @brief		Main Arduino program for testing SBITS implementation on custom hardware.
+ * @brief		Main Arduino program for testing EmbedDB implementation on custom hardware.
  * @copyright   Copyright 2021
  *                               The University of British Columbia,
  *             Ramon Lawrence
@@ -91,7 +91,7 @@ void setup() {
 
     init_sdcard((void *)&sd);
 #if TEST == 0
-    runalltests_sbits();
+    runalltests_embedDB();
 #elif TEST == 1
     test_vardata();
 #endif

@@ -1,13 +1,13 @@
 /**
- * @file utilityFunctions.h
+ * @file embedDBUtility.h
  * @author Ramon Lawernce
- * @brief This file contains some utility functions to be used with sbits.
+ * @brief This file contains some utility functions to be used with embedDB.
  * These include functions required to use the bitmap option, and a
  * comparator for comparing keys. They can be modified or implemented
  * differently depending on the application.
  */
 
-#include "sbitsUtility.h"
+#include "embedDBUtility.h"
 
 #include <string.h>
 
@@ -105,7 +105,7 @@ int8_t inBitmapInt16(void *data, void *bm) {
 
 /**
  * @brief	Builds 16-bit bitmap from (min, max) range.
- * @param	state	SBITS state structure
+ * @param	state	embedDB state structure
  * @param	min		minimum value (may be NULL)
  * @param	max		maximum value (may be NULL)
  * @param	bm		bitmap created
@@ -170,7 +170,7 @@ int8_t inBitmapInt64(void *data, void *bm) {
 
 /**
  * @brief	Builds 64-bit bitmap from (min, max) range.
- * @param	state	SBITS state structure
+ * @param	state	embedDB state structure
  * @param	min		minimum value (may be NULL)
  * @param	max		maximum value (may be NULL)
  * @param	bm		bitmap created

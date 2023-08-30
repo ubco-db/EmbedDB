@@ -8,10 +8,10 @@ extern "C" {
 #include <stdint.h>
 #include <string.h>
 
-#include "../../src/sbits/sbits.h"
+#include "../../src/embedDb/embedDB.h"
 #include "sdcard_c_iface.h"
 
-sbitsFileInterface *getSDInterface();
+embedDBFileInterface *getSDInterface();
 void *setupSDFile(char *filename);
 void tearDownSDFile(void *file);
 

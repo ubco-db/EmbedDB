@@ -44,7 +44,7 @@
 #include <time.h>
 
 #include "embedDb/embedDB.h"
-#include "sbitsUtility.h"
+#include "embedDBUtility.h"
 #include "sdcard_c_iface.h"
 
 #if defined(MEGA)

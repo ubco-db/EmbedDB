@@ -130,7 +130,7 @@ void setup() {
     init_df((void *)&at45db32_m);
 
 #if TEST == 0
-    runalltests_sbits();
+    runalltests_embedDB();
 #elif TEST == 1
     test_vardata();
 #endif
