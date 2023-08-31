@@ -1,5 +1,5 @@
-#include "../src/sbits/sbits.h"
-#include "sbitsUtility.h"
+#include "../src/embedDB/embedDB.h"
+#include "embedDBUtility.h"
 
 #if defined(MEMBOARD)
 #include "memboardTestSetup.h"
