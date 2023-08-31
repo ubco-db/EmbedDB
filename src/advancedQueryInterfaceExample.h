@@ -39,8 +39,8 @@
 #include <time.h>
 
 #include "embedDB/embedDB.h"
-#include "query-interface/advancedQueries.h"
 #include "embedDBUtility.h"
+#include "query-interface/advancedQueries.h"
 #include "sdcard_c_iface.h"
 
 #if defined(MEGA)
@@ -71,32 +71,32 @@ void writeDayGroup(embedDBAggregateFunc* aggFunc, embedDBSchema* schema, void* r
     memcpy((int8_t*)recordBuffer + getColOffsetFromSchema(schema, aggFunc->colNum), &day, sizeof(uint32_t));
 }
 
-void customShiftInit(embedDBOperator* operator) {
-    operator->input->init(operator->input);
-    operator->schema = copySchema(operator->input->schema);
-    operator->recordBuffer = malloc(16);
+void customShiftInit(embedDBOperator* op) {
+    op->input->init(op->input);
+    op->schema = copySchema(op->input->schema);
+    op->recordBuffer = malloc(16);
 }
 
-int8_t customShiftNext(embedDBOperator* operator) {
-    if (operator->input->next(operator->input)) {
-        memcpy(operator->recordBuffer, operator->input->recordBuffer, 16);
-        *(uint32_t*)operator->recordBuffer += 473385600;  // Add the number of seconds between 2000 and 2015
+int8_t customShiftNext(embedDBOperator* op) {
+    if (op->input->next(op->input)) {
+        memcpy(op->recordBuffer, op->input->recordBuffer, 16);
+        *(uint32_t*)op->recordBuffer += 473385600;  // Add the number of seconds between 2000 and 2015
         return 1;
     }
     return 0;
 }
 
-void customShiftClose(embedDBOperator* operator) {
-    operator->input->close(operator->input);
-    embedDBFreeSchema(&operator->schema);
-    free(operator->recordBuffer);
-    operator->recordBuffer = NULL;
+void customShiftClose(embedDBOperator* op) {
+    op->input->close(op->input);
+    embedDBFreeSchema(&op->schema);
+    free(op->recordBuffer);
+    op->recordBuffer = NULL;
 }
 
 void insertData(embedDBState* state, char* filename);
 
-int main() {
-    embedDBState* stateUWA = calloc(1, sizeof(embedDBState));
+int advancedQueryExample() {
+    embedDBState* stateUWA = (embedDBState*)malloc(sizeof(embedDBState));
     stateUWA->keySize = 4;
     stateUWA->dataSize = 12;
     stateUWA->compareKey = int32Comparator;
@@ -107,9 +107,9 @@ int main() {
     stateUWA->numIndexPages = 1000;
     stateUWA->numSplinePoints = 300;
     char dataPath[] = "build/artifacts/dataFile.bin", indexPath[] = "build/artifacts/indexFile.bin";
-    stateUWA->fileInterface = getFileInterface();
-    stateUWA->dataFile = setupFile(dataPath);
-    stateUWA->indexFile = setupFile(indexPath);
+    stateUWA->fileInterface = getSDInterface();
+    stateUWA->dataFile = setupSDFile(dataPath);
+    stateUWA->indexFile = setupSDFile(indexPath);
     stateUWA->bufferSizeInBlocks = 4;
     stateUWA->buffer = malloc(stateUWA->bufferSizeInBlocks * stateUWA->pageSize);
     stateUWA->parameters = EMBEDDB_USE_BMAP | EMBEDDB_USE_INDEX | EMBEDDB_RESET_DATA;
@@ -148,7 +148,7 @@ int main() {
 
     int printLimit = 20;
     int recordsReturned = 0;
-    int32_t* recordBuffer = projOp1->recordBuffer;
+    int32_t* recordBuffer = (int32_t*)projOp1->recordBuffer;
     printf("\nProjection Result:\n");
     printf("Time       | Temp | Wind Speed\n");
     printf("-----------+------+------------\n");
@@ -182,7 +182,7 @@ int main() {
     projOp2->init(projOp2);
 
     recordsReturned = 0;
-    recordBuffer = projOp2->recordBuffer;
+    recordBuffer = (int32_t*)projOp2->recordBuffer;
     printf("\nSelection Result:\n");
     printf("Time       | Temp | Wind Speed\n");
     printf("-----------+------+------------\n");
@@ -226,7 +226,7 @@ int main() {
 
     recordsReturned = 0;
     printLimit = 10000;
-    recordBuffer = countSelect3->recordBuffer;
+    recordBuffer = (int32_t*)countSelect3->recordBuffer;
     printf("\nCount Result:\n");
     printf("Day   | Count | MxWnd | avgWnd | Sum      | MnTmp\n");
     printf("------+-------+-------+--------+----------+-------\n");
@@ -257,7 +257,7 @@ int main() {
      *		- airPres	int32
      *		- windSpeed	int32
      */
-    embedDBState* stateSEA = malloc(sizeof(embedDBState));
+    embedDBState* stateSEA = (embedDBState*)malloc(sizeof(embedDBState));
     stateSEA->keySize = 4;
     stateSEA->dataSize = 12;
     stateSEA->compareKey = int32Comparator;
@@ -267,9 +267,9 @@ int main() {
     stateSEA->numDataPages = 20000;
     stateSEA->numIndexPages = 1000;
     char dataPath2[] = "build/artifacts/dataFile2.bin", indexPath2[] = "build/artifacts/indexFile2.bin";
-    stateSEA->fileInterface = getFileInterface();
-    stateSEA->dataFile = setupFile(dataPath2);
-    stateSEA->indexFile = setupFile(indexPath2);
+    stateSEA->fileInterface = getSDInterface();
+    stateSEA->dataFile = setupSDFile(dataPath2);
+    stateSEA->indexFile = setupSDFile(indexPath2);
     stateSEA->bufferSizeInBlocks = 4;
     stateSEA->buffer = malloc(stateSEA->bufferSizeInBlocks * stateSEA->pageSize);
     stateSEA->parameters = EMBEDDB_USE_BMAP | EMBEDDB_USE_INDEX | EMBEDDB_RESET_DATA;
@@ -297,7 +297,7 @@ int main() {
 
     // Prepare uwa table
     embedDBOperator* scan4_1 = createTableScanOperator(stateUWA, &it, baseSchema);
-    embedDBOperator* shift4_1 = malloc(sizeof(embedDBOperator));  // Custom operator to shift the year 2000 to 2015 to make the join work
+    embedDBOperator* shift4_1 = (embedDBOperator*)malloc(sizeof(embedDBOperator));  // Custom operator to shift the year 2000 to 2015 to make the join work
     shift4_1->input = scan4_1;
     shift4_1->init = customShiftInit;
     shift4_1->next = customShiftNext;
@@ -318,7 +318,7 @@ int main() {
 
     recordsReturned = 0;
     printLimit = 10;
-    recordBuffer = proj4->recordBuffer;
+    recordBuffer = (int32_t*)proj4->recordBuffer;
     printf("\nCount Result:\n");
     printf("timestamp  | tmp_s | tmp_u\n");
     printf("-----------+-------+-------\n");
@@ -341,14 +341,14 @@ int main() {
 
     // Close embedDB
     embedDBClose(stateUWA);
-    tearDownFile(stateUWA->dataFile);
-    tearDownFile(stateUWA->indexFile);
+    tearDownSDFile(stateUWA->dataFile);
+    tearDownSDFile(stateUWA->indexFile);
     free(stateUWA->fileInterface);
     free(stateUWA->buffer);
     free(stateUWA);
     embedDBClose(stateSEA);
-    tearDownFile(stateSEA->dataFile);
-    tearDownFile(stateSEA->indexFile);
+    tearDownSDFile(stateSEA->dataFile);
+    tearDownSDFile(stateSEA->indexFile);
     free(stateSEA->fileInterface);
     free(stateSEA->buffer);
     free(stateSEA);
@@ -357,7 +357,7 @@ int main() {
 }
 
 void insertData(embedDBState* state, char* filename) {
-    FILE* fp = fopen(filename, "rb");
+    SD_FILE* fp = fopen(filename, "rb");
     char fileBuffer[512];
     int numRecords = 0;
     while (fread(fileBuffer, state->pageSize, 1, fp)) {

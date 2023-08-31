@@ -61,11 +61,14 @@ static ArduinoOutStream cout(Serial);
 #include "sdcard_c_iface.h"
 #include "serial_c_iface.h"
 
-#define TEST 0
-#if TEST == 0
-#include "testSbits.h"
-#elif TEST == 1
-#include "varTest.h"
+#define EXAMPLE 0
+
+#if EXAMPLE == 0
+#include "embedDBExample.h"
+#elif EXAMPLE == 1
+#include "embedDBVariableDataExample.h"
+#elif EXAMPLE == 2
+#include "advancedQueryInterfaceExample.h"
 #endif
 
 #define ENABLE_DEDICATED_SPI 1
@@ -129,10 +132,12 @@ void setup() {
 
     init_df((void *)&at45db32_m);
 
-#if TEST == 0
+#if EXAMPLE == 0
     runalltests_embedDB();
-#elif TEST == 1
+#elif EXAMPLE == 1
     test_vardata();
+#elif EXAMPLE == 2
+    advancedQueryExample();
 #endif
 }
 

@@ -97,6 +97,8 @@ void setup() {
     runalltests_embedDB();
 #elif EXAMPLE == 1
     test_vardata();
+#elif EXAMPLE == 2
+    advancedQueryExample();
 #endif
 }
 

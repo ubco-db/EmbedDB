@@ -61,7 +61,7 @@ void setupEmbedDB() {
     state->bufferSizeInBlocks = 4;
     state->numSplinePoints = 2;
     state->buffer = calloc(1, state->pageSize * state->bufferSizeInBlocks);
-    TEST_ASSERT_NOT_NULL_MESSAGE(state->buffer, "Failed to allocate SBITS buffer.");
+    TEST_ASSERT_NOT_NULL_MESSAGE(state->buffer, "Failed to allocate buffer for EmbedDB.");
 
     state->fileInterface = getSDInterface();
     char dataPath[] = "dataFile.bin", indexPath[] = "indexFile.bin";
