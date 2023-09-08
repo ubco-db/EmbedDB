@@ -34,6 +34,8 @@
  */
 /******************************************************************************/
 
+#ifndef PIO_UNIT_TESTING
+
 #include <errno.h>
 #include <string.h>
 #include <time.h>
@@ -60,13 +62,13 @@
  * 2: Query random records in the range of original data set.
  * 3: Query range of records using an iterator.
  */
-#define QUERY_TYPE 3
+#define QUERY_TYPE 1
 
 /*
  * 0: Use data from one of the data sets
  * 1: Use sequentially generated data
  */
-#define SEQUENTIAL_DATA 1
+#define SEQUENTIAL_DATA 0
 
 /**
  * 0 = SD Card
@@ -176,7 +178,7 @@ void runalltests_embedDB() {
         state->keySize = 4;
         state->dataSize = 12;
         state->pageSize = 512;
-        state->numSplinePoints = 20;
+        state->numSplinePoints = 30;
         state->bitmapSize = 0;
         state->bufferSizeInBlocks = M;
         state->buffer = malloc((size_t)state->bufferSizeInBlocks * state->pageSize);
