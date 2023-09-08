@@ -83,7 +83,7 @@ void runalltests_embedDB() {
     printf("\n EmbedDB Example: \n");
     int8_t M = 4;
     int32_t numRecords = 1000;     // default values
-    int32_t testRecords = 500000;  // default values
+    int32_t testRecords = 100000;  // default values
     uint8_t useRandom = 0;         // default values
     size_t splineMaxError = 0;     // default values
     uint32_t numSteps = 10;
@@ -157,8 +157,8 @@ void runalltests_embedDB() {
         // fopen("data/uwa_data_only_2000_500KSorted_randomized.bin", "r+b");
         minRange = 946713600;
         maxRange = 977144040;
-        numRecords = 500000;
-        testRecords = 500000;
+        numRecords = 100000;
+        testRecords = 100000;
 
         splineMaxError = 1;
         useRandom = 0;

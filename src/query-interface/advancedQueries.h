@@ -36,6 +36,10 @@
 #ifndef _ADVANCEDQUERIES_H
 #define _ADVANCEDQUERIES_H
 
+#if defined(__cplusplus)
+extern "C" {
+#endif
+
 #include "../embedDB/embedDB.h"
 #include "schema.h"
 
@@ -207,5 +211,9 @@ embedDBAggregateFunc* createMaxAggregate(uint8_t colNum, int8_t colSize);
  * @param	outputFloatSize	Size of float to output. Must be either 4 (float) or 8 (double)
  */
 embedDBAggregateFunc* createAvgAggregate(uint8_t colNum, int8_t outputFloatSize);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

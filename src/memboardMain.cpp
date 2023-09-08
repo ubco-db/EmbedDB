@@ -61,7 +61,7 @@ static ArduinoOutStream cout(Serial);
 #include "sdcard_c_iface.h"
 #include "serial_c_iface.h"
 
-#define EXAMPLE 0
+#define EXAMPLE 2
 
 #if EXAMPLE == 0
 #include "embedDBExample.h"

@@ -36,6 +36,10 @@
 #ifndef embedDB_SCHEMA_H_
 #define embedDB_SCHEMA_H_
 
+#if defined(__cplusplus)
+extern "C" {
+#endif
+
 #include <stdint.h>
 
 #define embedDB_COLUMN_SIGNED 0
@@ -84,5 +88,9 @@ uint16_t getColOffsetFromSchema(embedDBSchema* schema, uint8_t colNum);
 uint16_t getRecordSizeFromSchema(embedDBSchema* schema);
 
 void printSchema(embedDBSchema* schema);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif
