@@ -43,8 +43,8 @@
 #include <string.h>
 #include <time.h>
 
-#include "embedDBUtility.h"
 #include "embedDB/embedDB.h"
+#include "embedDBUtility.h"
 #include "sdcard_c_iface.h"
 
 #if defined(MEGA)

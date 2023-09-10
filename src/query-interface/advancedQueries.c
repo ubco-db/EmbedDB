@@ -133,7 +133,7 @@ void initTableScan(embedDBOperator* op) {
         return;
     }
 
-    if (op->schema->numCols<2) {
+    if (op->schema->numCols < 2) {
 #ifdef PRINT_ERRORS
         printf("ERROR: When creating a table scan, you must include at least two columns: one for the key and one for the data from the iterator\n");
 #endif
@@ -209,8 +209,8 @@ embedDBOperator* createTableScanOperator(embedDBState* state, embedDBIterator* i
         return NULL;
     }
 
-    embedDBOperator* op= malloc(sizeof(embedDBOperator));
-    if (op== NULL) {
+    embedDBOperator* op = malloc(sizeof(embedDBOperator));
+    if (op == NULL) {
 #ifdef PRINT_ERRORS
         printf("ERROR: malloc failed while creating TableScan operator\n");
 #endif
@@ -352,8 +352,8 @@ embedDBOperator* createProjectionOperator(embedDBOperator* input, uint8_t numCol
     state[0] = numCols;
     memcpy(state + 1, cols, numCols);
 
-    embedDBOperator* op= malloc(sizeof(embedDBOperator));
-    if (op== NULL) {
+    embedDBOperator* op = malloc(sizeof(embedDBOperator));
+    if (op == NULL) {
 #ifdef PRINT_ERRORS
         printf("ERROR: malloc failed while creating Projection operator\n");
 #endif
@@ -453,8 +453,8 @@ embedDBOperator* createSelectionOperator(embedDBOperator* input, int8_t colNum, 
     state[1] = operation;
     memcpy(state + 2, &compVal, sizeof(void*));
 
-    embedDBOperator* op= malloc(sizeof(embedDBOperator));
-    if (op== NULL) {
+    embedDBOperator* op = malloc(sizeof(embedDBOperator));
+    if (op == NULL) {
 #ifdef PRINT_ERRORS
         printf("ERROR: Failed to malloc while creating Selection operator\n");
 #endif
@@ -639,8 +639,8 @@ embedDBOperator* createAggregateOperator(embedDBOperator* input, int8_t (*groupf
     state->functionsLength = functionsLength;
     state->lastRecordBuffer = NULL;
 
-    embedDBOperator* op= malloc(sizeof(embedDBOperator));
-    if (op== NULL) {
+    embedDBOperator* op = malloc(sizeof(embedDBOperator));
+    if (op == NULL) {
 #ifdef PRINT_ERRORS
         printf("ERROR: Failed to malloc while creating aggregate operator\n");
 #endif
@@ -794,7 +794,7 @@ void closeKeyJoin(embedDBOperator* op) {
  * @brief	Creates an operator for perfoming an equijoin on the keys (sorted and distinct) of two tables
  */
 embedDBOperator* createKeyJoinOperator(embedDBOperator* input1, embedDBOperator* input2) {
-    embedDBOperator* op= malloc(sizeof(embedDBOperator));
+    embedDBOperator* op = malloc(sizeof(embedDBOperator));
     if (op == NULL) {
 #ifdef PRINT_ERRORS
         printf("ERROR: Failed to malloc while creating join operator\n");
