@@ -190,8 +190,6 @@ void radixsplineInit(radixspline *rsidx, spline *spl, int8_t radixSize, uint8_t 
  * @return	Index of spline point that is the upper end of the spline segment that contains the key
  */
 size_t radixBinarySearch(radixspline *rsidx, int low, int high, void *key, int8_t compareKey(void *, void *)) {
-    void *arr = rsidx->spl->points;
-
     int32_t mid;
     if (high >= low) {
         mid = low + (high - low) / 2;

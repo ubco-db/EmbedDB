@@ -40,6 +40,8 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "serial_c_iface.h"
+
 /**
  * @brief	Create an embedDBSchema from a list of column sizes including both key and data
  * @param	numCols			The total number of columns in table

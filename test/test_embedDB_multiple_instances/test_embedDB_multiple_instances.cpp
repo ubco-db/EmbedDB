@@ -96,9 +96,9 @@ void queryRecords(embedDBState *state, int32_t numberOfRecords, int32_t starting
     char message[120];
     for (int32_t i = 0; i < numberOfRecords; i++) {
         int8_t getResult = embedDBGet(state, &key, &dataBuffer);
-        snprintf(message, 120, "embedDBGet returned a non-zero value when getting key %i from state %i", key, i);
+        snprintf(message, 120, "embedDBGet returned a non-zero value when getting key %li from state %li", key, i);
         TEST_ASSERT_EQUAL_INT8_MESSAGE(0, getResult, message);
-        snprintf(message, 120, "embedDBGet did not return the correct data for key %i from state %i", key, i);
+        snprintf(message, 120, "embedDBGet did not return the correct data for key %li from state %li", key, i);
         TEST_ASSERT_EQUAL_INT32_MESSAGE(data, dataBuffer, message);
         key++;
         data++;
@@ -119,7 +119,7 @@ void insertRecordsFromFile(embedDBState *state, char *fileName, int32_t numRecor
         for (int16_t i = 0; i < count; i++) {
             void *buf = (infileBuffer + headerSize + i * state->recordSize);
             int8_t putResult = embedDBPut(state, buf, (void *)((int8_t *)buf + 4));
-            snprintf(message, 100, "embedDBPut returned non-zero value for insert of key %i", *((uint32_t *)buf));
+            snprintf(message, 100, "embedDBPut returned non-zero value for insert of key %li", *((uint32_t *)buf));
             TEST_ASSERT_EQUAL_INT8_MESSAGE(0, putResult, message);
             numInserted++;
             if (numInserted >= numRecords) {

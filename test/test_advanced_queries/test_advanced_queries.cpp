@@ -61,7 +61,7 @@ typedef struct DataSource {
     int32_t pageRecord;
 } DataSource;
 
-void insertData(embedDBState* state, char* filename);
+void insertData(embedDBState* state, const char* filename);
 void* nextRecord(DataSource* source);
 uint32_t dayGroup(const void* record);
 int8_t sameDayGroup(const void* lastRecord, const void* record);
@@ -86,7 +86,7 @@ void setUpEmbedDB() {
     stateUWA->numDataPages = 20000;
     stateUWA->numIndexPages = 1000;
     stateUWA->numSplinePoints = 30;
-    char dataPath[] = "build/artifacts/dataFile.bin", indexPath[] = "build/artifacts/indexFile.bin";
+    char dataPath[] = "dataFile.bin", indexPath[] = "indexFile.bin";
     stateUWA->fileInterface = getSDInterface();
     stateUWA->dataFile = setupSDFile(dataPath);
     stateUWA->indexFile = setupSDFile(indexPath);
@@ -98,7 +98,8 @@ void setUpEmbedDB() {
     stateUWA->updateBitmap = updateBitmapInt16;
     stateUWA->buildBitmapFromRange = buildBitmapInt16FromRange;
     embedDBInit(stateUWA, 1);
-    insertData(stateUWA, "data/uwa500K.bin");
+    const char uwaDatafileName[] = "data/uwa500K.bin";
+    insertData(stateUWA, uwaDatafileName);
 
     // Init SEA dataset
     stateSEA = (embedDBState*)calloc(1, sizeof(embedDBState));
@@ -111,7 +112,7 @@ void setUpEmbedDB() {
     stateSEA->numDataPages = 20000;
     stateSEA->numIndexPages = 1000;
     stateSEA->numSplinePoints = 120;
-    char dataPath2[] = "build/artifacts/dataFile2.bin", indexPath2[] = "build/artifacts/indexFile2.bin";
+    char dataPath2[] = "dataFile2.bin", indexPath2[] = "indexFile2.bin";
     stateSEA->fileInterface = getSDInterface();
     stateSEA->dataFile = setupSDFile(dataPath2);
     stateSEA->indexFile = setupSDFile(indexPath2);
@@ -123,7 +124,8 @@ void setUpEmbedDB() {
     stateSEA->updateBitmap = updateBitmapInt16;
     stateSEA->buildBitmapFromRange = buildBitmapInt16FromRange;
     embedDBInit(stateSEA, 1);
-    insertData(stateSEA, "data/sea100K.bin");
+    const char seaDatafileName[] = "data/sea100K.bin";
+    insertData(stateSEA, seaDatafileName);
 
     // Init base schema
     int8_t colSizes[] = {4, 4, 4, 4};
@@ -385,7 +387,7 @@ int main(void) {
     UNITY_END();
 }
 
-void insertData(embedDBState* state, char* filename) {
+void insertData(embedDBState* state, const char* filename) {
     FILE* fp = fopen(filename, "rb");
     char fileBuffer[512];
     int numRecords = 0;

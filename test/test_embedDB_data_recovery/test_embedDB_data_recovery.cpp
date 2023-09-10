@@ -50,6 +50,7 @@
 
 #include "SDFileInterface.h"
 #include "unity.h"
+#define UNITY_SUPPORT_64
 
 embedDBState *state;
 
@@ -199,9 +200,9 @@ void embedDB_inserts_correctly_into_data_file_after_reload() {
     /* Records inserted before reload */
     for (int i = 0; i < 3654; i++) {
         int8_t getResult = embedDBGet(state, &key, recordBuffer);
-        snprintf(message, 100, "EmbedDB get encountered an error fetching the data for key %i.", key);
+        snprintf(message, 100, "EmbedDB get encountered an error fetching the data for key %li.", key);
         TEST_ASSERT_EQUAL_INT8_MESSAGE(0, getResult, message);
-        snprintf(message, 100, "EmbedDB get did not return correct data for a record inserted before reloading (key %i).", key);
+        snprintf(message, 100, "EmbedDB get did not return correct data for a record inserted before reloading (key %li).", key);
         TEST_ASSERT_EQUAL_MEMORY_MESSAGE(&data, ((int64_t *)recordBuffer), state->dataSize, message);
         key++;
         data++;
@@ -210,9 +211,9 @@ void embedDB_inserts_correctly_into_data_file_after_reload() {
     data = 11;
     for (int i = 0; i < 42; i++) {
         int8_t getResult = embedDBGet(state, &key, recordBuffer);
-        snprintf(message, 100, "EmbedDB get encountered an error fetching the data for key %i.", key);
+        snprintf(message, 100, "EmbedDB get encountered an error fetching the data for key %li.", key);
         TEST_ASSERT_EQUAL_INT8_MESSAGE(0, getResult, message);
-        snprintf(message, 100, "EmbedDB get did not return correct data for a record inserted after reloading (key %i).", key);
+        snprintf(message, 100, "EmbedDB get did not return correct data for a record inserted after reloading (key %li).", key);
         TEST_ASSERT_EQUAL_MEMORY_MESSAGE(&data, ((int64_t *)recordBuffer), state->dataSize, message);
         key++;
         data++;
@@ -233,9 +234,9 @@ void embedDB_correctly_gets_records_after_reload_with_wrapped_data() {
     /* Records inserted before reload */
     for (int i = 0; i < 3888; i++) {
         int8_t getResult = embedDBGet(state, &key, recordBuffer);
-        snprintf(message, 100, "EmbedDB get encountered an error fetching the data for key %i.", key);
+        snprintf(message, 100, "EmbedDB get encountered an error fetching the data for key %li.", key);
         TEST_ASSERT_EQUAL_INT8_MESSAGE(0, getResult, message);
-        snprintf(message, 100, "EmbedDB get did not return correct data for a record inserted before reloading (key %i).", key);
+        snprintf(message, 100, "EmbedDB get did not return correct data for a record inserted before reloading (key %li).", key);
         TEST_ASSERT_EQUAL_MEMORY_MESSAGE(&data, ((int64_t *)recordBuffer), state->dataSize, message);
         key++;
         data++;
@@ -265,9 +266,9 @@ void embedDB_queries_correctly_with_non_liner_data_after_reload() {
     /* Records inserted before reload */
     for (int i = 174166; i < 4494; i++) {
         int8_t getResult = embedDBGet(state, &key, recordBuffer);
-        snprintf(message, 80, "EmbedDB get encountered an error fetching the data for key %i.", key);
+        snprintf(message, 80, "EmbedDB get encountered an error fetching the data for key %li.", key);
         TEST_ASSERT_EQUAL_INT8_MESSAGE(0, getResult, message);
-        snprintf(message, 100, "EmbedDB get did not return correct data for a record inserted before reloading (key %i).", key);
+        snprintf(message, 100, "EmbedDB get did not return correct data for a record inserted before reloading (key %li).", key);
         TEST_ASSERT_EQUAL_INT64_MESSAGE(data, *((int64_t *)recordBuffer), message);
         key += i;
         data += i;

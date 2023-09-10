@@ -8,7 +8,7 @@ extern "C" {
 #include <stdint.h>
 #include <string.h>
 
-#include "../../src/embedDb/embedDB.h"
+#include "../../src/embedDB/embedDB.h"
 #include "sdcard_c_iface.h"
 
 embedDBFileInterface *getSDInterface();

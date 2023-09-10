@@ -37,6 +37,8 @@
 
 #include <string.h>
 
+#include "serial_c_iface.h"
+
 /**
  * @return	Returns -1, 0, 1 as a comparator normally would
  */
@@ -114,24 +116,24 @@ int8_t compare(void* a, uint8_t operation, void* b, int8_t isSigned, int8_t numB
  * @brief	Extract a record from an operator
  * @return	1 if a record was returned, 0 if there are no more rows to return
  */
-int8_t exec(embedDBOperator* operator) {
-    return operator->next(operator);
+int8_t exec(embedDBOperator* op) {
+    return op->next(op);
 }
 
-void initTableScan(embedDBOperator* operator) {
-    if (operator->input != NULL) {
+void initTableScan(embedDBOperator* op) {
+    if (op->input != NULL) {
 #ifdef PRINT_ERRORS
         printf("WARNING: TableScan operator should not have an input operator\n");
 #endif
     }
-    if (operator->schema == NULL) {
+    if (op->schema == NULL) {
 #ifdef PRINT_ERRORS
         printf("ERROR: TableScan operator needs its schema defined\n");
 #endif
         return;
     }
 
-    if (operator->schema->numCols<2) {
+    if (op->schema->numCols<2) {
 #ifdef PRINT_ERRORS
         printf("ERROR: When creating a table scan, you must include at least two columns: one for the key and one for the data from the iterator\n");
 #endif
@@ -139,14 +141,14 @@ void initTableScan(embedDBOperator* operator) {
     }
 
     // Check that the provided key schema matches what is in the state
-    embedDBState* embedDBstate = (embedDBState*)(((void**)operator->state)[0]);
-    if (operator->schema->columnSizes[0] <= 0 || abs(operator->schema->columnSizes[0]) != embedDBstate->keySize) {
+    embedDBState* embedDBstate = (embedDBState*)(((void**)op->state)[0]);
+    if (op->schema->columnSizes[0] <= 0 || abs(op->schema->columnSizes[0]) != embedDBstate->keySize) {
 #ifdef PRINT_ERRORS
         printf("ERROR: Make sure the the key column is at index 0 of the schema initialization and that it matches the keySize in the state and is unsigned\n");
 #endif
         return;
     }
-    if (getRecordSizeFromSchema(operator->schema) != (embedDBstate->keySize + embedDBstate->dataSize)) {
+    if (getRecordSizeFromSchema(op->schema) != (embedDBstate->keySize + embedDBstate->dataSize)) {
 #ifdef PRINT_ERRORS
         printf("ERROR: Size of provided schema doesn't match the size that will be returned by the provided iterator\n");
 #endif
@@ -154,9 +156,9 @@ void initTableScan(embedDBOperator* operator) {
     }
 
     // Init buffer
-    if (operator->recordBuffer == NULL) {
-        operator->recordBuffer = createBufferFromSchema(operator->schema);
-        if (operator->recordBuffer == NULL) {
+    if (op->recordBuffer == NULL) {
+        op->recordBuffer = createBufferFromSchema(op->schema);
+        if (op->recordBuffer == NULL) {
 #ifdef PRINT_ERRORS
             printf("ERROR: Failed to allocate buffer for TableScan operator\n");
 #endif
@@ -165,9 +167,9 @@ void initTableScan(embedDBOperator* operator) {
     }
 }
 
-int8_t nextTableScan(embedDBOperator* operator) {
+int8_t nextTableScan(embedDBOperator* op) {
     // Check that a schema was set
-    if (operator->schema == NULL) {
+    if (op->schema == NULL) {
 #ifdef PRINT_ERRORS
         printf("ERROR: Must provide a base schema for a table scan operator\n");
 #endif
@@ -175,21 +177,21 @@ int8_t nextTableScan(embedDBOperator* operator) {
     }
 
     // Get next record
-    embedDBState* state = (embedDBState*)(((void**)operator->state)[0]);
-    embedDBIterator* it = (embedDBIterator*)(((void**)operator->state)[1]);
-    if (!embedDBNext(state, it, operator->recordBuffer, (int8_t*)operator->recordBuffer + state->keySize)) {
+    embedDBState* state = (embedDBState*)(((void**)op->state)[0]);
+    embedDBIterator* it = (embedDBIterator*)(((void**)op->state)[1]);
+    if (!embedDBNext(state, it, op->recordBuffer, (int8_t*)op->recordBuffer + state->keySize)) {
         return 0;
     }
 
     return 1;
 }
 
-void closeTableScan(embedDBOperator* operator) {
-    embedDBFreeSchema(&operator->schema);
-    free(operator->recordBuffer);
-    operator->recordBuffer = NULL;
-    free(operator->state);
-    operator->state = NULL;
+void closeTableScan(embedDBOperator* op) {
+    embedDBFreeSchema(&op->schema);
+    free(op->recordBuffer);
+    op->recordBuffer = NULL;
+    free(op->state);
+    op->state = NULL;
 }
 
 /**
@@ -207,37 +209,37 @@ embedDBOperator* createTableScanOperator(embedDBState* state, embedDBIterator* i
         return NULL;
     }
 
-    embedDBOperator* operator= malloc(sizeof(embedDBOperator));
-    if (operator== NULL) {
+    embedDBOperator* op= malloc(sizeof(embedDBOperator));
+    if (op== NULL) {
 #ifdef PRINT_ERRORS
         printf("ERROR: malloc failed while creating TableScan operator\n");
 #endif
         return NULL;
     }
 
-    operator->state = malloc(2 * sizeof(void*));
-    if (operator->state == NULL) {
+    op->state = malloc(2 * sizeof(void*));
+    if (op->state == NULL) {
 #ifdef PRINT_ERRORS
         printf("ERROR: malloc failed while creating TableScan operator\n");
 #endif
         return NULL;
     }
-    memcpy(operator->state, &state, sizeof(void*));
-    memcpy((int8_t*)operator->state + sizeof(void*), &it, sizeof(void*));
+    memcpy(op->state, &state, sizeof(void*));
+    memcpy((int8_t*)op->state + sizeof(void*), &it, sizeof(void*));
 
-    operator->schema = copySchema(baseSchema);
-    operator->input = NULL;
-    operator->recordBuffer = NULL;
+    op->schema = copySchema(baseSchema);
+    op->input = NULL;
+    op->recordBuffer = NULL;
 
-    operator->init = initTableScan;
-    operator->next = nextTableScan;
-    operator->close = closeTableScan;
+    op->init = initTableScan;
+    op->next = nextTableScan;
+    op->close = closeTableScan;
 
-    return operator;
+    return op;
 }
 
-void initProjection(embedDBOperator* operator) {
-    if (operator->input == NULL) {
+void initProjection(embedDBOperator* op) {
+    if (op->input == NULL) {
 #ifdef PRINT_ERRORS
         printf("ERROR: Projection operator needs an input operator\n");
 #endif
@@ -245,39 +247,39 @@ void initProjection(embedDBOperator* operator) {
     }
 
     // Init input
-    operator->input->init(operator->input);
+    op->input->init(op->input);
 
     // Get state
-    uint8_t numCols = *(uint8_t*)operator->state;
-    uint8_t* cols = (uint8_t*)operator->state + 1;
-    const embedDBSchema* inputSchema = operator->input->schema;
+    uint8_t numCols = *(uint8_t*)op->state;
+    uint8_t* cols = (uint8_t*)op->state + 1;
+    const embedDBSchema* inputSchema = op->input->schema;
 
     // Init output schema
-    if (operator->schema == NULL) {
-        operator->schema = malloc(sizeof(embedDBSchema));
-        if (operator->schema == NULL) {
+    if (op->schema == NULL) {
+        op->schema = malloc(sizeof(embedDBSchema));
+        if (op->schema == NULL) {
 #ifdef PRINT_ERRORS
             printf("ERROR: Failed to allocate space for projection schema\n");
 #endif
             return;
         }
-        operator->schema->numCols = numCols;
-        operator->schema->columnSizes = malloc(numCols * sizeof(int8_t));
-        if (operator->schema->columnSizes == NULL) {
+        op->schema->numCols = numCols;
+        op->schema->columnSizes = malloc(numCols * sizeof(int8_t));
+        if (op->schema->columnSizes == NULL) {
 #ifdef PRINT_ERRORS
             printf("ERROR: Failed to allocate space for projection while building schema\n");
 #endif
             return;
         }
         for (uint8_t i = 0; i < numCols; i++) {
-            operator->schema->columnSizes[i] = inputSchema->columnSizes[cols[i]];
+            op->schema->columnSizes[i] = inputSchema->columnSizes[cols[i]];
         }
     }
 
     // Init output buffer
-    if (operator->recordBuffer == NULL) {
-        operator->recordBuffer = createBufferFromSchema(operator->schema);
-        if (operator->recordBuffer == NULL) {
+    if (op->recordBuffer == NULL) {
+        op->recordBuffer = createBufferFromSchema(op->schema);
+        if (op->recordBuffer == NULL) {
 #ifdef PRINT_ERRORS
             printf("ERROR: Failed to allocate buffer for TableScan operator\n");
 #endif
@@ -286,20 +288,20 @@ void initProjection(embedDBOperator* operator) {
     }
 }
 
-int8_t nextProjection(embedDBOperator* operator) {
-    uint8_t numCols = *(uint8_t*)operator->state;
-    uint8_t* cols = (uint8_t*)operator->state + 1;
+int8_t nextProjection(embedDBOperator* op) {
+    uint8_t numCols = *(uint8_t*)op->state;
+    uint8_t* cols = (uint8_t*)op->state + 1;
     uint16_t curColPos = 0;
     uint8_t nextProjCol = 0;
     uint16_t nextProjColPos = 0;
-    const embedDBSchema* inputSchema = operator->input->schema;
+    const embedDBSchema* inputSchema = op->input->schema;
 
     // Get next record
-    if (operator->input->next(operator->input)) {
+    if (op->input->next(op->input)) {
         for (uint8_t col = 0; col < inputSchema->numCols && nextProjCol != numCols; col++) {
             uint8_t colSize = abs(inputSchema->columnSizes[col]);
             if (col == cols[nextProjCol]) {
-                memcpy((int8_t*)operator->recordBuffer + nextProjColPos, (int8_t*)operator->input->recordBuffer + curColPos, colSize);
+                memcpy((int8_t*)op->recordBuffer + nextProjColPos, (int8_t*)op->input->recordBuffer + curColPos, colSize);
                 nextProjColPos += colSize;
                 nextProjCol++;
             }
@@ -311,14 +313,14 @@ int8_t nextProjection(embedDBOperator* operator) {
     }
 }
 
-void closeProjection(embedDBOperator* operator) {
-    operator->input->close(operator->input);
+void closeProjection(embedDBOperator* op) {
+    op->input->close(op->input);
 
-    embedDBFreeSchema(&operator->schema);
-    free(operator->state);
-    operator->state = NULL;
-    free(operator->recordBuffer);
-    operator->recordBuffer = NULL;
+    embedDBFreeSchema(&op->schema);
+    free(op->state);
+    op->state = NULL;
+    free(op->recordBuffer);
+    op->recordBuffer = NULL;
 }
 
 /**
@@ -350,27 +352,27 @@ embedDBOperator* createProjectionOperator(embedDBOperator* input, uint8_t numCol
     state[0] = numCols;
     memcpy(state + 1, cols, numCols);
 
-    embedDBOperator* operator= malloc(sizeof(embedDBOperator));
-    if (operator== NULL) {
+    embedDBOperator* op= malloc(sizeof(embedDBOperator));
+    if (op== NULL) {
 #ifdef PRINT_ERRORS
         printf("ERROR: malloc failed while creating Projection operator\n");
 #endif
         return NULL;
     }
 
-    operator->state = state;
-    operator->input = input;
-    operator->schema = NULL;
-    operator->recordBuffer = NULL;
-    operator->init = initProjection;
-    operator->next = nextProjection;
-    operator->close = closeProjection;
+    op->state = state;
+    op->input = input;
+    op->schema = NULL;
+    op->recordBuffer = NULL;
+    op->init = initProjection;
+    op->next = nextProjection;
+    op->close = closeProjection;
 
-    return operator;
+    return op;
 }
 
-void initSelection(embedDBOperator* operator) {
-    if (operator->input == NULL) {
+void initSelection(embedDBOperator* op) {
+    if (op->input == NULL) {
 #ifdef PRINT_ERRORS
         printf("ERROR: Projection operator needs an input operator\n");
 #endif
@@ -378,17 +380,17 @@ void initSelection(embedDBOperator* operator) {
     }
 
     // Init input
-    operator->input->init(operator->input);
+    op->input->init(op->input);
 
     // Init output schema
-    if (operator->schema == NULL) {
-        operator->schema = copySchema(operator->input->schema);
+    if (op->schema == NULL) {
+        op->schema = copySchema(op->input->schema);
     }
 
     // Init output buffer
-    if (operator->recordBuffer == NULL) {
-        operator->recordBuffer = createBufferFromSchema(operator->schema);
-        if (operator->recordBuffer == NULL) {
+    if (op->recordBuffer == NULL) {
+        op->recordBuffer = createBufferFromSchema(op->schema);
+        if (op->recordBuffer == NULL) {
 #ifdef PRINT_ERRORS
             printf("ERROR: Failed to allocate buffer for TableScan operator\n");
 #endif
@@ -397,12 +399,12 @@ void initSelection(embedDBOperator* operator) {
     }
 }
 
-int8_t nextSelection(embedDBOperator* operator) {
-    embedDBSchema* schema = operator->input->schema;
+int8_t nextSelection(embedDBOperator* op) {
+    embedDBSchema* schema = op->input->schema;
 
-    int8_t colNum = *(int8_t*)operator->state;
+    int8_t colNum = *(int8_t*)op->state;
     uint16_t colPos = getColOffsetFromSchema(schema, colNum);
-    int8_t operation = *((int8_t*)operator->state + 1);
+    int8_t operation = *((int8_t*)op->state + 1);
     int8_t colSize = schema->columnSizes[colNum];
     int8_t isSigned = 0;
     if (colSize < 0) {
@@ -410,11 +412,11 @@ int8_t nextSelection(embedDBOperator* operator) {
         isSigned = 1;
     }
 
-    while (operator->input->next(operator->input)) {
-        void* colData = (int8_t*)operator->input->recordBuffer + colPos;
+    while (op->input->next(op->input)) {
+        void* colData = (int8_t*)op->input->recordBuffer + colPos;
 
-        if (compare(colData, operation, *(void**)((int8_t*)operator->state + 2), isSigned, colSize)) {
-            memcpy(operator->recordBuffer, operator->input->recordBuffer, getRecordSizeFromSchema(operator->schema));
+        if (compare(colData, operation, *(void**)((int8_t*)op->state + 2), isSigned, colSize)) {
+            memcpy(op->recordBuffer, op->input->recordBuffer, getRecordSizeFromSchema(op->schema));
             return 1;
         }
     }
@@ -422,14 +424,14 @@ int8_t nextSelection(embedDBOperator* operator) {
     return 0;
 }
 
-void closeSelection(embedDBOperator* operator) {
-    operator->input->close(operator->input);
+void closeSelection(embedDBOperator* op) {
+    op->input->close(op->input);
 
-    embedDBFreeSchema(&operator->schema);
-    free(operator->state);
-    operator->state = NULL;
-    free(operator->recordBuffer);
-    operator->recordBuffer = NULL;
+    embedDBFreeSchema(&op->schema);
+    free(op->state);
+    op->state = NULL;
+    free(op->recordBuffer);
+    op->recordBuffer = NULL;
 }
 
 /**
@@ -451,22 +453,22 @@ embedDBOperator* createSelectionOperator(embedDBOperator* input, int8_t colNum, 
     state[1] = operation;
     memcpy(state + 2, &compVal, sizeof(void*));
 
-    embedDBOperator* operator= malloc(sizeof(embedDBOperator));
-    if (operator== NULL) {
+    embedDBOperator* op= malloc(sizeof(embedDBOperator));
+    if (op== NULL) {
 #ifdef PRINT_ERRORS
         printf("ERROR: Failed to malloc while creating Selection operator\n");
 #endif
         return NULL;
     }
-    operator->state = state;
-    operator->input = input;
-    operator->schema = NULL;
-    operator->recordBuffer = NULL;
-    operator->init = initSelection;
-    operator->next = nextSelection;
-    operator->close = closeSelection;
+    op->state = state;
+    op->input = input;
+    op->schema = NULL;
+    op->recordBuffer = NULL;
+    op->init = initSelection;
+    op->next = nextSelection;
+    op->close = closeSelection;
 
-    return operator;
+    return op;
 }
 
 /**
@@ -481,8 +483,8 @@ struct aggregateInfo {
     int8_t isLastRecordUsable;                                        // Is the data in lastRecordBuffer usable for checking if the recently read record is in the same group? Is set to 0 at start, and also after the last record
 };
 
-void initAggregate(embedDBOperator* operator) {
-    if (operator->input == NULL) {
+void initAggregate(embedDBOperator* op) {
+    if (op->input == NULL) {
 #ifdef PRINT_ERRORS
         printf("ERROR: Aggregate operator needs an input operator\n");
 #endif
@@ -490,39 +492,39 @@ void initAggregate(embedDBOperator* operator) {
     }
 
     // Init input
-    operator->input->init(operator->input);
+    op->input->init(op->input);
 
-    struct aggregateInfo* state = operator->state;
+    struct aggregateInfo* state = op->state;
     state->isLastRecordUsable = 0;
 
     // Init output schema
-    if (operator->schema == NULL) {
-        operator->schema = malloc(sizeof(embedDBSchema));
-        if (operator->schema == NULL) {
+    if (op->schema == NULL) {
+        op->schema = malloc(sizeof(embedDBSchema));
+        if (op->schema == NULL) {
 #ifdef PRINT_ERRORS
             printf("ERROR: Failed to malloc while initializing aggregate operator\n");
 #endif
             return;
         }
-        operator->schema->numCols = state->functionsLength;
-        operator->schema->columnSizes = malloc(state->functionsLength);
-        if (operator->schema->columnSizes == NULL) {
+        op->schema->numCols = state->functionsLength;
+        op->schema->columnSizes = malloc(state->functionsLength);
+        if (op->schema->columnSizes == NULL) {
 #ifdef PRINT_ERRORS
             printf("ERROR: Failed to malloc while initializing aggregate operator\n");
 #endif
             return;
         }
         for (uint8_t i = 0; i < state->functionsLength; i++) {
-            operator->schema->columnSizes[i] = state->functions[i].colSize;
+            op->schema->columnSizes[i] = state->functions[i].colSize;
             state->functions[i].colNum = i;
         }
     }
 
     // Init buffers
-    state->bufferSize = getRecordSizeFromSchema(operator->input->schema);
-    if (operator->recordBuffer == NULL) {
-        operator->recordBuffer = createBufferFromSchema(operator->schema);
-        if (operator->recordBuffer == NULL) {
+    state->bufferSize = getRecordSizeFromSchema(op->input->schema);
+    if (op->recordBuffer == NULL) {
+        op->recordBuffer = createBufferFromSchema(op->schema);
+        if (op->recordBuffer == NULL) {
 #ifdef PRINT_ERRORS
             printf("ERROR: Failed to malloc while initializing aggregate operator\n");
 #endif
@@ -540,9 +542,9 @@ void initAggregate(embedDBOperator* operator) {
     }
 }
 
-int8_t nextAggregate(embedDBOperator* operator) {
-    struct aggregateInfo* state = operator->state;
-    embedDBOperator* input = operator->input;
+int8_t nextAggregate(embedDBOperator* op) {
+    struct aggregateInfo* state = op->state;
+    embedDBOperator* input = op->input;
 
     // Reset each operator
     for (int i = 0; i < state->functionsLength; i++) {
@@ -595,7 +597,7 @@ int8_t nextAggregate(embedDBOperator* operator) {
     // Perform final compute on all functions
     for (int i = 0; i < state->functionsLength; i++) {
         if (state->functions[i].compute != NULL) {
-            state->functions[i].compute(state->functions + i, operator->schema, operator->recordBuffer, state->lastRecordBuffer);
+            state->functions[i].compute(state->functions + i, op->schema, op->recordBuffer, state->lastRecordBuffer);
         }
     }
 
@@ -605,15 +607,15 @@ int8_t nextAggregate(embedDBOperator* operator) {
     return 1;
 }
 
-void closeAggregate(embedDBOperator* operator) {
-    operator->input->close(operator->input);
-    operator->input = NULL;
-    embedDBFreeSchema(&operator->schema);
-    free(((struct aggregateInfo*)operator->state)->lastRecordBuffer);
-    free(operator->state);
-    operator->state = NULL;
-    free(operator->recordBuffer);
-    operator->recordBuffer = NULL;
+void closeAggregate(embedDBOperator* op) {
+    op->input->close(op->input);
+    op->input = NULL;
+    embedDBFreeSchema(&op->schema);
+    free(((struct aggregateInfo*)op->state)->lastRecordBuffer);
+    free(op->state);
+    op->state = NULL;
+    free(op->recordBuffer);
+    op->recordBuffer = NULL;
 }
 
 /**
@@ -637,23 +639,23 @@ embedDBOperator* createAggregateOperator(embedDBOperator* input, int8_t (*groupf
     state->functionsLength = functionsLength;
     state->lastRecordBuffer = NULL;
 
-    embedDBOperator* operator= malloc(sizeof(embedDBOperator));
-    if (operator== NULL) {
+    embedDBOperator* op= malloc(sizeof(embedDBOperator));
+    if (op== NULL) {
 #ifdef PRINT_ERRORS
         printf("ERROR: Failed to malloc while creating aggregate operator\n");
 #endif
         return NULL;
     }
 
-    operator->state = state;
-    operator->input = input;
-    operator->schema = NULL;
-    operator->recordBuffer = NULL;
-    operator->init = initAggregate;
-    operator->next = nextAggregate;
-    operator->close = closeAggregate;
+    op->state = state;
+    op->input = input;
+    op->schema = NULL;
+    op->recordBuffer = NULL;
+    op->init = initAggregate;
+    op->next = nextAggregate;
+    op->close = closeAggregate;
 
-    return operator;
+    return op;
 }
 
 struct keyJoinInfo {
@@ -661,9 +663,9 @@ struct keyJoinInfo {
     int8_t firstCall;
 };
 
-void initKeyJoin(embedDBOperator* operator) {
-    struct keyJoinInfo* state = operator->state;
-    embedDBOperator* input1 = operator->input;
+void initKeyJoin(embedDBOperator* op) {
+    struct keyJoinInfo* state = op->state;
+    embedDBOperator* input1 = op->input;
     embedDBOperator* input2 = state->input2;
 
     // Init inputs
@@ -682,29 +684,29 @@ void initKeyJoin(embedDBOperator* operator) {
     }
 
     // Setup schema
-    if (operator->schema == NULL) {
-        operator->schema = malloc(sizeof(embedDBSchema));
-        if (operator->schema == NULL) {
+    if (op->schema == NULL) {
+        op->schema = malloc(sizeof(embedDBSchema));
+        if (op->schema == NULL) {
 #ifdef PRINT_ERRORS
             printf("ERROR: Failed to malloc while initializing join operator\n");
 #endif
             return;
         }
-        operator->schema->numCols = schema1->numCols + schema2->numCols;
-        operator->schema->columnSizes = malloc(operator->schema->numCols * sizeof(int8_t));
-        if (operator->schema->columnSizes == NULL) {
+        op->schema->numCols = schema1->numCols + schema2->numCols;
+        op->schema->columnSizes = malloc(op->schema->numCols * sizeof(int8_t));
+        if (op->schema->columnSizes == NULL) {
 #ifdef PRINT_ERRORS
             printf("ERROR: Failed to malloc while initializing join operator\n");
 #endif
             return;
         }
-        memcpy(operator->schema->columnSizes, schema1->columnSizes, schema1->numCols);
-        memcpy(operator->schema->columnSizes + schema1->numCols, schema2->columnSizes, schema2->numCols);
+        memcpy(op->schema->columnSizes, schema1->columnSizes, schema1->numCols);
+        memcpy(op->schema->columnSizes + schema1->numCols, schema2->columnSizes, schema2->numCols);
     }
 
     // Allocate recordBuffer
-    operator->recordBuffer = malloc(getRecordSizeFromSchema(operator->schema));
-    if (operator->recordBuffer == NULL) {
+    op->recordBuffer = malloc(getRecordSizeFromSchema(op->schema));
+    if (op->recordBuffer == NULL) {
 #ifdef PRINT_ERRORS
         printf("ERROR: Failed to malloc while initializing join operator\n");
 #endif
@@ -714,9 +716,9 @@ void initKeyJoin(embedDBOperator* operator) {
     state->firstCall = 1;
 }
 
-int8_t nextKeyJoin(embedDBOperator* operator) {
-    struct keyJoinInfo* state = operator->state;
-    embedDBOperator* input1 = operator->input;
+int8_t nextKeyJoin(embedDBOperator* op) {
+    struct keyJoinInfo* state = op->state;
+    embedDBOperator* input1 = op->input;
     embedDBOperator* input2 = state->input2;
     embedDBSchema* schema1 = input1->schema;
     embedDBSchema* schema2 = input2->schema;
@@ -764,8 +766,8 @@ int8_t nextKeyJoin(embedDBOperator* operator) {
         if (compareUnsignedNumbers(record1, record2, colSize) == 0) {
             // Copy both records into the output
             uint16_t record1Size = getRecordSizeFromSchema(schema1);
-            memcpy(operator->recordBuffer, input1->recordBuffer, record1Size);
-            memcpy((int8_t*)operator->recordBuffer + record1Size, input2->recordBuffer, getRecordSizeFromSchema(schema2));
+            memcpy(op->recordBuffer, input1->recordBuffer, record1Size);
+            memcpy((int8_t*)op->recordBuffer + record1Size, input2->recordBuffer, getRecordSizeFromSchema(schema2));
             return 1;
         }
         // Else keep advancing inputs until a match is found
@@ -774,29 +776,26 @@ int8_t nextKeyJoin(embedDBOperator* operator) {
     return 0;
 }
 
-void closeKeyJoin(embedDBOperator* operator) {
-    struct keyJoinInfo* state = operator->state;
-    embedDBOperator* input1 = operator->input;
+void closeKeyJoin(embedDBOperator* op) {
+    struct keyJoinInfo* state = op->state;
+    embedDBOperator* input1 = op->input;
     embedDBOperator* input2 = state->input2;
-    embedDBSchema* schema1 = input1->schema;
-    embedDBSchema* schema2 = input2->schema;
-
     input1->close(input1);
     input2->close(input2);
 
-    embedDBFreeSchema(&operator->schema);
-    free(operator->state);
-    operator->state = NULL;
-    free(operator->recordBuffer);
-    operator->recordBuffer = NULL;
+    embedDBFreeSchema(&op->schema);
+    free(op->state);
+    op->state = NULL;
+    free(op->recordBuffer);
+    op->recordBuffer = NULL;
 }
 
 /**
  * @brief	Creates an operator for perfoming an equijoin on the keys (sorted and distinct) of two tables
  */
 embedDBOperator* createKeyJoinOperator(embedDBOperator* input1, embedDBOperator* input2) {
-    embedDBOperator* operator= malloc(sizeof(embedDBOperator));
-    if (operator== NULL) {
+    embedDBOperator* op= malloc(sizeof(embedDBOperator));
+    if (op == NULL) {
 #ifdef PRINT_ERRORS
         printf("ERROR: Failed to malloc while creating join operator\n");
 #endif
@@ -812,15 +811,15 @@ embedDBOperator* createKeyJoinOperator(embedDBOperator* input1, embedDBOperator*
     }
     state->input2 = input2;
 
-    operator->input = input1;
-    operator->state = state;
-    operator->recordBuffer = NULL;
-    operator->schema = NULL;
-    operator->init = initKeyJoin;
-    operator->next = nextKeyJoin;
-    operator->close = closeKeyJoin;
+    op->input = input1;
+    op->state = state;
+    op->recordBuffer = NULL;
+    op->schema = NULL;
+    op->init = initKeyJoin;
+    op->next = nextKeyJoin;
+    op->close = closeKeyJoin;
 
-    return operator;
+    return op;
 }
 
 void countReset(embedDBAggregateFunc* aggFunc, embedDBSchema* inputSchema) {
@@ -1152,21 +1151,21 @@ embedDBAggregateFunc* createAvgAggregate(uint8_t colNum, int8_t outputFloatSize)
 /**
  * @brief	Completely free a chain of functions recursively after it's already been closed.
  */
-void embedDBFreeOperatorRecursive(embedDBOperator** operator) {
-    if ((*operator)->input != NULL) {
-        embedDBFreeOperatorRecursive(&(*operator)->input);
+void embedDBFreeOperatorRecursive(embedDBOperator** op) {
+    if ((*op)->input != NULL) {
+        embedDBFreeOperatorRecursive(&(*op)->input);
     }
-    if ((*operator)->state != NULL) {
-        free((*operator)->state);
-        (*operator)->state = NULL;
+    if ((*op)->state != NULL) {
+        free((*op)->state);
+        (*op)->state = NULL;
     }
-    if ((*operator)->schema != NULL) {
-        embedDBFreeSchema(&(*operator)->schema);
+    if ((*op)->schema != NULL) {
+        embedDBFreeSchema(&(*op)->schema);
     }
-    if ((*operator)->recordBuffer != NULL) {
-        free((*operator)->recordBuffer);
-        (*operator)->recordBuffer = NULL;
+    if ((*op)->recordBuffer != NULL) {
+        free((*op)->recordBuffer);
+        (*op)->recordBuffer = NULL;
     }
-    free(*operator);
-    (*operator) = NULL;
+    free(*op);
+    (*op) = NULL;
 }

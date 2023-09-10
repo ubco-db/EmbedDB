@@ -34,6 +34,8 @@
  */
 /******************************************************************************/
 
+#ifndef PIO_UNIT_TESTING
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
@@ -93,9 +95,10 @@ void customShiftClose(embedDBOperator* op) {
     op->recordBuffer = NULL;
 }
 
-void insertData(embedDBState* state, char* filename);
+void insertData(embedDBState* state, const char* filename);
 
 int advancedQueryExample() {
+    printf("Advanced Query Example.\n");
     embedDBState* stateUWA = (embedDBState*)malloc(sizeof(embedDBState));
     stateUWA->keySize = 4;
     stateUWA->dataSize = 12;
@@ -105,8 +108,8 @@ int advancedQueryExample() {
     stateUWA->eraseSizeInPages = 4;
     stateUWA->numDataPages = 20000;
     stateUWA->numIndexPages = 1000;
-    stateUWA->numSplinePoints = 300;
-    char dataPath[] = "build/artifacts/dataFile.bin", indexPath[] = "build/artifacts/indexFile.bin";
+    stateUWA->numSplinePoints = 30;
+    char dataPath[] = "dataFile.bin", indexPath[] = "indexFile.bin";
     stateUWA->fileInterface = getSDInterface();
     stateUWA->dataFile = setupSDFile(dataPath);
     stateUWA->indexFile = setupSDFile(indexPath);
@@ -124,7 +127,8 @@ int advancedQueryExample() {
     embedDBSchema* baseSchema = embedDBCreateSchema(4, colSizes, colSignedness);
 
     // Insert data
-    insertData(stateUWA, "data/uwa500K.bin");
+    const char datafileName[] = "data/uwa500K.bin";
+    insertData(stateUWA, datafileName);
 
     /**	Projection
      *	Dataset has three, 4 byte, data fields:
@@ -241,7 +245,7 @@ int advancedQueryExample() {
     }
 
     // Free states
-    for (int i = 0; i < functionsLength; i++) {
+    for (uint32_t i = 0; i < functionsLength; i++) {
         if (aggFunctions[i].state != NULL) {
             free(aggFunctions[i].state);
         }
@@ -266,7 +270,8 @@ int advancedQueryExample() {
     stateSEA->eraseSizeInPages = 4;
     stateSEA->numDataPages = 20000;
     stateSEA->numIndexPages = 1000;
-    char dataPath2[] = "build/artifacts/dataFile2.bin", indexPath2[] = "build/artifacts/indexFile2.bin";
+    stateSEA->numSplinePoints = 120;
+    char dataPath2[] = "dataFile2.bin", indexPath2[] = "indexFile2.bin";
     stateSEA->fileInterface = getSDInterface();
     stateSEA->dataFile = setupSDFile(dataPath2);
     stateSEA->indexFile = setupSDFile(indexPath2);
@@ -356,7 +361,7 @@ int advancedQueryExample() {
     return 0;
 }
 
-void insertData(embedDBState* state, char* filename) {
+void insertData(embedDBState* state, const char* filename) {
     SD_FILE* fp = fopen(filename, "rb");
     char fileBuffer[512];
     int numRecords = 0;
@@ -372,3 +377,5 @@ void insertData(embedDBState* state, char* filename) {
 
     printf("\nInserted %d Records\n", numRecords);
 }
+
+#endif

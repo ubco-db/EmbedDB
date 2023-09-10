@@ -93,18 +93,18 @@ typedef struct embedDBOperator {
     /**
      * @brief	Initialize the operator. Usually includes setting/calculating the output schema, allocating buffers, etc. Recursively inits input operator as its first action.
      */
-    void (*init)(struct embedDBOperator* operator);
+    void (*init)(struct embedDBOperator* op);
 
     /**
      * @brief	Puts the next tuple to be outputed by this operator into @c operator->recordBuffer. Needs to call next on the input operator if applicable
      * @return	Returns 0 or 1 to indicate whether a new tuple was outputted to operator->recordBuffer
      */
-    int8_t (*next)(struct embedDBOperator* operator);
+    int8_t (*next)(struct embedDBOperator* op);
 
     /**
      * @brief	Recursively closes this operator and its input operator. Frees anything allocated in init.
      */
-    void (*close)(struct embedDBOperator* operator);
+    void (*close)(struct embedDBOperator* op);
 
     /**
      * @brief	A pre-allocated memory area that can be loaded with any extra parameters that the function needs to operate (e.g. column numbers or selection predicates)
@@ -126,12 +126,12 @@ typedef struct embedDBOperator {
  * @brief	Extract a record from an operator
  * @return	1 if a record was returned, 0 if there are no more rows to return
  */
-int8_t exec(embedDBOperator* operator);
+int8_t exec(embedDBOperator* op);
 
 /**
  * @brief	Completely free a chain of operators recursively after it's already been closed.
  */
-void embedDBFreeOperatorRecursive(embedDBOperator** operator);
+void embedDBFreeOperatorRecursive(embedDBOperator** op);
 
 ///////////////////////////////////////////
 // Pre-built operators for basic queries //

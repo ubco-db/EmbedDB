@@ -138,7 +138,8 @@ void embedDB_put_inserts_eleven_records_correctly() {
         TEST_ASSERT_EQUAL_UINT32_MESSAGE(key, embedDBPutResultKey, "embedDBPut did not put correct key value in buffer.");
         TEST_ASSERT_EQUAL_INT32_MESSAGE(data, embedDBPutResultData, "embedDBPut did not put correct data value in buffer.");
     }
-    TEST_ASSERT_EQUAL_INT64_MESSAGE(16321, state->minKey, "embedDBPut did not update minimim key on first insert.");
+    uint64_t expectedMinimumKey = 16321;
+    TEST_ASSERT_EQUAL_MEMORY_MESSAGE(&expectedMinimumKey, &state->minKey, sizeof(uint64_t), "embedDBPut did not update minimim key on first insert.");
     TEST_ASSERT_EQUAL_UINT32_MESSAGE(0, state->nextDataPageId, "embedDBPut incremented next page to write and it should not have.");
     TEST_ASSERT_EQUAL_UINT32_MESSAGE(11, EMBEDDB_GET_COUNT(state->buffer), "embedDBPut did not increment count in buffer correctly.");
 }
@@ -158,7 +159,8 @@ void embedDB_put_inserts_one_page_of_records_correctly() {
         TEST_ASSERT_EQUAL_UINT32_MESSAGE(key, embedDBPutResultKey, "embedDBPut did not put correct key value in buffer.");
         TEST_ASSERT_EQUAL_INT32_MESSAGE(data, embedDBPutResultData, "embedDBPut did not put correct data value in buffer.");
     }
-    TEST_ASSERT_EQUAL_INT64_MESSAGE(100, state->minKey, "embedDBPut did not update minimim key on first insert.");
+    uint64_t expectedMinKey = 100;
+    TEST_ASSERT_EQUAL_MEMORY_MESSAGE(&expectedMinKey, &state->minKey, sizeof(uint64_t), "embedDBPut did not update minimim key on first insert.");
     TEST_ASSERT_EQUAL_UINT32_MESSAGE(0, state->nextDataPageId, "embedDBPut incremented next page to write and it should not have.");
     TEST_ASSERT_EQUAL_UINT32_MESSAGE(63, EMBEDDB_GET_COUNT(state->buffer), "embedDBPut did not increment count in buffer correctly.");
 }
@@ -174,7 +176,8 @@ void embedDB_put_inserts_one_more_than_one_page_of_records_correctly() {
         int8_t result = embedDBPut(state, &key, &data);
         TEST_ASSERT_EQUAL_INT8_MESSAGE(0, result, "embedDBPut did not correctly insert data (returned non-zero code)");
     }
-    TEST_ASSERT_EQUAL_INT64_MESSAGE(4444444, state->minKey, "embedDBPut did not update minimim key on first insert.");
+    uint64_t expectedMinKey = 4444444;
+    TEST_ASSERT_EQUAL_MEMORY_MESSAGE(&expectedMinKey, &state->minKey, sizeof(uint64_t), "embedDBPut did not update minimim key on first insert.");
     TEST_ASSERT_EQUAL_UINT32_MESSAGE(1, state->nextDataPageId, "embedDBPut did not move to next page after writing the first page of records.");
     TEST_ASSERT_EQUAL_UINT32_MESSAGE(1, EMBEDDB_GET_COUNT(state->buffer), "embedDBPut did not reset buffer count to correct value after writing the page");
 }

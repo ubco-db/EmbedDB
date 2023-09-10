@@ -208,7 +208,7 @@ void embedDB_variable_data_reloads_and_queries_with_thirty_one_pages_of_data_cor
         snprintf(message, 100, "EmbedDB get did not return correct data for a record inserted before reloading (key %li).", key);
         TEST_ASSERT_EQUAL_INT32_MESSAGE(data, recordData, message);
         TEST_ASSERT_EQUAL_UINT32_MESSAGE(13, streamBytesRead, "EmbedDB var data stream did not read the correct number of bytes.");
-        snprintf(message, 100, "EmbedDB get var did not return the correct variable data for key %i.", key);
+        snprintf(message, 100, "EmbedDB get var did not return the correct variable data for key %li.", key);
         TEST_ASSERT_EQUAL_MEMORY_MESSAGE(variableData, variableDataBuffer, 13, message);
         key++;
         data++;
@@ -234,23 +234,23 @@ void embedDB_variable_data_reloads_and_queries_with_two_hundred_forty_seven_page
     for (int i = 0; i < 2708; i++) {
         int8_t getResult = embedDBGetVar(state, &key, &recordData, &stream);
         if (i > 1163) {
-            snprintf(message, 120, "EmbedDB get encountered an error fetching the data for key %i.", key);
+            snprintf(message, 120, "EmbedDB get encountered an error fetching the data for key %li.", key);
             TEST_ASSERT_EQUAL_INT8_MESSAGE(0, getResult, message);
-            snprintf(message, 120, "EmbedDB get did not return correct data for a record inserted before reloading (key %i).", key);
+            snprintf(message, 120, "EmbedDB get did not return correct data for a record inserted before reloading (key %li).", key);
             TEST_ASSERT_EQUAL_INT32_MESSAGE(data, recordData, message);
-            snprintf(message, 120, "EmbedDB get var returned null stream for key %i.", key);
+            snprintf(message, 120, "EmbedDB get var returned null stream for key %li.", key);
             TEST_ASSERT_NOT_NULL_MESSAGE(stream, message);
             uint32_t streamBytesRead = embedDBVarDataStreamRead(state, stream, variableDataBuffer, 13);
             TEST_ASSERT_EQUAL_UINT32_MESSAGE(13, streamBytesRead, "EmbedDB var data stream did not read the correct number of bytes.");
-            snprintf(message, 120, "EmbedDB get var did not return the correct variable data for key %i.", key);
+            snprintf(message, 120, "EmbedDB get var did not return the correct variable data for key %li.", key);
             TEST_ASSERT_EQUAL_MEMORY_MESSAGE(variableData, variableDataBuffer, 13, message);
             free(stream);
         } else {
-            snprintf(message, 120, "EmbedDB get encountered an error fetching the data for key %i. The var data was not detected as being overwritten.", key);
+            snprintf(message, 120, "EmbedDB get encountered an error fetching the data for key %li. The var data was not detected as being overwritten.", key);
             TEST_ASSERT_EQUAL_INT8_MESSAGE(1, getResult, message);
-            snprintf(message, 120, "EmbedDB get did not return correct data for a record inserted before reloading (key %i).", key);
+            snprintf(message, 120, "EmbedDB get did not return correct data for a record inserted before reloading (key %li).", key);
             TEST_ASSERT_EQUAL_INT32_MESSAGE(data, recordData, message);
-            snprintf(message, 120, "EmbedDB get var did not return null stream for key %i when it should have no variable data.", key);
+            snprintf(message, 120, "EmbedDB get var did not return null stream for key %li when it should have no variable data.", key);
             TEST_ASSERT_NULL_MESSAGE(stream, message);
         }
         key++;

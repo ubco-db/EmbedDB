@@ -257,7 +257,7 @@ void splinePrint(spline *spl) {
         void *point = splinePointLocation(spl, i);
         memcpy(&keyVal, point, spl->keySize);
         memcpy(&page, (int8_t *)point + spl->keySize, sizeof(uint32_t));
-        printf("[%lu]: (%lu, %i)\n", i, keyVal, page);
+        printf("[%lu]: (%lu, %li)\n", i, keyVal, page);
     }
     printf("\n");
 }
