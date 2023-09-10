@@ -56,7 +56,7 @@
 #include "unity.h"
 
 typedef struct DataSource {
-    FILE* fp;
+    SD_FILE* fp;
     int8_t* pageBuffer;
     int32_t pageRecord;
 } DataSource;
@@ -273,7 +273,7 @@ void test_aggregate() {
         TEST_ASSERT_EQUAL_UINT32_MESSAGE(count, recordBuffer[1], "Count is wrong");
         TEST_ASSERT_EQUAL_INT32_MESSAGE(maxWnd, recordBuffer[2], "Max is wrong");
         TEST_ASSERT_EQUAL_FLOAT_MESSAGE((float)avgSum / count, ((float*)recordBuffer)[3], "Average is wrong");
-        TEST_ASSERT_EQUAL_INT64_MESSAGE(sum, *(int64_t*)(recordBuffer + 4), "Sum is wrong");
+        TEST_ASSERT_EQUAL_MEMORY_MESSAGE(&sum, (int64_t*)(recordBuffer + 4), sizeof(int64_t), "Sum is wrong");
         TEST_ASSERT_EQUAL_INT32_MESSAGE(minTmp, recordBuffer[6], "Min is wrong");
     }
 
@@ -330,7 +330,7 @@ void test_join() {
     int32_t recordsReturned = 0;
     int32_t* recordBuffer = (int32_t*)proj->recordBuffer;
 
-    FILE* fp = fopen("test/TestAdvancedQueries_test_join_expected.bin", "rb");
+    SD_FILE* fp = fopen("test/TestAdvancedQueries_test_join_expected.bin", "rb");
     int32_t expectedRecord[3];
     while (exec(proj)) {
         recordsReturned++;
@@ -388,7 +388,7 @@ int main(void) {
 }
 
 void insertData(embedDBState* state, const char* filename) {
-    FILE* fp = fopen(filename, "rb");
+    SD_FILE* fp = fopen(filename, "rb");
     char fileBuffer[512];
     int numRecords = 0;
     while (fread(fileBuffer, state->pageSize, 1, fp)) {
