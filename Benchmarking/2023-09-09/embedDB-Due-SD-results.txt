@@ -1,0 +1,61 @@
+Starting RAW performance test.
+Write time: 861ms (594 KB/s)
+Random write time: 884ms (579 KB/s)
+Read time: 492ms (1040 KB/s)
+Random Read time: 494ms (1036 KB/s)
+
+INSERT
+Time: 4768 4706 4744 ~ 4739ms
+Num Records inserted: 100000
+Num data pages written: 3226
+Num index pages written: 14
+
+SELECT * FROM r
+Time: 1967 1968 1969 ~ 1968ms
+Result size: 100000
+Num reads: 3226
+
+SELECT Continuous 5% (key >= 952425684)
+Time: 104 105 104 ~ 104ms
+Result size: 5000
+Num reads: 163
+
+SELECT Continuous 80% (key >= 947916144)
+Time: 1623 1624 1623 ~ 1623ms
+Result size: 80078
+Num reads: 2584
+
+SELECT * FROM r WHERE data = 600
+Time: 179 180 179 ~ 179ms
+Result size: 5
+Num reads: 285
+Num idx reads: 14
+
+SELECT * FROM r WHERE data >= 700
+Time: 179 179 180 ~ 179ms
+Result size: 10
+Num reads: 285
+Num idx reads: 14
+
+SELECT * FROM r WHERE data >= 420
+Time: 1515 1515 1515 ~ 1515ms
+Result size: 65466
+Num reads: 2406
+Num idx reads: 14
+
+SELECT * FROM r WHERE key >= 958885776 AND data >= 450 
+AND data <= 650
+Time: 740 741 741 ~ 740ms
+Result size: 29969
+Num reads: 1109
+Num idx reads: 9
+
+Sequential Key-Value
+Time: 7739 7744 7799 ~ 7760ms
+Result size: 100000
+Num reads: 3226
+
+Random Key-Value
+Time: 106073 114716 109250 ~ 110013ms
+Result size: 100000
+Num reads: 127908
