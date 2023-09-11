@@ -331,7 +331,7 @@ void test_join() {
     int32_t* recordBuffer = (int32_t*)proj->recordBuffer;
 
     SD_FILE* fp = fopen("expected_join_output.bin", "rb");
-    
+
     int32_t expectedRecord[3];
     while (exec(proj)) {
         recordsReturned++;

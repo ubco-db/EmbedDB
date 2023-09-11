@@ -175,27 +175,29 @@ void queryRecordsFromFile(embedDBState *state, const char *fileName, int32_t num
     char infileBuffer[512];
     int8_t headerSize = 16;
     int32_t numRead = 0;
-    int32_t dataBuffer = 0;
+    int8_t *dataBuffer = (int8_t *)malloc(state->dataSize);
     char message[100];
     while (numRead < numRecords) {
         if (0 == fread(infileBuffer, state->pageSize, 1, infile))
             break;
-        int16_t count = *((int16_t *)(infileBuffer + 4));
+        int16_t count = 0;
+        memcpy(&count, infileBuffer + 4, sizeof(int16_t));
         for (int16_t i = 0; i < count; i++) {
             void *buf = (infileBuffer + headerSize + i * state->recordSize);
-            int8_t getResult = embedDBGet(state, buf, &dataBuffer);
+            int8_t getResult = embedDBGet(state, buf, dataBuffer);
             uint32_t key = 0;
             memcpy(&key, buf, sizeof(uint32_t));
             snprintf(message, 100, "embedDBGet was not able to find the data for key %li", key);
             TEST_ASSERT_EQUAL_INT8_MESSAGE(0, getResult, message);
             snprintf(message, 100, "embedDBGet did not return the correct data for key %li", key);
-            TEST_ASSERT_EQUAL_MEMORY_MESSAGE((int8_t *)buf + 4, &dataBuffer, state->dataSize, message);
+            TEST_ASSERT_EQUAL_MEMORY_MESSAGE((int8_t *)buf + 4, dataBuffer, state->dataSize, message);
             numRead++;
             if (numRead >= numRecords)
                 break;
         }
     }
     TEST_ASSERT_EQUAL_INT32_MESSAGE(numRecords, numRead, "The number of records read was not equal to the number of records inserted.");
+    free(dataBuffer);
     fclose(infile);
 }
 
@@ -205,25 +207,26 @@ void queryRecordsFromFileWithVarData(embedDBState *state, const char *fileName, 
     char infileBuffer[512];
     int8_t headerSize = 16;
     int32_t numRead = 0;
-    int32_t dataBuffer = 0;
+    int8_t *dataBuffer = (int8_t *)malloc(state->dataSize);
     char *varDataBuffer = (char *)calloc(30, sizeof(char));
     char *varDataExpected = (char *)calloc(30, sizeof(char));
     char message[100];
     while (numRead < numRecords) {
         if (0 == fread(infileBuffer, state->pageSize, 1, infile))
             break;
-        int16_t count = *((int16_t *)(infileBuffer + 4));
+        int16_t count = 0;
+        memcpy(&count, infileBuffer + 4, sizeof(int16_t));
         for (int16_t i = 0; i < count; i++) {
             void *buf = (infileBuffer + headerSize + i * (state->keySize + state->dataSize));
             uint32_t key = 0;
             memcpy(&key, buf, sizeof(uint32_t));
             snprintf(varDataExpected, 30, "Hello world %li", key);
             embedDBVarDataStream *stream = NULL;
-            int8_t getResult = embedDBGetVar(state, buf, &dataBuffer, &stream);
+            int8_t getResult = embedDBGetVar(state, buf, dataBuffer, &stream);
             snprintf(message, 100, "embedDBGetVar was not able to find the data for key %li", key);
             TEST_ASSERT_EQUAL_INT8_MESSAGE(0, getResult, message);
             snprintf(message, 100, "embedDBGetBar did not return the correct data for key %li", key);
-            TEST_ASSERT_EQUAL_MEMORY_MESSAGE((int8_t *)buf + 4, &dataBuffer, state->dataSize, message);
+            TEST_ASSERT_EQUAL_MEMORY_MESSAGE((int8_t *)buf + 4, dataBuffer, state->dataSize, message);
             uint32_t streamBytesRead = embedDBVarDataStreamRead(state, stream, varDataBuffer, strlen(varDataExpected));
             snprintf(message, 100, "embedDBGetVar did not return the correct number of bytes read for key %li.", key);
             TEST_ASSERT_EQUAL_UINT32_MESSAGE(strlen(varDataExpected), streamBytesRead, message);
@@ -238,6 +241,7 @@ void queryRecordsFromFileWithVarData(embedDBState *state, const char *fileName, 
     }
     TEST_ASSERT_EQUAL_INT32_MESSAGE(numRecords, numRead, "The number of records read was not equal to the number of records inserted.");
     fclose(infile);
+    free(dataBuffer);
     free(varDataBuffer);
     free(varDataExpected);
 }
