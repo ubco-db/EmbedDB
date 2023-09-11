@@ -52,6 +52,12 @@
 #include "sdcard_c_iface.h"
 #include "unity.h"
 
+const char uwaDatafileName[] = "data/uwa500K.bin";
+const char ethyleneDatafileName[] = "data/ethylene_CO.bin";
+const char smartphoneDatafileName[] = "data/measure1_smartphone_sens.bin";
+const char psraDatafileName[] = "data/PRSA_Data_Hongxin.bin";
+const char positionDatafileName[] = "data/position.bin";
+
 void setupembedDBInstanceKeySize4DataSize4(embedDBState *state, int number) {
     state->keySize = 4;
     state->dataSize = 4;
@@ -105,7 +111,7 @@ void queryRecords(embedDBState *state, int32_t numberOfRecords, int32_t starting
     }
 }
 
-void insertRecordsFromFile(embedDBState *state, char *fileName, int32_t numRecords) {
+void insertRecordsFromFile(embedDBState *state, const char *fileName, int32_t numRecords) {
     SD_FILE *infile;
     infile = fopen(fileName, "r+b");
     char infileBuffer[512];
@@ -131,7 +137,7 @@ void insertRecordsFromFile(embedDBState *state, char *fileName, int32_t numRecor
     fclose(infile);
 }
 
-void insertRecordsFromFileWithVarData(embedDBState *state, char *fileName, int32_t numRecords) {
+void insertRecordsFromFileWithVarData(embedDBState *state, const char *fileName, int32_t numRecords) {
     SD_FILE *infile;
     infile = fopen(fileName, "r+b");
     TEST_ASSERT_NOT_NULL_MESSAGE(infile, "Error opening file.");
@@ -163,7 +169,7 @@ void insertRecordsFromFileWithVarData(embedDBState *state, char *fileName, int32
     fclose(infile);
 }
 
-void queryRecordsFromFile(embedDBState *state, char *fileName, int32_t numRecords) {
+void queryRecordsFromFile(embedDBState *state, const char *fileName, int32_t numRecords) {
     SD_FILE *infile;
     infile = fopen(fileName, "r+b");
     char infileBuffer[512];
@@ -193,7 +199,7 @@ void queryRecordsFromFile(embedDBState *state, char *fileName, int32_t numRecord
     fclose(infile);
 }
 
-void queryRecordsFromFileWithVarData(embedDBState *state, char *fileName, int32_t numRecords) {
+void queryRecordsFromFileWithVarData(embedDBState *state, const char *fileName, int32_t numRecords) {
     SD_FILE *infile;
     infile = fopen(fileName, "r+b");
     char infileBuffer[512];
@@ -219,6 +225,8 @@ void queryRecordsFromFileWithVarData(embedDBState *state, char *fileName, int32_
             snprintf(message, 100, "embedDBGetBar did not return the correct data for key %li", key);
             TEST_ASSERT_EQUAL_MEMORY_MESSAGE((int8_t *)buf + 4, &dataBuffer, state->dataSize, message);
             uint32_t streamBytesRead = embedDBVarDataStreamRead(state, stream, varDataBuffer, strlen(varDataExpected));
+            snprintf(message, 100, "embedDBGetVar did not return the correct number of bytes read for key %li.", key);
+            TEST_ASSERT_EQUAL_UINT32_MESSAGE(strlen(varDataExpected), streamBytesRead, message);
             snprintf(message, 100, "embedDBGetVar did not return the correct variable data for key %li", key);
 
             TEST_ASSERT_EQUAL_MEMORY_MESSAGE(varDataExpected, varDataBuffer, strlen(varDataExpected), message);
@@ -234,7 +242,7 @@ void queryRecordsFromFileWithVarData(embedDBState *state, char *fileName, int32_
     free(varDataExpected);
 }
 
-void setupembedDBInstanceKeySize4DataSize12(embedDBState *state, int number, uint32_t numPoints) {
+void setupembedDBInstanceKeySize4DataSize12(embedDBState *state, uint32_t number, uint32_t numPoints) {
     state->keySize = 4;
     state->dataSize = 12;
     state->pageSize = 512;
@@ -248,9 +256,9 @@ void setupembedDBInstanceKeySize4DataSize12(embedDBState *state, int number, uin
     state->eraseSizeInPages = 4;
     state->fileInterface = getSDInterface();
     char path[40];
-    snprintf(path, 40, "build/artifacts/dataFile%i.bin", number);
+    snprintf(path, 40, "dataFile%li.bin", number);
     state->dataFile = setupSDFile(path);
-    snprintf(path, 40, "build/artifacts/indexFile%i.bin", number);
+    snprintf(path, 40, "indexFile%li.bin", number);
     state->indexFile = setupSDFile(path);
     state->bitmapSize = 1;
     state->inBitmap = inBitmapInt8;
@@ -262,7 +270,7 @@ void setupembedDBInstanceKeySize4DataSize12(embedDBState *state, int number, uin
     TEST_ASSERT_EQUAL_INT8_MESSAGE(0, result, "embedDB init did not return zero when initializing state.");
 }
 
-void setupembedDBInstanceKeySize4DataSize12WithVarData(embedDBState *state, int number, uint32_t numPoints) {
+void setupembedDBInstanceKeySize4DataSize12WithVarData(embedDBState *state, uint32_t number, uint32_t numPoints) {
     state->keySize = 4;
     state->dataSize = 12;
     state->pageSize = 512;
@@ -277,11 +285,11 @@ void setupembedDBInstanceKeySize4DataSize12WithVarData(embedDBState *state, int 
     state->eraseSizeInPages = 4;
     state->fileInterface = getSDInterface();
     char path[40];
-    snprintf(path, 40, "build/artifacts/dataFile%i.bin", number);
+    snprintf(path, 40, "dataFile%li.bin", number);
     state->dataFile = setupSDFile(path);
-    snprintf(path, 40, "build/artifacts/indexFile%i.bin", number);
+    snprintf(path, 40, "indexFile%li.bin", number);
     state->indexFile = setupSDFile(path);
-    snprintf(path, 40, "build/artifacts/varFile%i.bin", number);
+    snprintf(path, 40, "varFile%li.bin", number);
     state->varFile = setupSDFile(path);
     state->bitmapSize = 1;
     state->inBitmap = inBitmapInt8;
@@ -349,12 +357,12 @@ void test_insert_from_files_with_index_multiple_states() {
     setupembedDBInstanceKeySize4DataSize12(state2, 2, 10);
     setupembedDBInstanceKeySize4DataSize12(state3, 3, 4);
 
-    insertRecordsFromFile(state1, "data/uwa500K.bin", 500000);
-    insertRecordsFromFile(state2, "data/ethylene_CO.bin", 400000);
-    queryRecordsFromFile(state1, "data/uwa500K.bin", 500000);
-    insertRecordsFromFile(state3, "data/PRSA_Data_Hongxin.bin", 33311);
-    queryRecordsFromFile(state2, "data/ethylene_CO.bin", 400000);
-    queryRecordsFromFile(state3, "data/PRSA_Data_Hongxin.bin", 33311);
+    insertRecordsFromFile(state1, uwaDatafileName, 500000);
+    insertRecordsFromFile(state2, ethyleneDatafileName, 400000);
+    queryRecordsFromFile(state1, uwaDatafileName, 500000);
+    insertRecordsFromFile(state3, psraDatafileName, 33311);
+    queryRecordsFromFile(state2, ethyleneDatafileName, 400000);
+    queryRecordsFromFile(state3, psraDatafileName, 33311);
 
     closeStateIndexFile(state1);
     closeStateIndexFile(state2);
@@ -372,14 +380,14 @@ void test_insert_from_files_with_vardata_multiple_states() {
     setupembedDBInstanceKeySize4DataSize12WithVarData(state3, 3, 10);
     setupembedDBInstanceKeySize4DataSize12WithVarData(state4, 4, 12);
 
-    insertRecordsFromFileWithVarData(state1, "data/uwa500K.bin", 500000);
-    insertRecordsFromFileWithVarData(state2, "data/measure1_smartphone_sens.bin", 18354);
-    queryRecordsFromFileWithVarData(state1, "data/uwa500K.bin", 500000);
-    insertRecordsFromFileWithVarData(state3, "data/ethylene_CO.bin", 185589);
-    insertRecordsFromFileWithVarData(state4, "data/position.bin", 1518);
-    queryRecordsFromFileWithVarData(state3, "data/ethylene_CO.bin", 185589);
-    queryRecordsFromFileWithVarData(state4, "data/position.bin", 1518);
-    queryRecordsFromFileWithVarData(state2, "data/measure1_smartphone_sens.bin", 18354);
+    insertRecordsFromFileWithVarData(state1, uwaDatafileName, 500000);
+    insertRecordsFromFileWithVarData(state2, smartphoneDatafileName, 18354);
+    queryRecordsFromFileWithVarData(state1, uwaDatafileName, 500000);
+    insertRecordsFromFileWithVarData(state3, ethyleneDatafileName, 185589);
+    insertRecordsFromFileWithVarData(state4, positionDatafileName, 1518);
+    queryRecordsFromFileWithVarData(state3, ethyleneDatafileName, 185589);
+    queryRecordsFromFileWithVarData(state4, positionDatafileName, 1518);
+    queryRecordsFromFileWithVarData(state2, smartphoneDatafileName, 18354);
 
     closeStateWithVarFile(state1);
     closeStateWithVarFile(state2);

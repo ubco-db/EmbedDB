@@ -278,7 +278,7 @@ void test_aggregate() {
     }
 
     // Free states
-    for (int i = 0; i < functionsLength; i++) {
+    for (uint32_t i = 0; i < functionsLength; i++) {
         if (aggFunctions[i].state != NULL) {
             free(aggFunctions[i].state);
         }
@@ -330,7 +330,8 @@ void test_join() {
     int32_t recordsReturned = 0;
     int32_t* recordBuffer = (int32_t*)proj->recordBuffer;
 
-    SD_FILE* fp = fopen("test/TestAdvancedQueries_test_join_expected.bin", "rb");
+    SD_FILE* fp = fopen("expected_join_output.bin", "rb");
+    
     int32_t expectedRecord[3];
     while (exec(proj)) {
         recordsReturned++;
@@ -376,7 +377,7 @@ void tearDown(void) {
     free(seaData);
 }
 
-int main(void) {
+void runUnityTests(void) {
     UNITY_BEGIN();
 
     RUN_TEST(test_projection);
