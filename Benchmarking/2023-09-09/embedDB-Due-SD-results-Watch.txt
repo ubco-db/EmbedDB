@@ -1,0 +1,54 @@
+INSERT
+Time: 5236 5161 5175 ~ 5190ms
+Num Records inserted: 100000
+Num data pages written: 3226
+Num index pages written: 14
+
+SELECT * FROM r
+Time: 1972 1974 1972 ~ 1972ms
+Result size: 100000
+Num reads: 3226
+
+SELECT Continuous 5% (key >= 7026900)
+Time: 103 103 103 ~ 103ms
+Result size: 5013
+Num reads: 163
+
+SELECT Continuous 80% (key >= 949287)
+Time: 1616 1617 1615 ~ 1616ms
+Result size: 79994
+Num reads: 2582
+
+SELECT * FROM r WHERE data = -93050848
+Time: 1489 1491 1488 ~ 1489ms
+Result size: 1
+Num reads: 2520
+Num idx reads: 14
+
+SELECT * FROM r WHERE data >= 871998912
+Time: 386 386 386 ~ 386ms
+Result size: 11
+Num reads: 648
+Num idx reads: 14
+
+SELECT * FROM r WHERE data >= -5000000
+Time: 1974 1974 1973 ~ 1973ms
+Result size: 65309
+Num reads: 3226
+Num idx reads: 14
+
+SELECT * FROM r WHERE key >= 1970000 AND data >= 0 AND data <= 871998912
+Time: 1129 1127 1128 ~ 1128ms
+Result size: 29868
+Num reads: 1802
+Num idx reads: 9
+
+Sequential Key-Value
+Time: 9687 9722 9665 ~ 9691ms
+Result size: 100000
+Num reads: 3226
+
+Random Key-Value
+Time: 106614 106892 106335 ~ 106613ms
+Result size: 100000
+Num reads: 126533
