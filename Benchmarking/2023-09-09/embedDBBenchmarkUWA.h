@@ -193,7 +193,7 @@ void runBenchmark() {
         embedDBInit(state, 1);
         char *recordBuffer = (char *)malloc(state->recordSize);
 
-printf("A\n");
+        printf("A\n");
         ////////////////////////
         // Insert uwa dataset //
         ////////////////////////
@@ -217,7 +217,7 @@ printf("A\n");
         timeInsert[run] = millis() - start;
         numWrites = state->numWrites;
         numIdxWrites = state->numIdxWrites;
-printf("B\n");
+        printf("B\n");
         /////////////////////
         // SELECT * FROM r //
         /////////////////////
@@ -240,7 +240,7 @@ printf("B\n");
         timeSelectAll[run] = millis() - start;
 
         numReadsSelectAll = state->numReads - numReadsSelectAll;
-printf("C\n");
+        printf("C\n");
         ///////////////
         // SELECT 5% //
         ///////////////
@@ -264,7 +264,7 @@ printf("C\n");
         timeSelectKeySmallResult[run] = millis() - start;
 
         numReadsSelectKeySmallResult = state->numReads - numReadsSelectKeySmallResult;
-printf("D\n");
+        printf("D\n");
         ////////////////
         // SELECT 80% //
         ////////////////
@@ -288,7 +288,7 @@ printf("D\n");
         timeSelectKeyLargeResult[run] = millis() - start;
 
         numReadsSelectKeyLargeResult = state->numReads - numReadsSelectKeyLargeResult;
-printf("E\n");
+        printf("E\n");
         //////////////////////////////////////
         // SELECT * FROM r WHERE data = 600 //
         //////////////////////////////////////
@@ -316,7 +316,7 @@ printf("E\n");
 
         numReadsSelectSingleDataResult = state->numReads - numReadsSelectSingleDataResult;
         numIdxReadsSelectSingleDataResult = state->numIdxReads - numIdxReadsSelectSingleDataResult;
-printf("F\n");
+        printf("F\n");
         ///////////////////////////////////////
         // SELECT * FROM r WHERE data >= 600 //
         ///////////////////////////////////////
@@ -342,7 +342,7 @@ printf("F\n");
 
         numReadsSelectDataSmallResult = state->numReads - numReadsSelectDataSmallResult;
         numIdxReadsSelectDataSmallResult = state->numIdxReads - numIdxReadsSelectDataSmallResult;
-printf("G\n");
+        printf("G\n");
         ///////////////////////////////////////
         // SELECT * FROM r WHERE data >= 420 //
         ///////////////////////////////////////
@@ -368,7 +368,7 @@ printf("G\n");
 
         numReadsSelectDataLargeResult = state->numReads - numReadsSelectDataLargeResult;
         numIdxReadsSelectDataLargeResult = state->numIdxReads - numIdxReadsSelectDataLargeResult;
-printf("H\n");
+        printf("H\n");
         ////////////////////////////////////////////////////////////////////////////
         // SELECT * FROM r WHERE key >= 958885776 AND data >= 450 AND data <= 650 //
         ////////////////////////////////////////////////////////////////////////////
@@ -395,7 +395,7 @@ printf("H\n");
 
         numReadsSelectKeyData = state->numReads - numReadsSelectKeyData;
         numIdxReadsSelectKeyData = state->numIdxReads - numIdxReadsSelectKeyData;
-printf("I\n");
+        printf("I\n");
         //////////////////////////
         // Sequential Key-Value //
         //////////////////////////
@@ -417,7 +417,7 @@ printf("I\n");
         numReadsSeqKV = state->numReads - numReadsSeqKV;
 
         fclose(dataset);
-printf("J\n");
+        printf("J\n");
         //////////////////////
         // Random Key-Value //
         //////////////////////
@@ -440,7 +440,7 @@ printf("J\n");
         numReadsRandKV = state->numReads - numReadsRandKV;
 
         fclose(randomDataset);
-printf("K\n");
+        printf("K\n");
         /////////////////
         // Close EMBEDDB //
         /////////////////
