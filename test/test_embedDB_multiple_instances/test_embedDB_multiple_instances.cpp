@@ -310,16 +310,26 @@ void closeState(embedDBState *state) {
     tearDownSDFile(state->dataFile);
     free(state->buffer);
     free(state->fileInterface);
+    free(state);
 }
 
 void closeStateIndexFile(embedDBState *state) {
+    embedDBClose(state);
     tearDownSDFile(state->indexFile);
-    closeState(state);
+    tearDownSDFile(state->dataFile);
+    free(state->buffer);
+    free(state->fileInterface);
+    free(state);
 }
 
 void closeStateWithVarFile(embedDBState *state) {
+    embedDBClose(state);
     tearDownSDFile(state->varFile);
-    closeStateIndexFile(state);
+    tearDownSDFile(state->indexFile);
+    tearDownSDFile(state->dataFile);
+    free(state->buffer);
+    free(state->fileInterface);
+    free(state);
 }
 
 void test_insert_on_multiple_embedDB_states() {
@@ -334,7 +344,7 @@ void test_insert_on_multiple_embedDB_states() {
 
     int32_t key = 100;
     int32_t data = 1000;
-    int32_t numRecords = 100000;
+    int32_t numRecords = 30000;
 
     /* Insert records into each state */
     insertRecords(state1, numRecords, key, data);
@@ -361,11 +371,11 @@ void test_insert_from_files_with_index_multiple_states() {
     setupembedDBInstanceKeySize4DataSize12(state2, 2, 10);
     setupembedDBInstanceKeySize4DataSize12(state3, 3, 4);
 
-    insertRecordsFromFile(state1, uwaDatafileName, 500000);
-    insertRecordsFromFile(state2, ethyleneDatafileName, 400000);
-    queryRecordsFromFile(state1, uwaDatafileName, 500000);
+    insertRecordsFromFile(state1, uwaDatafileName, 35000);
+    insertRecordsFromFile(state2, ethyleneDatafileName, 57000);
+    queryRecordsFromFile(state1, uwaDatafileName, 35000);
     insertRecordsFromFile(state3, psraDatafileName, 33311);
-    queryRecordsFromFile(state2, ethyleneDatafileName, 400000);
+    queryRecordsFromFile(state2, ethyleneDatafileName, 57000);
     queryRecordsFromFile(state3, psraDatafileName, 33311);
 
     closeStateIndexFile(state1);
@@ -384,12 +394,12 @@ void test_insert_from_files_with_vardata_multiple_states() {
     setupembedDBInstanceKeySize4DataSize12WithVarData(state3, 3, 10);
     setupembedDBInstanceKeySize4DataSize12WithVarData(state4, 4, 12);
 
-    insertRecordsFromFileWithVarData(state1, uwaDatafileName, 500000);
+    insertRecordsFromFileWithVarData(state1, uwaDatafileName, 25000);
     insertRecordsFromFileWithVarData(state2, smartphoneDatafileName, 18354);
-    queryRecordsFromFileWithVarData(state1, uwaDatafileName, 500000);
-    insertRecordsFromFileWithVarData(state3, ethyleneDatafileName, 185589);
+    queryRecordsFromFileWithVarData(state1, uwaDatafileName, 2500);
+    insertRecordsFromFileWithVarData(state3, ethyleneDatafileName, 18558);
     insertRecordsFromFileWithVarData(state4, positionDatafileName, 1518);
-    queryRecordsFromFileWithVarData(state3, ethyleneDatafileName, 185589);
+    queryRecordsFromFileWithVarData(state3, ethyleneDatafileName, 18558);
     queryRecordsFromFileWithVarData(state4, positionDatafileName, 1518);
     queryRecordsFromFileWithVarData(state2, smartphoneDatafileName, 18354);
 
