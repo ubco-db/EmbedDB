@@ -53,7 +53,7 @@ static ArduinoOutStream cout(Serial);
 #include "sdcard_c_iface.h"
 #include "serial_c_iface.h"
 
-#define EXAMPLE 0
+#define EXAMPLE 3
 
 #if EXAMPLE == 0
 #include "embedDBExample.h"
@@ -61,6 +61,8 @@ static ArduinoOutStream cout(Serial);
 #include "embedDBVariableDataExample.h"
 #elif EXAMPLE == 2
 #include "advancedQueryInterfaceExample.h"
+#elif EXAMPLE == 3
+#include "../Benchmarking/2023-09-09/embedDBBenchmarkEthylene.h"
 #endif
 
 #define ENABLE_DEDICATED_SPI 1
@@ -99,6 +101,8 @@ void setup() {
     test_vardata();
 #elif EXAMPLE == 2
     advancedQueryExample();
+#elif EXAMPLE == 3
+	runBenchmark();
 #endif
 }
 

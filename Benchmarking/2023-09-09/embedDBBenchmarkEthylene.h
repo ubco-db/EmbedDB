@@ -27,9 +27,11 @@
 void updateCustomUWABitmap(void *data, void *bm);
 int8_t inCustomUWABitmap(void *data, void *bm);
 void buildCustomUWABitmapFromRange(void *min, void *max, void *bm);
+int8_t customInt32Comparator(void *a, void *b);
 
-char const dataFileName[] = "data/watch_only_100K.bin";
-char const randomizedDataFileName[] = "data/watch_only_100K_randomized.bin";
+
+char const dataFileName[] = "data/ethylene_CO_only_100K.bin";
+char const randomizedDataFileName[] = "data/ethylene_CO_only_100K_randomized.bin";
 
 void testRawPerformance() { /* Tests storage raw read and write performance */
     printf("Starting RAW performance test.\n");
@@ -140,7 +142,7 @@ void testRawPerformance() { /* Tests storage raw read and write performance */
 
 void runBenchmark() {
     printf("\n");
-    // testRawPerformance();
+    testRawPerformance();
     printf("\n");
 
 #define numRuns 3
@@ -166,10 +168,10 @@ void runBenchmark() {
         state->keySize = 4;
         state->dataSize = 12;
         state->compareKey = int32Comparator;
-        state->compareData = int32Comparator;
+        state->compareData = customInt32Comparator;
         state->pageSize = 512;
         state->eraseSizeInPages = 4;
-        state->numSplinePoints = 310;
+        state->numSplinePoints = 30;
         state->numDataPages = 20000;
         state->numIndexPages = 100;
 #if STORAGE_TYPE == 0
@@ -194,7 +196,7 @@ void runBenchmark() {
         char *recordBuffer = (char *)malloc(state->recordSize);
 
         printf("A\n");
-
+		
         ////////////////////////
         // Insert uwa dataset //
         ////////////////////////
@@ -202,6 +204,8 @@ void runBenchmark() {
         uint32_t start = millis();
 
         numRecords = 0;
+        uint32_t minKey = 0;
+        uint32_t maxKey = 109947;
 
         char dataPage[512];
         while (fread(dataPage, 512, 1, dataset)) {
@@ -243,14 +247,14 @@ void runBenchmark() {
         numReadsSelectAll = state->numReads - numReadsSelectAll;
 
         printf("C\n");
-
+		
         ///////////////
         // SELECT 5% //
         ///////////////
         start = millis();
 
         embedDBIterator itSelectKeySmallResult;
-        uint32_t minKeySelectKeySmallResult = 7026900;
+        uint32_t minKeySelectKeySmallResult = maxKey - (maxKey - minKey) * 0.05;  // 104449
         itSelectKeySmallResult.minKey = &minKeySelectKeySmallResult;
         itSelectKeySmallResult.maxKey = NULL;
         itSelectKeySmallResult.minData = NULL;
@@ -276,7 +280,7 @@ void runBenchmark() {
         start = millis();
 
         embedDBIterator itSelectKeyLargeResult;
-        uint32_t minKeySelectKeyLargeResult = 949287;
+        uint32_t minKeySelectKeyLargeResult = maxKey - (maxKey - minKey) * 0.8;  // 21989
         itSelectKeyLargeResult.minKey = &minKeySelectKeyLargeResult;
         itSelectKeyLargeResult.maxKey = NULL;
         itSelectKeyLargeResult.minData = NULL;
@@ -293,22 +297,20 @@ void runBenchmark() {
         timeSelectKeyLargeResult[run] = millis() - start;
 
         numReadsSelectKeyLargeResult = state->numReads - numReadsSelectKeyLargeResult;
-
         printf("E\n");
-
-        ////////////////////////////////////////////
-        // SELECT * FROM r WHERE data = -93050848 //
-        ////////////////////////////////////////////
+        /////////////////////////////////////////
+        // SELECT * FROM r WHERE data = 214517 //
+        /////////////////////////////////////////
 
         start = millis();
 
         embedDBIterator itSelectSingleDataResult;
-        int32_t minDataSelectSingleResult = -93050848;
-        int32_t maxDataSelectSingleResult = -93050848;
+        int32_t minDataSelectSingleResult[] = {0, 0, 214517};
+        int32_t maxDataSelectSingleResult[] = {0, 0, 214517};
         itSelectSingleDataResult.minKey = NULL;
         itSelectSingleDataResult.maxKey = NULL;
-        itSelectSingleDataResult.minData = &minDataSelectSingleResult;
-        itSelectSingleDataResult.maxData = &maxDataSelectSingleResult;
+        itSelectSingleDataResult.minData = minDataSelectSingleResult;
+        itSelectSingleDataResult.maxData = maxDataSelectSingleResult;
         embedDBInitIterator(state, &itSelectSingleDataResult);
 
         numRecordsSelectSingleDataResult = 0;
@@ -326,16 +328,16 @@ void runBenchmark() {
 
         printf("F\n");
 
-        /////////////////////////////////////////////
-        // SELECT * FROM r WHERE data >= 871998912 //
-        /////////////////////////////////////////////
+        //////////////////////////////////////////
+        // SELECT * FROM r WHERE data >= 350000 //
+        //////////////////////////////////////////
         start = millis();
 
         embedDBIterator itSelectDataSmallResult;
-        int32_t minDataSelectDataSmallResult = 871998912;
+        int32_t minDataSelectDataSmallResult[] = {0, 0, 350000};
         itSelectDataSmallResult.minKey = NULL;
         itSelectDataSmallResult.maxKey = NULL;
-        itSelectDataSmallResult.minData = &minDataSelectDataSmallResult;
+        itSelectDataSmallResult.minData = minDataSelectDataSmallResult;
         itSelectDataSmallResult.maxData = NULL;
         embedDBInitIterator(state, &itSelectDataSmallResult);
 
@@ -354,16 +356,16 @@ void runBenchmark() {
 
         printf("G\n");
 
-        ////////////////////////////////////////////
-        // SELECT * FROM r WHERE data >= -5000000 //
-        ////////////////////////////////////////////
+        //////////////////////////////////////////
+        // SELECT * FROM r WHERE data >= 149000 //
+        //////////////////////////////////////////
         start = millis();
 
         embedDBIterator itSelectDataLargeResult;
-        int32_t minDataSelectDataLargeResult = -5000000;
+        int32_t minDataSelectDataLargeResult[] = {0, 0, 149000};
         itSelectDataLargeResult.minKey = NULL;
         itSelectDataLargeResult.maxKey = NULL;
-        itSelectDataLargeResult.minData = &minDataSelectDataLargeResult;
+        itSelectDataLargeResult.minData = minDataSelectDataLargeResult;
         itSelectDataLargeResult.maxData = NULL;
         embedDBInitIterator(state, &itSelectDataLargeResult);
 
@@ -383,17 +385,17 @@ void runBenchmark() {
         printf("H\n");
 
         //////////////////////////////////////////////////////////////////////////////
-        // SELECT * FROM r WHERE key >= 1970000 AND data >= 0 AND data <= 871998912 //
+        // SELECT * FROM r WHERE key >= 43978 AND data >= 149000 AND data <= 215000 //
         //////////////////////////////////////////////////////////////////////////////
         start = millis();
 
         embedDBIterator itSelectKeyData;
-        uint32_t minKeySelectKeyData = 1970000;
-        int32_t minDataSelectKeyData = 0, maxDataSelectKeyData = 871998912;
+        uint32_t minKeySelectKeyData = minKey + (maxKey - minKey) * 0.4;  // 43978
+        int32_t minDataSelectKeyData[] = {0, 0, 149000}, maxDataSelectKeyData[] = {0, 0, 215000};
         itSelectKeyData.minKey = &minKeySelectKeyData;
         itSelectKeyData.maxKey = NULL;
-        itSelectKeyData.minData = &minDataSelectKeyData;
-        itSelectKeyData.maxData = &maxDataSelectKeyData;
+        itSelectKeyData.minData = minDataSelectKeyData;
+        itSelectKeyData.maxData = maxDataSelectKeyData;
         embedDBInitIterator(state, &itSelectKeyData);
 
         numRecordsSelectKeyData = 0;
@@ -420,7 +422,6 @@ void runBenchmark() {
         numRecordsSeqKV = 0;
         numReadsSeqKV = state->numReads;
 
-		int page = 0;
         while (fread(dataPage, 512, 1, dataset)) {
             uint16_t count = *(uint16_t *)(dataPage + 4);
             for (int record = 1; record <= count; record++) {
@@ -435,7 +436,7 @@ void runBenchmark() {
         fclose(dataset);
 
         printf("J\n");
-
+		
         //////////////////////
         // Random Key-Value //
         //////////////////////
@@ -461,9 +462,9 @@ void runBenchmark() {
 
         printf("K\n");
 
-        /////////////////
-        // Close EMBEDDB //
-        /////////////////
+        ///////////////////
+        // Close EmbedDB //
+        ///////////////////
         embedDBClose(state);
 #if STORAGE_TYPE == 0
         tearDownSDFile(state->dataFile);
@@ -503,7 +504,7 @@ void runBenchmark() {
     printf("Num reads: %lu\n", numReadsSelectAll);
 
     sum = 0;
-    printf("\nSELECT Continuous 5%% (key >= 7026900)\n");
+    printf("\nSELECT Continuous 5%% (key >= 104449)\n");
     printf("Time: ");
     for (int i = 0; i < numRuns; i++) {
         printf("%lu ", timeSelectKeySmallResult[i]);
@@ -514,7 +515,7 @@ void runBenchmark() {
     printf("Num reads: %lu\n", numReadsSelectKeySmallResult);
 
     sum = 0;
-    printf("\nSELECT Continuous 80%% (key >= 949287)\n");
+    printf("\nSELECT Continuous 80%% (key >= 21989)\n");
     printf("Time: ");
     for (int i = 0; i < numRuns; i++) {
         printf("%lu ", timeSelectKeyLargeResult[i]);
@@ -525,7 +526,7 @@ void runBenchmark() {
     printf("Num reads: %lu\n", numReadsSelectKeyLargeResult);
 
     sum = 0;
-    printf("\nSELECT * FROM r WHERE data = -93050848\n");
+    printf("\nSELECT * FROM r WHERE data = 214517\n");
     printf("Time: ");
     for (int i = 0; i < numRuns; i++) {
         printf("%lu ", timeSelectSingleDataResult[i]);
@@ -537,7 +538,7 @@ void runBenchmark() {
     printf("Num idx reads: %lu\n", numIdxReadsSelectSingleDataResult);
 
     sum = 0;
-    printf("\nSELECT * FROM r WHERE data >= 871998912\n");
+    printf("\nSELECT * FROM r WHERE data >= 350000\n");
     printf("Time: ");
     for (int i = 0; i < numRuns; i++) {
         printf("%lu ", timeSelectDataSmallResult[i]);
@@ -549,7 +550,7 @@ void runBenchmark() {
     printf("Num idx reads: %lu\n", numIdxReadsSelectDataSmallResult);
 
     sum = 0;
-    printf("\nSELECT * FROM r WHERE data >= -5000000\n");
+    printf("\nSELECT * FROM r WHERE data >= 149000\n");
     printf("Time: ");
     for (int i = 0; i < numRuns; i++) {
         printf("%lu ", timeSelectDataLargeResult[i]);
@@ -561,7 +562,7 @@ void runBenchmark() {
     printf("Num idx reads: %lu\n", numIdxReadsSelectDataLargeResult);
 
     sum = 0;
-    printf("\nSELECT * FROM r WHERE key >= 1970000 AND data >= 0 AND data <= 871998912\n");
+    printf("\nSELECT * FROM r WHERE key >= 43978 AND data >= 149000 AND data <= 215000\n");
     printf("Time: ");
     for (int i = 0; i < numRuns; i++) {
         printf("%lu ", timeSelectKeyData[i]);
@@ -596,72 +597,61 @@ void runBenchmark() {
 }
 
 void updateCustomUWABitmap(void *data, void *bm) {
-    int32_t temp = *(int32_t *)data;
+    int32_t temp = *(int32_t *)((int8_t *)data + 8);
 
     /*  Custom, equi-depth buckets
-     *  Bucket  0: -870853696 -> -95660744 (0, 6249)
-     *	Bucket  1: -95588688 -> -53529536 (6250, 12499)
-     *	Bucket  2: -53504944 -> -30433654 (12500, 18749)
-     *	Bucket  3: -30433654 -> -16937704 (18750, 24999)
-     *	Bucket  4: -16911074 -> -8323669 (25000, 31249)
-     *	Bucket  5: -8323669 -> -3089904 (31250, 37499)
-     *	Bucket  6: -3089904 -> -205993 (37500, 43749)
-     *	Bucket  7: -205993 -> 2210423 (43750, 49999)
-     *	Bucket  8: 2210423 -> 3888215 (50000, 56249)
-     *	Bucket  9: 3888215 -> 6309509 (56250, 62499)
-     *	Bucket 10: 6309509 -> 11543274 (62500, 68749)
-     *	Bucket 11: 11543274 -> 20408630 (68750, 74999)
-     *	Bucket 12: 20426446 -> 32905578 (75000, 81249)
-     *	Bucket 13: 32905578 -> 55082704 (81250, 87499)
-     *	Bucket 14: 55082704 -> 98510328 (87500, 93749)
-     *	Bucket 15: 98510328 -> 871998912 (93750, 99999)
+     *  Bucket  0: -65536 -> 135424 (0, 6249)
+     *	Bucket  1: 135424 -> 141056 (6250, 12499)
+     *	Bucket  2: 141056 -> 146944 (12500, 18749)
+     *	Bucket  3: 146944 -> 152320 (18750, 24999)
+     *	Bucket  4: 152320 -> 158464 (25000, 31249)
+     *	Bucket  5: 158464 -> 163840 (31250, 37499)
+     *	Bucket  6: 163840 -> 169728 (37500, 43749)
+     *	Bucket  7: 169728 -> 175104 (43750, 49999)
+     *	Bucket  8: 175104 -> 180736 (50000, 56249)
+     *	Bucket  9: 180736 -> 186112 (56250, 62499)
+     *	Bucket 10: 186112 -> 192000 (62500, 68749)
+     *	Bucket 11: 192000 -> 201472 (68750, 74999)
+     *	Bucket 12: 201472 -> 235264 (75000, 81249)
+     *	Bucket 13: 235264 -> 270336 (81250, 87499)
+     *	Bucket 14: 270336 -> 311296 (87500, 93749)
+     *	Bucket 15: 311296 -> 392960 (93750, 99999)
      */
 
     uint16_t mask = 1;
 
-    int8_t mode = 0;  // 0 = equi-depth, 1 = equi-width
-    if (mode == 0) {
-        if (temp < 373) {
-            mask <<= 0;
-        } else if (temp < -53529536) {
-            mask <<= 1;
-        } else if (temp < -30433654) {
-            mask <<= 2;
-        } else if (temp < -16937704) {
-            mask <<= 3;
-        } else if (temp < -8323669) {
-            mask <<= 4;
-        } else if (temp < -3089904) {
-            mask <<= 5;
-        } else if (temp < -205993) {
-            mask <<= 6;
-        } else if (temp < 2210423) {
-            mask <<= 7;
-        } else if (temp < 3888215) {
-            mask <<= 8;
-        } else if (temp < 6309509) {
-            mask <<= 9;
-        } else if (temp < 11543274) {
-            mask <<= 10;
-        } else if (temp < 20408630) {
-            mask <<= 11;
-        } else if (temp < 32905578) {
-            mask <<= 12;
-        } else if (temp < 55082704) {
-            mask <<= 13;
-        } else if (temp < 98510328) {
-            mask <<= 14;
-        } else {
-            mask <<= 15;
-        }
+    if (temp < 135424) {
+        mask <<= 0;
+    } else if (temp < 141056) {
+        mask <<= 1;
+    } else if (temp < 146944) {
+        mask <<= 2;
+    } else if (temp < 152320) {
+        mask <<= 3;
+    } else if (temp < 158464) {
+        mask <<= 4;
+    } else if (temp < 163840) {
+        mask <<= 5;
+    } else if (temp < 169728) {
+        mask <<= 6;
+    } else if (temp < 175104) {
+        mask <<= 7;
+    } else if (temp < 180736) {
+        mask <<= 8;
+    } else if (temp < 186112) {
+        mask <<= 9;
+    } else if (temp < 192000) {
+        mask <<= 10;
+    } else if (temp < 201472) {
+        mask <<= 11;
+    } else if (temp < 235264) {
+        mask <<= 12;
+    } else if (temp < 270336) {
+        mask <<= 13;
+    } else if (temp < 311296) {
+        mask <<= 14;
     } else {
-        int shift = (temp - 303) / 16;
-        if (shift < 0) {
-            shift = 0;
-        } else if (shift > 15) {
-            shift = 15;
-        }
-        mask <<= shift;
+        mask <<= 15;
     }
 
     *(uint16_t *)bm |= mask;
@@ -703,4 +693,16 @@ void buildCustomUWABitmapFromRange(void *min, void *max, void *bm) {
         }
         *(uint16_t *)bm = minMap & maxMap;
     }
+}
+
+int8_t customInt32Comparator(void *a, void *b) {
+    int32_t i1, i2;
+    memcpy(&i1, (int8_t *)a + 8, sizeof(int32_t));
+    memcpy(&i2, (int8_t *)b + 8, sizeof(int32_t));
+    int32_t result = i1 - i2;
+    if (result < 0)
+        return -1;
+    if (result > 0)
+        return 1;
+    return 0;
 }
