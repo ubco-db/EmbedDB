@@ -1,3 +1,9 @@
+Starting RAW performance test.
+Write time: 1176ms (435 KB/s)
+Random write time: 1568ms (326 KB/s)
+Read time: 1060ms (483 KB/s)
+Random Read time: 1235ms (414 KB/s)
+
 INSERT
 Time: 13831 13666 13689 ~ 13728ms
 Num Records inserted: 100000

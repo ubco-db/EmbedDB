@@ -1,8 +1,8 @@
 Starting RAW performance test.
-Write time: 882ms (580 KB/s)
-Random write time: 887ms (577 KB/s)
-Read time: 486ms (1053 KB/s)
-Random Read time: 497ms (1030 KB/s)
+Write time: 868ms (589 KB/s)
+Random write time: 884ms (579 KB/s)
+Read time: 522ms (980 KB/s)
+Random Read time: 506ms (1011 KB/s)
 
 
 INSERT
