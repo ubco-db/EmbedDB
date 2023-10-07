@@ -1604,8 +1604,10 @@ uint32_t cleanSpline(embedDBState *state, void *key) {
         else
             break;
     }
-    if (state->spl->count - numPointsErased == 1)
-        numPointsErased--;
+    if (state->spl->count - numPointsErased < 2)
+        numPointsErased -= 2 - (state->spl->count - numPointsErased);
+    if (numPointsErased <= 0)
+    	return 0;
     splineErase(state->spl, numPointsErased);
     return numPointsErased;
 }
