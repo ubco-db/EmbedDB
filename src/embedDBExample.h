@@ -262,7 +262,7 @@ void runalltests_embedDB() {
                 memcpy(recordBuffer, &i, sizeof(int32_t));
                 int32_t data = i % 100;
                 memcpy(recordBuffer + state->keySize, &data, sizeof(int32_t));
-                embedDBPut(state, recordBuffer, (void *)(recordBuffer + 4));
+                embedDBPut(state, recordBuffer, (void *)(recordBuffer + state->keySize));
 
                 if (i % stepSize == 0) {
                     // printf("Num: %lu KEY: %lu\n", i, i);

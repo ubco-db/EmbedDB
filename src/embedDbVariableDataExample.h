@@ -201,7 +201,7 @@ void test_vardata() {
         embedDBState *state = (embedDBState *)malloc(sizeof(embedDBState));
 
         state->keySize = 4;
-        state->dataSize = 8;
+        state->dataSize = 12;
         state->pageSize = 512;
         state->bitmapSize = 0;
         state->bufferSizeInBlocks = M;
