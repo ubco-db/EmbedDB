@@ -1588,7 +1588,7 @@ id_t writePage(embedDBState *state, void *buffer) {
 }
 
 /**
- * @brief	Calculates the number of spline points not in use by embedDB and deltes them
+ * @brief	Calculates the number of spline points not in use by embedDB and deletes them
  * @param	state	embedDB algorithm state structure
  * @param	key 	The minimim key embedDB still needs points for
  * @return	Returns the number of points deleted
