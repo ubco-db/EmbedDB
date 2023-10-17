@@ -59,6 +59,11 @@
  */
 #define RADIX_BITS 0
 
+/**
+ * Should the spline be automatically cleaned when data pages are erased? 1 = yes, 0 = no
+ */
+#define CLEAN_SPLINE 1
+
 /* Helper Functions */
 int8_t embedDBInitData(embedDBState *state);
 int8_t embedDBInitDataFromFile(embedDBState *state);
@@ -211,7 +216,7 @@ int8_t embedDBInit(embedDBState *state, size_t indexMaxError) {
 
     /* Initalize the spline or radix spline structure if either are to be used */
     if (SEARCH_METHOD == 2) {
-        state->cleanSpline = 1;
+        state->cleanSpline = CLEAN_SPLINE;
         if (RADIX_BITS > 0) {
             initRadixSpline(state, RADIX_BITS);
         } else {
