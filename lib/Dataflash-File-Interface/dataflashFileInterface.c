@@ -59,8 +59,8 @@ int8_t DF_FLUSH(void *file) {
     return 1;
 }
 
-sbitsFileInterface *getDataflashInterface() {
-    sbitsFileInterface *fileInterface = malloc(sizeof(sbitsFileInterface));
+embedDBFileInterface *getDataflashInterface() {
+    embedDBFileInterface *fileInterface = malloc(sizeof(embedDBFileInterface));
     fileInterface->close = DF_CLOSE;
     fileInterface->read = DF_READ;
     fileInterface->write = DF_WRITE;

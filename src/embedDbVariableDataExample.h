@@ -1,3 +1,39 @@
+/******************************************************************************/
+/**
+ * @file		embedDBVariableDataExample.h
+ * @author		EmbedDB Team (See Authors.md)
+ * @brief		This file includes an example of inserting and querying EmbedDB
+ *              with variable length data and tests the inserted data for correctness.
+ * @copyright	Copyright 2023
+ * 			    EmbedDB Team
+ * @par Redistribution and use in source and binary forms, with or without
+ * 	modification, are permitted provided that the following conditions are met:
+ *
+ * @par 1.Redistributions of source code must retain the above copyright notice,
+ * 	this list of conditions and the following disclaimer.
+ *
+ * @par 2.Redistributions in binary form must reproduce the above copyright notice,
+ * 	this list of conditions and the following disclaimer in the documentation
+ * 	and/or other materials provided with the distribution.
+ *
+ * @par 3.Neither the name of the copyright holder nor the names of its contributors
+ * 	may be used to endorse or promote products derived from this software without
+ * 	specific prior written permission.
+ *
+ * @par THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+ * 	AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ * 	IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+ * 	ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE
+ * 	LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+ * 	CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+ * 	SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+ * 	INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+ * 	CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+ * 	ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+ * 	POSSIBILITY OF SUCH DAMAGE.
+ */
+/******************************************************************************/
+
 #ifndef PIO_UNIT_TESTING
 
 #include <errno.h>
@@ -7,8 +43,8 @@
 #include <string.h>
 #include <time.h>
 
-#include "sbits/sbits.h"
-#include "sbitsUtility.h"
+#include "embedDB/embedDB.h"
+#include "embedDBUtility.h"
 #include "sdcard_c_iface.h"
 
 #if defined(MEGA)
@@ -24,7 +60,7 @@
 #include "dataflashFileInterface.h"
 #endif
 
-#define NUM_STEPS 100
+#define NUM_STEPS 10
 #define NUM_RUNS 1
 #define VALIDATE_VAR_DATA 0
 /**
@@ -40,7 +76,20 @@
  */
 #define TEST_TYPE 2
 
-// Cursed linkedList for tracking data
+/*
+ * 1: Query each record from original data set.
+ * 2: Query random records in the range of original data set.
+ * 3: Query range of records using an iterator.
+ */
+#define QUERY_TYPE 3
+
+/*
+ * 0: Use data from one of the data sets
+ * 1: Use sequentially generated data
+ */
+#define SEQUENTIAL_DATA 1
+
+/* LinkedList for tracking data */
 typedef struct Node {
     int32_t key;
     void *data;
@@ -49,14 +98,14 @@ typedef struct Node {
 } Node;
 
 uint32_t readImageFromFile(void **data, char *filename);
-void writeDataToFile(sbitsState *state, sbitsVarDataStream *data, char *filename);
+void writeDataToFile(embedDBState *state, embedDBVarDataStream *data, char *filename);
 void imageVarData(float chance, char *filename, uint8_t *usingVarData, uint32_t *length, void **varData);
-void retrieveImageData(sbitsState *state, sbitsVarDataStream *varStream, int32_t key, char *filename, char *filetype);
-uint8_t dataEquals(sbitsState *state, sbitsVarDataStream *varStream, Node *node);
+void retrieveImageData(embedDBState *state, embedDBVarDataStream *varStream, int32_t key, char *filename, char *filetype);
+uint8_t dataEquals(embedDBState *state, embedDBVarDataStream *varStream, Node *node);
 void randomVarData(uint32_t chance, uint32_t sizeLowerBound, uint32_t sizeUpperBound, uint8_t *usingVarData, uint32_t *length, void **varData);
 
 void test_vardata() {
-    printf("\nSTARTING SBITS VARIABLE DATA TESTS.\n");
+    printf("\nSTARTING EmbedDB VARIABLE DATA TESTS.\n");
 
     // Two extra bufferes required for variable data
     int8_t M = 6;
@@ -77,14 +126,11 @@ void test_vardata() {
     uint32_t rreads[NUM_STEPS][NUM_RUNS];
     uint32_t rhits[NUM_STEPS][NUM_RUNS];
 
-    /* Determines if generated, sequential data is used, or data from an input file*/
-    int8_t seqdata = 0;
-
     // Files for non-sequentioal data
     SD_FILE *infile = NULL, *infileRandom = NULL;
     uint32_t minRange, maxRange;
 
-    if (seqdata != 1) {
+    if (!SEQUENTIAL_DATA) {
         /* Open file to read input records */
 
         // measure1_smartphone_sens.bin
@@ -152,7 +198,7 @@ void test_vardata() {
     }
 
     for (r = 0; r < NUM_RUNS; r++) {
-        sbitsState *state = (sbitsState *)malloc(sizeof(sbitsState));
+        embedDBState *state = (embedDBState *)malloc(sizeof(embedDBState));
 
         state->keySize = 4;
         state->dataSize = 12;
@@ -162,10 +208,11 @@ void test_vardata() {
         state->buffer = malloc((size_t)state->bufferSizeInBlocks * state->pageSize);
 
         /* Address level parameters */
-        state->numDataPages = 40000;
+        state->numDataPages = 1000;
         state->numIndexPages = 48;
-        state->numVarPages = 100000;
+        state->numVarPages = 1000;
         state->eraseSizeInPages = 4;
+        state->numSplinePoints = 30;
 
         if (STORAGE_TYPE == 0) {
             char dataPath[] = "dataFile.bin", indexPath[] = "indexFile.bin", varPath[] = "varFile.bin";
@@ -183,9 +230,9 @@ void test_vardata() {
             state->varFile = setupDataflashFile(state->numDataPages + state->numIndexPages, state->numVarPages);
         }
 #endif
-        state->parameters = SBITS_USE_BMAP | SBITS_USE_INDEX | SBITS_USE_VDATA | SBITS_RESET_DATA;
+        state->parameters = EMBEDDB_USE_BMAP | EMBEDDB_USE_INDEX | EMBEDDB_USE_VDATA | EMBEDDB_RESET_DATA;
 
-        if (SBITS_USING_BMAP(state->parameters))
+        if (EMBEDDB_USING_BMAP(state->parameters))
             state->bitmapSize = 1;
 
         /* Setup for data and bitmap comparison functions */
@@ -201,11 +248,12 @@ void test_vardata() {
         state->compareKey = int32Comparator;
         state->compareData = int32Comparator;
 
-        if (sbitsInit(state, splineMaxError) != 0) {
+        if (embedDBInit(state, splineMaxError) != 0) {
             printf("Initialization error.\n");
             return;
         } else {
             printf("Initialization success.\n");
+            embedDBPrintInit(state);
         }
 
         // Initialize Buffer
@@ -227,11 +275,12 @@ void test_vardata() {
         printf("\n\nINSERT TEST:\n");
         /* Insert records into structure */
         uint32_t start = millis();
+        embedDBResetStats(state);
 
         int32_t i;
         char vardata[15] = "Testing 000...";
         uint32_t numVarData = 0;
-        if (seqdata == 1) {
+        if (SEQUENTIAL_DATA) {
             for (i = 0; i < numRecords; i++) {
                 // Key = i, fixed data = i % 100
                 memcpy(recordBuffer, &i, sizeof(int32_t));
@@ -258,7 +307,7 @@ void test_vardata() {
                 }
 
                 // Put variable length data
-                sbitsPutVar(state, recordBuffer, (void *)(recordBuffer + state->keySize), hasVarData ? variableData : NULL, length);
+                embedDBPutVar(state, recordBuffer, (void *)(recordBuffer + state->keySize), hasVarData ? variableData : NULL, length);
 
                 if (hasVarData) {
                     if (VALIDATE_VAR_DATA) {
@@ -314,7 +363,7 @@ void test_vardata() {
                 int16_t count = *((int16_t *)(infileBuffer + 4));
                 for (int j = 0; j < count; j++) {
                     // Key size is always 4 in the file, but we may want to increase its size by padding with 0s
-                    void *buf = (infileBuffer + headerSize + j * (4 + state->dataSize));
+                    void *buf = (infileBuffer + headerSize + j * (state->keySize + state->dataSize));
                     uint64_t keyBuf = 0;
                     memcpy(&keyBuf, buf, 4);
                     if ((uint32_t)keyBuf < minRange) {
@@ -348,7 +397,7 @@ void test_vardata() {
                     }
 
                     // Put variable length data
-                    if (0 != sbitsPutVar(state, &keyBuf, (void *)((int8_t *)buf + 4), hasVarData ? variableData : NULL, length)) {
+                    if (0 != embedDBPutVar(state, buf, (void *)((int8_t *)buf + 4), hasVarData ? variableData : NULL, length)) {
                         printf("ERROR: Failed to insert record\n");
                     }
 
@@ -397,7 +446,7 @@ void test_vardata() {
         }
 
     doneread:
-        sbitsFlush(state);
+        embedDBFlush(state);
         uint32_t end = millis();
 
         l = NUM_STEPS - 1;
@@ -411,8 +460,8 @@ void test_vardata() {
         printf("Records inserted: %lu\n", numRecords);
         printf("Records with variable data: %lu\n", numVarData);
 
-        printStats(state);
-        resetStats(state);
+        embedDBPrintStats(state);
+        embedDBResetStats(state);
 
         printf("\n\nQUERY TEST:\n");
         /* Verify that all values can be found and test query performance */
@@ -421,22 +470,15 @@ void test_vardata() {
 
         uint32_t varDataFound = 0, fixedFound = 0, deleted = 0, notFound = 0;
 
-        /*
-         * 1: Query each record from original data set.
-         * 2: Query random records in the range of original data set.
-         * 3: Query range of records using an iterator.
-         */
-        int8_t queryType = 1;
-
-        if (seqdata == 1) {
-            if (queryType == 1) {
+        if (SEQUENTIAL_DATA) {
+            if (QUERY_TYPE == 1) {
                 void *keyBuf = calloc(1, state->keySize);
                 uint32_t varBufSize = 6;
                 void *varDataBuf = malloc(varBufSize);
-                sbitsVarDataStream *varStream = NULL;
+                embedDBVarDataStream *varStream = NULL;
                 for (i = 0; i < numRecords; i++) {
                     *((uint32_t *)keyBuf) = i;
-                    int8_t result = sbitsGetVar(state, keyBuf, recordBuffer, &varStream);
+                    int8_t result = embedDBGetVar(state, keyBuf, recordBuffer, &varStream);
 
                     if (result == 0) {
                         fixedFound++;
@@ -475,7 +517,7 @@ void test_vardata() {
                             // Print string if using string test
                             char reconstructed[15];
                             uint32_t bytesRead, total = 0;
-                            while ((bytesRead = sbitsVarDataStreamRead(state, varStream, varDataBuf, varBufSize)) > 0) {
+                            while ((bytesRead = embedDBVarDataStreamRead(state, varStream, varDataBuf, varBufSize)) > 0) {
                                 memcpy(reconstructed + total, varDataBuf, bytesRead);
                                 total += bytesRead;
                             }
@@ -495,10 +537,10 @@ void test_vardata() {
                         }
                     }
                 }
-            } else if (queryType == 3) {
+            } else if (QUERY_TYPE == 3) {
                 uint32_t itKey;
                 void *itData = calloc(1, state->dataSize);
-                sbitsIterator it;
+                embedDBIterator it;
                 it.minKey = NULL;
                 it.maxKey = NULL;
                 int32_t mv = 26;
@@ -506,15 +548,15 @@ void test_vardata() {
                 it.minData = &mv;
                 it.maxData = &v;
                 int32_t rec, reads;
-                sbitsVarDataStream *varStream = NULL;
+                embedDBVarDataStream *varStream = NULL;
                 uint32_t varBufSize = 8;
                 void *varDataBuf = malloc(varBufSize);
 
                 start = clock();
-                sbitsInitIterator(state, &it);
+                embedDBInitIterator(state, &it);
                 rec = 0;
                 reads = state->numReads;
-                while (sbitsNextVar(state, &it, &itKey, itData, &varStream)) {
+                while (embedDBNextVar(state, &it, &itKey, itData, &varStream)) {
                     if (*((int32_t *)itData) < *((int32_t *)it.minData) ||
                         *((int32_t *)itData) > *((int32_t *)it.maxData)) {
                         printf("Key: %d Data: %d Error\n", itKey, *(uint32_t *)itData);
@@ -523,7 +565,7 @@ void test_vardata() {
                         if (varStream != NULL) {
                             char reconstructed[15];
                             uint32_t bytesRead, total = 0;
-                            while ((bytesRead = sbitsVarDataStreamRead(state, varStream, varDataBuf, varBufSize)) > 0) {
+                            while ((bytesRead = embedDBVarDataStreamRead(state, varStream, varDataBuf, varBufSize)) > 0) {
                                 memcpy(reconstructed + total, varDataBuf, bytesRead);
                                 total += bytesRead;
                             }
@@ -537,7 +579,7 @@ void test_vardata() {
                 printf("Read records: %d\n", rec);
                 printf("Num: %lu KEY: %lu Perc: %d Records: %d Reads: %d \n", i, mv, ((state->numReads - reads) * 1000 / (state->nextDataPageId - state->minDataPageId + state->nextVarPageId)), rec, (state->numReads - reads));
 
-                sbitsCloseIterator(&it);
+                embedDBCloseIterator(&it);
                 free(varDataBuf);
                 free(itData);
             }
@@ -548,7 +590,7 @@ void test_vardata() {
             int8_t headerSize = 16;
             i = 0;
 
-            if (queryType == 1) {
+            if (QUERY_TYPE == 1) {
                 /* Query each record from original data set. */
                 if (useRandom) {
                     fseek(infileRandom, 0, SEEK_SET);
@@ -559,7 +601,7 @@ void test_vardata() {
 
                 uint32_t varBufSize = 6;
                 void *varDataBuf = malloc(varBufSize);
-                sbitsVarDataStream *varStream = NULL;
+                embedDBVarDataStream *varStream = NULL;
 
                 while (1) {
                     /* Read page */
@@ -579,7 +621,7 @@ void test_vardata() {
                         void *buf = (infileBuffer + headerSize + j * (state->keySize + state->dataSize));
                         int32_t *key = (int32_t *)buf;
 
-                        int8_t result = sbitsGetVar(state, key, recordBuffer, &varStream);
+                        int8_t result = embedDBGetVar(state, key, recordBuffer, &varStream);
 
                         if (result == -1) {
                             printf("ERROR: Failed to find: %lu\n", *key);
@@ -616,7 +658,7 @@ void test_vardata() {
                                 // Print string if using string test
                                 char reconstructed[15];
                                 uint32_t bytesRead, total = 0;
-                                while ((bytesRead = sbitsVarDataStreamRead(state, varStream, varDataBuf, varBufSize)) > 0) {
+                                while ((bytesRead = embedDBVarDataStreamRead(state, varStream, varDataBuf, varBufSize)) > 0) {
                                     memcpy(reconstructed + total, varDataBuf, bytesRead);
                                     total += bytesRead;
                                 }
@@ -645,7 +687,7 @@ void test_vardata() {
                 }
             donetest:
                 numRecords = i;
-            } else if (queryType == 2) {
+            } else if (QUERY_TYPE == 2) {
                 /* Query random values in range. May not exist in data set. */
 
                 // Only query 10000 records
@@ -654,7 +696,7 @@ void test_vardata() {
 
                 uint32_t varBufSize = 6;
                 void *varDataBuf = malloc(varBufSize);
-                sbitsVarDataStream *varStream = NULL;
+                embedDBVarDataStream *varStream = NULL;
 
                 i = 0;
                 int32_t num = maxRange - minRange;
@@ -665,7 +707,7 @@ void test_vardata() {
                     uint64_t sizedKey = 0;
                     memcpy(&sizedKey, &key, sizeof(uint32_t));
 
-                    int8_t result = sbitsGetVar(state, &sizedKey, recordBuffer, &varStream);
+                    int8_t result = embedDBGetVar(state, &sizedKey, recordBuffer, &varStream);
 
                     if (result == -1) {
                         // printf("ERROR: Failed to find: %lu\n", key);
@@ -687,7 +729,7 @@ void test_vardata() {
                             // Print string if using string test
                             char reconstructed[15];
                             uint32_t bytesRead, total = 0;
-                            while ((bytesRead = sbitsVarDataStreamRead(state, varStream, varDataBuf, varBufSize)) > 0) {
+                            while ((bytesRead = embedDBVarDataStreamRead(state, varStream, varDataBuf, varBufSize)) > 0) {
                                 memcpy(reconstructed + total, varDataBuf, bytesRead);
                                 total += bytesRead;
                             }
@@ -712,7 +754,7 @@ void test_vardata() {
             } else {
                 uint32_t itKey;
                 void *itData = calloc(1, state->dataSize);
-                sbitsIterator it;
+                embedDBIterator it;
                 it.minKey = NULL;
                 it.maxKey = NULL;
                 int32_t mv = 26;
@@ -720,15 +762,15 @@ void test_vardata() {
                 it.minData = &mv;
                 it.maxData = &v;
                 int32_t rec, reads;
-                sbitsVarDataStream *varStream = NULL;
+                embedDBVarDataStream *varStream = NULL;
                 uint32_t varBufSize = 8;
                 void *varDataBuf = malloc(varBufSize);
 
                 start = clock();
-                sbitsInitIterator(state, &it);
+                embedDBInitIterator(state, &it);
                 rec = 0;
                 reads = state->numReads;
-                while (sbitsNextVar(state, &it, &itKey, itData, &varStream)) {
+                while (embedDBNextVar(state, &it, &itKey, itData, &varStream)) {
                     if (*((int32_t *)itData) < *((int32_t *)it.minData) ||
                         *((int32_t *)itData) > *((int32_t *)it.maxData)) {
                         printf("Key: %d Data: %d Error\n", itKey, *(uint32_t *)itData);
@@ -737,7 +779,7 @@ void test_vardata() {
                         if (varStream != NULL) {
                             char reconstructed[15];
                             uint32_t bytesRead, total = 0;
-                            while ((bytesRead = sbitsVarDataStreamRead(state, varStream, varDataBuf, varBufSize)) > 0) {
+                            while ((bytesRead = embedDBVarDataStreamRead(state, varStream, varDataBuf, varBufSize)) > 0) {
                                 memcpy(reconstructed + total, varDataBuf, bytesRead);
                                 total += bytesRead;
                             }
@@ -749,10 +791,10 @@ void test_vardata() {
                     rec++;
                 }
                 printf("Read records: %d\n", rec);
-                // printStats(state);
+                // embedDBPrintStats(state);
                 printf("Num: %lu KEY: %lu Perc: %.1f Records: %d Reads: %d \n", i, mv, ((state->numReads - reads) * 1000 / (state->nextDataPageId - state->minDataPageId + state->nextVarPageId - state->minVarRecordId)) / 10.0, rec, (state->numReads - reads));
 
-                sbitsCloseIterator(&it);
+                embedDBCloseIterator(&it);
                 free(varDataBuf);
                 free(itData);
             }
@@ -770,16 +812,16 @@ void test_vardata() {
         printf("Vardata deleted: %lu\n", deleted);
         printf("Num records not found: %lu\n", notFound);
 
-        printStats(state);
+        embedDBPrintStats(state);
 
         printf("Done\n");
 
         // Optional: Test iterator
         // testIterator(state);
-        // printStats(state);
+        // embedDBPrintStats(state);
 
         // Free memory
-        sbitsClose(state);
+        embedDBClose(state);
         if (STORAGE_TYPE == 0) {
             tearDownSDFile(state->dataFile);
             tearDownSDFile(state->indexFile);
@@ -941,7 +983,7 @@ uint32_t readImageFromFile(void **data, char *filename) {
     // return file_size;
 }
 
-void writeDataToFile(sbitsState *state, sbitsVarDataStream *data, char *filename) {
+void writeDataToFile(embedDBState *state, embedDBVarDataStream *data, char *filename) {
     if (data == NULL) {
         printf("There's no data here bud. Can't write image\n");
         return;
@@ -956,7 +998,7 @@ void writeDataToFile(sbitsState *state, sbitsVarDataStream *data, char *filename
     // Get data from iterator
     char buf[512];
     uint32_t numBytes;
-    while ((numBytes = sbitsVarDataStreamRead(state, data, buf, 512)) > 0) {
+    while ((numBytes = embedDBVarDataStreamRead(state, data, buf, 512)) > 0) {
         // Write the data to the file
         size_t bytes_written = fwrite(buf, 1, numBytes, file);
         if (bytes_written != numBytes) {
@@ -994,7 +1036,7 @@ void randomVarData(uint32_t chance, uint32_t sizeLowerBound, uint32_t sizeUpperB
     }
 }
 
-void retrieveImageData(sbitsState *state, sbitsVarDataStream *varStream, int32_t key, char *filename, char *filetype) {
+void retrieveImageData(embedDBState *state, embedDBVarDataStream *varStream, int32_t key, char *filename, char *filetype) {
     int numDigits = log10(key) + 1;
     char *keyAsString = (char *)calloc(numDigits, sizeof(char));
     char destinationFolder[17] = "build/artifacts/";
@@ -1012,12 +1054,12 @@ void retrieveImageData(sbitsState *state, sbitsVarDataStream *varStream, int32_t
     writeDataToFile(state, varStream, file);
 }
 
-uint8_t dataEquals(sbitsState *state, sbitsVarDataStream *varStream, Node *node) {
+uint8_t dataEquals(embedDBState *state, embedDBVarDataStream *varStream, Node *node) {
     if (varStream == NULL) {
         return 0;
     } else {
         void *data = malloc(node->length + 1);
-        uint32_t length = sbitsVarDataStreamRead(state, varStream, data, node->length + 1);
+        uint32_t length = embedDBVarDataStreamRead(state, varStream, data, node->length + 1);
 
         // Reset iterator
         varStream->bytesRead = 0;

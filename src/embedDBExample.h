@@ -1,38 +1,36 @@
 /******************************************************************************/
 /**
- * @file		test_sbits.c
- * @author		Ramon Lawrence
- * @brief		This file does performance/correctness testing of sequential
- * bitmap indexing for time series (SBITS).
- * @copyright	Copyright 2021
- *                         The University of British Columbia,
- *             Ramon Lawrence
+ * @file		embedDBExample.h
+ * @author		EmbedDB Team (See Authors.md)
+ * @brief		This file includes an example of inserting and querying EmbedDB
+ *              and tests the inserted data for correctness.
+ * @copyright	Copyright 2023
+ * 			    EmbedDB Team
  * @par Redistribution and use in source and binary forms, with or without
- *         modification, are permitted provided that the following conditions are
- * met:
+ * 	modification, are permitted provided that the following conditions are met:
  *
  * @par 1.Redistributions of source code must retain the above copyright notice,
- *         this list of conditions and the following disclaimer.
+ * 	this list of conditions and the following disclaimer.
  *
  * @par 2.Redistributions in binary form must reproduce the above copyright notice,
- *         this list of conditions and the following disclaimer in the
- * documentation and/or other materials provided with the distribution.
+ * 	this list of conditions and the following disclaimer in the documentation
+ * 	and/or other materials provided with the distribution.
  *
- * @par 3.Neither the name of the copyright holder nor the names of its
- * contributors may be used to endorse or promote products derived from this
- * software without specific prior written permission.
+ * @par 3.Neither the name of the copyright holder nor the names of its contributors
+ * 	may be used to endorse or promote products derived from this software without
+ * 	specific prior written permission.
  *
  * @par THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
- *         AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO,
- * THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
- *         ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS
- * BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
- *         CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
- *         SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
- *         INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
- *         CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
- *         ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
- * THE POSSIBILITY OF SUCH DAMAGE.
+ * 	AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ * 	IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+ * 	ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE
+ * 	LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+ * 	CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+ * 	SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+ * 	INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+ * 	CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+ * 	ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+ * 	POSSIBILITY OF SUCH DAMAGE.
  */
 /******************************************************************************/
 
@@ -42,8 +40,8 @@
 #include <string.h>
 #include <time.h>
 
-#include "sbits/sbits.h"
-#include "sbitsUtility.h"
+#include "embedDB/embedDB.h"
+#include "embedDBUtility.h"
 #include "sdcard_c_iface.h"
 
 #if defined(MEGA)
@@ -59,6 +57,19 @@
 #include "dataflashFileInterface.h"
 #endif
 
+/*
+ * 1: Query each record from original data set.
+ * 2: Query random records in the range of original data set.
+ * 3: Query range of records using an iterator.
+ */
+#define QUERY_TYPE 1
+
+/*
+ * 0: Use data from one of the data sets
+ * 1: Use sequentially generated data
+ */
+#define SEQUENTIAL_DATA 0
+
 /**
  * 0 = SD Card
  * 1 = Dataflash
@@ -68,11 +79,11 @@
 /**
  * Runs all tests and collects benchmarks
  */
-void runalltests_sbits() {
-    printf("\nSTARTING SBITS TESTS.\n");
+void runalltests_embedDB() {
+    printf("\n EmbedDB Example: \n");
     int8_t M = 4;
     int32_t numRecords = 1000;     // default values
-    int32_t testRecords = 500000;  // default values
+    int32_t testRecords = 100000;  // default values
     uint8_t useRandom = 0;         // default values
     size_t splineMaxError = 0;     // default values
     uint32_t numSteps = 10;
@@ -86,12 +97,11 @@ void runalltests_sbits() {
     uint32_t rtimes[numSteps][numRuns];
     uint32_t rreads[numSteps][numRuns];
     uint32_t rhits[numSteps][numRuns];
-    int8_t seqdata = 0;
     SD_FILE *infile, *infileRandom;
     uint32_t minRange, maxRange;
     char infileBuffer[512];
 
-    if (seqdata != 1) { /* Open file to read input records */
+    if (SEQUENTIAL_DATA != 1) { /* Open file to read input records */
 
         // measure1_smartphone_sens.bin
         // infile = fopen("data/measure1_smartphone_sens.bin", "r+b");
@@ -147,8 +157,8 @@ void runalltests_sbits() {
         // fopen("data/uwa_data_only_2000_500KSorted_randomized.bin", "r+b");
         minRange = 946713600;
         maxRange = 977144040;
-        numRecords = 500000;
-        testRecords = 500000;
+        numRecords = 100000;
+        testRecords = 100000;
 
         splineMaxError = 1;
         useRandom = 0;
@@ -157,8 +167,8 @@ void runalltests_sbits() {
     }
 
     for (r = 0; r < numRuns; r++) {
-        /* Configure SBITS state */
-        sbitsState *state = (sbitsState *)malloc(sizeof(sbitsState));
+        /* Configure embedDB state */
+        embedDBState *state = (embedDBState *)malloc(sizeof(embedDBState));
         if (state == NULL) {
             printf("Unable to allocate state. Exiting.\n");
             return;
@@ -168,6 +178,7 @@ void runalltests_sbits() {
         state->keySize = 4;
         state->dataSize = 12;
         state->pageSize = 512;
+        state->numSplinePoints = 30;
         state->bitmapSize = 0;
         state->bufferSizeInBlocks = M;
         state->buffer = malloc((size_t)state->bufferSizeInBlocks * state->pageSize);
@@ -203,9 +214,9 @@ void runalltests_sbits() {
         }
 #endif
 
-        state->parameters = SBITS_USE_BMAP | SBITS_USE_INDEX | SBITS_RESET_DATA;
+        state->parameters = EMBEDDB_USE_BMAP | EMBEDDB_USE_INDEX | EMBEDDB_RESET_DATA;
 
-        if (SBITS_USING_BMAP(state->parameters))
+        if (EMBEDDB_USING_BMAP(state->parameters))
             state->bitmapSize = 1;
 
         /* Setup for data and bitmap comparison functions */
@@ -221,11 +232,13 @@ void runalltests_sbits() {
         state->compareKey = int32Comparator;
         state->compareData = int32Comparator;
 
-        /* Initialize SBITS structure with parameters */
-        if (sbitsInit(state, splineMaxError) != 0) {
+        /* Initialize embedDB structure with parameters */
+        if (embedDBInit(state, splineMaxError) != 0) {
             printf("Initialization error.\n");
             return;
         }
+
+        embedDBPrintInit(state);
 
         /* Data record is empty. Only need to reset to 0 once as reusing struct.
          */
@@ -243,13 +256,13 @@ void runalltests_sbits() {
         /* Insert records into structure */
         start = millis();
 
-        if (seqdata == 1) {
+        if (SEQUENTIAL_DATA) {
             for (i = 0; i < numRecords; i++) {
                 // printf("Inserting record %lu\n", i);
                 memcpy(recordBuffer, &i, sizeof(int32_t));
                 int32_t data = i % 100;
                 memcpy(recordBuffer + state->keySize, &data, sizeof(int32_t));
-                sbitsPut(state, recordBuffer, (void *)(recordBuffer + state->keySize));
+                embedDBPut(state, recordBuffer, (void *)(recordBuffer + state->keySize));
 
                 if (i % stepSize == 0) {
                     // printf("Num: %lu KEY: %lu\n", i, i);
@@ -276,12 +289,11 @@ void runalltests_sbits() {
                 /* Process all records on page */
                 int16_t count = *((int16_t *)(infileBuffer + 4));
                 for (int j = 0; j < count; j++) {
-                    // printf("Inserting record %lu\n", i);
                     void *buf = (infileBuffer + headerSize + j * state->recordSize);
 
                     // printf("Key: %lu, Data: %lu, Page num: %lu, i: %lu\n",
                     // *(id_t*)buf, *(id_t*)(buf + 4), i/31, i);
-                    sbitsPut(state, buf, (void *)((int8_t *)buf + 4));
+                    embedDBPut(state, buf, (void *)((int8_t *)buf + 4));
                     // if ( i < 100000)
                     //   printf("%lu %d %d %d\n", *((uint32_t*) buf),
                     //   *((int32_t*) (buf+4)), *((int32_t*) (buf+8)),
@@ -311,7 +323,7 @@ void runalltests_sbits() {
         }
 
     doneread:
-        sbitsFlush(state);
+        embedDBFlush(state);
 
         uint32_t end = millis();
 
@@ -325,29 +337,22 @@ void runalltests_sbits() {
         printf("Elapsed Time: %lu ms\n", times[l][r]);
         printf("Records inserted: %lu\n", numRecords);
 
-        printStats(state);
-        resetStats(state);
+        embedDBPrintStats(state);
+        embedDBResetStats(state);
 
         printf("\n\nQUERY TEST:\n");
         /* Verify that all values can be found and test query performance */
         start = millis();
 
-        /*
-         * 1: Query each record from original data set.
-         * 2: Query random records in the range of original data set.
-         * 3: Query range of records using an iterator.
-         */
-        int8_t queryType = 1;
-
-        if (seqdata == 1) {
-            if (queryType == 1) {
+        if (SEQUENTIAL_DATA) {
+            if (QUERY_TYPE == 1) {
                 for (i = 0; i < numRecords; i++) {
                     int32_t key = i;
-                    int8_t result = sbitsGet(state, &key, recordBuffer);
+                    int8_t result = embedDBGet(state, &key, recordBuffer);
 
                     if (result != 0)
                         printf("ERROR: Failed to find: %lu\n", key);
-                    if (seqdata == 1 && *((int32_t *)recordBuffer) != key % 100) {
+                    if (SEQUENTIAL_DATA && *((int32_t *)recordBuffer) != key % 100) {
                         printf("ERROR: Wrong data for: %lu\n", key);
                         printf("Key: %lu Data: %lu\n", key, *((int32_t *)recordBuffer));
                         return;
@@ -362,10 +367,10 @@ void runalltests_sbits() {
                         }
                     }
                 }
-            } else if (queryType == 3) {
+            } else if (QUERY_TYPE == 3) {
                 uint32_t itKey;
                 void *itData = calloc(1, state->dataSize);
-                sbitsIterator it;
+                embedDBIterator it;
                 it.minKey = NULL;
                 it.maxKey = NULL;
                 int32_t mv = 26;
@@ -374,11 +379,11 @@ void runalltests_sbits() {
                 it.maxData = &v;
                 int32_t rec, reads;
 
-                start = clock();
-                sbitsInitIterator(state, &it);
+                start = millis();
+                embedDBInitIterator(state, &it);
                 rec = 0;
                 reads = state->numReads;
-                while (sbitsNext(state, &it, &itKey, itData)) {
+                while (embedDBNext(state, &it, &itKey, itData)) {
                     printf("Key: %d  Data: %d\n", itKey, *(uint32_t *)itData);
                     if ((it.minData != NULL && *((int32_t *)itData) < *((int32_t *)it.minData)) ||
                         (it.maxData != NULL && *((int32_t *)itData) > *((int32_t *)it.maxData))) {
@@ -389,7 +394,7 @@ void runalltests_sbits() {
                 printf("Read records: %d\n", rec);
                 printf("Num: %lu KEY: %lu Perc: %d Records: %d Reads: %d \n", i, mv, ((state->numReads - reads) * 1000 / (state->nextDataPageId - state->minDataPageId)), rec, (state->numReads - reads));
 
-                sbitsCloseIterator(&it);
+                embedDBCloseIterator(&it);
                 free(itData);
             }
         } else {
@@ -397,7 +402,7 @@ void runalltests_sbits() {
             int8_t headerSize = 16;
             i = 0;
 
-            if (queryType == 1) {
+            if (QUERY_TYPE == 1) {
                 /* Query each record from original data set. */
                 if (useRandom) {
                     fseek(infileRandom, 0, SEEK_SET);
@@ -421,8 +426,7 @@ void runalltests_sbits() {
                     for (int j = 0; j < count; j++) {
                         void *buf = (infileBuffer + headerSize + j * state->recordSize);
                         int32_t *key = (int32_t *)buf;
-
-                        int8_t result = sbitsGet(state, key, recordBuffer);
+                        int8_t result = embedDBGet(state, key, recordBuffer);
                         if (result != 0)
                             printf("ERROR: Failed to find key: %lu, i: %lu\n", *key, i);
                         if (*((int32_t *)recordBuffer) != *((int32_t *)((int8_t *)buf + 4))) {
@@ -432,7 +436,7 @@ void runalltests_sbits() {
                                    *((int32_t *)((int8_t *)buf + 4)),
                                    *((int32_t *)((int8_t *)buf + 8)),
                                    *((int32_t *)((int8_t *)buf + 12)));
-                            result = sbitsGet(state, key, recordBuffer);
+                            result = embedDBGet(state, key, recordBuffer);
                         }
 
                         if (i % stepSize == 0) {
@@ -453,7 +457,7 @@ void runalltests_sbits() {
                 }
             donetest:
                 numRecords = i;
-            } else if (queryType == 2) {
+            } else if (QUERY_TYPE == 2) {
                 /* Query random values in range. May not exist in data set. */
                 i = 0;
                 int32_t num = maxRange - minRange;
@@ -463,9 +467,9 @@ void runalltests_sbits() {
                     int32_t key = (num + 1) * scaled + minRange;
 
                     if (i == 2) {
-                        sbitsGet(state, &key, recordBuffer);
+                        embedDBGet(state, &key, recordBuffer);
                     } else {
-                        sbitsGet(state, &key, recordBuffer);
+                        embedDBGet(state, &key, recordBuffer);
                     }
 
                     if (i % stepSize == 0) {
@@ -483,7 +487,7 @@ void runalltests_sbits() {
                 /* Data value query for given value range */
                 uint32_t itKey;
                 void *itData = calloc(1, state->dataSize);
-                sbitsIterator it;
+                embedDBIterator it;
                 it.minKey = NULL;
                 it.maxKey = NULL;
                 int32_t minValue = 0;
@@ -493,10 +497,10 @@ void runalltests_sbits() {
                 int32_t rec, reads;
 
                 start = clock();
-                sbitsInitIterator(state, &it);
+                embedDBInitIterator(state, &it);
                 rec = 0;
                 reads = state->numReads;
-                while (sbitsNext(state, &it, &itKey, itData)) {
+                while (embedDBNext(state, &it, &itKey, itData)) {
                     if ((it.minData != NULL && *((int32_t *)itData) < *((int32_t *)it.minData)) ||
                         (it.maxData != NULL && *((int32_t *)itData) > *((int32_t *)it.maxData))) {
                         printf("Key: %d Data: %d Error\n", itKey, *(uint32_t *)itData);
@@ -506,7 +510,7 @@ void runalltests_sbits() {
                 printf("Read records: %d\n", rec);
                 printf("Num: %lu KEY: %lu Perc: %d Records: %d Reads: %d \n", rec, minValue, ((state->numReads - reads) * 1000 / (state->nextDataPageId - state->minDataPageId)), rec, (state->numReads - reads));
 
-                sbitsCloseIterator(&it);
+                embedDBCloseIterator(&it);
                 free(itData);
             }
         }
@@ -519,7 +523,7 @@ void runalltests_sbits() {
         printf("Elapsed Time: %lu ms\n", rtimes[l][r]);
         printf("Records queried: %lu\n", i);
 
-        printStats(state);
+        embedDBPrintStats(state);
 
         // Optional: Test iterator
         // testIterator(state);
@@ -527,18 +531,16 @@ void runalltests_sbits() {
 
         free(recordBuffer);
         free(state->buffer);
-        sbitsClose(state);
+        embedDBClose(state);
         free(state->fileInterface);
         if (STORAGE_TYPE == 0) {
             tearDownSDFile(state->dataFile);
             tearDownSDFile(state->indexFile);
-            tearDownSDFile(state->varFile);
         }
 #if defined(MEMBOARD)
         if (STORAGE_TYPE == 1) {
             tearDownDataflashFile(state->dataFile);
             tearDownDataflashFile(state->indexFile);
-            tearDownDataflashFile(state->varFile);
         }
 #endif
         free(state);

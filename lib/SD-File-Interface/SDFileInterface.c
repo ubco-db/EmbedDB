@@ -49,9 +49,9 @@ int8_t FILE_FLUSH(void *file) {
 int8_t FILE_OPEN(void *file, uint8_t mode) {
     SD_FILE_INFO *fileInfo = (SD_FILE_INFO *)file;
 
-    if (mode == SBITS_FILE_MODE_W_PLUS_B) {
+    if (mode == EMBEDDB_FILE_MODE_W_PLUS_B) {
         fileInfo->sdFile = sd_fopen(fileInfo->filename, "w+");
-    } else if (mode == SBITS_FILE_MODE_R_PLUS_B) {
+    } else if (mode == EMBEDDB_FILE_MODE_R_PLUS_B) {
         fileInfo->sdFile = sd_fopen(fileInfo->filename, "r+");
     } else {
         return 0;
@@ -64,8 +64,8 @@ int8_t FILE_OPEN(void *file, uint8_t mode) {
     }
 }
 
-sbitsFileInterface *getSDInterface() {
-    sbitsFileInterface *fileInterface = malloc(sizeof(sbitsFileInterface));
+embedDBFileInterface *getSDInterface() {
+    embedDBFileInterface *fileInterface = malloc(sizeof(embedDBFileInterface));
     fileInterface->close = FILE_CLOSE;
     fileInterface->read = FILE_READ;
     fileInterface->write = FILE_WRITE;

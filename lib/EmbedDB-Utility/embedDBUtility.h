@@ -1,14 +1,14 @@
 /**
- * @file utilityFunctions.h
+ * @file embedDBUtility.h
  * @author Ramon Lawernce
- * @brief This file contains some utility functions to be used with sbits.
+ * @brief This file contains some utility functions to be used with embedDB.
  * These include functions required to use the bitmap option, and a
  * comparator for comparing keys. They can be modified or implemented
  * differently depending on the application.
  */
 
-#if !defined(SBITS_UTILITY)
-#define SBITS_UTILITY
+#if !defined(EMBEDDB_UTILITY)
+#define EMBEDDB_UTILITY
 
 #ifdef __cplusplus
 extern "C" {

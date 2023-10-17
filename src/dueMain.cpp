@@ -2,7 +2,7 @@
 /**
  * @file	    dueMain.cpp
  * @author		Ramon Lawrence, Scott Fazackerley
- * @brief		Main Arduino program for testing SBITS implementation on custom hardware.
+ * @brief		Main Arduino program for testing embedDB implementation on custom hardware.
  * @copyright	Copyright 2021
  *                               The University of British Columbia,
  *             Ramon Lawrence
@@ -53,11 +53,14 @@ static ArduinoOutStream cout(Serial);
 #include "sdcard_c_iface.h"
 #include "serial_c_iface.h"
 
-#define TEST 0
-#if TEST == 0
-#include "testSbits.h"
-#elif TEST == 1
-#include "varTest.h"
+#define EXAMPLE 0
+
+#if EXAMPLE == 0
+#include "embedDBExample.h"
+#elif EXAMPLE == 1
+#include "embedDBVariableDataExample.h"
+#elif EXAMPLE == 2
+#include "advancedQueryInterfaceExample.h"
 #endif
 
 #define ENABLE_DEDICATED_SPI 1
@@ -90,10 +93,12 @@ void setup() {
     }
 
     init_sdcard((void *)&sd);
-#if TEST == 0
-    runalltests_sbits();
-#elif TEST == 1
+#if EXAMPLE == 0
+    runalltests_embedDB();
+#elif EXAMPLE == 1
     test_vardata();
+#elif EXAMPLE == 2
+    advancedQueryExample();
 #endif
 }
 

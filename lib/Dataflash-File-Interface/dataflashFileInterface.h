@@ -8,9 +8,9 @@ extern "C" {
 #include <stdint.h>
 #include <string.h>
 
-#include "../../src/sbits/sbits.h"
+#include "../../src/embedDB/embedDB.h"
 
-sbitsFileInterface *getDataflashInterface();
+embedDBFileInterface *getDataflashInterface();
 void *setupDataflashFile(uint32_t startPage, uint32_t numPages);
 void tearDownDataflashFile(void *file);
 
