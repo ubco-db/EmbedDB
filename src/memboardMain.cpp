@@ -61,7 +61,7 @@ static ArduinoOutStream cout(Serial);
 #include "sdcard_c_iface.h"
 #include "serial_c_iface.h"
 
-#define EXAMPLE 2
+#define EXAMPLE 3
 
 #if EXAMPLE == 0
 #include "embedDBExample.h"
@@ -69,6 +69,8 @@ static ArduinoOutStream cout(Serial);
 #include "embedDBVariableDataExample.h"
 #elif EXAMPLE == 2
 #include "advancedQueryInterfaceExample.h"
+#elif EXAMPLE == 3
+#include "../Benchmarking/2023-11-28/converterBenchmarks.h"
 #endif
 
 #define ENABLE_DEDICATED_SPI 1
@@ -101,8 +103,8 @@ void setup() {
     Serial.print("\nInitializing SD card...");
     if (test_sd_card()) {
         file = sd.open("/");
-        cout << F("\nList of files on the SD.\n");
-        sd.ls("/", LS_R);
+        // cout << F("\nList of files on the SD.\n");
+        // sd.ls("/", LS_R);
     }
 
     init_sdcard((void *)&sd);
@@ -138,6 +140,9 @@ void setup() {
     test_vardata();
 #elif EXAMPLE == 2
     advancedQueryExample();
+#elif EXAMPLE == 3
+    // runAllbenchmarks();
+    runBenchmark(3);
 #endif
 }
 
