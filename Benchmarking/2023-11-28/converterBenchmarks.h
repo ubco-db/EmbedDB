@@ -29,7 +29,7 @@
 
 #define STORAGE_TYPE 0  // 0 = SD Card, 1 = Dataflash
 
-#define NUM_RUNS 1
+#define NUM_RUNS 5
 
 void runQuery1();
 void runQuery2();
@@ -150,7 +150,7 @@ embedDBState *getSeededEthState() {
     }
 
     // Insert data
-    char const dataFileName[] = "../../data/ethylene_CO_only_100K.bin";
+    char const dataFileName[] = "data/ethylene_CO_only_100K.bin";
     SD_FILE *dataset = fopen(dataFileName, "rb");
 
     char dataPage[512];
@@ -201,7 +201,7 @@ embedDBState *getSeededWatchState() {
     }
 
     // Insert data
-    char const dataFileName[] = "../../data/watch_only_100K.bin";
+    char const dataFileName[] = "data/watch_only_100K.bin";
     SD_FILE *dataset = fopen(dataFileName, "rb");
 
     char dataPage[512];

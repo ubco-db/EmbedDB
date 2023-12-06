@@ -103,8 +103,8 @@ void setup() {
     Serial.print("\nInitializing SD card...");
     if (test_sd_card()) {
         file = sd.open("/");
-        // cout << F("\nList of files on the SD.\n");
-        // sd.ls("/", LS_R);
+        cout << F("\nList of files on the SD.\n");
+        sd.ls("/", LS_R);
     }
 
     init_sdcard((void *)&sd);
@@ -141,8 +141,7 @@ void setup() {
 #elif EXAMPLE == 2
     advancedQueryExample();
 #elif EXAMPLE == 3
-    // runAllbenchmarks();
-    runBenchmark(3);
+    runAllbenchmarks();
 #endif
 }
 
