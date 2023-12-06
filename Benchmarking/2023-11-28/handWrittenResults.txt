@@ -1,0 +1,29 @@
+Aggregate Query: min, max, and avg temperature for each day
+Time: 7121 7121 7122 7121 7122 ~ 7121ms
+Num records returned: 70
+Num data pages read: 3226
+Num index pages read: 0
+
+Aggregate Query: Average temperature on days where the max wind speed was above 15
+Time: 6617 6617 6616 6617 6617 ~ 6616ms
+Num records returned: 18
+Num data pages read: 3226
+Num index pages read: 0
+
+Aggregate Query: Percent of records with ethylene concentration > 0
+Time: 5556 5555 5555 5555 5555 ~ 5555ms
+Percent records returned: 37.5% (37531/100000)
+Num data pages read: 3226
+Num index pages read: 7
+
+Join Query: Join SEA and UWA dataset to compare temperatures on the same day of the year
+Time: 26171 26173 26172 26172 26158 ~ 26169ms
+Num records returned: 9942
+Num data pages read: 16458
+Num index pages read: 0
+
+Aggregate Query: Count the number of records with a magnitude of motion above 5e8 on the X axis for each of 10 time windows
+Time: 93 93 93 93 93 ~ 93ms
+Num records returned: 95
+Num data pages read: 41
+Num index pages read: 14

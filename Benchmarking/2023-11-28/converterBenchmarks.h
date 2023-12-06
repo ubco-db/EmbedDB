@@ -57,7 +57,7 @@ void runBenchmark(int queryNum) {
     }
 }
 
-void runAllbenchmarks() {
+void runAllBenchmarks() {
     for (int i = 1; i <= 4; i++) {
         printf("\n");
         runBenchmark(i);

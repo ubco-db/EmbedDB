@@ -70,7 +70,7 @@ static ArduinoOutStream cout(Serial);
 #elif EXAMPLE == 2
 #include "advancedQueryInterfaceExample.h"
 #elif EXAMPLE == 3
-#include "../Benchmarking/2023-11-28/converterBenchmarks.h"
+#include "../Benchmarking/2023-11-28/handWrittenQueries.h"
 #endif
 
 #define ENABLE_DEDICATED_SPI 1
@@ -141,7 +141,7 @@ void setup() {
 #elif EXAMPLE == 2
     advancedQueryExample();
 #elif EXAMPLE == 3
-    runAllbenchmarks();
+    runAllBenchmarks();
 #endif
 }
 
