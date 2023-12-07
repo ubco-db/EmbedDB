@@ -36,10 +36,6 @@ void runQuery2();
 void runQuery3();
 void runQuery4();
 
-void updateCustomUWABitmap(void *data, void *bm);
-int8_t inCustomUWABitmap(void *data, void *bm);
-void buildCustomUWABitmapFromRange(void *min, void *max, void *bm);
-
 void runBenchmark(int queryNum) {
     switch (queryNum) {
         case 1:
@@ -72,9 +68,9 @@ embedDBState *getSeededUWAState() {
     state->compareData = int32Comparator;
     state->pageSize = 512;
     state->eraseSizeInPages = 4;
-    state->numSplinePoints = 30;
     state->numDataPages = 20000;
-    state->numIndexPages = 100;
+    state->numIndexPages = 1000;
+    state->numSplinePoints = 300;
 #if STORAGE_TYPE == 0
     state->fileInterface = getSDInterface();
     char dataPath[] = "dataFile.bin", indexPath[] = "indexFile.bin";
@@ -125,7 +121,7 @@ embedDBState *getSeededEthState() {
     state->eraseSizeInPages = 4;
     state->numSplinePoints = 300;
     state->numDataPages = 20000;
-    state->numIndexPages = 100;
+    state->numIndexPages = 1000;
 #if STORAGE_TYPE == 0
     state->fileInterface = getSDInterface();
     char dataPath[] = "dataFile.bin", indexPath[] = "indexFile.bin";
