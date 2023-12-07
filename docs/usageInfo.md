@@ -543,7 +543,7 @@ embedDBCloseIterator(&it);
 
 ### Overview 
 
-As [mentioned earlier](#iterate-through-items-in-tree), EmbedDB can iterate over variable records when `EMBEDDB_USE_VDATA` is enabled. The strategy is similar to the above and, in that we are going to initialize an EmbedDB iterator with our minimum/maximum keys or data to iterate over, however, we need to declare and initialize an `embedDBVarDataStream` to perform the iteration, which is similar to how variable records are retrieved. Be sure to use `embedDBCloseIterator` to close the iterator after use. Also ensure that you free the `embedDBVarDataStream`.
+As [mentioned earlier](#iterate-through-items-in-table), EmbedDB can iterate over variable records when `EMBEDDB_USE_VDATA` is enabled. The strategy is similar to the above and, in that we are going to initialize an EmbedDB iterator with our minimum/maximum keys or data to iterate over, however, we need to declare and initialize an `embedDBVarDataStream` to perform the iteration, which is similar to how variable records are retrieved. Be sure to use `embedDBCloseIterator` to close the iterator after use. Also ensure that you free the `embedDBVarDataStream`.
 
 
 These are methods common to iteratring over variable records specifically. It is recommended you read this entire section to gain an understanding of how the iterator works. 
