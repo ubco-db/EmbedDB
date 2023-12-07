@@ -2,7 +2,7 @@
 
 EmbedDB has a library with quick and easy-to-use query operators. To use them, import the [`advancedQueries.h`](../src/query-interface/advancedQueries.h) header file. The built-in operators are not going to be the best solution in terms of performance because they are built to be highly compatible and simple to use. If performance is your priority consider a custom solution using the functions described in the [usage documentation](usageInfo.md).
 
-For a complete code example see [advancedQueryExamples.c](../src/advancedQueryExamples.c), but this document is a guide on each provided operator as well as how to create custom operators.
+For a complete code example see [advancedQueryExamples.c](../src/query-interface/advancedQueries.c), but this document is a guide on each provided operator as well as how to create custom operators.
 
 ## Table of Contents
 
