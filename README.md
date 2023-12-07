@@ -25,25 +25,23 @@ EmbedDB is a high performance embedded data storage and index structure for time
 ## Code Files
 
 -   [utilityFunctions](src/embedDB/utilityFunctions.c) User defined functions with common/default configurations to get started.
--   [advancedQueries](src/query-interface/advancedQueries.c) - An included library with easy to use query operators. 
--   [embedDBExample](src/embedDBExample.h) - An example file demonstrating how to get, put, and iterate through data in index. 
--   [embedDBVariableDataExample](src/embedDBVariableDataExample.h) - An example file demonstrating the use of records with variable-sized data. 
--   [embedDBQueryInterfaceExamples](src/advancedQueryInterfaceExample.h) - An example file demonstrating the included embedDB library. 
--   [dueMain.cpp](src/dueMain.cpp), [megaMain.cpp](src/megaMain.cpp), [memboardMain.cpp](src/memBoardMain.cpp) are main files for the Arduino due, mega, and custom hardware respectively.
--   [embedDB.h](src/embedDB/embedDB.h), [embedDB.c](src/embedDB/embedDB.c) - Core source files 
--   [spline.c](src/spline/spline.c) - Implementation of spline index structure
--   [radixSpline.c](src/spline/radixspline.c) - Implementation of radix spline index structure. 
+-   [advancedQueries](src/embedDB/utilityFunctions.c) - An included library with easy to use query operators. 
+-   [embedDBExample](examples/embedDBExample.c) - An example file demonstrating how to get, put, and iterate through data in index. Try by using `make embedDBExample`
+-   [embedDBVariableDataExample](examples/embedDBVariableDataExample.c) - An example file demonstrating the use of records with variable-sized data. Try using with `make embedDBVariableDataExample`
+-   [embedDBQueryInterfaceExamples](examples/advancedQueryInterfaceExample.c) - An example file demonstrating the included embedDB library. Try by using with `make queryExample`
+-   [sbits.h](src/embedDB/embedDB.h), [sbits.c](src/embedDB/embedDB.c) - Core source files //I don't know what this is.
+-   [spline.c](src/spline/spline.c) - Implementation of spline index structure.
+-   [radixSpline.c](src/spline/radixspline.c) - Implementation of radix spline index. structure. 
 
 ## Documentation
 
-A paper describing SBITS use for time series indexing is [available from the publisher](https://www.scitepress.org/Link.aspx?doi=10.5220/0010318800920099) and a [pre-print is also available](SBITS_time_series_index.pdf).
+A paper describing EmbedDB use for time series indexing is [available from the publisher](https://www.scitepress.org/Link.aspx?doi=10.5220/0010318800920099) and a [pre-print is also available](SBITS_time_series_index.pdf).
 
-// another paper describing learned indexing would be nice.
+More detail regarding learned indexes can be also be found [from the publisher.](https://arxiv.org/abs/2302.03085)
 
 ### Additional documentation files
 
 -   [Setup & usage](docs/usageInfo.md)
--   [Building project](docs/buildRunInformation.md)
--   [Test suite](docs/testInfo.md)
+-   [Setting up a file interface](docs/fileInterface.md)
 
-#### Ramon Lawrence, David Ding, Ivan Carvalho<br>University of British Columbia Okanagan
+<br>University of British Columbia Okanagan
