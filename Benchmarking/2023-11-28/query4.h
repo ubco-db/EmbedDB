@@ -6,20 +6,15 @@
 #include "embedDB/embedDB.h"
 #include "query-interface/advancedQueries.h"
 
-int embedDBFloor4(double x) {
-    int xi = (int)x;
-    return x < xi ? xi - 1 : xi;
-}
-
 int8_t groupFunction4(const void* lastRecord, const void* record) {
     uint32_t lastValue = *((uint32_t*)((int8_t*)lastRecord + 0));
     uint32_t value = *((uint32_t*)((int8_t*)record + 0));
-    return embedDBFloor4((lastValue / 706000.0)) == embedDBFloor4((value / 706000.0));
+    return (lastValue / 706000) == (value / 706000);
 }
 
 void customAggregateFunc04(embedDBAggregateFunc* aggFunc, embedDBSchema* schema, void* recordBuffer, const void* lastRecord) {
     uint32_t lastValue = *((uint32_t*)((int8_t*)lastRecord + 0));
-    uint32_t calculatedValue = embedDBFloor4((lastValue / 706000.0));
+    uint32_t calculatedValue = (lastValue / 706000);
     memcpy((int8_t*)recordBuffer + getColOffsetFromSchema(schema, aggFunc->colNum), &calculatedValue, sizeof(uint32_t));
 }
 
@@ -70,7 +65,7 @@ int execOperatorQuery4(embedDBState* state) {
     // Count records
     int count = 0;
     while (exec(op)) {
-        count++;
+        count += *Count;
     }
 
     op->close(op);
