@@ -12,8 +12,7 @@ EmbedDB is a high performance embedded data storage and index structure for time
 8. Works with user-defined file-interfaces and iterators. 
 9. Support for variable-sized records.
 10. Easy to use and include in existing projects.
-11. Included library with easy to use query operators. 
-12. Open source license. Free to use for commerical and open source projects.
+11. Open source license. Free to use for commerical and open source projects.
 
 **Note: This version is designed to run on a PC and may require porting to an embedded device.**
 
