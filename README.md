@@ -23,7 +23,6 @@ EmbedDB is a high performance embedded data storage and index structure for time
 
 ## Code Files
 
--   [utilityFunctions](src/embedDB/utilityFunctions.c) User defined functions with common/default configurations to get started.
 -   [advancedQueries](src/query-interface/advancedQueries.c) - An included library with easy to use query operators. 
 -   [embedDBExample](src/embedDBExample.h) - An example file demonstrating how to get, put, and iterate through data in index. 
 -   [embedDBVariableDataExample](src/embedDBVariableDataExample.h) - An example file demonstrating the use of records with variable-sized data. 
