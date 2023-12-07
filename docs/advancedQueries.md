@@ -178,7 +178,7 @@ embedDBOperator* join4 = createKeyJoinOperator(scan_1, scan_2);
 
 The output schema of this operator includes all columns of both inputs. I.e. joining tables with columns (a, b, c) and (a, d, e) will result in a table with columns (a, b, c, a, d, e)
 
-A common use case may be comparing two different datasets. They may have slightly different timestamps making them hard to join. A way to help them join would be to write a custom operator that shifts one of the datasets by a set amount (as seen in the join example of [advancedQueryExamples.c](../src/advancedQueryExamples.c)) and/or rounds the timestamp. Say you have a sample being taken every minute, but the time it was taken may differ by a few seconds on each sample. Rounding to the minute on both datasets would help them to join using this simple equijoin.
+A common use case may be comparing two different datasets. They may have slightly different timestamps making them hard to join. A way to help them join would be to write a custom operator that shifts one of the datasets by a set amount (as seen in the join example of [advancedQueryExamples.c](../src/query-interface/advancedQueries.c)) and/or rounds the timestamp. Say you have a sample being taken every minute, but the time it was taken may differ by a few seconds on each sample. Rounding to the minute on both datasets would help them to join using this simple equijoin.
 
 ## Custom Operators
 

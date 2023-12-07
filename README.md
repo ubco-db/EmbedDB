@@ -16,6 +16,7 @@ EmbedDB is a high performance embedded data storage and index structure for time
 12. Open source license. Free to use for commerical and open source projects.
 
 **Note: This version is designed for building and execution on an embedded device using Platform.io.**
+
 ## License
 
 [![License](https://img.shields.io/badge/License-BSD%203--Clause-blue.svg)](https://opensource.org/licenses/BSD-3-Clause)
@@ -40,6 +41,7 @@ More detail regarding learned indexes can be also be found [from the publisher.]
 ### Additional documentation files
 
 -   [Setup & usage](docs/usageInfo.md)
+-    [Simple Query Interface](docs/advancedQueries.md)
 -   [Setting up a file interface](docs/fileInterface.md)
 
 <br>University of British Columbia Okanagan
