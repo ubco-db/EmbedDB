@@ -2,11 +2,11 @@
 
 ## What is it?
 
-SBITS uses an interface with basic file system functions like open, close, read, write, and flush. Reading and writing is only done at exactly one page per function call to simplify the interface implementation. The implementation of these functions is up to the user due to the wide array of storage technologies that can be found on embedded systems. This allows SBITS to support any storage device.
+EmbedDB uses an interface with basic file system functions like open, close, read, write, and flush. Reading and writing is only done at exactly one page per function call to simplify the interface implementation. The implementation of these functions is up to the user due to the wide array of storage technologies that can be found on embedded systems. This allows EmbedDB to support any storage device.
 
 ## How to use it
 
-The basic idea is to create a struct containing whatever file object you would normally use to interact with the file as well as any information necessary for opening the file. This struct is then given to SBITS. When SBITS needs to use the file it is able to make a call to open the file and read/write to it in the manner in which it requires.
+The basic idea is to create a struct containing whatever file object you would normally use to interact with the file as well as any information necessary for opening the file. This struct is then given to EmbedDB. When EmbedDB needs to use the file it is able to make a call to open the file and read/write to it in the manner in which it requires.
 
 ## Examples
 
