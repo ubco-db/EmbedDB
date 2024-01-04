@@ -136,14 +136,14 @@ state->parameters = EMBEDDB_USE_BMAP | EMBEDDB_USE_INDEX | EMBEDDB_USE_VDATA;
 
 ### Bitmap 
 
-The bitmap is used for indexing data. It must be enabled as shown above but it is not mandatory. Depending on if `EMBEDDB_USE_INDEX` is enabled, the data will be saved in two locaations (datafile.bin) and on the index file. 
+The bitmap is used for indexing data. It must be enabled as shown above but it is not mandatory. Depending on if `EMBEDDB_USE_INDEX` is enabled, the data will be saved in two locations (datafile.bin) and on the index file. 
 
 Just like the comparator, you may customize the bitmap's functions to your liking. A sample implementation can be found in [utilityFunctions](../src/embedDB/utilityFunctions.c).
 
 
 ```c
 // define how many buckets data will fall into. 
-state->bitmapSize = 8;
+state->bitmapSize = 
 
 // Include function pointers that can build/update a bitmap of the specified size
 state->inBitmap = inBitmapInt64;
@@ -152,7 +152,7 @@ state->buildBitmapFromRange = buildBitmapInt64FromRange;
 ```
 
 
-### Final initilization
+### Final initialization
 
 ```c
 size_t splineMaxError = 1; // Modify this value to change spline error tolerance
@@ -328,7 +328,7 @@ embedDBGetVar(embedDBState *state, void *key, void *data, embedDBVarDataStream *
 <pre>
 state:				EmbedDB algorithm state structure. 
 key:				Key for record.
-data:				Pre-allocaated memory to copy data for record.
+data:				Pre-allocated memory to copy data for record.
 varData:			Return variable for data as an embedDBVarDataStream.
 </pre>
 
@@ -402,11 +402,11 @@ varRecBufPtr = NULL;
 
 ### Overview
 
-EmbedDB has support for iterating through keys and data sequentially for both fixed and variable recrods. A comparator function must be initialized as discussed when [setting up EmbedDBState](#comparator-functions). Remember, `EMBEDDB_USE_VDATA` must be enabled to use variable data. 
+EmbedDB has support for iterating through keys and data sequentially for both fixed and variable records. A comparator function must be initialized as discussed when [setting up EmbedDBState](#comparator-functions). Remember, `EMBEDDB_USE_VDATA` must be enabled to use variable data. 
 
-You must first declare an `embedDBIterator` type and specify the minKey/maxKey or minData/maxData depending on the type of filter you would like to perform. `embedDBInitIterator` will initialize this iterator and use indexing to predict where the record will be in the file system. `embedDBNext` will copy the requested key and data into pre allocated storage until there are no more records to read. `embedDBNext` will also locate records that are held in the write buffer.
+You must first declare an `embedDBIterator` type and specify the minKey/maxKey or minData/maxData depending on the type of filter you would like to perform. `embedDBInitIterator` will initialize this iterator and use indexing to predict where the record will be in storage. `embedDBNext` will copy the requested key and data into pre allocated storage until there are no more records to read. `embedDBNext` will also locate records that are held in the write buffer.
 
-It is important that you pre allocate enough storage for the key and data to fit into. Also ensure Ensure to call `embedDBCloseIterator` to close the iterator after use. 
+It is important that you pre allocate enough storage for the key and data to fit into. Also make sure to call `embedDBCloseIterator` to close the iterator after use. 
 
 
 Here are the methods that are common to both approaches. 
