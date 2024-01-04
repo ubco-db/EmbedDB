@@ -70,7 +70,7 @@ Examples:
 - [Simple Query Interface](docs/advancedQueries.md)
 - [Setting up a file interface](docs/fileInterface.md)
 - [Performance Benchmarks](benchmarks/README.md)
-- [Time Series Index Publication](docs/papers/SBITS_time_series_index.pdf) 
+- [Time Series Index Publication](docs/SBITS_time_series_index.pdf) 
 - [Time Series Learned Index Publication](https://arxiv.org/abs/2302.03085)
 <!-- TODO: EmbedDB publication -->
   
