@@ -1,8 +1,8 @@
 # Simple Query Interface
 
-EmbedDB has a library with quick and easy-to-use query operators. To use them, import the [`advancedQueries.h`](../src/query-interface/advancedQueries.h) header file. The built-in operators are not going to be the best solution in terms of performance because they are built to be highly compatible and simple to use. If performance is your priority consider a custom solution using the functions described in the [usage documentation](usageInfo.md).
+EmbedDB has a library with quick and easy-to-use query operators. To use them, import the [`advancedQueries.h`](../src/query-interface/advancedQueries.h) header file. It is also possible to create custom operators as described in the [usage documentation](usageInfo.md).
 
-For a complete code example see [advancedQueryExamples.c](../src/query-interface/advancedQueries.c), but this document is a guide on each provided operator as well as how to create custom operators.
+For a complete code example see [advancedQueryExamples.c](../src/query-interface/advancedQueries.c). This document is a guide on each provided operator as well as how to create custom operators.
 
 ## Table of Contents
 
@@ -56,7 +56,7 @@ embedDBOperator* projOp = createProjectionOperator(selectOp, 3, projCols);
 projOp->init(projOp);
 ```
 
-After initialization, the top level operator can be executed so that the next record will end up in the `recordBuffer` of the top level operator. You can then read the data in this buffer/perform any other calculations if required.
+After initialization, the top level operator can be executed so that the next record will end up in the `recordBuffer` of the top level operator. You can then read the data in this buffer and perform any other calculations if required.
 
 ```c
 int32_t* recordBuffer = projOp->recordBuffer;
@@ -104,7 +104,7 @@ embedDBOperator* scanOp = createTableScanOperator(state, &it, baseSchema);
 
 ### Projection
 
-Projects out columns of the input operator. Projected columns must be in the order in which they are in the input operator. Column indexes are zero-indexed
+Projects out columns of the input operator. Projected columns must be in the order in which they are in the input operator. Column indexes are zero-indexed.
 
 ```c
 uint8_t projCols[] = {0, 1, 3}; // Must be strictly increasing. i.e. cannot have column 3 before column 1
@@ -115,7 +115,7 @@ embedDBOperator* projOp1 = createProjectionOperator(scanOp, 3, projCols);
 
 Performs a `SELECT * WHERE x` on the output of an operator. Supports >, >=, <, <=, ==, and != through the defined constants `SELECT_GT`, `SELECT_GTE`, etc.
 
-The following selects tuples where column 3 (zero-indexed) is >= 200
+The following selects tuples where column 3 (zero-indexed) is >= 200.
 
 ```c
 int32_t selVal = 200;
@@ -154,8 +154,6 @@ uint32_t numFunctions = 3;
 embedDBOperator* aggOp3 = createAggregateOperator(selectOp3, sameDayGroup, aggFunctions, numFunctions);
 ```
 
-But let's break it down.
-
 An `embedDBAggregateFunc` has three functions in it:
 
 -   `reset` - Gets called once at the start of the aggregate operator's `next`. Resets the state, clearing any data that is accumulated over the course of aggregating a single group. After running, the function should be ready to accept records from a new group.
@@ -170,7 +168,7 @@ After creating the aggregate functions, they must be put into an array. The orde
 
 ### Key Equijoin
 
-Simple joins can be performed on two instances of an EmbedDB table. It can only be done on a sorted, unsigned key. The code for it is incredibly simple though. Just provide two operators that have a sorted, unsigned number, with the same size as their first column, and they will join.
+Simple joins can be performed on two instances of an EmbedDB table. It can only be done on a sorted, unsigned key. Provide two operators that have a sorted, unsigned number, with the same size as their first column, and they will join.
 
 ```c
 embedDBOperator* join4 = createKeyJoinOperator(scan_1, scan_2);
@@ -200,7 +198,7 @@ typedef struct embedDBOperator {
 
 ### Variables
 
--   `input` - The operator that your operator will pull records from, one at a time
+-   `input` - The operator that your operator will read records from one at a time.
 -   `state` - A buffer where the operator can store information about its state or configuration of its behaviour. If the state is going to be storing more than one variable, it is recommended that you create a custom struct that can be stored here for better organization of data.
 -   `schema` - This will be the schema of the **_output_** of this operator. This should be set, at the latest, in the init function. For example, a projection operator might have an input of columns (a, b, c) and project columns 0 and 2. `schema` then should be a schema that describes columns a and c.
 -   `recordBuffer` - This is where the output record must be copied to during each call of `next()`. This buffer must be allocated, at the latest, during init. Its size should match the output schema of the operator. A helpful function may be `createBufferFromSchema()` which takes a schema, totals the sizes of all columns, and uses `calloc` to create a buffer of that size.
