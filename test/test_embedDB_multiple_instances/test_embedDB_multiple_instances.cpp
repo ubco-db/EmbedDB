@@ -65,7 +65,7 @@ void setupembedDBInstanceKeySize4DataSize4(embedDBState *state, int number) {
     state->bufferSizeInBlocks = 2;
     state->numSplinePoints = 2;
     state->buffer = calloc(1, state->pageSize * state->bufferSizeInBlocks);
-    TEST_ASSERT_NOT_NULL_MESSAGE(state->buffer, "Failed to allocate SBITS buffer.");
+    TEST_ASSERT_NOT_NULL_MESSAGE(state->buffer, "Failed to allocate EmbedDB buffer.");
     state->numDataPages = 2000;
     state->parameters = EMBEDDB_RESET_DATA;
     state->eraseSizeInPages = 4;
@@ -253,7 +253,7 @@ void setupembedDBInstanceKeySize4DataSize12(embedDBState *state, uint32_t number
     state->bufferSizeInBlocks = 4;
     state->numSplinePoints = numPoints;
     state->buffer = calloc(1, state->pageSize * state->bufferSizeInBlocks);
-    TEST_ASSERT_NOT_NULL_MESSAGE(state->buffer, "Failed to allocate SBITS buffer.");
+    TEST_ASSERT_NOT_NULL_MESSAGE(state->buffer, "Failed to allocate EmbedDB buffer.");
     state->numDataPages = 20000;
     state->numIndexPages = 1000;
     state->parameters = EMBEDDB_RESET_DATA | EMBEDDB_USE_INDEX;
@@ -281,7 +281,7 @@ void setupembedDBInstanceKeySize4DataSize12WithVarData(embedDBState *state, uint
     state->bufferSizeInBlocks = 6;
     state->numSplinePoints = numPoints;
     state->buffer = calloc(1, state->pageSize * state->bufferSizeInBlocks);
-    TEST_ASSERT_NOT_NULL_MESSAGE(state->buffer, "Failed to allocate SBITS buffer.");
+    TEST_ASSERT_NOT_NULL_MESSAGE(state->buffer, "Failed to allocate EmbedDB buffer.");
     state->numDataPages = 22000;
     state->numIndexPages = 1000;
     state->numVarPages = 44000;

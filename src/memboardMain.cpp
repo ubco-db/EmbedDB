@@ -2,7 +2,7 @@
 /**
  * @file        memboardMain.cpp
  * @author      Ramon Lawrence, Scott Fazackerley
- * @brief       Main Arduino program for testing SBITS implementation on custom hardware.
+ * @brief       Main Arduino program for testing EmbedDB implementation on custom hardware.
  * @copyright   Copyright 2024
  *              EmbedDB Team
  * @par Redistribution and use in source and binary forms, with or without

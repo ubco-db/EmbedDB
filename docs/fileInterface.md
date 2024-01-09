@@ -10,7 +10,7 @@ The basic idea is to create a struct containing whatever file object you would n
 
 ## Examples
 
-For a full code example see [sbits.h](../src/sbits/sbits.h) for the definition of `sbitsFileInterface` struct and [utilityFunctions.c](../src/sbits/utilityFunctions.c) for implementations of the interface.
+For a full code example see [embedDB.h](../src/embedDB/embedDB.h) for the definition of `embedDBFileInterface` struct and [utilityFunctions.c](../src/embedDB/utilityFunctions.c) for implementations of the interface.
 
 Below is a step-by-step for two differnet storage devices.
 
@@ -18,7 +18,7 @@ Below is a step-by-step for two differnet storage devices.
 
 This example is for using the sd card library used by this project.
 
-The first reccommended step is to define a struct that will be given to SBITS. For an sd card, this is simple. Just the filename, which we will need to implementing the `open` function, and the actual `SD_FILE` object.
+The first reccommended step is to define a struct that will be given to EmbedDB. For an sd card, this is simple. Just the filename, which we will need to implementing the `open` function, and the actual `SD_FILE` object.
 
 ```c
 typedef struct {
@@ -27,7 +27,7 @@ typedef struct {
 } SD_FILE_INFO;
 ```
 
-Next, we should create a function to quickly initialize a new file. The return of this function is to be put into SBITS with something like `state->dataFile = setupFile("filename.txt")`. This data is what will always provided to every function call in the `sbitsFileInterface` as `void *file`.
+Next, we should create a function to quickly initialize a new file. The return of this function is to be put into EmbedDB with something like `state->dataFile = setupFile("filename.txt")`. This data is what will always provided to every function call in the `embedDBFileInterface` as `void *file`.
 
 ```c
 void *setupSDFile(char *filename) {
@@ -52,15 +52,15 @@ Along with that we need to provide a tearDown function since we calloc'd somethi
 }
 ```
 
-Now, let's implement the `open` function. The `mode` here can be any one of the `SBITS_FILE_MODE` defined macros in sbits.h. Be sure to consult the function docs in sbits.h for the return value.
+Now, let's implement the `open` function. The `mode` here can be any one of the `EMBEDDB_FILE_MODE` defined macros in embedDB.h. Be sure to consult the function docs in embedDB.h for the return value.
 
 ```c
 int8_t SD_OPEN(void *file, uint8_t mode) {
     SD_FILE_INFO *fileInfo = (SD_FILE_INFO *)file;
 
-    if (mode == SBITS_FILE_MODE_W_PLUS_B) {
+    if (mode == EMBEDDB_FILE_MODE_W_PLUS_B) {
         fileInfo->sdFile = sd_fopen(fileInfo->filename, "w+");
-    } else if (mode == SBITS_FILE_MODE_R_PLUS_B) {
+    } else if (mode == EMBEDDB_FILE_MODE_R_PLUS_B) {
         fileInfo->sdFile = sd_fopen(fileInfo->filename, "r+");
     } else {
         return 0;
@@ -74,7 +74,7 @@ int8_t SD_OPEN(void *file, uint8_t mode) {
 }
 ```
 
-Closing is pretty simple. Note that we only want to close the file object, not destroy the whole file struct because SBITS may request to re-open the file again after calling `close`.
+Closing is pretty simple. Note that we only want to close the file object, not destroy the whole file struct because EmbedDB may request to re-open the file again after calling `close`.
 
 ```c
 int8_t SD_CLOSE(void *file) {
@@ -110,11 +110,11 @@ int8_t SD_FLUSH(void *file) {
 }
 ```
 
-Now that we've defined all required functions, we might want to create a function to assemble the `sbitsFileInterface` struct.
+Now that we've defined all required functions, we might want to create a function to assemble the `embedDBFileInterface` struct.
 
 ```c
-sbitsFileInterface *getSDInterface() {
-    sbitsFileInterface *fileInterface = malloc(sizeof(sbitsFileInterface));
+embedDBFileInterface *getSDInterface() {
+    embedDBFileInterface *fileInterface = malloc(sizeof(embedDBFileInterface));
     fileInterface->close = SD_CLOSE;
     fileInterface->read = SD_READ;
     fileInterface->write = SD_WRITE;
@@ -201,11 +201,11 @@ int8_t DF_FLUSH(void *file) {
 }
 ```
 
-Again, we'll combine these functions into the interface for SBITS
+Again, we'll combine these functions into the interface for EmbedDB
 
 ```c
-sbitsFileInterface *getDataflashInterface() {
-    sbitsFileInterface *fileInterface = malloc(sizeof(sbitsFileInterface));
+embedDBFileInterface *getDataflashInterface() {
+    embedDBFileInterface *fileInterface = malloc(sizeof(embedDBFileInterface));
     fileInterface->close = DF_CLOSE;
     fileInterface->read = DF_READ;
     fileInterface->write = DF_WRITE;
