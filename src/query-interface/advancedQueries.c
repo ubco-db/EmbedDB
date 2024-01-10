@@ -291,19 +291,10 @@ void initProjection(embedDBOperator* op) {
 int8_t nextProjection(embedDBOperator* op) {
     uint8_t numCols = *(uint8_t*)op->state;
     uint8_t* cols = (uint8_t*)op->state + 1;
-    const embedDBSchema* inputSchema = op->input->schema;
+    embedDBSchema* inputSchema = op->input->schema;
 
     // Get next record
     if (op->input->next(op->input)) {
-        // for (uint8_t col = 0; col < inputSchema->numCols && nextProjCol != numCols; col++) {
-        //     uint8_t colSize = abs(inputSchema->columnSizes[col]);
-        //     if (col == cols[nextProjCol]) {
-        //         memcpy((int8_t*)op->recordBuffer + nextProjColPos, (int8_t*)op->input->recordBuffer + curColPos, colSize);
-        //         nextProjColPos += colSize;
-        //         nextProjCol++;
-        //     }
-        //     curColPos += colSize;
-        // }
 		uint16_t curColPos = 0;
 		for (uint8_t colIdx = 0; colIdx < numCols; colIdx++) {
 			uint8_t col = cols[colIdx];
@@ -335,17 +326,6 @@ void closeProjection(embedDBOperator* op) {
  * @param	cols	The indexes of the columns to be outputted. Zero indexed. Column indexes must be strictly increasing i.e. columns must stay in the same order, can only remove columns from input
  */
 embedDBOperator* createProjectionOperator(embedDBOperator* input, uint8_t numCols, uint8_t* cols) {
-    // Ensure column numbers are strictly increasing
-    uint8_t lastCol = cols[0];
-    for (uint8_t i = 1; i < numCols; i++) {
-        if (cols[i] <= lastCol) {
-#ifdef PRINT_ERRORS
-            printf("ERROR: Columns in a projection must be strictly ascending for performance reasons");
-#endif
-            return NULL;
-        }
-        lastCol = cols[i];
-    }
     // Create state
     uint8_t* state = malloc(numCols + 1);
     if (state == NULL) {
