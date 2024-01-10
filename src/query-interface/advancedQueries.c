@@ -295,14 +295,14 @@ int8_t nextProjection(embedDBOperator* op) {
 
     // Get next record
     if (op->input->next(op->input)) {
-		uint16_t curColPos = 0;
-		for (uint8_t colIdx = 0; colIdx < numCols; colIdx++) {
-			uint8_t col = cols[colIdx];
-			uint8_t colSize = abs(inputSchema->columnSizes[col]);
-			uint16_t srcColPos = getColOffsetFromSchema(inputSchema, col);
-			memcpy((int8_t*)op->recordBuffer + curColPos, (int8_t*)op->input->recordBuffer + srcColPos, colSize);
-			curColPos += colSize;
-		}
+        uint16_t curColPos = 0;
+        for (uint8_t colIdx = 0; colIdx < numCols; colIdx++) {
+            uint8_t col = cols[colIdx];
+            uint8_t colSize = abs(inputSchema->columnSizes[col]);
+            uint16_t srcColPos = getColOffsetFromSchema(inputSchema, col);
+            memcpy((int8_t*)op->recordBuffer + curColPos, (int8_t*)op->input->recordBuffer + srcColPos, colSize);
+            curColPos += colSize;
+        }
         return 1;
     } else {
         return 0;
