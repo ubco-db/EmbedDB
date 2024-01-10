@@ -134,12 +134,12 @@ void setUpEmbedDB() {
 
     // Open data sources for comparison
     uwaData = (DataSource*)malloc(sizeof(DataSource));
-    uwaData->fp = fopen("data/uwa500K.bin", "rb");
+    uwaData->fp = sd_fopen("data/uwa500K.bin", "rb");
     uwaData->pageBuffer = (int8_t*)calloc(1, 512);
     uwaData->pageRecord = 0;
 
     seaData = (DataSource*)malloc(sizeof(DataSource));
-    seaData->fp = fopen("data/sea100K.bin", "rb");
+    seaData->fp = sd_fopen("data/sea100K.bin", "rb");
     seaData->pageBuffer = (int8_t*)calloc(1, 512);
     seaData->pageRecord = 0;
 }
@@ -330,17 +330,17 @@ void test_join() {
     int32_t recordsReturned = 0;
     int32_t* recordBuffer = (int32_t*)proj->recordBuffer;
 
-    SD_FILE* fp = fopen("expected_join_output.bin", "rb");
+    SD_FILE* fp = sd_fopen("expected_join_output.bin", "rb");
 
     int32_t expectedRecord[3];
     while (exec(proj)) {
         recordsReturned++;
-        fread(expectedRecord, sizeof(int32_t), 3, fp);
+        sd_fread(expectedRecord, sizeof(int32_t), 3, fp);
         TEST_ASSERT_EQUAL_UINT32_MESSAGE(expectedRecord[0], recordBuffer[0], "First column is wrong");
         TEST_ASSERT_EQUAL_INT32_MESSAGE(expectedRecord[1], recordBuffer[1], "Second column is wrong");
         TEST_ASSERT_EQUAL_INT32_MESSAGE(expectedRecord[2], recordBuffer[2], "Third column is wrong");
     }
-    fclose(fp);
+    sd_fclose(fp);
 
     proj->close(proj);
     free(scan1);
@@ -369,10 +369,10 @@ void tearDown(void) {
 
     embedDBFreeSchema(&baseSchema);
 
-    fclose(uwaData->fp);
+    sd_fclose(uwaData->fp);
     free(uwaData->pageBuffer);
     free(uwaData);
-    fclose(seaData->fp);
+    sd_fclose(seaData->fp);
     free(seaData->pageBuffer);
     free(seaData);
 }
@@ -389,17 +389,17 @@ void runUnityTests(void) {
 }
 
 void insertData(embedDBState* state, const char* filename) {
-    SD_FILE* fp = fopen(filename, "rb");
+    SD_FILE* fp = sd_fopen(filename, "rb");
     char fileBuffer[512];
     int numRecords = 0;
-    while (fread(fileBuffer, state->pageSize, 1, fp)) {
+    while (sd_fread(fileBuffer, state->pageSize, 1, fp)) {
         uint16_t count = EMBEDDB_GET_COUNT(fileBuffer);
         for (int i = 1; i <= count; i++) {
             embedDBPut(state, fileBuffer + i * state->recordSize, fileBuffer + i * state->recordSize + state->keySize);
             numRecords++;
         }
     }
-    fclose(fp);
+    sd_fclose(fp);
     embedDBFlush(state);
 }
 
@@ -407,7 +407,7 @@ void* nextRecord(DataSource* source) {
     uint16_t count = EMBEDDB_GET_COUNT(source->pageBuffer);
     if (count <= source->pageRecord) {
         // Read next page
-        if (!fread(source->pageBuffer, 512, 1, source->fp)) {
+        if (!sd_fread(source->pageBuffer, 512, 1, source->fp)) {
             return NULL;
         }
         source->pageRecord = 0;

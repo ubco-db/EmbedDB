@@ -113,13 +113,13 @@ void queryRecords(embedDBState *state, int32_t numberOfRecords, int32_t starting
 
 void insertRecordsFromFile(embedDBState *state, const char *fileName, int32_t numRecords) {
     SD_FILE *infile;
-    infile = fopen(fileName, "r+b");
+    infile = sd_fopen(fileName, "r+b");
     char infileBuffer[512];
     int8_t headerSize = 16;
     int32_t numInserted = 0;
     char message[100];
     while (numInserted < numRecords) {
-        if (0 == fread(infileBuffer, state->pageSize, 1, infile))
+        if (0 == sd_fread(infileBuffer, state->pageSize, 1, infile))
             break;
         int16_t count = *((int16_t *)(infileBuffer + 4));
         for (int16_t i = 0; i < count; i++) {
@@ -134,12 +134,12 @@ void insertRecordsFromFile(embedDBState *state, const char *fileName, int32_t nu
         }
     }
     embedDBFlush(state);
-    fclose(infile);
+    sd_fclose(infile);
 }
 
 void insertRecordsFromFileWithVarData(embedDBState *state, const char *fileName, int32_t numRecords) {
     SD_FILE *infile;
-    infile = fopen(fileName, "r+b");
+    infile = sd_fopen(fileName, "r+b");
     TEST_ASSERT_NOT_NULL_MESSAGE(infile, "Error opening file.");
     char infileBuffer[512];
     int8_t headerSize = 16;
@@ -147,7 +147,7 @@ void insertRecordsFromFileWithVarData(embedDBState *state, const char *fileName,
     char message[100];
     char *varData = (char *)calloc(30, sizeof(char));
     while (numInserted < numRecords) {
-        if (0 == fread(infileBuffer, state->pageSize, 1, infile))
+        if (0 == sd_fread(infileBuffer, state->pageSize, 1, infile))
             break;
         int16_t count = *((int16_t *)(infileBuffer + 4));
         for (int16_t i = 0; i < count; i++) {
@@ -166,19 +166,19 @@ void insertRecordsFromFileWithVarData(embedDBState *state, const char *fileName,
     }
     free(varData);
     embedDBFlush(state);
-    fclose(infile);
+    sd_fclose(infile);
 }
 
 void queryRecordsFromFile(embedDBState *state, const char *fileName, int32_t numRecords) {
     SD_FILE *infile;
-    infile = fopen(fileName, "r+b");
+    infile = sd_fopen(fileName, "r+b");
     char infileBuffer[512];
     int8_t headerSize = 16;
     int32_t numRead = 0;
     int8_t *dataBuffer = (int8_t *)malloc(state->dataSize);
     char message[100];
     while (numRead < numRecords) {
-        if (0 == fread(infileBuffer, state->pageSize, 1, infile))
+        if (0 == sd_fread(infileBuffer, state->pageSize, 1, infile))
             break;
         int16_t count = 0;
         memcpy(&count, infileBuffer + 4, sizeof(int16_t));
@@ -198,12 +198,12 @@ void queryRecordsFromFile(embedDBState *state, const char *fileName, int32_t num
     }
     TEST_ASSERT_EQUAL_INT32_MESSAGE(numRecords, numRead, "The number of records read was not equal to the number of records inserted.");
     free(dataBuffer);
-    fclose(infile);
+    sd_fclose(infile);
 }
 
 void queryRecordsFromFileWithVarData(embedDBState *state, const char *fileName, int32_t numRecords) {
     SD_FILE *infile;
-    infile = fopen(fileName, "r+b");
+    infile = sd_fopen(fileName, "r+b");
     char infileBuffer[512];
     int8_t headerSize = 16;
     int32_t numRead = 0;
@@ -212,7 +212,7 @@ void queryRecordsFromFileWithVarData(embedDBState *state, const char *fileName, 
     char *varDataExpected = (char *)calloc(30, sizeof(char));
     char message[100];
     while (numRead < numRecords) {
-        if (0 == fread(infileBuffer, state->pageSize, 1, infile))
+        if (0 == sd_fread(infileBuffer, state->pageSize, 1, infile))
             break;
         int16_t count = 0;
         memcpy(&count, infileBuffer + 4, sizeof(int16_t));
@@ -240,7 +240,7 @@ void queryRecordsFromFileWithVarData(embedDBState *state, const char *fileName, 
         }
     }
     TEST_ASSERT_EQUAL_INT32_MESSAGE(numRecords, numRead, "The number of records read was not equal to the number of records inserted.");
-    fclose(infile);
+    sd_fclose(infile);
     free(dataBuffer);
     free(varDataBuffer);
     free(varDataExpected);
