@@ -291,22 +291,27 @@ void initProjection(embedDBOperator* op) {
 int8_t nextProjection(embedDBOperator* op) {
     uint8_t numCols = *(uint8_t*)op->state;
     uint8_t* cols = (uint8_t*)op->state + 1;
-    uint16_t curColPos = 0;
-    uint8_t nextProjCol = 0;
-    uint16_t nextProjColPos = 0;
     const embedDBSchema* inputSchema = op->input->schema;
 
     // Get next record
     if (op->input->next(op->input)) {
-        for (uint8_t col = 0; col < inputSchema->numCols && nextProjCol != numCols; col++) {
-            uint8_t colSize = abs(inputSchema->columnSizes[col]);
-            if (col == cols[nextProjCol]) {
-                memcpy((int8_t*)op->recordBuffer + nextProjColPos, (int8_t*)op->input->recordBuffer + curColPos, colSize);
-                nextProjColPos += colSize;
-                nextProjCol++;
-            }
-            curColPos += colSize;
-        }
+        // for (uint8_t col = 0; col < inputSchema->numCols && nextProjCol != numCols; col++) {
+        //     uint8_t colSize = abs(inputSchema->columnSizes[col]);
+        //     if (col == cols[nextProjCol]) {
+        //         memcpy((int8_t*)op->recordBuffer + nextProjColPos, (int8_t*)op->input->recordBuffer + curColPos, colSize);
+        //         nextProjColPos += colSize;
+        //         nextProjCol++;
+        //     }
+        //     curColPos += colSize;
+        // }
+		uint16_t curColPos = 0;
+		for (uint8_t colIdx = 0; colIdx < numCols; colIdx++) {
+			uint8_t col = cols[colIdx];
+			uint8_t colSize = abs(inputSchema->columnSizes[col]);
+			uint16_t srcColPos = getColOffsetFromSchema(inputSchema, col);
+			memcpy((int8_t*)op->recordBuffer + curColPos, (int8_t*)op->input->recordBuffer + srcColPos, colSize);
+			curColPos += colSize;
+		}
         return 1;
     } else {
         return 0;
