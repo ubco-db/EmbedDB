@@ -1,6 +1,6 @@
 /*****************************************************************************/
 /**
- * @file        Test_advanced_queries.c
+ * @file        Test_advanced_queries.cpp
  * @author      EmbedDB Team (See Authors.md)
  * @brief       Test for EmbedDB advanced queries
  * @copyright   Copyright 2024
