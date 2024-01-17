@@ -1,35 +1,35 @@
 /******************************************************************************/
 /**
- * @file		test_embedDB_multiple_instances.cpp
- * @author		EmbedDB Team (See Authors.md)
- * @brief		Test having multiple instances of EmbedDB open simultaneously.
- * @copyright	Copyright 2023
- * 			    EmbedDB Team
+ * @file        test_embedDB_multiple_instances.cpp
+ * @author      EmbedDB Team (See Authors.md)
+ * @brief       Test having multiple instances of EmbedDB open simultaneously.
+ * @copyright   Copyright 2024
+ *              EmbedDB Team
  * @par Redistribution and use in source and binary forms, with or without
- * 	modification, are permitted provided that the following conditions are met:
+ *  modification, are permitted provided that the following conditions are met:
  *
  * @par 1.Redistributions of source code must retain the above copyright notice,
- * 	this list of conditions and the following disclaimer.
+ *  this list of conditions and the following disclaimer.
  *
  * @par 2.Redistributions in binary form must reproduce the above copyright notice,
- * 	this list of conditions and the following disclaimer in the documentation
- * 	and/or other materials provided with the distribution.
+ *  this list of conditions and the following disclaimer in the documentation
+ *  and/or other materials provided with the distribution.
  *
  * @par 3.Neither the name of the copyright holder nor the names of its contributors
- * 	may be used to endorse or promote products derived from this software without
- * 	specific prior written permission.
+ *  may be used to endorse or promote products derived from this software without
+ *  specific prior written permission.
  *
  * @par THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
- * 	AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
- * 	IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
- * 	ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE
- * 	LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
- * 	CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
- * 	SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
- * 	INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
- * 	CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
- * 	ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
- * 	POSSIBILITY OF SUCH DAMAGE.
+ *  AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ *  IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+ *  ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE
+ *  LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+ *  CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+ *  SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+ *  INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+ *  CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+ *  ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+ *  POSSIBILITY OF SUCH DAMAGE.
  */
 /******************************************************************************/
 
@@ -65,7 +65,7 @@ void setupembedDBInstanceKeySize4DataSize4(embedDBState *state, int number) {
     state->bufferSizeInBlocks = 2;
     state->numSplinePoints = 2;
     state->buffer = calloc(1, state->pageSize * state->bufferSizeInBlocks);
-    TEST_ASSERT_NOT_NULL_MESSAGE(state->buffer, "Failed to allocate SBITS buffer.");
+    TEST_ASSERT_NOT_NULL_MESSAGE(state->buffer, "Failed to allocate EmbedDB buffer.");
     state->numDataPages = 2000;
     state->parameters = EMBEDDB_RESET_DATA;
     state->eraseSizeInPages = 4;
@@ -113,13 +113,13 @@ void queryRecords(embedDBState *state, int32_t numberOfRecords, int32_t starting
 
 void insertRecordsFromFile(embedDBState *state, const char *fileName, int32_t numRecords) {
     SD_FILE *infile;
-    infile = fopen(fileName, "r+b");
+    infile = sd_fopen(fileName, "r+b");
     char infileBuffer[512];
     int8_t headerSize = 16;
     int32_t numInserted = 0;
     char message[100];
     while (numInserted < numRecords) {
-        if (0 == fread(infileBuffer, state->pageSize, 1, infile))
+        if (0 == sd_fread(infileBuffer, state->pageSize, 1, infile))
             break;
         int16_t count = *((int16_t *)(infileBuffer + 4));
         for (int16_t i = 0; i < count; i++) {
@@ -134,12 +134,12 @@ void insertRecordsFromFile(embedDBState *state, const char *fileName, int32_t nu
         }
     }
     embedDBFlush(state);
-    fclose(infile);
+    sd_fclose(infile);
 }
 
 void insertRecordsFromFileWithVarData(embedDBState *state, const char *fileName, int32_t numRecords) {
     SD_FILE *infile;
-    infile = fopen(fileName, "r+b");
+    infile = sd_fopen(fileName, "r+b");
     TEST_ASSERT_NOT_NULL_MESSAGE(infile, "Error opening file.");
     char infileBuffer[512];
     int8_t headerSize = 16;
@@ -147,7 +147,7 @@ void insertRecordsFromFileWithVarData(embedDBState *state, const char *fileName,
     char message[100];
     char *varData = (char *)calloc(30, sizeof(char));
     while (numInserted < numRecords) {
-        if (0 == fread(infileBuffer, state->pageSize, 1, infile))
+        if (0 == sd_fread(infileBuffer, state->pageSize, 1, infile))
             break;
         int16_t count = *((int16_t *)(infileBuffer + 4));
         for (int16_t i = 0; i < count; i++) {
@@ -166,19 +166,19 @@ void insertRecordsFromFileWithVarData(embedDBState *state, const char *fileName,
     }
     free(varData);
     embedDBFlush(state);
-    fclose(infile);
+    sd_fclose(infile);
 }
 
 void queryRecordsFromFile(embedDBState *state, const char *fileName, int32_t numRecords) {
     SD_FILE *infile;
-    infile = fopen(fileName, "r+b");
+    infile = sd_fopen(fileName, "r+b");
     char infileBuffer[512];
     int8_t headerSize = 16;
     int32_t numRead = 0;
     int8_t *dataBuffer = (int8_t *)malloc(state->dataSize);
     char message[100];
     while (numRead < numRecords) {
-        if (0 == fread(infileBuffer, state->pageSize, 1, infile))
+        if (0 == sd_fread(infileBuffer, state->pageSize, 1, infile))
             break;
         int16_t count = 0;
         memcpy(&count, infileBuffer + 4, sizeof(int16_t));
@@ -198,12 +198,12 @@ void queryRecordsFromFile(embedDBState *state, const char *fileName, int32_t num
     }
     TEST_ASSERT_EQUAL_INT32_MESSAGE(numRecords, numRead, "The number of records read was not equal to the number of records inserted.");
     free(dataBuffer);
-    fclose(infile);
+    sd_fclose(infile);
 }
 
 void queryRecordsFromFileWithVarData(embedDBState *state, const char *fileName, int32_t numRecords) {
     SD_FILE *infile;
-    infile = fopen(fileName, "r+b");
+    infile = sd_fopen(fileName, "r+b");
     char infileBuffer[512];
     int8_t headerSize = 16;
     int32_t numRead = 0;
@@ -212,7 +212,7 @@ void queryRecordsFromFileWithVarData(embedDBState *state, const char *fileName, 
     char *varDataExpected = (char *)calloc(30, sizeof(char));
     char message[100];
     while (numRead < numRecords) {
-        if (0 == fread(infileBuffer, state->pageSize, 1, infile))
+        if (0 == sd_fread(infileBuffer, state->pageSize, 1, infile))
             break;
         int16_t count = 0;
         memcpy(&count, infileBuffer + 4, sizeof(int16_t));
@@ -240,7 +240,7 @@ void queryRecordsFromFileWithVarData(embedDBState *state, const char *fileName, 
         }
     }
     TEST_ASSERT_EQUAL_INT32_MESSAGE(numRecords, numRead, "The number of records read was not equal to the number of records inserted.");
-    fclose(infile);
+    sd_fclose(infile);
     free(dataBuffer);
     free(varDataBuffer);
     free(varDataExpected);
@@ -253,7 +253,7 @@ void setupembedDBInstanceKeySize4DataSize12(embedDBState *state, uint32_t number
     state->bufferSizeInBlocks = 4;
     state->numSplinePoints = numPoints;
     state->buffer = calloc(1, state->pageSize * state->bufferSizeInBlocks);
-    TEST_ASSERT_NOT_NULL_MESSAGE(state->buffer, "Failed to allocate SBITS buffer.");
+    TEST_ASSERT_NOT_NULL_MESSAGE(state->buffer, "Failed to allocate EmbedDB buffer.");
     state->numDataPages = 20000;
     state->numIndexPages = 1000;
     state->parameters = EMBEDDB_RESET_DATA | EMBEDDB_USE_INDEX;
@@ -281,7 +281,7 @@ void setupembedDBInstanceKeySize4DataSize12WithVarData(embedDBState *state, uint
     state->bufferSizeInBlocks = 6;
     state->numSplinePoints = numPoints;
     state->buffer = calloc(1, state->pageSize * state->bufferSizeInBlocks);
-    TEST_ASSERT_NOT_NULL_MESSAGE(state->buffer, "Failed to allocate SBITS buffer.");
+    TEST_ASSERT_NOT_NULL_MESSAGE(state->buffer, "Failed to allocate EmbedDB buffer.");
     state->numDataPages = 22000;
     state->numIndexPages = 1000;
     state->numVarPages = 44000;

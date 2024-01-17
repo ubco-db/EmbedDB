@@ -1,35 +1,35 @@
 /******************************************************************************/
 /**
- * @file		advancedQueries.c
- * @author		EmbedDB Team (See Authors.md)
+ * @file        advancedQueries.c
+ * @author      EmbedDB Team (See Authors.md)
  * @brief       Source code file for the advanced query interface for EmbedDB
- * @copyright	Copyright 2023
- * 			    EmbedDB Team
+ * @copyright   Copyright 2024
+ *              EmbedDB Team
  * @par Redistribution and use in source and binary forms, with or without
- * 	modification, are permitted provided that the following conditions are met:
+ *  modification, are permitted provided that the following conditions are met:
  *
  * @par 1.Redistributions of source code must retain the above copyright notice,
- * 	this list of conditions and the following disclaimer.
+ *  this list of conditions and the following disclaimer.
  *
  * @par 2.Redistributions in binary form must reproduce the above copyright notice,
- * 	this list of conditions and the following disclaimer in the documentation
- * 	and/or other materials provided with the distribution.
+ *  this list of conditions and the following disclaimer in the documentation
+ *  and/or other materials provided with the distribution.
  *
  * @par 3.Neither the name of the copyright holder nor the names of its contributors
- * 	may be used to endorse or promote products derived from this software without
- * 	specific prior written permission.
+ *  may be used to endorse or promote products derived from this software without
+ *  specific prior written permission.
  *
  * @par THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
- * 	AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
- * 	IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
- * 	ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE
- * 	LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
- * 	CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
- * 	SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
- * 	INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
- * 	CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
- * 	ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
- * 	POSSIBILITY OF SUCH DAMAGE.
+ *  AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ *  IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+ *  ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE
+ *  LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+ *  CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+ *  SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+ *  INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+ *  CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+ *  ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+ *  POSSIBILITY OF SUCH DAMAGE.
  */
 /******************************************************************************/
 
@@ -291,20 +291,16 @@ void initProjection(embedDBOperator* op) {
 int8_t nextProjection(embedDBOperator* op) {
     uint8_t numCols = *(uint8_t*)op->state;
     uint8_t* cols = (uint8_t*)op->state + 1;
-    uint16_t curColPos = 0;
-    uint8_t nextProjCol = 0;
-    uint16_t nextProjColPos = 0;
-    const embedDBSchema* inputSchema = op->input->schema;
+    embedDBSchema* inputSchema = op->input->schema;
 
     // Get next record
     if (op->input->next(op->input)) {
-        for (uint8_t col = 0; col < inputSchema->numCols && nextProjCol != numCols; col++) {
+        uint16_t curColPos = 0;
+        for (uint8_t colIdx = 0; colIdx < numCols; colIdx++) {
+            uint8_t col = cols[colIdx];
             uint8_t colSize = abs(inputSchema->columnSizes[col]);
-            if (col == cols[nextProjCol]) {
-                memcpy((int8_t*)op->recordBuffer + nextProjColPos, (int8_t*)op->input->recordBuffer + curColPos, colSize);
-                nextProjColPos += colSize;
-                nextProjCol++;
-            }
+            uint16_t srcColPos = getColOffsetFromSchema(inputSchema, col);
+            memcpy((int8_t*)op->recordBuffer + curColPos, (int8_t*)op->input->recordBuffer + srcColPos, colSize);
             curColPos += colSize;
         }
         return 1;
@@ -330,17 +326,6 @@ void closeProjection(embedDBOperator* op) {
  * @param	cols	The indexes of the columns to be outputted. Zero indexed. Column indexes must be strictly increasing i.e. columns must stay in the same order, can only remove columns from input
  */
 embedDBOperator* createProjectionOperator(embedDBOperator* input, uint8_t numCols, uint8_t* cols) {
-    // Ensure column numbers are strictly increasing
-    uint8_t lastCol = cols[0];
-    for (uint8_t i = 1; i < numCols; i++) {
-        if (cols[i] <= lastCol) {
-#ifdef PRINT_ERRORS
-            printf("ERROR: Columns in a projection must be strictly ascending for performance reasons");
-#endif
-            return NULL;
-        }
-        lastCol = cols[i];
-    }
     // Create state
     uint8_t* state = malloc(numCols + 1);
     if (state == NULL) {
