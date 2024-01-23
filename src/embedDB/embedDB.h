@@ -127,6 +127,9 @@ typedef uint16_t count_t;
         (bm & 0x02 ? '1' : '0'),   \
         (bm & 0x01 ? '1' : '0')
 
+#define NO_RECORD_FOUND -1
+#define RECORD_FOUND 0
+
 /**
  * @brief	An interface for embedDB to read/write to any storage medium at the page level of granularity
  */
@@ -246,13 +249,20 @@ typedef struct {
     uint32_t fileOffset; /* Where the iterator should start reading data next time (offset from start of file) */
 } embedDBVarDataStream;
 
+typedef enum {
+    ITERATE_NO_MATCH = -1,
+    ITERATE_MATCH = 1,
+    ITERATE_NO_MORE_RECORDS = 0
+} IterateStatus;
+
 /**
  * @brief	Initialize embedDB structure.
  * @param	state			embedDB algorithm state structure
  * @param	indexMaxError	Max error of indexing structure (spline)
  * @return	Return 0 if success. Non-zero value if error.
  */
-int8_t embedDBInit(embedDBState *state, size_t indexMaxError);
+int8_t
+embedDBInit(embedDBState *state, size_t indexMaxError);
 
 /**
  * @brief   Prints the initialization stats of the given embedDB state
