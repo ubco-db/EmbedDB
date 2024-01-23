@@ -1823,6 +1823,32 @@ id_t writeVariablePage(embedDBState *state, void *buffer) {
 }
 
 /**
+ * @brief	Memcopies write buffer to the read buffer.
+ * @param	state	embedDB algorithm state structure
+ */
+void readToWriteBuf(embedDBState *state) {
+    // point to read buffer
+    void *readBuf = (int8_t *)state->buffer + state->pageSize * EMBEDDB_DATA_READ_BUFFER;
+    // point to write buffer
+    void *writeBuf = (int8_t *)state->buffer + state->pageSize * EMBEDDB_DATA_WRITE_BUFFER;
+    // copy write buffer to the read buffer.
+    memcpy(readBuf, writeBuf, state->pageSize);
+}
+
+/**
+ * @brief	Memcopies variable write buffer to the read buffer.
+ * @param	state	embedDB algorithm state structure
+ */
+void readToWriteBufVar(embedDBState *state) {
+    // point to read buffer
+    void *readBuf = (int8_t *)state->buffer + state->pageSize * EMBEDDB_VAR_READ_BUFFER(state->parameters);
+    // point to write buffer
+    void *writeBuf = (int8_t *)state->buffer + state->pageSize * EMBEDDB_VAR_WRITE_BUFFER(state->parameters);
+    // copy write buffer to the read buffer.
+    memcpy(readBuf, writeBuf, state->pageSize);
+}
+
+/**
  * @brief	Reads given page from storage.
  * @param	state	embedDB algorithm state structure
  * @param	pageNum	Page number to read
