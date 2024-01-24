@@ -218,9 +218,8 @@ int runUnityTests() {
     RUN_TEST(test_no_data);
     return UNITY_END();
 }
-* /
 
-    void setup() {
+void setup() {
     delay(2000);
     setupBoard();
     runUnityTests();
@@ -256,8 +255,13 @@ embedDBState* init_state() {
     state->numSplinePoints = 300;
     state->bitmapSize = 1;
     state->bufferSizeInBlocks = 4;  // size of the buffer in blocks (where I am assuming that a block is the same as a page size)
-    state->buffer = calloc(1, state->pageSize * state->bufferSizeInBlocks);
-    TEST_ASSERT_NOT_NULL_MESSAGE(state->buffer, "Failed to allocate EmbedDB buffer.");
+    // allocate buffer
+    state->buffer = malloc((size_t)state->bufferSizeInBlocks * state->pageSize);
+    // check
+    if (state->buffer == NULL) {
+        printf("Unable to allocate buffer. Exciting\n");
+        exit(0);
+    }
     // address level parameters
     state->numDataPages = 1000;
     state->numIndexPages = 48;
