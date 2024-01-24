@@ -73,10 +73,7 @@ void tearDown() {
 }
 
 void test_insert_single_record_and_retrieval_from_buffer_no_flush(void) {
-    printf("fuck me daddy please");
-    TEST_ASSERT_EQUAL_INT(0, 0);
-
-    /*uint32_t key = 121;
+    uint32_t key = 121;
     uint32_t data = 12345;
     char varData[] = "Hello world";  // size 12
     embedDBPutVar(state, &key, &data, varData, 12);
@@ -93,7 +90,7 @@ void test_insert_single_record_and_retrieval_from_buffer_no_flush(void) {
     TEST_ASSERT_EQUAL_INT(*expData, data);
     uint32_t bytesRead = embedDBVarDataStreamRead(state, varStream, varDataBuffer, varBufSize);
     TEST_ASSERT_EQUAL_UINT32_MESSAGE(12, bytesRead, "Returned vardata was not the right length");
-    TEST_ASSERT_EQUAL_CHAR_ARRAY_MESSAGE(varData, varDataBuffer, 12, "embedDBGetVar did not return the correct vardata");*/
+    TEST_ASSERT_EQUAL_CHAR_ARRAY_MESSAGE(varData, varDataBuffer, 12, "embedDBGetVar did not return the correct vardata");
 }
 
 void test_single_variable_page_insert_and_retrieve_from_buffer(void) {
@@ -276,11 +273,11 @@ void test_insert_retrieve_flush_insert_retrieve_single_record_again(void) {
 int runUnityTests() {
     UNITY_BEGIN();
     RUN_TEST(test_insert_single_record_and_retrieval_from_buffer_no_flush);
-    // RUN_TEST(test_single_variable_page_insert_and_retrieve_from_buffer);
-    // RUN_TEST(test_insert_retrieve_insert_and_retrieve_again);
-    // RUN_TEST(test_var_read_iterator_buffer);
-    // RUN_TEST(test_insert_retrieve_flush_insert_retrieve_again);
-    // RUN_TEST(test_insert_retrieve_flush_insert_retrieve_single_record_again);
+    RUN_TEST(test_single_variable_page_insert_and_retrieve_from_buffer);
+    RUN_TEST(test_insert_retrieve_insert_and_retrieve_again);
+    RUN_TEST(test_var_read_iterator_buffer);
+    RUN_TEST(test_insert_retrieve_flush_insert_retrieve_again);
+    RUN_TEST(test_insert_retrieve_flush_insert_retrieve_single_record_again);
     return UNITY_END();
 }
 
@@ -321,17 +318,17 @@ embedDBState *init_state() {
     state->keySize = 4;      // size of key in bytes
     state->dataSize = 12;    // size of data in bytes
     state->pageSize = 512;   // page size (I am sure this is in bytes)
-    state->numSplinePoints = 300;
+    state->numSplinePoints = 2;
     state->bitmapSize = 1;
-    state->bufferSizeInBlocks = 4;  // size of the buffer in blocks (where I am assuming that a block is the same as a page size)
+    state->bufferSizeInBlocks = 6;
     // allocate buffer
     state->buffer = calloc(1, state->pageSize * state->bufferSizeInBlocks);
     // check
-    // TEST_ASSERT_NOT_NULL_MESSAGE(state->buffer, "Failed to allocate EmbedDB buffer.");
-
+    TEST_ASSERT_NOT_NULL_MESSAGE(state->buffer, "Failed to allocate EmbedDB buffer.");
     // address level parameters
     state->numDataPages = 1000;
     state->numIndexPages = 48;
+    state->numVarPages = 1000;
     state->eraseSizeInPages = 4;
     // configure file interface
     char dataPath[] = "dataFile.bin", indexPath[] = "indexFile.bin", varPath[] = "varFile.bin";
@@ -340,13 +337,13 @@ embedDBState *init_state() {
     state->indexFile = setupSDFile(indexPath);
     state->varFile = setupSDFile(varPath);
     // configure state
-    state->parameters = EMBEDDB_USE_BMAP | EMBEDDB_USE_INDEX | EMBEDDB_RESET_DATA;
-    // Setup for data and bitmap comparison functions */
+    state->parameters = EMBEDDB_USE_BMAP | EMBEDDB_USE_INDEX | EMBEDDB_USE_VDATA | EMBEDDB_RESET_DATA;  // Setup for data and bitmap comparison functions */
     state->inBitmap = inBitmapInt8;
     state->updateBitmap = updateBitmapInt8;
     state->buildBitmapFromRange = buildBitmapInt8FromRange;
     state->compareKey = int32Comparator;
     state->compareData = int32Comparator;
+    embedDBResetStats(state);
     // init
     // size_t splineMaxError = 1;
 

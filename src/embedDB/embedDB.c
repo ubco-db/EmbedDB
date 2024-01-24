@@ -1040,7 +1040,7 @@ int8_t linearSearch(embedDBState *state, int16_t *numReads, void *buf, void *key
  * @param	key		Key for record
  * @param	data	Pre-allocated memory to copy data for record
  * @param   range
- * @return	Return 0 if success. Non-zero value if error.
+ * @return	Return non-negative integer representing offset if success. Non-zero value if error.
  */
 int8_t searchBuffer(embedDBState *state, void *buffer, void *key, void *data) {
     // return -1 if there is nothing in the buffer
@@ -1053,7 +1053,7 @@ int8_t searchBuffer(embedDBState *state, void *buffer, void *key, void *data) {
     if (nextId != NO_RECORD_FOUND) {
         // Key found
         memcpy(data, (void *)((int8_t *)buffer + state->headerSize + state->recordSize * nextId + state->keySize), state->dataSize);
-        return RECORD_FOUND;
+        return nextId;
     }
     // Key not found
     return NO_RECORD_FOUND;
@@ -1225,27 +1225,26 @@ int8_t embedDBGetVar(embedDBState *state, void *key, void *data, embedDBVarDataS
 #endif
         return 0;
     }
-
     void *outputBuffer = (int8_t *)state->buffer;
 
-    // if queried records are inside write buffer
-    if (EMBEDDB_GET_COUNT(outputBuffer) != 0 && embedDBSearchNode(state, outputBuffer, key, 0) != NO_RECORD_FOUND) {
-        // flush variable record buffer to storage
+    // search output buffer for recrd, mem copy fixed record into data
+    int recordNum = searchBuffer(state, outputBuffer, key, data);
+    // if there are records found in the output buffer
+    if (recordNum != NO_RECORD_FOUND) {
+        // flush variable record buffer to storage to read later on
         embedDBFlushVar(state);
-        // copy contents of write buffer to read buffer for embedDBSearchNode()
+        // copy contents of write buffer to read buffer for embedDBSetupVarDataStream()
         readToWriteBuf(state);
-        // retrieve fixed-length record
-        searchBuffer(state, outputBuffer, key, data);
-    }
-    // check if queries are in the file system, place in read buffer, and return fixed-length record. Else return NO_RECORD_FOUND
-    else if (embedDBGet(state, key, data) != RECORD_FOUND) {
+        // else if there are records in the file system, mem cpy fixed record into data
+    } else if (embedDBGet(state, key, data) == RECORD_FOUND) {
+        // get pointer from the read buffer
+        void *buf = (int8_t *)state->buffer + (state->pageSize * EMBEDDB_DATA_READ_BUFFER);
+        // retrieve offset
+        recordNum = embedDBSearchNode(state, buf, key, 0);
+    } else {
         return NO_RECORD_FOUND;
     }
 
-    // pointer to read buffer
-    void *buf = (int8_t *)state->buffer + (state->pageSize * EMBEDDB_DATA_READ_BUFFER);
-    // retrieve approximate location of record by offset (reason why records must be in the read buffer)
-    id_t recordNum = embedDBSearchNode(state, buf, key, 0);
     int8_t setupResult = embedDBSetupVarDataStream(state, key, varData, recordNum);
 
     switch (setupResult) {
