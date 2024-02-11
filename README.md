@@ -5,7 +5,7 @@ EmbedDB is a high performance embedded data storage and index structure optimize
 1. Minimum memory requirement is 4 KB allowing execution on the smallest devices.
 2. Key-value store optimized for time series with extremely fast insert performance.
 3. Efficient insert (put) and query (get) of arbitrary key-value data. Ability to search data both on timestamp (key) and by data value.
-4. High-performance learned index for keys <!-- cite sbits_learned --> and efficient, customizable data index <!-- cite sbits repo/paper --> optimized for flash memory that outperforms B+-trees.
+4. High-performance [learned index for keys](https://arxiv.org/abs/2302.03085) and efficient, [customizable data index](docs/SBITS_time_series_index.pdf) optimized for flash memory that outperforms B+-trees.
 5. Supports any type of storage including raw NOR and NAND chips and SD cards.
 6. No dependencies on libraries or need for an operating system.
 7. Advanced query API for SQL queries <!-- cite embed SQL repo -->
