@@ -4,6 +4,8 @@ EmbedDB has a library with quick and easy-to-use query operators. To use them, i
 
 For a complete code example see [advancedQueryExamples.c](../src/query-interface/advancedQueries.c). This document is a guide on each provided operator as well as how to create custom operators.
 
+Many of these queries can also be generated from SQL using our [SQL Converter](https://github.com/ubco-db/EmbedDB-SQL). This tool works for simple queries and does not support all query types, but can make it easy to write easy queries like selections and aggregate queries. Just copy the output into your project and adapt it to integrate to your use case.
+
 ## Table of Contents
 
 -   [Schema](#schema)

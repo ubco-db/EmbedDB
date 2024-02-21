@@ -8,7 +8,7 @@ EmbedDB is a high performance embedded data storage and index structure optimize
 4. High-performance [learned index for keys](https://arxiv.org/abs/2302.03085) and efficient, [customizable data index](docs/SBITS_time_series_index.pdf) optimized for flash memory that outperforms B+-trees.
 5. Supports any type of storage including raw NOR and NAND chips and SD cards.
 6. No dependencies on libraries or need for an operating system.
-7. Advanced query API for SQL queries <!-- cite embed SQL repo -->
+7. Advanced query API for SQL queries, which can be written by hand or by using our [SQL converter](https://github.com/ubco-db/EmbedDB-SQL)
 8. Easily included in C projects.
 9. Open source license. Free to use for commerical and open source projects.
 
