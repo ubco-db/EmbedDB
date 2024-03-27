@@ -356,6 +356,12 @@ embedDBOperator* createProjectionOperator(embedDBOperator* input, uint8_t numCol
     return op;
 }
 
+struct selectionInfo {
+    int8_t colNum;
+    int8_t operation;
+    void* compVal;
+};
+
 void initSelection(embedDBOperator* op) {
     if (op->input == NULL) {
 #ifdef PRINT_ERRORS
@@ -386,10 +392,11 @@ void initSelection(embedDBOperator* op) {
 
 int8_t nextSelection(embedDBOperator* op) {
     embedDBSchema* schema = op->input->schema;
+    struct selectionInfo* state = op->state;
 
-    int8_t colNum = *(int8_t*)op->state;
+    int8_t colNum = state->colNum;
     uint16_t colPos = getColOffsetFromSchema(schema, colNum);
-    int8_t operation = *((int8_t*)op->state + 1);
+    int8_t operation = state->operation;
     int8_t colSize = schema->columnSizes[colNum];
     int8_t isSigned = 0;
     if (colSize < 0) {
@@ -399,8 +406,7 @@ int8_t nextSelection(embedDBOperator* op) {
 
     while (op->input->next(op->input)) {
         void* colData = (int8_t*)op->input->recordBuffer + colPos;
-
-        if (compare(colData, operation, *(void**)((int8_t*)op->state + 2), isSigned, colSize)) {
+        if (compare(colData, operation, state->compVal, isSigned, colSize)) {
             memcpy(op->recordBuffer, op->input->recordBuffer, getRecordSizeFromSchema(op->schema));
             return 1;
         }
@@ -427,16 +433,16 @@ void closeSelection(embedDBOperator* op) {
  * @param	compVal		A pointer to the value to compare with. Make sure the size of this is the same number of bytes as is described in the schema
  */
 embedDBOperator* createSelectionOperator(embedDBOperator* input, int8_t colNum, int8_t operation, void* compVal) {
-    int8_t* state = malloc(2 + sizeof(void*));
+    struct selectionInfo* state = malloc(sizeof(struct selectionInfo));
     if (state == NULL) {
 #ifdef PRINT_ERRORS
         printf("ERROR: Failed to malloc while creating Selection operator\n");
 #endif
         return NULL;
     }
-    state[0] = colNum;
-    state[1] = operation;
-    memcpy(state + 2, &compVal, sizeof(void*));
+    state->colNum = colNum;
+    state->operation = operation;
+    memcpy(&state->compVal, &compVal, sizeof(void*));
 
     embedDBOperator* op = malloc(sizeof(embedDBOperator));
     if (op == NULL) {
