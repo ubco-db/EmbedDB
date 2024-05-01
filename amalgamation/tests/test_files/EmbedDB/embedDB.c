@@ -36,6 +36,7 @@
 #include "embedDB.h"
 
 #include <math.h>
+#include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -44,7 +45,6 @@
 
 #include "../spline/radixspline.h"
 #include "../spline/spline.h"
-#include "serial_c_iface.h"
 
 /**
  * 0 = Modified binary search
@@ -58,11 +58,6 @@
  * Note: The Radix search structure is only used with Spline (SEARCH_METHOD == 2) To use a pure Spline index without a Radix table, set RADIX_BITS to 0
  */
 #define RADIX_BITS 0
-
-/**
- * Should the spline be automatically cleaned when data pages are erased? 1 = yes, 0 = no
- */
-#define CLEAN_SPLINE 1
 
 /* Helper Functions */
 int8_t embedDBInitData(embedDBState *state);
@@ -134,15 +129,19 @@ void initBufferPage(embedDBState *state, int pageNum) {
  * @param   radixSize   number bits to be indexed by radix
  * @return  void
  */
-void initRadixSpline(embedDBState *state, size_t radixSize) {
+int8_t initRadixSpline(embedDBState *state, size_t radixSize) {
     spline *spl = (spline *)malloc(sizeof(spline));
     state->spl = spl;
 
-    splineInit(state->spl, state->numSplinePoints, state->indexMaxError, state->keySize);
+    int8_t initResult = splineInit(state->spl, state->numSplinePoints, state->indexMaxError, state->keySize);
+    if (initResult == -1) {
+        return -1;
+    }
 
     radixspline *rsidx = (radixspline *)malloc(sizeof(radixspline));
     state->rdix = rsidx;
     radixsplineInit(state->rdix, state->spl, radixSize, state->keySize);
+    return 0;
 }
 
 /**
@@ -219,12 +218,20 @@ int8_t embedDBInit(embedDBState *state, size_t indexMaxError) {
 
     /* Initalize the spline or radix spline structure if either are to be used */
     if (SEARCH_METHOD == 2) {
-        state->cleanSpline = CLEAN_SPLINE;
+        state->cleanSpline = 1;
+        int8_t splineInitResult = 0;
         if (RADIX_BITS > 0) {
-            initRadixSpline(state, RADIX_BITS);
+            splineInitResult = initRadixSpline(state, RADIX_BITS);
+
         } else {
             state->spl = malloc(sizeof(spline));
-            splineInit(state->spl, state->numSplinePoints, indexMaxError, state->keySize);
+            splineInitResult = splineInit(state->spl, state->numSplinePoints, indexMaxError, state->keySize);
+        }
+        if (splineInitResult == -1) {
+#ifdef PRINT_ERRORS
+            printf("ERROR: Failed to initialize spline.");
+#endif
+            return -1;
         }
     }
 
@@ -699,7 +706,6 @@ void indexPage(embedDBState *state, uint32_t pageNumber) {
  */
 int8_t embedDBPut(embedDBState *state, void *key, void *data) {
     /* Copy record into block */
-
     count_t count = EMBEDDB_GET_COUNT(state->buffer);
     if (state->minKey != UINT32_MAX) {
         void *previousKey = NULL;
@@ -982,6 +988,7 @@ id_t embedDBSearchNode(embedDBState *state, void *buffer, void *key, int8_t rang
         }
         middle = (first + last) / 2;
     }
+
     if (range)
         return middle;
     return -1;
@@ -997,7 +1004,7 @@ id_t embedDBSearchNode(embedDBState *state, void *buffer, void *key, int8_t rang
  * @param	key			Key for the record to search for
  * @param	pageId		Page id to start search from
  * @param 	low			Lower bound for the page the record could be found on
- * @param 	high		Uper bound for the page the record could be found on
+ * @param 	high		Upper bound for the page the record could be found on
  * @return	Return 0 if success. Non-zero value if error.
  */
 int8_t linearSearch(embedDBState *state, int16_t *numReads, void *buf, void *key, int32_t pageId, int32_t low, int32_t high) {
@@ -1040,7 +1047,7 @@ int8_t linearSearch(embedDBState *state, int16_t *numReads, void *buf, void *key
  * @param	key		Key for record
  * @param	data	Pre-allocated memory to copy data for record
  * @param   range
- * @return	Return non-negative integer representing offset if success. Non-zero value if error.
+ * @return	Return non-negative integer representing offset if success. -1 value if error.
  */
 int8_t searchBuffer(embedDBState *state, void *buffer, void *key, void *data) {
     // return -1 if there is nothing in the buffer
@@ -1072,7 +1079,7 @@ int8_t embedDBGet(embedDBState *state, void *key, void *data) {
     void *outputBuffer = state->buffer;
     if (state->nextDataPageId == 0) {
         int8_t success = searchBuffer(state, outputBuffer, key, data);
-        if (success != NO_RECORD_FOUND) return success;
+        if (success == 0) return success;
 
 #ifdef PRINT_ERRORS
         printf("ERROR: No data in database.\n");
@@ -1093,13 +1100,11 @@ int8_t embedDBGet(embedDBState *state, void *key, void *data) {
         uint64_t bufMinKey = 0;
         memcpy(&bufMaxKey, embedDBGetMaxKey(state, outputBuffer), state->keySize);
         memcpy(&bufMinKey, embedDBGetMinKey(state, outputBuffer), state->keySize);
-
         // return -1 if key is not in buffer
         if (thisKey > bufMaxKey) return -1;
-
         // if key >= buffer's min, check buffer
         if (thisKey >= bufMinKey) {
-            return (searchBuffer(state, outputBuffer, key, data) != NO_RECORD_FOUND) ? 0 : NO_RECORD_FOUND;
+            return (searchBuffer(state, outputBuffer, key, data));
         }
     }
 
@@ -1227,8 +1232,9 @@ int8_t embedDBGetVar(embedDBState *state, void *key, void *data, embedDBVarDataS
 #endif
         return 0;
     }
-    void *outputBuffer = (int8_t *)state->buffer;
 
+    // get pointer for output buffer
+    void *outputBuffer = (int8_t *)state->buffer;
     // search output buffer for recrd, mem copy fixed record into data
     int recordNum = searchBuffer(state, outputBuffer, key, data);
     // if there are records found in the output buffer
@@ -1262,6 +1268,7 @@ int8_t embedDBGetVar(embedDBState *state, void *key, void *data, embedDBVarDataS
 
     return -1;
 }
+
 /**
  * @brief	Initialize iterator on embedDB structure.
  * @param	state	embedDB algorithm state structure
@@ -1376,6 +1383,39 @@ int8_t embedDBFlush(embedDBState *state) {
 }
 
 /**
+ * @brief	Iterates through a page in the read buffer.
+ * @param	state	embedDB algorithm state structure
+ * @param	it		embedDB iterator state structure
+ * @param	key		Return variable for key (Pre-allocated)
+ * @param	data	Return variable for data (Pre-allocated)
+ * @return	ITERATE_MATCH if successful, ITERATE_NO_MORE_RECORDS if record is out of bounds, and ITERATE_NO_MATCH if record is not in page.
+ */
+int8_t iterateReadBuffer(embedDBState *state, embedDBIterator *it, void *key, void *data) {
+    //  Keep reading record until we find one that matches the query
+    int8_t *buf = (int8_t *)state->buffer + EMBEDDB_DATA_READ_BUFFER * state->pageSize;
+    uint32_t pageRecordCount = EMBEDDB_GET_COUNT(buf);
+
+    while (it->nextDataRec < pageRecordCount) {
+        memcpy(key, buf + state->headerSize + it->nextDataRec * state->recordSize, state->keySize);
+        memcpy(data, buf + state->headerSize + it->nextDataRec * state->recordSize + state->keySize, state->dataSize);
+        it->nextDataRec++;
+        // Check record
+        if (it->minKey != NULL && state->compareKey(key, it->minKey) < 0)
+            continue;
+        if (it->maxKey != NULL && state->compareKey(key, it->maxKey) > 0)
+            return ITERATE_NO_MORE_RECORDS;
+        if (it->minData != NULL && state->compareData(data, it->minData) < 0)
+            continue;
+        if (it->maxData != NULL && state->compareData(data, it->maxData) > 0)
+            continue;
+        // If we make it here, the record matches the query
+        return ITERATE_MATCH;
+    }
+    // If we make it here, no records in loaded page matches the query.
+    return ITERATE_NO_MATCH;
+}
+
+/**
  * @brief	Return next key, data pair for iterator.
  * @param	state	embedDB algorithm state structure
  * @param	it		embedDB iterator state structure
@@ -1384,15 +1424,21 @@ int8_t embedDBFlush(embedDBState *state) {
  * @return	1 if successful, 0 if no more records
  */
 int8_t embedDBNext(embedDBState *state, embedDBIterator *it, void *key, void *data) {
-    int searchWriteBuf = 0;
     while (1) {
-        if (it->nextDataPage > state->nextDataPageId) {
-            return 0;
+        // return 0 since all pages including buffer has been read.
+        if (it->nextDataPage > (state->nextDataPageId)) return 0;
+        // if we have reached the end, read from output buffer if it is not empty
+        if (it->nextDataPage == (state->nextDataPageId)) {
+            // point to outputBuffer
+            void *outputBuffer = (int8_t *)state->buffer;
+            // if there are no records in the buffer, return
+            if (EMBEDDB_GET_COUNT(outputBuffer) == 0) return 0;
+            // else, place write buffer in read
+            readToWriteBuf(state);
+            // search read buffer
+            int i = iterateReadBuffer(state, it, key, data);
+            return (i != ITERATE_NO_MATCH) ? i : 0;
         }
-        if (it->nextDataPage == state->nextDataPageId) {
-            searchWriteBuf = 1;
-        }
-
         // If we are just starting to read a new page and we have a query bitmap
         if (it->nextDataRec == 0 && it->queryBitmap != NULL) {
             // Find what index page determines if we should read the data page
@@ -1421,53 +1467,22 @@ int8_t embedDBNext(embedDBState *state, embedDBIterator *it, void *key, void *da
             }
         }
 
-        if (searchWriteBuf == 0 && readPage(state, it->nextDataPage % state->numDataPages) != 0) {
+        if (readPage(state, it->nextDataPage % state->numDataPages) != 0) {
 #ifdef PRINT_ERRORS
             printf("ERROR: Failed to read data page %i (%i)\n", it->nextDataPage, it->nextDataPage % state->numDataPages);
 #endif
             return 0;
         }
 
-        // Keep reading record until we find one that matches the query
-        int8_t *buf = searchWriteBuf == 0 ? (int8_t *)state->buffer + EMBEDDB_DATA_READ_BUFFER * state->pageSize : (int8_t *)state->buffer + EMBEDDB_DATA_WRITE_BUFFER * state->pageSize;
-        uint32_t pageRecordCount = EMBEDDB_GET_COUNT(buf);
-        while (it->nextDataRec < pageRecordCount) {
-            // Get record
-            memcpy(key, buf + state->headerSize + it->nextDataRec * state->recordSize, state->keySize);
-            memcpy(data, buf + state->headerSize + it->nextDataRec * state->recordSize + state->keySize, state->dataSize);
-            it->nextDataRec++;
-
-            // Check record
-            if (it->minKey != NULL && state->compareKey(key, it->minKey) < 0)
-                continue;
-            if (it->maxKey != NULL && state->compareKey(key, it->maxKey) > 0)
-                return 0;
-            if (it->minData != NULL && state->compareData(data, it->minData) < 0)
-                continue;
-            if (it->maxData != NULL && state->compareData(data, it->maxData) > 0)
-                continue;  // shouldn't this also return 0?
-
-            // If we make it here, the record matches the query
-            return 1;
-        }
-
+        int8_t i = iterateReadBuffer(state, it, key, data);
+        if (i != ITERATE_NO_MATCH) return i;
         // Finished reading through whole data page and didn't find a match
         it->nextDataPage++;
         it->nextDataRec = 0;
-
         // Try next data page by looping back to top
     }
 }
 
-/**
- * @brief	Return next key, data, variable data set for iterator
- * @param	state	embedDB algorithm state structure
- * @param	it		embedDB iterator state structure
- * @param	key		Return variable for key (Pre-allocated)
- * @param	data	Return variable for data (Pre-allocated)
- * @param	varData	Return variable for variable data as a embedDBVarDataStream (Unallocated). Returns NULL if no variable data. **Be sure to free the stream after you are done with it**
- * @return	1 if successful, 0 if no more records
- */
 /**
  * @brief	Return next key, data, variable data set for iterator
  * @param	state	embedDB algorithm state structure
@@ -1493,7 +1508,6 @@ int8_t embedDBNextVar(embedDBState *state, embedDBIterator *it, void *key, void 
 
     void *outputBuffer = (int8_t *)state->buffer;
     if (it->nextDataPage == 0 && (EMBEDDB_GET_COUNT(outputBuffer) > 0)) {
-        readToWriteBuf(state);
         embedDBFlushVar(state);
     }
 
@@ -1520,11 +1534,14 @@ int8_t embedDBNextVar(embedDBState *state, embedDBIterator *it, void *key, void 
  * @return  Returns 0 if sucessfull or no variable data for the record, 1 if the records variable data was overwritten, 2 if the page failed to read, and 3 if the memorey failed to allocate.
  */
 int8_t embedDBSetupVarDataStream(embedDBState *state, void *key, embedDBVarDataStream **varData, id_t recordNumber) {
+    // create pointer to read buffer
     void *dataBuf = (int8_t *)state->buffer + state->pageSize * EMBEDDB_DATA_READ_BUFFER;
+    // create pointer for record inside read buffer
     void *record = (int8_t *)dataBuf + state->headerSize + recordNumber * state->recordSize;
-
+    // create pointer for variable record which is an offset to approximate location
     uint32_t varDataAddr = 0;
     memcpy(&varDataAddr, (int8_t *)record + state->keySize + state->dataSize, sizeof(uint32_t));
+    // No variable data for the record, return 0
     if (varDataAddr == EMBEDDB_NO_VAR_DATA) {
         *varData = NULL;
         return 0;
@@ -1594,9 +1611,9 @@ uint32_t embedDBVarDataStreamRead(embedDBState *state, embedDBVarDataStream *str
 #endif
         return 0;
     }
-
     // Read in var page containing the data to read
     uint32_t pageNum = (stream->fileOffset / state->pageSize) % state->numVarPages;
+
     if (readVariablePage(state, pageNum) != 0) {
 #ifdef PRINT_ERRORS
         printf("ERROR: Couldn't read variable data page %d\n", pageNum);
@@ -1628,7 +1645,6 @@ uint32_t embedDBVarDataStreamRead(embedDBState *state, embedDBVarDataStream *str
             stream->fileOffset += state->variableDataHeaderSize;
         }
     }
-
     return amtRead;
 }
 
@@ -1696,7 +1712,7 @@ id_t writePage(embedDBState *state, void *buffer) {
 }
 
 /**
- * @brief	Calculates the number of spline points not in use by embedDB and deletes them
+ * @brief	Calculates the number of spline points not in use by embedDB and deltes them
  * @param	state	embedDB algorithm state structure
  * @param	key 	The minimim key embedDB still needs points for
  * @return	Returns the number of points deleted
@@ -1712,10 +1728,8 @@ uint32_t cleanSpline(embedDBState *state, void *key) {
         else
             break;
     }
-    if (state->spl->count - numPointsErased < 2)
-        numPointsErased -= 2 - (state->spl->count - numPointsErased);
-    if (numPointsErased <= 0)
-        return 0;
+    if (state->spl->count - numPointsErased == 1)
+        numPointsErased--;
     splineErase(state->spl, numPointsErased);
     return numPointsErased;
 }
@@ -1807,6 +1821,32 @@ id_t writeVariablePage(embedDBState *state, void *buffer) {
 }
 
 /**
+ * @brief	Reads given page from storage.
+ * @param	state	embedDB algorithm state structure
+ * @param	pageNum	Page number to read
+ * @return	Return 0 if success, -1 if error.
+ */
+int8_t readPage(embedDBState *state, id_t pageNum) {
+    /* Check if page is currently in buffer */
+    if (pageNum == state->bufferedPageId) {
+        state->bufferHits++;
+        return 0;
+    }
+
+    // point to write buffer
+    void *buf = (int8_t *)state->buffer + state->pageSize;
+
+    /* Page is not in buffer. Read from storage. */
+    /* Read page into start of buffer 1 */
+    if (0 == state->fileInterface->read(buf, pageNum, state->pageSize, state->dataFile))
+        return -1;
+
+    state->numReads++;
+    state->bufferedPageId = pageNum;
+    return 0;
+}
+
+/**
  * @brief	Memcopies write buffer to the read buffer.
  * @param	state	embedDB algorithm state structure
  */
@@ -1830,31 +1870,6 @@ void readToWriteBufVar(embedDBState *state) {
     void *writeBuf = (int8_t *)state->buffer + state->pageSize * EMBEDDB_VAR_WRITE_BUFFER(state->parameters);
     // copy write buffer to the read buffer.
     memcpy(readBuf, writeBuf, state->pageSize);
-}
-
-/**
- * @brief	Reads given page from storage.
- * @param	state	embedDB algorithm state structure
- * @param	pageNum	Page number to read
- * @return	Return 0 if success, -1 if error.
- */
-int8_t readPage(embedDBState *state, id_t pageNum) {
-    /* Check if page is currently in buffer */
-    if (pageNum == state->bufferedPageId) {
-        state->bufferHits++;
-        return 0;
-    }
-
-    void *buf = (int8_t *)state->buffer + state->pageSize;
-
-    /* Page is not in buffer. Read from storage. */
-    /* Read page into start of buffer 1 */
-    if (0 == state->fileInterface->read(buf, pageNum, state->pageSize, state->dataFile))
-        return -1;
-
-    state->numReads++;
-    state->bufferedPageId = pageNum;
-    return 0;
 }
 
 /**

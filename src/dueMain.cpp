@@ -52,14 +52,21 @@ static ArduinoOutStream cout(Serial);
 #include "sdcard_c_iface.h"
 #include "serial_c_iface.h"
 
-#define EXAMPLE 0
+/**
+ * 0 - 2 are for benchmarks
+ * 3 - 4 are for examples
+ *
+ */
+#define WHICH_PROGRAM 4
 
-#if EXAMPLE == 0
+#if WHICH_PROGRAM == 0
+#include "embedDBBenchmark.h"
+#elif WHICH_PROGRAM == 1
+#include "embedDbVariableDataBenchmark.h"
+#elif WHICH_PROGRAM == 2
+#include "advancedQueryInterfaceBenchmark.h"
+#elif WHICH_PROGRAM == 3
 #include "embedDBExample.h"
-#elif EXAMPLE == 1
-#include "embedDBVariableDataExample.h"
-#elif EXAMPLE == 2
-#include "advancedQueryInterfaceExample.h"
 #endif
 
 #define ENABLE_DEDICATED_SPI 1
@@ -92,12 +99,14 @@ void setup() {
     }
 
     init_sdcard((void *)&sd);
-#if EXAMPLE == 0
+#if WHICH_PROGRAM == 0
     runalltests_embedDB();
-#elif EXAMPLE == 1
+#elif WHICH_PROGRAM == 1
     test_vardata();
-#elif EXAMPLE == 2
+#elif WHICH_PROGRAM == 2
     advancedQueryExample();
+#elif WHICH_PROGRAM == 3
+    embedDBExample();
 #endif
 }
 

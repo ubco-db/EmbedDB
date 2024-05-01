@@ -62,7 +62,7 @@ Examples:
 -  [dueMain.cpp](src/dueMain.cpp), [megaMain.cpp](src/megaMain.cpp), [memboardMain.cpp](src/memBoardMain.cpp) are main files for the Arduino Due, Mega, and custom hardware respectively.
 -  [embedDBExample](src/embedDBExample.h) - An example file demonstrating how to get, put, and iterate through data in index. 
 -  [embedDBVariableDataExample](src/embedDBVariableDataExample.h) - An example file demonstrating the use of records with variable-sized data. 
--  [embedDBQueryInterfaceExamples](src/advancedQueryInterfaceExample.h) - An example file demonstrating the included embedDB query library. 
+
 
 ## Documentation
 
