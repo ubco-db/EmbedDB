@@ -54,17 +54,17 @@ static ArduinoOutStream cout(Serial);
 
 /**
  * 0 - 2 are for benchmarks
- * 3 - 4 are for examples
+ * 3 is for the example program
  *
  */
 #define WHICH_PROGRAM 3
 
 #if WHICH_PROGRAM == 0
-#include "embedDBBenchmark.h"
+#include "benchmarks/sequentialDataBenchmark.h"
 #elif WHICH_PROGRAM == 1
-#include "embedDbVariableDataBenchmark.h"
+#include "benchmarks/variableDataBenchmark.h"
 #elif WHICH_PROGRAM == 2
-#include "advancedQueryInterfaceBenchmark.h"
+#include "benchmarks/queryInterfaceBenchmark.h"
 #elif WHICH_PROGRAM == 3
 #include "embedDBExample.h"
 #endif

@@ -1,6 +1,6 @@
 /******************************************************************************/
 /**
- * @file        advancedQueryInterfaceExample.h
+ * @file        queryInterfaceBenchmark.h
  * @author      EmbedDB Team (See Authors.md)
  * @brief       This file includes an example of querying EmbedDB using the
  *              advanced query interface.

@@ -1,6 +1,6 @@
 /******************************************************************************/
 /**
- * @file        embedDBVariableDataExample.h
+ * @file        variableDataBenchmark.h
  * @author      EmbedDB Team (See Authors.md)
  * @brief       This file includes an example of inserting and querying EmbedDB
  *              with variable length data and tests the inserted data for correctness.
