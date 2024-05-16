@@ -44,8 +44,8 @@
 
 #include "../spline/radixspline.h"
 #include "../spline/spline.h"
-#include "serial_c_iface.h"
 #include "embedDBUtility.h"
+#include "serial_c_iface.h"
 
 /**
  * 0 = Modified binary search
