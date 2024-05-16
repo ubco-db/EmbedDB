@@ -46,12 +46,6 @@ extern "C" {
 #include <stdint.h>
 #include <string.h>
 
-#include "../../src/embedDB/embedDB.h"
-#include "SDFileInterface.h"
-
-/* Constructors */
-embedDBState *defaultInitializedState();
-
 /* Bitmap Functions */
 void updateBitmapInt8(void *data, void *bm);
 void buildBitmapInt8FromRange(void *min, void *max, void *bm);

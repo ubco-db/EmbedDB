@@ -45,6 +45,7 @@
 #include "../spline/radixspline.h"
 #include "../spline/spline.h"
 #include "serial_c_iface.h"
+#include "embedDBUtility.h"
 
 /**
  * 0 = Modified binary search
@@ -272,6 +273,59 @@ int8_t embedDBInit(embedDBState *state, size_t indexMaxError) {
 
     embedDBResetStats(state);
     return 0;
+}
+
+embedDBState *defaultInitializedState() {
+    embedDBState *state = calloc(1, sizeof(embedDBState));
+    if (state == NULL) {
+#ifdef PRINT_ERRORS
+        printf("Failed to allocate memory for state.\n");
+#endif
+        return NULL;
+    }
+
+    state->keySize = 4;
+    state->dataSize = 12;
+    state->pageSize = 512;
+    state->numSplinePoints = 300;
+    state->bitmapSize = 1;
+    state->bufferSizeInBlocks = 4;
+    state->buffer = malloc((size_t)state->bufferSizeInBlocks * state->pageSize);
+
+    /* Address level parameters */
+    state->numDataPages = 20000;  // Enough for 620,000 records
+    state->numIndexPages = 44;    // Enough for 676,544 records
+    state->eraseSizeInPages = 4;
+
+    char dataPath[] = "dataFile.bin", indexPath[] = "indexFile.bin";
+    state->fileInterface = getSDInterface();
+    state->dataFile = setupSDFile(dataPath);
+    state->indexFile = setupSDFile(indexPath);
+
+    state->parameters = EMBEDDB_USE_BMAP | EMBEDDB_USE_INDEX | EMBEDDB_RESET_DATA;
+    state->bitmapSize = 1;
+
+    /* Setup for data and bitmap comparison functions */
+    state->inBitmap = inBitmapInt8;
+    state->updateBitmap = updateBitmapInt8;
+    state->buildBitmapFromRange = buildBitmapInt8FromRange;
+    state->compareKey = int32Comparator;
+    state->compareData = int32Comparator;
+
+    /* Initialize embedDB structure */
+    if (embedDBInit(state, 1) != 0) {
+#ifdef PRINT_ERRORS
+        printf("Initialization error.\n");
+#endif
+        free(state->buffer);
+        free(state->fileInterface);
+        tearDownSDFile(state->dataFile);
+        tearDownSDFile(state->indexFile);
+        free(state);
+        return NULL;
+    }
+
+    return state;
 }
 
 int8_t embedDBInitData(embedDBState *state) {
