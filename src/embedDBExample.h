@@ -68,7 +68,8 @@ embedDBState* init_state();
 embedDBState* state;
 
 void embedDBExample() {
-    int totalRecords = 0;
+    uint32_t totalRecordsInserted = 0;
+    uint32_t totalRecordsToInsert = 100;
     printf("******************* Performing an example of EmbeDB with sequentially generated data **************\n");
     // init state, see function for details.
     state = init_state();
@@ -76,9 +77,8 @@ void embedDBExample() {
 
     // Inserting 10 fixed-length records
     printf("******************* For inserting 10 fixed-length records using embedDBPut() **********************\n");
-    int targetNum = 10 + totalRecords;
     // iterate from 0 -> 10
-    for (int i = totalRecords; i < targetNum; i++) {
+    for (uint32_t i = totalRecordsInserted; i < totalRecordsToInsert; i++) {
         // Initalize key (as they must be in ascending order)
         uint32_t key = i;
 
@@ -89,25 +89,25 @@ void embedDBExample() {
         *((uint32_t*)dataPtr) = i % 100;
 
         // perform insertion of key and data value. Record value of embedDBPut to ensure no errors.
-        int result = embedDBPut(state, &key, dataPtr);
+        int8_t result = embedDBPut(state, &key, dataPtr);
         printf("Inserted key = %ld and data = %d\n", i, *((uint32_t*)dataPtr));
         if (result != SUCCESS) {
             printf("Error inserting fixed-length records\n");
         }
-        totalRecords++;
+        totalRecordsInserted++;
 
         // free dynamic memory
         free(dataPtr);
     }
 
     // Retrieving 10 fixed-length records
-    printf("******************* For retrieving %d fixed-length records using embedDBGet() *********************\n", totalRecords);
-    for (int i = 0; i < totalRecords; i++) {
+    printf("******************* For retrieving %d fixed-length records using embedDBGet() *********************\n", totalRecordsToInsert);
+    for (uint32_t i = 0; i < totalRecordsToInsert; i++) {
         // key for data retrieval
-        int key = i;
+        uint32_t key = i;
 
         // data pointer for retrieval
-        int returnDataPtr[] = {0, 0, 0};
+        uint32_t returnDataPtr[] = {0, 0, 0};
 
         // query embedDB
         embedDBGet(state, (void*)&key, (void*)returnDataPtr);
@@ -117,7 +117,7 @@ void embedDBExample() {
     }
 
     // Iterating over 10 fixed-length records
-    printf("******************* Iterating over %d fixed-length records using embedDBNext() ********************\n", totalRecords);
+    printf("******************* Iterating over %d fixed-length records using embedDBNext() ********************\n", totalRecordsInserted);
 
     // declare EmbedDB iterator.
     embedDBIterator it;
@@ -152,15 +152,15 @@ void embedDBExample() {
 
     printf("******************* Insert 10 variable-length record **********************************************\n");
 
-    for (int i = 0; i < 10; i++) {
+    for (uint32_t i = 0; i < 10; i++) {
         // init key
-        uint32_t key = totalRecords;
+        uint32_t key = totalRecordsInserted;
 
         // calloc dataPtr in the heap.
         void* dataPtr = calloc(1, state->dataSize);
 
         // set value to be inserted into embedDB.
-        *((uint32_t*)dataPtr) = totalRecords % 100;
+        *((uint32_t*)dataPtr) = totalRecordsInserted % 100;
 
         // specify the length, in bytes.
         uint32_t length = 12;
@@ -173,7 +173,7 @@ void embedDBExample() {
             printf("Error inserting variable-length records\n");
         }
         printf("Inserted key = %d  fixed-length record= %d, variable-length record = %s\n", key, *((uint32_t*)dataPtr), str);
-        totalRecords++;
+        totalRecordsInserted++;
         // free dynamic memory.
         free(dataPtr);
         dataPtr = NULL;
