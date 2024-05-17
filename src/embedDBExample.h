@@ -67,7 +67,7 @@
 embedDBState* init_state();
 embedDBState* state;
 
-/* 
+/*
     TODO: This file requires some of the other changes made to EmebedDB, so it does not completely work currently.
     This will be fixed in a seperate PR when the other changes to the main EmbedDB file are made.
  */
