@@ -1,36 +1,35 @@
 /******************************************************************************/
 /**
- * @file        embedDBExample.h
- * @author      EmbedDB Team (See Authors.md)
- * @brief       This file includes an example of inserting and querying EmbedDB
- *              and tests the inserted data for correctness.
- * @copyright   Copyright 2024
- *              EmbedDB Team
+ * @file		embedDBExample.h
+ * @author		EmbedDB Team (See Authors.md)
+ * @brief		This file includes and example for insterting and retrieving sequential records for EmbeDB.
+ * @copyright	Copyright 2023
+ * 			    EmbedDB Team
  * @par Redistribution and use in source and binary forms, with or without
- *  modification, are permitted provided that the following conditions are met:
+ * 	modification, are permitted provided that the following conditions are met:
  *
  * @par 1.Redistributions of source code must retain the above copyright notice,
- *  this list of conditions and the following disclaimer.
+ * 	this list of conditions and the following disclaimer.
  *
  * @par 2.Redistributions in binary form must reproduce the above copyright notice,
- *  this list of conditions and the following disclaimer in the documentation
- *  and/or other materials provided with the distribution.
+ * 	this list of conditions and the following disclaimer in the documentation
+ * 	and/or other materials provided with the distribution.
  *
  * @par 3.Neither the name of the copyright holder nor the names of its contributors
- *  may be used to endorse or promote products derived from this software without
- *  specific prior written permission.
+ * 	may be used to endorse or promote products derived from this software without
+ * 	specific prior written permission.
  *
  * @par THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
- *  AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
- *  IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
- *  ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE
- *  LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
- *  CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
- *  SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
- *  INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
- *  CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
- *  ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
- *  POSSIBILITY OF SUCH DAMAGE.
+ * 	AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ * 	IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+ * 	ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE
+ * 	LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+ * 	CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+ * 	SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+ * 	INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+ * 	CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+ * 	ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+ * 	POSSIBILITY OF SUCH DAMAGE.
  */
 /******************************************************************************/
 
@@ -57,574 +56,278 @@
 #include "dataflashFileInterface.h"
 #endif
 
-/*
- * 1: Query each record from original data set.
- * 2: Query random records in the range of original data set.
- * 3: Query range of records using an iterator.
- */
-#define QUERY_TYPE 1
-
-/*
- * 0: Use data from one of the data sets
- * 1: Use sequentially generated data
- */
-#define SEQUENTIAL_DATA 0
-
 /**
  * 0 = SD Card
  * 1 = Dataflash
  */
 #define STORAGE_TYPE 0
 
-/**
- * Runs all tests and collects benchmarks
+#define SUCCESS 0
+
+embedDBState* init_state();
+embedDBState* state;
+
+/*
+    TODO: This file requires some of the other changes made to EmebedDB, so it does not completely work currently.
+    This will be fixed in a seperate PR when the other changes to the main EmbedDB file are made.
  */
-void runalltests_embedDB() {
-    printf("\n EmbedDB Example: \n");
-    int8_t M = 4;
-    int32_t numRecords = 1000;     // default values
-    int32_t testRecords = 100000;  // default values
-    uint8_t useRandom = 0;         // default values
-    size_t splineMaxError = 0;     // default values
-    uint32_t numSteps = 10;
-    uint32_t stepSize = numRecords / numSteps;
-    count_t r, numRuns = 1, l;
-    uint32_t times[numSteps][numRuns];
-    uint32_t reads[numSteps][numRuns];
-    uint32_t writes[numSteps][numRuns];
-    uint32_t overwrites[numSteps][numRuns];
-    uint32_t hits[numSteps][numRuns];
-    uint32_t rtimes[numSteps][numRuns];
-    uint32_t rreads[numSteps][numRuns];
-    uint32_t rhits[numSteps][numRuns];
-    SD_FILE *infile, *infileRandom;
-    uint32_t minRange, maxRange;
-    char infileBuffer[512];
 
-    if (SEQUENTIAL_DATA != 1) { /* Open file to read input records */
+void embedDBExample() {
+    uint32_t totalRecordsInserted = 0;
+    uint32_t totalRecordsToInsert = 10;
 
-        // measure1_smartphone_sens.bin
-        // infile = fopen("data/measure1_smartphone_sens.bin", "r+b");
-        // infileRandom = fopen("data/measure1_smartphone_sens_randomized.bin",
-        // "r+b"); minRange = 0; maxRange = INT32_MAX; numRecords = 18354;
-        // testRecords = 18354;
+    printf("******************* Performing an example of EmbeDB with sequentially generated data **************\n");
+    // init state, see function for details.
+    state = init_state();
+    embedDBPrintInit(state);
 
-        // position.bin
-        // infile = fopen("data/position.bin", "r+b");
-        // infileRandom = fopen("data/position_randomized.bin", "r+b");
-        // minRange = 0;
-        // maxRange = INT32_MAX;
-        // numRecords = 1518;
-        // testRecords = 1518;
+    // Inserting 10 fixed-length records
+    printf("******************* For inserting 10 fixed-length records using embedDBPut() **********************\n");
+    // iterate from 0 -> 10
+    for (uint32_t i = 0; i < totalRecordsToInsert; i++) {
+        // Initalize key (as they must be in ascending order)
+        uint32_t key = i;
 
-        // ethylene_CO.bin
-        // infile = fopen("data/ethylene_CO.bin", "r+b");
-        // infileRandom = fopen("data/ethylene_CO_randomized.bin", "r+b");
-        // minRange = 0;
-        // maxRange = INT32_MAX;
-        // numRecords = 4085589;
-        // testRecords = 4085589;
+        // calloc dataPtr in the heap
+        void* dataPtr = calloc(1, state->dataSize);
 
-        // Watch_gyroscope.bin
-        // infile = fopen("data/Watch_gyroscope.bin", "r+b");
-        // infileRandom = fopen("data/Watch_gyroscope_randomized.bin", "r+b");
-        // minRange = 0;
-        // maxRange = INT32_MAX;
-        // numRecords = 2865713;
-        // testRecords = 2865713;
+        // set value to be inserted
+        *((uint32_t*)dataPtr) = i % 100;
 
-        // PRSA_Data_Hongxin.bin
-        // infile = fopen("data/PRSA_Data_Hongxin.bin", "r+b");
-        // infileRandom = fopen("data/PRSA_Data_Hongxin_randomized.bin", "r+b");
-        // minRange = 0;
-        // maxRange = INT32_MAX;
-        // numRecords = 35064;
-        // testRecords = 35064;
+        // perform insertion of key and data value. Record value of embedDBPut to ensure no errors.
+        int8_t result = embedDBPut(state, &key, dataPtr);
+        printf("Inserted key = %ld and data = %d\n", i, *((uint32_t*)dataPtr));
+        if (result != SUCCESS) {
+            printf("Error inserting fixed-length records\n");
+        }
+        totalRecordsInserted++;
 
-        // S7hl500K.bin
-        // infile = fopen("data/S7hl500K.bin", "r+b");
-        // minRange = 0;
-        // maxRange = INT32_MAX;
-        // numRecords = 500000;
-
-        // infile = fopen("data/seatac_data_100KSorted.bin", "r+b");
-        // infileRandom = fopen("data/seatac_data_100KSorted_randomized.bin",
-        // "r+b"); minRange = 1314604380; maxRange = 1609487580; numRecords =
-        // 100001; testRecords = 100001;
-
-        infile = fopen("data/uwa500K.bin", "r+b");
-        // infileRandom =
-        // fopen("data/uwa_data_only_2000_500KSorted_randomized.bin", "r+b");
-        minRange = 946713600;
-        maxRange = 977144040;
-        numRecords = 100000;
-        testRecords = 100000;
-
-        splineMaxError = 1;
-        useRandom = 0;
-
-        stepSize = numRecords / numSteps;
+        // free dynamic memory
+        free(dataPtr);
     }
 
-    for (r = 0; r < numRuns; r++) {
-        /* Configure embedDB state */
-        embedDBState *state = (embedDBState *)malloc(sizeof(embedDBState));
-        if (state == NULL) {
-            printf("Unable to allocate state. Exiting.\n");
-            return;
-        }
+    // Retrieving 10 fixed-length records
+    printf("******************* For retrieving %d fixed-length records using embedDBGet() *********************\n", totalRecordsToInsert);
+    for (uint32_t i = 0; i < totalRecordsToInsert; i++) {
+        // key for data retrieval
+        uint32_t key = i;
 
-        state->recordSize = 16;
-        state->keySize = 4;
-        state->dataSize = 12;
-        state->pageSize = 512;
-        state->numSplinePoints = 30;
-        state->bitmapSize = 0;
-        state->bufferSizeInBlocks = M;
-        state->buffer = malloc((size_t)state->bufferSizeInBlocks * state->pageSize);
-        if (state->buffer == NULL) {
-            printf("Unable to allocate buffer. Exiting.\n");
-            return;
-        }
-        int8_t *recordBuffer = (int8_t *)malloc(state->recordSize);
-        if (recordBuffer == NULL) {
-            printf("Unable to allocate record buffer. Exiting.\n");
-            return;
-        }
+        // data pointer for retrieval
+        uint32_t returnDataPtr[] = {0, 0, 0};
 
-        /* Address level parameters */
-        state->numDataPages = 20000;
-        state->numIndexPages = 1000;
-        state->eraseSizeInPages = 4;
+        // query embedDB
+        embedDBGet(state, (void*)&key, (void*)returnDataPtr);
 
-        if (STORAGE_TYPE == 0) {
-            char dataPath[] = "dataFile.bin", indexPath[] = "indexFile.bin", varPath[] = "varFile.bin";
-            state->fileInterface = getSDInterface();
-            state->dataFile = setupSDFile(dataPath);
-            state->indexFile = setupSDFile(indexPath);
-            state->varFile = setupSDFile(varPath);
+        // print result
+        printf("Returned key = %d data = %d\n", key, *returnDataPtr);
+    }
+
+    // Iterating over 10 fixed-length records
+    printf("******************* Iterating over %d fixed-length records using embedDBNext() ********************\n", totalRecordsInserted);
+
+    // declare EmbedDB iterator.
+    embedDBIterator it;
+
+    // ensure that itKey is the same size as state->recordSize.
+    uint32_t* itKey;
+
+    // Allocate memory for itData matching the size of state->datasize.
+    uint32_t* itData[] = {0, 0, 0};
+
+    // specify min and max key to perform search on.
+    uint32_t minKey = 0;
+    uint32_t maxKey = totalRecordsInserted - 1;  // iterating over all records
+
+    // initalize buffer variables.
+    it.minKey = &minKey;
+    it.maxKey = &maxKey;
+    it.minData = NULL;
+    it.maxData = NULL;
+
+    // initialize
+    embedDBInitIterator(state, &it);
+
+    // while there are records to read.
+    while (embedDBNext(state, &it, (void**)&itKey, (void**)&itData)) {
+        printf("Iterated key = %ld and data = %ld \n", (long)itKey, *(long*)itData);
+    }
+
+    // flushing the 10 records from the fixed-length write buffer into non volitile storage
+    printf("******************* Flush EmbedDB()'s write buffers to storage ************************************\n");
+    embedDBFlush(state);
+    printf("Flush complete\n");
+
+    printf("******************* Insert 10 variable-length record **********************************************\n");
+    for (uint32_t i = 0; i < 10; i++) {
+        // init key
+        uint32_t key = totalRecordsInserted;
+
+        // calloc dataPtr in the heap.
+        void* dataPtr = calloc(1, state->dataSize);
+
+        // set value to be inserted into embedDB.
+        *((uint32_t*)dataPtr) = totalRecordsInserted % 100;
+
+        // specify the length, in bytes.
+        uint32_t length = 12;
+
+        char str[] = "Hello World";  // ~ 12 bytes long including null terminator
+
+        // insert variable record
+        int8_t result = embedDBPutVar(state, (void*)&key, (void*)dataPtr, (void*)str, length);
+        if (result != SUCCESS) {
+            printf("Error inserting variable-length records\n");
         }
+        printf("Inserted key = %d  fixed-length record= %d, variable-length record = %s\n", key, *((uint32_t*)dataPtr), str);
+        totalRecordsInserted++;
+        // free dynamic memory.
+        free(dataPtr);
+        dataPtr = NULL;
+    }
+
+    printf("******************* Retrieve a single variable-length record **************************************\n");
+
+    uint32_t key = 10;
+
+    // declare a varDataStream.
+    embedDBVarDataStream* varStream = NULL;
+
+    // allocate memory to read fixed data into.
+    char fixedRec[] = {0, 0, 0};
+
+    // allocate buffer to read variable record into.
+    uint32_t varRecSize = 12;  // This must be at least the same size of the variable record.
+    void* varRecBufPtr = malloc(varRecSize);
+
+    // retrieve fixed record and create a data stream.
+    embedDBGetVar(state, (void*)&key, (void*)fixedRec, &varStream);
+    printf("After calling EmbedDBGetVar()\n");
+    printf("Returned key = %d fixed length record data = %d\n", key, *fixedRec);
+
+    // read data from varStream.
+    if (varStream != NULL) {
+        uint32_t bytesRead;
+        // as long as there is bytes to read
+        while ((bytesRead = embedDBVarDataStreamRead(state, varStream, varRecBufPtr, varRecSize)) > 0) {
+            printf("After calling embedDBVarDataStreamRead()\n");
+            printf("Returned key = %d fixed-length record= %d, variable-length record = %s\n", key, *fixedRec, (char*)varRecBufPtr);
+            // printf("eek!\n");
+        }
+        free(varStream);
+        varStream = NULL;
+    }
+    free(varRecBufPtr);
+    varRecBufPtr = NULL;
+
+    printf("******************* Iterate over %d variable-length records ***************************************\n", 10);
+
+    // declare embedDB iterator
+    embedDBIterator varIt;
+    // Memory to store key and fixed data into.
+    uint32_t* itVarKey;
+    uint32_t varItData[] = {0, 0, 0};
+
+    uint32_t varMinKey = 10, varMaxKey = 19;
+    varIt.minKey = &varMinKey;
+    varIt.maxKey = &varMaxKey;
+    varIt.minData = NULL;
+    varIt.maxData = NULL;
+
+    embedDBVarDataStream* itVarStream = NULL;
+    // Choose any size. Must be at least the size of the variable record if you would like the entire record on each iteration.
+    uint32_t varBufSize = 12;
+    void* varDataBuffer = malloc(varBufSize);
+
+    embedDBInitIterator(state, &varIt);
+
+    while (embedDBNextVar(state, &varIt, &itVarKey, varItData, &itVarStream)) {
+        /* Process vardata if this record has it */
+        if (itVarStream != NULL) {
+            uint32_t numBytesRead = 0;
+            while ((numBytesRead = embedDBVarDataStreamRead(state, itVarStream, varDataBuffer, varBufSize)) > 0) {
+                printf("Iterated key = %d, fixed-length record= %d, variable-length record = %s\n", itVarKey, *varItData, (char*)varDataBuffer);
+            }
+            free(varStream);
+            varStream = NULL;
+        }
+    }
+
+    free(varDataBuffer);
+    varDataBuffer = NULL;
+    embedDBCloseIterator(&varIt);
+
+    printf("Example completed!\n");
+}
+
+embedDBState* init_state() {
+    embedDBState* state = (embedDBState*)malloc(sizeof(embedDBState));
+
+    // ensure successful malloc
+    if (state == NULL) {
+        printf("Unable to allocate state. Exiting\n");
+        exit(0);
+    }
+    /* configure EmbedDB state variables */
+    // for fixed-length records
+    state->keySize = 4;
+    state->dataSize = 8;
+
+    // for buffer(s)
+    state->pageSize = 512;
+    state->bufferSizeInBlocks = 6;
+    state->buffer = malloc((size_t)state->bufferSizeInBlocks * state->pageSize);
+    // ensure successful malloc
+    if (state->buffer == NULL) {
+        printf("Unable to allocate buffer. Exciting\n");
+        exit(0);
+    }
+
+    // for learned indexing and bitmap
+    state->numSplinePoints = 300;
+    state->bitmapSize = 1;
+
+    // address storage characteristics
+    state->numDataPages = 1000;
+    state->numIndexPages = 48;
+    state->numVarPages = 75;
+    state->eraseSizeInPages = 4;
+
+    // configure file interface
+    if (STORAGE_TYPE == 0) {
+        char dataPath[] = "dataFile.bin", indexPath[] = "indexFile.bin", varPath[] = "varFile.bin";
+        state->fileInterface = getSDInterface();
+        state->dataFile = setupSDFile(dataPath);
+        state->indexFile = setupSDFile(indexPath);
+        state->varFile = setupSDFile(varPath);
+    }
 
 #if defined(MEMBOARD)
-        if (STORAGE_TYPE == 1) {
-            state->fileInterface = getDataflashInterface();
-            state->dataFile = setupDataflashFile(0, state->numDataPages);
-            state->indexFile = setupDataflashFile(state->numDataPages, state->numIndexPages);
-            state->varFile = setupDataflashFile(state->numDataPages + state->numIndexPages, state->numVarPages);
-        }
+    if (STORAGE_TYPE == 1) {
+        state->fileInterface = getDataflashInterface();
+        state->dataFile = setupDataflashFile(0, state->numDataPages);
+        state->indexFile = setupDataflashFile(state->numDataPages, state->numIndexPages);
+        state->varFile = setupDataflashFile(state->numDataPages + state->numIndexPages, state->numVarPages);
+    }
 #endif
 
-        state->parameters = EMBEDDB_USE_BMAP | EMBEDDB_USE_INDEX | EMBEDDB_RESET_DATA;
+    // enable parameters
+    state->parameters = EMBEDDB_USE_BMAP | EMBEDDB_USE_INDEX | EMBEDDB_USE_VDATA | EMBEDDB_RESET_DATA;
 
-        if (EMBEDDB_USING_BMAP(state->parameters))
-            state->bitmapSize = 1;
+    // Setup for data and bitmap comparison functions */
+    state->inBitmap = inBitmapInt8;
+    state->updateBitmap = updateBitmapInt8;
+    state->buildBitmapFromRange = buildBitmapInt8FromRange;
+    state->compareKey = int32Comparator;
+    state->compareData = int32Comparator;
 
-        /* Setup for data and bitmap comparison functions */
-        state->inBitmap = inBitmapInt8;
-        state->updateBitmap = updateBitmapInt8;
-        state->buildBitmapFromRange = buildBitmapInt8FromRange;
-        // state->inBitmap = inBitmapInt16;
-        // state->updateBitmap = updateBitmapInt16;
-        // state->buildBitmapFromRange = buildBitmapInt16FromRange;
-        // state->inBitmap = inBitmapInt64;
-        // state->updateBitmap = updateBitmapInt64;
-        // state->buildBitmapFromRange = buildBitmapInt64FromRange;
-        state->compareKey = int32Comparator;
-        state->compareData = int32Comparator;
-
-        /* Initialize embedDB structure with parameters */
-        if (embedDBInit(state, splineMaxError) != 0) {
-            printf("Initialization error.\n");
-            return;
-        }
-
-        embedDBPrintInit(state);
-
-        /* Data record is empty. Only need to reset to 0 once as reusing struct.
-         */
-        int32_t i;
-        for (i = 0; i < state->recordSize - 4; i++) {  // 4 is the size of the key
-            recordBuffer[i + sizeof(int32_t)] = 0;
-        }
-
-        /* Erase whole chip (so do not need to erase before write) */
-        uint32_t start = millis();
-        // dferase_chip();
-        printf("Chip erase time: %lu ms\n", millis() - start);
-
-        printf("\n\nINSERT TEST:\n");
-        /* Insert records into structure */
-        start = millis();
-
-        if (SEQUENTIAL_DATA) {
-            for (i = 0; i < numRecords; i++) {
-                // printf("Inserting record %lu\n", i);
-                memcpy(recordBuffer, &i, sizeof(int32_t));
-                int32_t data = i % 100;
-                memcpy(recordBuffer + state->keySize, &data, sizeof(int32_t));
-                embedDBPut(state, recordBuffer, (void *)(recordBuffer + state->keySize));
-
-                if (i % stepSize == 0) {
-                    // printf("Num: %lu KEY: %lu\n", i, i);
-                    l = i / stepSize - 1;
-                    if (l < numSteps && l >= 0) {
-                        times[l][r] = millis() - start;
-                        reads[l][r] = state->numReads;
-                        writes[l][r] = state->numWrites;
-                        overwrites[l][r] = 0;
-                        hits[l][r] = state->bufferHits;
-                    }
-                }
-            }
-        } else { /* Read data from a file */
-            int8_t headerSize = 16;
-            i = 0;
-            fseek(infile, 0, SEEK_SET);
-            // uint32_t readCounter = 0;
-            while (1) {
-                /* Read page */
-                if (0 == fread(infileBuffer, state->pageSize, 1, infile))
-                    break;
-                // readCounter++;
-                /* Process all records on page */
-                int16_t count = *((int16_t *)(infileBuffer + 4));
-                for (int j = 0; j < count; j++) {
-                    void *buf = (infileBuffer + headerSize + j * state->recordSize);
-
-                    // printf("Key: %lu, Data: %lu, Page num: %lu, i: %lu\n",
-                    // *(id_t*)buf, *(id_t*)(buf + 4), i/31, i);
-                    embedDBPut(state, buf, (void *)((int8_t *)buf + 4));
-                    // if ( i < 100000)
-                    //   printf("%lu %d %d %d\n", *((uint32_t*) buf),
-                    //   *((int32_t*) (buf+4)), *((int32_t*) (buf+8)),
-                    //   *((int32_t*) (buf+12)));
-
-                    if (i % stepSize == 0) {
-                        printf("Num: %lu KEY: %lu\n", i, *((int32_t *)buf));
-                        l = i / stepSize - 1;
-                        if (l < numSteps && l >= 0) {
-                            times[l][r] = millis() - start;
-                            reads[l][r] = state->numReads;
-                            writes[l][r] = state->numWrites;
-                            overwrites[l][r] = 0;
-                            hits[l][r] = state->bufferHits;
-                        }
-                    }
-                    i++;
-                    /* Allows stopping at set number of records instead of reading entire file */
-                    if (i == numRecords) {
-                        maxRange = *((uint32_t *)buf);
-                        printf("Num: %lu KEY: %lu\n", i, *((int32_t *)buf));
-                        goto doneread;
-                    }
-                }
-            }
-            numRecords = i;
-        }
-
-    doneread:
-        embedDBFlush(state);
-
-        uint32_t end = millis();
-
-        l = numSteps - 1;
-        times[l][r] = end - start;
-        reads[l][r] = state->numReads;
-        writes[l][r] = state->numWrites;
-        overwrites[l][r] = 0;
-        hits[l][r] = state->bufferHits;
-
-        printf("Elapsed Time: %lu ms\n", times[l][r]);
-        printf("Records inserted: %lu\n", numRecords);
-
-        embedDBPrintStats(state);
-        embedDBResetStats(state);
-
-        printf("\n\nQUERY TEST:\n");
-        /* Verify that all values can be found and test query performance */
-        start = millis();
-
-        if (SEQUENTIAL_DATA) {
-            if (QUERY_TYPE == 1) {
-                for (i = 0; i < numRecords; i++) {
-                    int32_t key = i;
-                    int8_t result = embedDBGet(state, &key, recordBuffer);
-
-                    if (result != 0)
-                        printf("ERROR: Failed to find: %lu\n", key);
-                    if (SEQUENTIAL_DATA && *((int32_t *)recordBuffer) != key % 100) {
-                        printf("ERROR: Wrong data for: %lu\n", key);
-                        printf("Key: %lu Data: %lu\n", key, *((int32_t *)recordBuffer));
-                        return;
-                    }
-
-                    if (i % stepSize == 0) {
-                        l = i / stepSize - 1;
-                        if (l < numSteps && l >= 0) {
-                            rtimes[l][r] = millis() - start;
-                            rreads[l][r] = state->numReads;
-                            rhits[l][r] = state->bufferHits;
-                        }
-                    }
-                }
-            } else if (QUERY_TYPE == 3) {
-                uint32_t itKey;
-                void *itData = calloc(1, state->dataSize);
-                embedDBIterator it;
-                it.minKey = NULL;
-                it.maxKey = NULL;
-                int32_t mv = 26;
-                int32_t v = 49;
-                it.minData = &mv;
-                it.maxData = &v;
-                int32_t rec, reads;
-
-                start = millis();
-                embedDBInitIterator(state, &it);
-                rec = 0;
-                reads = state->numReads;
-                while (embedDBNext(state, &it, &itKey, itData)) {
-                    printf("Key: %d  Data: %d\n", itKey, *(uint32_t *)itData);
-                    if ((it.minData != NULL && *((int32_t *)itData) < *((int32_t *)it.minData)) ||
-                        (it.maxData != NULL && *((int32_t *)itData) > *((int32_t *)it.maxData))) {
-                        printf("Key: %d Data: %d Error\n", itKey, *(uint32_t *)itData);
-                    }
-                    rec++;
-                }
-                printf("Read records: %d\n", rec);
-                printf("Num: %lu KEY: %lu Perc: %d Records: %d Reads: %d \n", i, mv, ((state->numReads - reads) * 1000 / (state->nextDataPageId - state->minDataPageId)), rec, (state->numReads - reads));
-
-                embedDBCloseIterator(&it);
-                free(itData);
-            }
-        } else {
-            /* Data from file */
-            int8_t headerSize = 16;
-            i = 0;
-
-            if (QUERY_TYPE == 1) {
-                /* Query each record from original data set. */
-                if (useRandom) {
-                    fseek(infileRandom, 0, SEEK_SET);
-                } else {
-                    fseek(infile, 0, SEEK_SET);
-                }
-                int32_t readCounter = 0;
-                while (1) {
-                    /* Read page */
-                    if (useRandom) {
-                        if (0 == fread(infileBuffer, state->pageSize, 1, infileRandom))
-                            break;
-                    } else {
-                        if (0 == fread(infileBuffer, state->pageSize, 1, infile))
-                            break;
-                    }
-
-                    readCounter++;
-                    /* Process all records on page */
-                    int16_t count = *((int16_t *)(infileBuffer + 4));
-                    for (int j = 0; j < count; j++) {
-                        void *buf = (infileBuffer + headerSize + j * state->recordSize);
-                        int32_t *key = (int32_t *)buf;
-                        int8_t result = embedDBGet(state, key, recordBuffer);
-                        if (result != 0)
-                            printf("ERROR: Failed to find key: %lu, i: %lu\n", *key, i);
-                        if (*((int32_t *)recordBuffer) != *((int32_t *)((int8_t *)buf + 4))) {
-                            printf("ERROR: Wrong data for: Key: %lu Data: %lu\n", *key, *((int32_t *)recordBuffer));
-                            printf("%lu %d %d %d\n",
-                                   *((uint32_t *)buf),
-                                   *((int32_t *)((int8_t *)buf + 4)),
-                                   *((int32_t *)((int8_t *)buf + 8)),
-                                   *((int32_t *)((int8_t *)buf + 12)));
-                            result = embedDBGet(state, key, recordBuffer);
-                        }
-
-                        if (i % stepSize == 0) {
-                            l = i / stepSize - 1;
-                            printf("Num: %lu KEY: %lu\n", i, *key);
-                            if (l < numSteps && l >= 0) {
-                                rtimes[l][r] = millis() - start;
-                                rreads[l][r] = state->numReads;
-                                rhits[l][r] = state->bufferHits;
-                            }
-                        }
-                        i++;
-                        /* Allows ending test after set number of records rather than processing entire file */
-                        if (i == numRecords || i == testRecords) {
-                            goto donetest;
-                        }
-                    }
-                }
-            donetest:
-                numRecords = i;
-            } else if (QUERY_TYPE == 2) {
-                /* Query random values in range. May not exist in data set. */
-                i = 0;
-                int32_t num = maxRange - minRange;
-                printf("Rge: %d Rand max: %d\n", num, RAND_MAX);
-                while (i < numRecords) {
-                    double scaled = ((double)rand() * (double)rand()) / RAND_MAX / RAND_MAX;
-                    int32_t key = (num + 1) * scaled + minRange;
-
-                    if (i == 2) {
-                        embedDBGet(state, &key, recordBuffer);
-                    } else {
-                        embedDBGet(state, &key, recordBuffer);
-                    }
-
-                    if (i % stepSize == 0) {
-                        l = i / stepSize - 1;
-                        printf("Num: %lu KEY: %lu\n", i, key);
-                        if (l < numSteps && l >= 0) {
-                            rtimes[l][r] = millis() - start;
-                            rreads[l][r] = state->numReads;
-                            rhits[l][r] = state->bufferHits;
-                        }
-                    }
-                    i++;
-                }
-            } else {
-                /* Data value query for given value range */
-                uint32_t itKey;
-                void *itData = calloc(1, state->dataSize);
-                embedDBIterator it;
-                it.minKey = NULL;
-                it.maxKey = NULL;
-                int32_t minValue = 0;
-                int32_t maxValue = INT32_MAX;
-                it.minData = NULL;
-                it.maxData = NULL;
-                int32_t rec, reads;
-
-                start = clock();
-                embedDBInitIterator(state, &it);
-                rec = 0;
-                reads = state->numReads;
-                while (embedDBNext(state, &it, &itKey, itData)) {
-                    if ((it.minData != NULL && *((int32_t *)itData) < *((int32_t *)it.minData)) ||
-                        (it.maxData != NULL && *((int32_t *)itData) > *((int32_t *)it.maxData))) {
-                        printf("Key: %d Data: %d Error\n", itKey, *(uint32_t *)itData);
-                    }
-                    rec++;
-                }
-                printf("Read records: %d\n", rec);
-                printf("Num: %lu KEY: %lu Perc: %d Records: %d Reads: %d \n", rec, minValue, ((state->numReads - reads) * 1000 / (state->nextDataPageId - state->minDataPageId)), rec, (state->numReads - reads));
-
-                embedDBCloseIterator(&it);
-                free(itData);
-            }
-        }
-
-        end = millis();
-        l = numSteps - 1;
-        rtimes[l][r] = end - start;
-        rreads[l][r] = state->numReads;
-        rhits[l][r] = state->bufferHits;
-        printf("Elapsed Time: %lu ms\n", rtimes[l][r]);
-        printf("Records queried: %lu\n", i);
-
-        embedDBPrintStats(state);
-
-        // Optional: Test iterator
-        // testIterator(state);
-        // printStats(state);
-
-        free(recordBuffer);
-        free(state->buffer);
-        embedDBClose(state);
-        free(state->fileInterface);
-        if (STORAGE_TYPE == 0) {
-            tearDownSDFile(state->dataFile);
-            tearDownSDFile(state->indexFile);
-        }
-#if defined(MEMBOARD)
-        if (STORAGE_TYPE == 1) {
-            tearDownDataflashFile(state->dataFile);
-            tearDownDataflashFile(state->indexFile);
-        }
-#endif
-        free(state);
+    // init embedDB
+    size_t splineMaxError = 1;
+    if (embedDBInit(state, splineMaxError) != 0) {
+        printf("Initialization error");
+        exit(0);
     }
 
-    printf("\nComplete.\n");
-
-    // Prints results
-    uint32_t sum;
-    for (count_t i = 1; i <= numSteps; i++) {
-        printf("Stats for %lu:\n", i * stepSize);
-
-        printf("Reads:   ");
-        sum = 0;
-        for (r = 0; r < numRuns; r++) {
-            sum += reads[i - 1][r];
-            printf("\t%lu", reads[i - 1][r]);
-        }
-        printf("\t%lu\n", sum / r);
-
-        printf("Writes: ");
-        sum = 0;
-        for (r = 0; r < numRuns; r++) {
-            sum += writes[i - 1][r];
-            printf("\t%lu", writes[i - 1][r]);
-        }
-        printf("\t%lu\n", sum / r);
-
-        printf("Overwrites: ");
-        sum = 0;
-        for (r = 0; r < numRuns; r++) {
-            sum += overwrites[i - 1][r];
-            printf("\t%lu", overwrites[i - 1][r]);
-        }
-        printf("\t%lu\n", sum / r);
-
-        printf("Totwrites: ");
-        sum = 0;
-        for (r = 0; r < numRuns; r++) {
-            sum += overwrites[i - 1][r] + writes[i - 1][r];
-            printf("\t%lu", overwrites[i - 1][r] + writes[i - 1][r]);
-        }
-        printf("\t%lu\n", sum / r);
-
-        printf("Buffer hits: ");
-        sum = 0;
-        for (r = 0; r < numRuns; r++) {
-            sum += hits[i - 1][r];
-            printf("\t%lu", hits[i - 1][r]);
-        }
-        printf("\t%lu\n", sum / r);
-
-        printf("Write Time: ");
-        sum = 0;
-        for (r = 0; r < numRuns; r++) {
-            sum += times[i - 1][r];
-            printf("\t%lu", times[i - 1][r]);
-        }
-        printf("\t%lu\n", sum / r);
-
-        printf("R Time: ");
-        sum = 0;
-        for (r = 0; r < numRuns; r++) {
-            sum += rtimes[i - 1][r];
-            printf("\t%lu", rtimes[i - 1][r]);
-        }
-        printf("\t%lu\n", sum / r);
-
-        printf("R Reads: ");
-        sum = 0;
-        for (r = 0; r < numRuns; r++) {
-            sum += rreads[i - 1][r];
-            printf("\t%lu", rreads[i - 1][r]);
-        }
-        printf("\t%lu\n", sum / r);
-
-        printf("R Buffer hits: ");
-        sum = 0;
-        for (r = 0; r < numRuns; r++) {
-            sum += rhits[i - 1][r];
-            printf("\t%lu", rhits[i - 1][r]);
-        }
-        printf("\t%lu\n", sum / r);
-    }
+    embedDBResetStats(state);
 }
 
 #endif
