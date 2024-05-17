@@ -67,6 +67,11 @@
 embedDBState* init_state();
 embedDBState* state;
 
+/* 
+    TODO: This file requires some of the other changes made to EmebedDB, so it does not completely work currently.
+    This will be fixed in a seperate PR when the other changes to the main EmbedDB file are made.
+ */
+
 void embedDBExample() {
     uint32_t totalRecordsInserted = 0;
     uint32_t totalRecordsToInsert = 10;
@@ -79,7 +84,7 @@ void embedDBExample() {
     // Inserting 10 fixed-length records
     printf("******************* For inserting 10 fixed-length records using embedDBPut() **********************\n");
     // iterate from 0 -> 10
-    for (uint32_t i = totalRecordsInserted; i < totalRecordsToInsert; i++) {
+    for (uint32_t i = 0; i < totalRecordsToInsert; i++) {
         // Initalize key (as they must be in ascending order)
         uint32_t key = i;
 
@@ -153,7 +158,6 @@ void embedDBExample() {
     printf("Flush complete\n");
 
     printf("******************* Insert 10 variable-length record **********************************************\n");
-
     for (uint32_t i = 0; i < 10; i++) {
         // init key
         uint32_t key = totalRecordsInserted;
@@ -170,7 +174,7 @@ void embedDBExample() {
         char str[] = "Hello World";  // ~ 12 bytes long including null terminator
 
         // insert variable record
-        int result = embedDBPutVar(state, (void*)&key, (void*)dataPtr, (void*)str, length);
+        int8_t result = embedDBPutVar(state, (void*)&key, (void*)dataPtr, (void*)str, length);
         if (result != SUCCESS) {
             printf("Error inserting variable-length records\n");
         }
@@ -237,8 +241,6 @@ void embedDBExample() {
     embedDBInitIterator(state, &varIt);
 
     while (embedDBNextVar(state, &varIt, &itVarKey, varItData, &itVarStream)) {
-        /* process fixed-length data */
-        printf("Hello World");
         /* Process vardata if this record has it */
         if (itVarStream != NULL) {
             uint32_t numBytesRead = 0;
