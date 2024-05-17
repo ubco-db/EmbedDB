@@ -264,6 +264,13 @@ typedef enum {
 int8_t
 embedDBInit(embedDBState *state, size_t indexMaxError);
 
+/* Constructors */
+/**
+ * @brief	Initialize embedDB structure with default parameters.
+ * @return	Returns an embedDB state with default values if successful, and NULL if not
+ */
+embedDBState *defaultInitializedState();
+
 /**
  * @brief   Prints the initialization stats of the given embedDB state
  * @param   state   embedDB state structure
