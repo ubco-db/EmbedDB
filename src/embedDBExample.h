@@ -69,7 +69,8 @@ embedDBState* state;
 
 void embedDBExample() {
     uint32_t totalRecordsInserted = 0;
-    uint32_t totalRecordsToInsert = 100;
+    uint32_t totalRecordsToInsert = 10;
+
     printf("******************* Performing an example of EmbeDB with sequentially generated data **************\n");
     // init state, see function for details.
     state = init_state();
@@ -129,7 +130,8 @@ void embedDBExample() {
     uint32_t* itData[] = {0, 0, 0};
 
     // specify min and max key to perform search on.
-    uint32_t minKey = 0, maxKey = 9;  // iterating over [0-9]
+    uint32_t minKey = 0;
+    uint32_t maxKey = totalRecordsInserted - 1;  // iterating over all records
 
     // initalize buffer variables.
     it.minKey = &minKey;
@@ -181,7 +183,7 @@ void embedDBExample() {
 
     printf("******************* Retrieve a single variable-length record **************************************\n");
 
-    int key = 10;
+    uint32_t key = 10;
 
     // declare a varDataStream.
     embedDBVarDataStream* varStream = NULL;
@@ -219,7 +221,7 @@ void embedDBExample() {
     embedDBIterator varIt;
     // Memory to store key and fixed data into.
     uint32_t* itVarKey;
-    int varItData[] = {0, 0, 0};
+    uint32_t varItData[] = {0, 0, 0};
 
     uint32_t varMinKey = 10, varMaxKey = 19;
     varIt.minKey = &varMinKey;
@@ -236,7 +238,7 @@ void embedDBExample() {
 
     while (embedDBNextVar(state, &varIt, &itVarKey, varItData, &itVarStream)) {
         /* process fixed-length data */
-
+        printf("Hello World");
         /* Process vardata if this record has it */
         if (itVarStream != NULL) {
             uint32_t numBytesRead = 0;
