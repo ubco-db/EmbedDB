@@ -44,6 +44,7 @@
 
 #include "../spline/radixspline.h"
 #include "../spline/spline.h"
+#include "SDFileInterface.h"
 #include "embedDBUtility.h"
 #include "serial_c_iface.h"
 
