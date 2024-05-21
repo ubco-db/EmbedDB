@@ -111,14 +111,14 @@ void embedDBGet_should_return_data_for_record_in_write_buffer(void) {
 }
 
 void embedDBGet_should_return_data_for_record_when_multiple_records_are_inserted_in_write_buffer(void) {
-    uint32_t numInserts = 32;
+    uint32_t numInserts = 31;
     for (uint32_t i = 0; i < numInserts; ++i) {
         insert_static_record(state, i, (i + 100));
     }
-    uint32_t key = 31;
+    uint32_t key = 30;
     uint32_t return_data[] = {0, 0, 0};
     embedDBGet(state, &key, return_data);
-    TEST_ASSERT_EQUAL_UINT32_MESSAGE(131, *return_data, "embedDBGet was unable to retrieve the data for one of the records located in the write buffer");
+    TEST_ASSERT_EQUAL_UINT32_MESSAGE(130, *return_data, "embedDBGet was unable to retrieve the data for one of the records located in the write buffer");
 }
 
 void embedDBGet_should_return_data_for_records_in_file_storage_and_write_buffer(void) {
@@ -260,8 +260,6 @@ embedDBState* init_state() {
     state->buildBitmapFromRange = buildBitmapInt8FromRange;
     state->compareKey = int32Comparator;
     state->compareData = int32Comparator;
-    // init
-    size_t splineMaxError = 1;
 
     int8_t result = embedDBInit(state, 1);
     TEST_ASSERT_EQUAL_INT8_MESSAGE(0, result, "EmbedDB did not initialize correctly.");
