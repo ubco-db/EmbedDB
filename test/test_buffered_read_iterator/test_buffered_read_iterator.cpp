@@ -55,7 +55,8 @@
 #include "SDFileInterface.h"
 #include "unity.h"
 
-int insert_static_record(embedDBState* state, uint32_t key, uint32_t data);
+int insertStaticRecord(embedDBState* state, uint32_t key, uint32_t data);
+int8_t insertRecordFloatData(embedDBState* state, uint32_t key, float data);
 embedDBState* init_state();
 
 embedDBState* state;
@@ -73,19 +74,20 @@ void tearDown(void) {
     state = NULL;
 }
 
-// test ensures iterator checks written pages using keys after writing.
-void test_iterator_flush_on_keys_int(void) {
-    // create key and data
+void embedDBIterator_should_return_records_in_storage_and_in_write_buffer(void) {
+    /* create key and data to be inserted */
     uint32_t key = 1;
     uint32_t data = 111;
-    int recNum = 36;
-    // inserting records
-    for (int i = 0; i < recNum; ++i) {
-        insert_static_record(state, key, data);
+    uint32_t numberOfRecordsToInsert = 36;
+
+    /* insert records into database */
+    for (uint32_t i = 0; i < numberOfRecordsToInsert; ++i) {
+        insertStaticRecord(state, key, data);
         key += 1;
         data += 5;
     }
-    // setup iterator
+
+    /* initalize iterator */
     embedDBIterator it;
     uint32_t itKey = 0;
     uint32_t itData[] = {0, 0, 0};
@@ -95,144 +97,182 @@ void test_iterator_flush_on_keys_int(void) {
     it.minData = NULL;
     it.maxData = NULL;
 
-    int data_comparison = 111;
+    uint32_t expectedDataValue = 111;
 
     embedDBInitIterator(state, &it);
+    char message[100];
 
-    // test data
+    /* test if correct data values returned */
+    uint32_t numRecordsReturned = 0;
     while (embedDBNext(state, &it, (void**)&itKey, (void**)&itData)) {
-        int testData;
-        memcpy(&testData, itData, sizeof(int));
-        TEST_ASSERT_EQUAL(data_comparison, testData);
-        data_comparison += 5;
+        uint32_t actualDataValue;
+        memcpy(&actualDataValue, itData, sizeof(int));
+        snprintf(message, 100, "embedDBIterator returned the wrong data value for key %li.", key);
+        TEST_ASSERT_EQUAL_UINT32_MESSAGE(expectedDataValue, actualDataValue, message);
+        expectedDataValue += 5;
+        numRecordsReturned += 1;
     }
 
-    // close
+    /* test that the correct number of records was returned by the iterator */
+    TEST_ASSERT_EQUAL_UINT32_MESSAGE(36, numRecordsReturned, "embedDBIterator did not return the expected number of records");
+
+    /* close the iterator */
     embedDBCloseIterator(&it);
 }
 
-// test ensures iterator checks written pages using keys after writing.
-void test_iterator_flush_on_keys_float(void) {
-    // create key and data
-    float key = 1;
-    float data = 111.00;
-    int recNum = 36;
-    // inserting records
-    for (int i = 0; i < recNum; ++i) {
-        insert_static_record(state, key, data);
-        key += 1;
-        data += 5;
+void embedDBIterator_should_return_records_in_storage_and_in_write_buffer_with_float_data(void) {
+    /* create key and data for record insertion */
+    uint32_t key = 2024;
+    float data = -15.24;
+    uint32_t numberOfRecordsToInsert = 72;
+
+    /* insert records into database */
+    for (uint32_t i = 0; i < numberOfRecordsToInsert; ++i) {
+        insertRecordFloatData(state, key, data);
+        key += 3;
+        data += 5.18;
     }
-    // setup iterator
+
+    /* initialize iterator */
     embedDBIterator it;
-    float itKey = 0;
-    float itData[] = {0, 0, 0};
-    uint32_t minKey = 1, maxKey = 36;
+    uint32_t actualKeyValue = 0;
+    float returnedDataValue[] = {0, 0, 0};
+    it.minKey = NULL;
+    it.maxKey = NULL;
+    it.minData = NULL;
+    it.maxData = NULL;
+    embedDBInitIterator(state, &it);
+
+    /* initialize variables for expected test values */
+    float expectedDataValue = -15.24;
+    uint32_t expectedKeyValue = 2024;
+    uint32_t numRecordsRetrieved = 0;
+    char message[100];
+    float actualDataValue = 0;
+
+    /* test data and keys are returned correctly */
+    while (embedDBNext(state, &it, (void**)&actualKeyValue, (void**)&returnedDataValue)) {
+        TEST_ASSERT_EQUAL_UINT32_MESSAGE(expectedKeyValue, actualKeyValue, "embedDBIterator returned an unexpected key value");
+        snprintf(message, 100, "embedDBIterator did not return the correct data for key %li).", expectedKeyValue);
+        memcpy(&actualDataValue, returnedDataValue, sizeof(float));
+        TEST_ASSERT_EQUAL_FLOAT_MESSAGE(expectedDataValue, actualDataValue, message);
+        expectedKeyValue += 3;
+        expectedDataValue += 5.18;
+        numRecordsRetrieved += 1;
+    }
+
+    /* test that the correct number of records was returned by the iterator */
+    TEST_ASSERT_EQUAL_UINT32_MESSAGE(72, numRecordsRetrieved, "embedDBIterator did not return the expected number of records");
+
+    /* tear down iterator */
+    embedDBCloseIterator(&it);
+}
+
+void embedDBIterator_should_return_keys_in_write_buffer_when_no_data_has_been_flushed_to_storage(void) {
+    /* initialize records */
+    uint32_t key = 1000;
+    uint32_t data = 2048;
+    uint32_t numberOfRecordsToInsert = 16;
+    for (uint32_t i = 0; i < numberOfRecordsToInsert; ++i) {
+        insertStaticRecord(state, key, data);
+        key += 1;
+        data += 15;
+    }
+
+    /* initialize iterator */
+    embedDBIterator it;
+    uint32_t* actualKeyValue;
+    uint32_t minKey = 1000, maxKey = 1015;
     it.minKey = &minKey;
     it.maxKey = &maxKey;
     it.minData = NULL;
     it.maxData = NULL;
-
-    float data_comparison = 111.00;
-
     embedDBInitIterator(state, &it);
 
-    // test data
-    while (embedDBNext(state, &it, (void**)&itKey, (void**)&itData)) {
-        int testData;
-        memcpy(&testData, itData, sizeof(int));
-        TEST_ASSERT_EQUAL(data_comparison, testData);
-        data_comparison += 5;
+    /* expected values for test */
+    key = 1000;
+    data = 2048;
+    uint32_t numberOfRecordsRetrieved = 0;
+    int8_t* dataBuffer = (int8_t*)malloc(state->dataSize);
+    uint32_t acutalDataValue = 0;
+    char message[100];
+
+    while (embedDBNext(state, &it, &actualKeyValue, dataBuffer)) {
+        TEST_ASSERT_EQUAL_UINT32_MESSAGE(key, actualKeyValue, "embedDBIterator returned an unexpected key value");
+        memcpy(&acutalDataValue, dataBuffer, sizeof(uint32_t));
+        snprintf(message, 100, "embedDBIterator did not return the correct data for key %li).", key);
+        TEST_ASSERT_EQUAL_UINT32_MESSAGE(data, acutalDataValue, message);
+        data += 15;
+        key += 1;
+        numberOfRecordsRetrieved += 1;
     }
 
-    // close
+    /* check that the correct number of records is returned */
+    TEST_ASSERT_EQUAL_UINT32_MESSAGE(16, numberOfRecordsRetrieved, "embedDBIterator did not return the expected number of records");
+
+    /* tear down */
     embedDBCloseIterator(&it);
+    free(dataBuffer);
 }
 
-// test ensures iterator checks write buffer using keys without writing to file storage.
-void test_iterator_no_flush_on_keys(void) {
-    // create key and data
+void embedDBIterator_should_filter_and_rechieve_records_by_data_value(void) {
+    /* insert records in database */
     uint32_t key = 1;
     uint32_t data = 111;
-    // records all to be contained in buffer
-    int recNum = 16;
-    // inserting records
-    for (int i = 0; i < recNum; ++i) {
-        insert_static_record(state, key, data);
+    uint32_t numberOfRecordsToInsert = 48;
+    for (uint32_t i = 0; i < numberOfRecordsToInsert; ++i) {
+        insertStaticRecord(state, key, data);
         key += 1;
         data += 5;
     }
-    // setup iterator
-    embedDBIterator it;
-    uint32_t *itKey, *itData;
-    key = 1;
-    data = 111;
 
-    uint32_t minKey = 1, maxKey = 15;
-    it.minKey = &minKey;
-    it.maxKey = &maxKey;
-    it.minData = NULL;
-    it.maxData = NULL;
-
-    embedDBInitIterator(state, &it);
-    // test data
-    while (embedDBNext(state, &it, &itKey, &itData)) {
-        TEST_ASSERT_EQUAL(data, itData);
-        data += 5;
-    }
-    // close
-    embedDBCloseIterator(&it);
-}
-
-// test ensures iterator checks written pages using data after writing.
-void test_iterator_flush_on_data(void) {
-    // create key and data
-    uint32_t key = 1;
-    uint32_t data = 111;
-    int recNum = 36;
-    // inserting records
-    for (int i = 0; i < recNum; ++i) {
-        insert_static_record(state, key, data);
-        key += 1;
-        data += 5;
-    }
-    // setup iterator
+    /* initialize iterator */
     embedDBIterator it;
     uint32_t itKey = 0;
     uint32_t itData[] = {0, 0, 0};
     it.minKey = NULL;
     it.maxKey = NULL;
-    uint32_t minData = 111, maxData = 286;
+    uint32_t minData = 227, maxData = 310;
     it.minData = &minData;
     it.maxData = &maxData;
-
-    int key_comparison = 1;
-
     embedDBInitIterator(state, &it);
 
-    // test data
+    /* expected values for tests */
+    uint32_t expectedKeyValue = 25;
+    uint32_t expectedDataValue = 231;
+    uint32_t numberOfRecordsRetrieved = 0;
+    char message[100];
+
+    /* assert returned records have correct values */
     while (embedDBNext(state, &it, (void**)&itKey, (void**)&itData)) {
-        TEST_ASSERT_EQUAL(key_comparison, itKey);
-        key_comparison += 1;
+        TEST_ASSERT_EQUAL_UINT32_MESSAGE(expectedKeyValue, itKey, "embedDBIterator returned a key value which should have been filtered out");
+        snprintf(message, 100, "embedDBIterator did not return the correct data for key %li).", expectedKeyValue);
+        TEST_ASSERT_EQUAL_UINT32_MESSAGE(expectedDataValue, itData[0], message);
+        expectedKeyValue += 1;
+        expectedDataValue += 5;
+        numberOfRecordsRetrieved += 1;
     }
 
-    // close
+    /* assert that the correct number of records was returned by the iterator */
+    TEST_ASSERT_EQUAL_UINT32_MESSAGE(16, numberOfRecordsRetrieved, "embedDBIterator did not return the correct number of records based on the filters applied");
+
+    /* tear down iterator */
     embedDBCloseIterator(&it);
 }
 
 // test ensures iterator checks written pages using data without flushing to storage
 void test_iterator_no_flush_on_data(void) {
-    // create key and data
+    /* insert records */
     uint32_t key = 1;
     uint32_t data = 111;
-    int recNum = 15;
-    // inserting records
-    for (int i = 0; i < recNum; ++i) {
-        insert_static_record(state, key, data);
+    uint32_t numberOfRecordsToInsert = 15;
+    for (uint32_t i = 0; i < numberOfRecordsToInsert; ++i) {
+        insertStaticRecord(state, key, data);
         key += 1;
         data += 5;
     }
-    // setup iterator
+
+    /* initialize iterator */
     embedDBIterator it;
     uint32_t itKey = 0;
     uint32_t itData[] = {0, 0, 0};
@@ -242,8 +282,7 @@ void test_iterator_no_flush_on_data(void) {
     it.minData = &minData;
     it.maxData = &maxData;
 
-    int key_comparison = 1;
-
+    uint32_t key_comparison = 1;
     embedDBInitIterator(state, &it);
 
     // test data
@@ -258,10 +297,10 @@ void test_iterator_no_flush_on_data(void) {
 
 int runUnityTests() {
     UNITY_BEGIN();
-    RUN_TEST(test_iterator_flush_on_keys_int);
-    RUN_TEST(test_iterator_flush_on_keys_float);
-    RUN_TEST(test_iterator_no_flush_on_keys);
-    RUN_TEST(test_iterator_flush_on_data);
+    RUN_TEST(embedDBIterator_should_return_records_in_storage_and_in_write_buffer);
+    RUN_TEST(embedDBIterator_should_return_records_in_storage_and_in_write_buffer_with_float_data);
+    RUN_TEST(embedDBIterator_should_return_keys_in_write_buffer_when_no_data_has_been_flushed_to_storage);
+    RUN_TEST(embedDBIterator_should_filter_and_rechieve_records_by_data_value);
     RUN_TEST(test_iterator_no_flush_on_data);
     return UNITY_END();
 }
@@ -275,7 +314,7 @@ void setup() {
 void loop() {}
 
 /* function puts a static record into buffer without flushing. Creates and frees record allocation in the heap.*/
-int insert_static_record(embedDBState* state, uint32_t key, uint32_t data) {
+int insertStaticRecord(embedDBState* state, uint32_t key, uint32_t data) {
     // calloc dataSize bytes in heap.
     void* dataPtr = calloc(1, state->dataSize);
     // set dataPtr[0] to data
@@ -284,6 +323,23 @@ int insert_static_record(embedDBState* state, uint32_t key, uint32_t data) {
     char result = embedDBPut(state, (void*)&key, (void*)dataPtr);
     // free dataPtr
     free(dataPtr);
+    // return based on success
+    return (result == 0) ? 0 : -1;
+}
+
+int8_t insertRecordFloatData(embedDBState* state, uint32_t key, float data) {
+    // calloc dataSize bytes in heap.
+    void* dataPtr = calloc(1, state->dataSize);
+
+    // set dataPtr[0] to data
+    ((float*)dataPtr)[0] = data;
+
+    // insert into buffer, save result
+    char result = embedDBPut(state, (void*)&key, (void*)dataPtr);
+
+    // free dataPtr
+    free(dataPtr);
+
     // return based on success
     return (result == 0) ? 0 : -1;
 }
@@ -326,8 +382,6 @@ embedDBState* init_state() {
     state->buildBitmapFromRange = buildBitmapInt8FromRange;
     state->compareKey = int32Comparator;
     state->compareData = int32Comparator;
-    // init
-    // size_t splineMaxError = 1;
 
     int8_t result = embedDBInit(state, 1);
     TEST_ASSERT_EQUAL_INT8_MESSAGE(0, result, "EmbedDB did not initialize correctly.");
