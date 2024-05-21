@@ -54,7 +54,7 @@
 #include "SDFileInterface.h"
 #include "unity.h"
 
-int insert_static_record(embedDBState* state, uint32_t key, uint32_t data);
+int insertStaticRecord(embedDBState* state, uint32_t key, uint32_t data);
 embedDBState* init_state();
 
 embedDBState* state;
@@ -76,7 +76,7 @@ void embedDBGet_should_return_data_when_single_record_inserted_and_flushed_to_st
     // create a key
     uint32_t key = 1;
     // save to buffer
-    insert_static_record(state, key, 123);
+    insertStaticRecord(state, key, 123);
     // flush to file storage
     embedDBFlush(state);
     // query data
@@ -89,7 +89,7 @@ void embedDBGet_should_return_data_when_single_record_inserted_and_flushed_to_st
 void embedDBGet_should_return_data_when_multiple_records_inserted_and_flushed_to_storage(void) {
     int numInserts = 100;
     for (int i = 0; i < numInserts; ++i) {
-        insert_static_record(state, i, (i + 100));
+        insertStaticRecord(state, i, (i + 100));
     }
     embedDBFlush(state);
     uint32_t key = 93;
@@ -102,7 +102,7 @@ void embedDBGet_should_return_data_for_record_in_write_buffer(void) {
     // create a key
     uint32_t key = 1;
     // save to buffer
-    insert_static_record(state, key, 123);
+    insertStaticRecord(state, key, 123);
     // query data
     uint32_t return_data[] = {0, 0, 0};
     embedDBGet(state, &key, return_data);
@@ -113,7 +113,7 @@ void embedDBGet_should_return_data_for_record_in_write_buffer(void) {
 void embedDBGet_should_return_data_for_record_when_multiple_records_are_inserted_in_write_buffer(void) {
     uint32_t numInserts = 31;
     for (uint32_t i = 0; i < numInserts; ++i) {
-        insert_static_record(state, i, (i + 100));
+        insertStaticRecord(state, i, (i + 100));
     }
     uint32_t key = 30;
     uint32_t return_data[] = {0, 0, 0};
@@ -125,7 +125,7 @@ void embedDBGet_should_return_data_for_records_in_file_storage_and_write_buffer(
     // create a key
     uint32_t key = 1;
     // save to buffer
-    insert_static_record(state, key, 154);
+    insertStaticRecord(state, key, 154);
     // query data
     uint32_t return_data[] = {0, 0, 0};
     embedDBGet(state, &key, return_data);
@@ -135,7 +135,7 @@ void embedDBGet_should_return_data_for_records_in_file_storage_and_write_buffer(
     embedDBFlush(state);
     // insert another record
     key = 2;
-    insert_static_record(state, key, 12345);
+    insertStaticRecord(state, key, 12345);
     embedDBGet(state, &key, return_data);
     // test second record is retrieved from buffer
     TEST_ASSERT_EQUAL_UINT32_MESSAGE(12345, *return_data, "embedDBGet was unable to retrieve the data for a record located in the write buffer");
@@ -151,7 +151,7 @@ void embedDBGet_should_return_no_data_when_requested_key_greater_than_max_buffer
     // insert random records
     uint32_t numInserts = 8;
     for (uint32_t i = 0; i < numInserts; ++i) {
-        insert_static_record(state, i, (i + 100));
+        insertStaticRecord(state, i, (i + 100));
     }
     // query for max key not in database
     uint32_t key = 55;
@@ -166,7 +166,7 @@ void embedDBGet_should_return_not_found_when_key_is_less_then_min_key(void) {
     // insert random records
     uint32_t numInserts = 8;
     for (uint32_t i = 1; i <= numInserts; ++i) {
-        insert_static_record(state, i, (i + 100));
+        insertStaticRecord(state, i, (i + 100));
     }
     // query for max key not in database
     uint32_t key = 0;
@@ -209,7 +209,7 @@ void setup() {
 void loop() {}
 
 /* function puts a static record into buffer without flushing. Creates and frees record allocation in the heap.*/
-int insert_static_record(embedDBState* state, uint32_t key, uint32_t data) {
+int insertStaticRecord(embedDBState* state, uint32_t key, uint32_t data) {
     // calloc dataSize bytes in heap.
     void* dataPtr = calloc(1, state->dataSize);
     // set dataPtr[0] to data
