@@ -228,32 +228,38 @@ embedDBState* init_state() {
         printf("Unable to allocate state. Exiting\n");
         exit(0);
     }
+
     // configure state variables
-    state->recordSize = 16;  // size of record in bytes
-    state->keySize = 4;      // size of key in bytes
-    state->dataSize = 12;    // size of data in bytes
-    state->pageSize = 512;   // page size (I am sure this is in bytes)
-    state->numSplinePoints = 300;
+    state->keySize = 4;
+    state->dataSize = 12;
+    state->pageSize = 512;
+    state->numSplinePoints = 20;
     state->bitmapSize = 1;
-    state->bufferSizeInBlocks = 4;  // size of the buffer in blocks (where I am assuming that a block is the same as a page size)
+    state->bufferSizeInBlocks = 4;
+
     // allocate buffer
     state->buffer = malloc((size_t)state->bufferSizeInBlocks * state->pageSize);
-    // check
+
+    // check buffer was alloacted
     if (state->buffer == NULL) {
         printf("Unable to allocate buffer. Exciting\n");
         exit(0);
     }
+
     // address level parameters
-    state->numDataPages = 1000;
-    state->numIndexPages = 48;
+    state->numDataPages = 30;
+    state->numIndexPages = 5;
     state->eraseSizeInPages = 4;
+
     // configure file interface
     char dataPath[] = "dataFile.bin", indexPath[] = "indexFile.bin";
     state->fileInterface = getSDInterface();
     state->dataFile = setupSDFile(dataPath);
     state->indexFile = setupSDFile(indexPath);
+
     // configure state
     state->parameters = EMBEDDB_USE_BMAP | EMBEDDB_USE_INDEX | EMBEDDB_RESET_DATA;
+
     // Setup for data and bitmap comparison functions */
     state->inBitmap = inBitmapInt8;
     state->updateBitmap = updateBitmapInt8;
