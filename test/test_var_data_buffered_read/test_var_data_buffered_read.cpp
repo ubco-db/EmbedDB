@@ -73,21 +73,26 @@ void tearDown() {
 }
 
 void test_insert_single_record_and_retrieval_from_buffer_no_flush(void) {
+    /* data for insert */
     uint32_t key = 121;
     uint32_t data = 12345;
-    char varData[] = "Hello world";  // size 12
+    char varData[] = "Hello world";
+
+    /* insert record */
     embedDBPutVar(state, &key, &data, varData, 12);
-    //  reset data
+
+    /* setup variables for get */
     uint32_t expData[] = {0, 0, 0};
-    // create var data stream
     embedDBVarDataStream *varStream = NULL;
-    // create buffer for input
-    uint32_t varBufSize = 12;  // Choose any size
-    void *varDataBuffer = malloc(varBufSize);
-    // query embedDB
-    int r = embedDBGetVar(state, &key, &expData, &varStream);
-    TEST_ASSERT_EQUAL_INT_MESSAGE(r, 0, "Records should have been found.");
-    TEST_ASSERT_EQUAL_INT(*expData, data);
+
+    /* size of variable data inserted */
+    uint32_t varBufSize = 12;
+    char varDataBuffer[12];
+
+    /* retrieve inserted record */
+    int8_t r = embedDBGetVar(state, &key, &expData, &varStream);
+    TEST_ASSERT_EQUAL_INT8_MESSAGE(r, 0, "embedDBGetVar was unable to retrieve a record located in the write buffer");
+    TEST_ASSERT_EQUAL_UINT32_MESSAGE(expData[0], data, "embedDBGetVar did not return the correct fixed length data");
     uint32_t bytesRead = embedDBVarDataStreamRead(state, varStream, varDataBuffer, varBufSize);
     TEST_ASSERT_EQUAL_UINT32_MESSAGE(12, bytesRead, "Returned vardata was not the right length");
     TEST_ASSERT_EQUAL_CHAR_ARRAY_MESSAGE(varData, varDataBuffer, 12, "embedDBGetVar did not return the correct vardata");
@@ -110,6 +115,8 @@ void test_single_variable_page_insert_and_retrieve_from_buffer(void) {
     char varData[] = "Testing 026...";
     TEST_ASSERT_EQUAL_UINT32_MESSAGE(15, bytesRead, "Returned vardata was not the right length");
     TEST_ASSERT_EQUAL_CHAR_ARRAY_MESSAGE(varData, varDataBuffer, 15, "embedDBGetVar did not return the correct vardata");
+
+    free(varDataBuffer);
 }
 
 void test_insert_retrieve_insert_and_retrieve_again(void) {
@@ -134,7 +141,7 @@ void test_insert_retrieve_insert_and_retrieve_again(void) {
     // test
     TEST_ASSERT_EQUAL_UINT32_MESSAGE(15, bytesRead, "Returned vardata was not the right length");
     TEST_ASSERT_EQUAL_CHAR_ARRAY_MESSAGE(varData, varDataBuffer, 15, "embedDBGetVar did not return the correct vardata");
-    free(varDataBuffer);
+
     // insert more records
     insertRecords(58);
     key = 55;
@@ -149,6 +156,8 @@ void test_insert_retrieve_insert_and_retrieve_again(void) {
     // test
     TEST_ASSERT_EQUAL_UINT32_MESSAGE(15, bytesRead, "Returned vardata was not the right length");
     TEST_ASSERT_EQUAL_CHAR_ARRAY_MESSAGE(varData_2, varDataBuffer, 15, "embedDBGetVar did not return the correct vardata");
+
+    free(varDataBuffer);
 }
 
 void test_var_read_iterator_buffer(void) {
@@ -186,6 +195,8 @@ void test_var_read_iterator_buffer(void) {
             varStream = NULL;
         }
     }
+
+    /* tear down */
     free(varDataBuffer);
     embedDBCloseIterator(&it);
 }
@@ -213,13 +224,11 @@ void test_insert_retrieve_flush_insert_retrieve_again(void) {
     TEST_ASSERT_EQUAL_UINT32_MESSAGE(15, bytesRead, "Returned vardata was not the right length");
     TEST_ASSERT_EQUAL_CHAR_ARRAY_MESSAGE(varData, varDataBuffer, 15, "embedDBGetVar did not return the correct vardata");
     // free and flush
-    free(varDataBuffer);
     embedDBFlush(state);
     // insert more records
     insertRecords(58);
     key = 55;
     // create buffer for input
-    varDataBuffer = malloc(varBufSize);
     r = embedDBGetVar(state, &key, &expData, &varStream);
     // test that records are found
     TEST_ASSERT_EQUAL_INT_MESSAGE(0, r, "Records should have been found. 2");
@@ -229,6 +238,8 @@ void test_insert_retrieve_flush_insert_retrieve_again(void) {
     // test
     TEST_ASSERT_EQUAL_UINT32_MESSAGE(15, bytesRead, "Returned vardata was not the right length");
     TEST_ASSERT_EQUAL_CHAR_ARRAY_MESSAGE(varData_2, varDataBuffer, 15, "embedDBGetVar did not return the correct vardata");
+
+    free(varDataBuffer);
 }
 
 void test_insert_retrieve_flush_insert_retrieve_single_record_again(void) {
@@ -254,12 +265,10 @@ void test_insert_retrieve_flush_insert_retrieve_single_record_again(void) {
     TEST_ASSERT_EQUAL_UINT32_MESSAGE(15, bytesRead, "Returned vardata was not the right length");
     TEST_ASSERT_EQUAL_CHAR_ARRAY_MESSAGE(varData, varDataBuffer, 15, "embedDBGetVar did not return the correct vardata");
     // free and flush
-    free(varDataBuffer);
     embedDBFlush(state);
     // insert more records
     insertRecords(55);
     // create buffer for input
-    varDataBuffer = malloc(varBufSize);
     r = embedDBGetVar(state, &key, &expData, &varStream);
     // test that records are found
     TEST_ASSERT_EQUAL_INT_MESSAGE(0, r, "Records should have been found");
@@ -268,6 +277,8 @@ void test_insert_retrieve_flush_insert_retrieve_single_record_again(void) {
     // test
     TEST_ASSERT_EQUAL_UINT32_MESSAGE(15, bytesRead, "Returned vardata was not the right length");
     TEST_ASSERT_EQUAL_CHAR_ARRAY_MESSAGE(varData, varDataBuffer, 15, "embedDBGetVar did not return the correct vardata");
+
+    free(varDataBuffer);
 }
 
 int runUnityTests() {
@@ -313,29 +324,34 @@ embedDBState *init_state() {
         printf("Unable to allocate state. Exiting\n");
         exit(0);
     }
+
     // configure state variables
-    state->recordSize = 16;  // size of record in bytes
-    state->keySize = 4;      // size of key in bytes
-    state->dataSize = 12;    // size of data in bytes
-    state->pageSize = 512;   // page size (I am sure this is in bytes)
+    state->keySize = 4;
+    state->dataSize = 12;
+    state->pageSize = 512;
     state->numSplinePoints = 2;
     state->bitmapSize = 1;
     state->bufferSizeInBlocks = 6;
+
     // allocate buffer
     state->buffer = calloc(1, state->pageSize * state->bufferSizeInBlocks);
-    // check
+
+    // check that buffer was allocated
     TEST_ASSERT_NOT_NULL_MESSAGE(state->buffer, "Failed to allocate EmbedDB buffer.");
+
     // address level parameters
-    state->numDataPages = 1000;
-    state->numIndexPages = 48;
-    state->numVarPages = 1000;
+    state->numDataPages = 30;
+    state->numIndexPages = 4;
+    state->numVarPages = 10;
     state->eraseSizeInPages = 4;
+
     // configure file interface
     char dataPath[] = "dataFile.bin", indexPath[] = "indexFile.bin", varPath[] = "varFile.bin";
     state->fileInterface = getSDInterface();
     state->dataFile = setupSDFile(dataPath);
     state->indexFile = setupSDFile(indexPath);
     state->varFile = setupSDFile(varPath);
+
     // configure state
     state->parameters = EMBEDDB_USE_BMAP | EMBEDDB_USE_INDEX | EMBEDDB_USE_VDATA | EMBEDDB_RESET_DATA;  // Setup for data and bitmap comparison functions */
     state->inBitmap = inBitmapInt8;
