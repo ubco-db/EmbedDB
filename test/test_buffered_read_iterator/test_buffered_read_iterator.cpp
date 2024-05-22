@@ -260,8 +260,7 @@ void embedDBIterator_should_filter_and_rechieve_records_by_data_value(void) {
     embedDBCloseIterator(&it);
 }
 
-// test ensures iterator checks written pages using data without flushing to storage
-void test_iterator_no_flush_on_data(void) {
+void embedDBIterator_should_not_flush_buffer_to_storage_to_iterate(void) {
     /* insert records */
     uint32_t key = 1;
     uint32_t data = 111;
@@ -285,13 +284,15 @@ void test_iterator_no_flush_on_data(void) {
     uint32_t key_comparison = 1;
     embedDBInitIterator(state, &it);
 
-    // test data
     while (embedDBNext(state, &it, (void**)&itKey, (void**)&itData)) {
         TEST_ASSERT_EQUAL(key_comparison, itKey);
         key_comparison += 1;
     }
 
-    // close
+    /* check that nothing has been written to storage */
+    TEST_ASSERT_EQUAL_UINT32_MESSAGE(0, state->nextDataPageId, "Data in the write buffer was flushed to storage for iteration when it should not have been.");
+
+    /* tear down iterator */
     embedDBCloseIterator(&it);
 }
 
@@ -301,7 +302,7 @@ int runUnityTests() {
     RUN_TEST(embedDBIterator_should_return_records_in_storage_and_in_write_buffer_with_float_data);
     RUN_TEST(embedDBIterator_should_return_keys_in_write_buffer_when_no_data_has_been_flushed_to_storage);
     RUN_TEST(embedDBIterator_should_filter_and_rechieve_records_by_data_value);
-    RUN_TEST(test_iterator_no_flush_on_data);
+    RUN_TEST(embedDBIterator_should_not_flush_buffer_to_storage_to_iterate);
     return UNITY_END();
 }
 
