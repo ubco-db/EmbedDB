@@ -276,23 +276,21 @@ void embedDBGetVar_should_fetch_records_in_write_buffer_after_flushing_data_to_s
     free(varStream);
 }
 
-void test_insert_retrieve_flush_insert_retrieve_single_record_again(void) {
+void embedDBGetVar_should_fetch_record_before_and_after_flush_to_storage(void) {
     // insert 3 records
     int8_t insertResult = insertRecords(3, 0);
     TEST_ASSERT_EQUAL_INT8_MESSAGE(0, insertResult, "embedDBPutVar encountered an error inserting records in to the database");
 
-    // retrieve record
+    /* variables for query */
     int key = 2;
     uint32_t actualFixedLengthData[] = {0, 0, 0};
     uint32_t varBufSize = 20;
     char varDataBuffer[20];
     uint32_t expectedDataSize = 14;
     uint32_t expectedFixedLengthData[] = {1026, 0, 0};
-
-    // create var data stream
     embedDBVarDataStream *varStream = NULL;
 
-    /* query database for record */
+    /* check that record can be fetched from buffer */
     int8_t r = embedDBGetVar(state, &key, &actualFixedLengthData, &varStream);
     TEST_ASSERT_EQUAL_INT8_MESSAGE(r, 0, "embedDBGetVar was unable to retrieve the record with key 2");
     TEST_ASSERT_EQUAL_UINT32_ARRAY_MESSAGE(expectedFixedLengthData, actualFixedLengthData, 3, "embedDBGetVar did not retrieve the correct fixed length data for the record with key 2");
@@ -330,7 +328,75 @@ void test_insert_retrieve_flush_insert_retrieve_single_record_again(void) {
     varStream = NULL;
 }
 
-/* TODO: add test to make sure regular get and get var work together */
+void embedDBGetVar_should_fetch_record_from_buffer_and_storage_with_no_variable_length_data() {
+    /* insert records */
+    int8_t insertResult = insertRecords(64, 0);
+    TEST_ASSERT_EQUAL_INT8_MESSAGE(0, insertResult, "embedDBPutVar encountered an error inserting records in to the database");
+
+    /* insert record without variable length data */
+    uint32_t key = 65;
+    uint32_t fixedLengthData[] = {251, 2938, 55092};
+    insertResult = embedDBPutVar(state, &key, fixedLengthData, NULL, 0);
+    TEST_ASSERT_EQUAL_INT8_MESSAGE(0, insertResult, "embedDBPutVar encountered an error inserting a record without variable length data in to the database");
+
+    /* query record without fixed length data */
+    embedDBVarDataStream *varStream = NULL;
+    uint32_t actualFixedLengthData[] = {0, 0, 0};
+    uint32_t expectedFixedLengthData[] = {251, 2938, 55092};
+    int8_t queryResult = embedDBGetVar(state, &key, actualFixedLengthData, &varStream);
+    TEST_ASSERT_EQUAL_INT8_MESSAGE(0, queryResult, "embedDBGetVar was unable to retrieve the record with key 65");
+    TEST_ASSERT_EQUAL_UINT32_ARRAY_MESSAGE(expectedFixedLengthData, actualFixedLengthData, 3, "embedDBGetVar did not return the correct fixed length data for the record with key 65");
+    TEST_ASSERT_NULL_MESSAGE(varStream, "embedDBGetVar should have returned NULL for varDataStream");
+    varStream = NULL;
+
+    /* query record with no fixed length data using regular get */
+    memset(actualFixedLengthData, 0, sizeof(actualFixedLengthData));
+    queryResult = 0;
+    queryResult = embedDBGet(state, &key, actualFixedLengthData);
+    TEST_ASSERT_EQUAL_INT8_MESSAGE(0, queryResult, "embedDBGet was unable to retrieve the record with key 65");
+    TEST_ASSERT_EQUAL_UINT32_ARRAY_MESSAGE(expectedFixedLengthData, actualFixedLengthData, 3, "embedDBGet did not return the correct fixed length data for the record with key 65");
+
+    /* flush and insert more records */
+    embedDBFlush(state);
+    queryResult = 0;
+    memset(actualFixedLengthData, 0, sizeof(actualFixedLengthData));
+    insertResult = insertRecords(312, 241);
+
+    /* query for record again */
+    key = 65;
+    queryResult = embedDBGetVar(state, &key, actualFixedLengthData, &varStream);
+    TEST_ASSERT_EQUAL_INT8_MESSAGE(0, queryResult, "embedDBGetVar was unable to retrieve the record with key 65 after flushing and inserting more records");
+    TEST_ASSERT_EQUAL_UINT32_ARRAY_MESSAGE(expectedFixedLengthData, actualFixedLengthData, 3, "embedDBGetVar did not return the correct fixed length data for the record with key 65 after flushing and inserting more records");
+    TEST_ASSERT_NULL_MESSAGE(varStream, "embedDBGetVar should have returned NULL for varDataStream after flushing and inserting more records");
+
+    queryResult = embedDBGet(state, &key, actualFixedLengthData);
+    TEST_ASSERT_EQUAL_INT8_MESSAGE(0, queryResult, "embedDBGet was unable to retrieve the record with key 65 after flushing and inserting more records");
+    TEST_ASSERT_EQUAL_UINT32_ARRAY_MESSAGE(expectedFixedLengthData, actualFixedLengthData, 3, "embedDBGet did not return the correct fixed length data for the record with key 65 after flushing and inserting more records");
+}
+
+void embedDBGet_should_fetch_records_with_that_have_variable_length_data() {
+    /* insert records */
+    int8_t insertResult = insertRecords(16, 0);
+    TEST_ASSERT_EQUAL_INT8_MESSAGE(0, insertResult, "embedDBPutVar encountered an error inserting records in to the database");
+
+    /* query one of the records */
+    uint32_t key = 15;
+    uint32_t actualFixedLengthData[] = {0, 0, 0};
+    uint32_t expectedFixedLengthData[] = {1039, 0, 0};
+    int8_t queryResult = embedDBGet(state, &key, actualFixedLengthData);
+    TEST_ASSERT_EQUAL_INT8_MESSAGE(0, queryResult, "embedDBGet was unable to retrieve the record for key 15");
+    TEST_ASSERT_EQUAL_UINT32_ARRAY_MESSAGE(expectedFixedLengthData, actualFixedLengthData, 3, "embedDBGet did not return the correct fixed length data for the record with key 15");
+
+    embedDBFlush(state);
+    queryResult = 0;
+    memset(actualFixedLengthData, 0, sizeof(actualFixedLengthData));
+
+    /* try to query the record after flushing */
+    key = 15;
+    queryResult = embedDBGet(state, &key, actualFixedLengthData);
+    TEST_ASSERT_EQUAL_INT8_MESSAGE(0, queryResult, "embedDBGet was unable to retrieve the record for key 15");
+    TEST_ASSERT_EQUAL_UINT32_ARRAY_MESSAGE(expectedFixedLengthData, actualFixedLengthData, 3, "embedDBGet did not return the correct fixed length data for the record with key 15");
+}
 
 int runUnityTests() {
     UNITY_BEGIN();
@@ -339,7 +405,9 @@ int runUnityTests() {
     RUN_TEST(embedDBGetVar_should_return_variable_data_after_reading_records_and_inserting_more_records);
     RUN_TEST(embedDBIterator_should_query_variable_lenth_data_for_fixed_length_records_located_in_the_write_buffer);
     RUN_TEST(embedDBGetVar_should_fetch_records_in_write_buffer_after_flushing_data_to_storage);
-    RUN_TEST(test_insert_retrieve_flush_insert_retrieve_single_record_again);
+    RUN_TEST(embedDBGetVar_should_fetch_record_before_and_after_flush_to_storage);
+    RUN_TEST(embedDBGetVar_should_fetch_record_from_buffer_and_storage_with_no_variable_length_data);
+    RUN_TEST(embedDBGet_should_fetch_records_with_that_have_variable_length_data);
     return UNITY_END();
 }
 

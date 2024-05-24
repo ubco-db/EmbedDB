@@ -1127,7 +1127,7 @@ int8_t embedDBGet(embedDBState *state, void *key, void *data) {
     if (state->nextDataPageId == 0) {
         int8_t success = searchBuffer(state, outputBuffer, key, data);
         if (success != NO_RECORD_FOUND) {
-            return success;
+            return 0;
         }
         return -1;
     }
