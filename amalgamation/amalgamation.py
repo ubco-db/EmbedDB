@@ -521,14 +521,14 @@ def create_amalgamation(files, isCpp):
     for file in files:
         if isinstance(file, FileNode):
             filename = (
-                    "/************************************************************"
-                    + file.file_name
-                    + "************************************************************/\n"
+                "/************************************************************"
+                + file.file_name
+                + "************************************************************/\n"
             )
             # .cpp compiler must treat .c source code to prevent name mangling etc.
             if isCpp == True and file.file_ext == ".c":
                 amalgamation += (
-                        filename + openExtern + file.contents + closeExtern + "\n"
+                    filename + openExtern + file.contents + closeExtern + "\n"
                 )
             else:
                 amalgamation += filename + file.contents + "\n"
@@ -607,7 +607,7 @@ class FileNode:
 
 
 def amalgamate(
-        dir, c_lib, file_name, isCpp=False, save_directory=None, split_header_files=True
+    dir, c_lib, file_name, isCpp=False, save_directory=None, split_header_files=True
 ):
     """
     Amalgmates C source code similar to SQLite https://sqlite.org/amalgamation.html
@@ -690,9 +690,10 @@ def main():
     EMBEDDB = os.path.join(PROJECT_ROOT, "src", "embedDB")
     QUERY_INTERFCE = os.path.join(PROJECT_ROOT, "src", "query-interface")
     SPLINE = os.path.join(PROJECT_ROOT, "src", "spline")
+    OUTPUT_DIRECTORY = os.path.join(PROJECT_ROOT, "src", "distribution")
     # create standard embedDB amalgamation
     amalgamate(
-        [EMBEDDB, QUERY_INTERFCE, SPLINE], aud_stand, "embedDB", False, PROJECT_ROOT
+        [EMBEDDB, QUERY_INTERFCE, SPLINE], aud_stand, "embedDB", False, OUTPUT_DIRECTORY
     )
 
 

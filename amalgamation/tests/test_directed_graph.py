@@ -10,13 +10,15 @@ import amalgamation as source
 
 
 class TestDirectedGraph(unittest.TestCase):
-    # Test specific directories
-    current_dir = os.path.dirname(os.path.abspath(__file__))
-    test_files = os.path.join(current_dir, "test_files")
-    embedDB = os.path.join(current_dir, "test_files", "EmbedDB")  # test files embedDB
-
+    # TODO: Need to fix all tests in this file, they were not ported properly
     PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
-    PROJECT_EMBEDDB = os.path.join(PROJECT_ROOT, "embedDB")
+    EMBEDDB = os.path.join(PROJECT_ROOT, "src", "embedDB")
+    QUERY_INTERFCE = os.path.join(PROJECT_ROOT, "src", "query-interface")
+    SPLINE = os.path.join(PROJECT_ROOT, "src", "spline")
+
+    # Test specific directories
+    # TODO: add utility functions directory to this list
+    source_code_directories = [EMBEDDB, QUERY_INTERFCE, SPLINE]
 
     c_stand_w_arduino = {
         "#include <assert.h>",
@@ -91,10 +93,12 @@ class TestDirectedGraph(unittest.TestCase):
 
     def test_retrieve_source_set(self):
         """
-        This test ensures that the retrieve_source_set function returns a set for all of the header and .c files
+        This test ensures that the retrieve_source_set function returns a set all the header and .c files
         """
 
-        master_h_test = source.retrieve_source_set(self.embedDB, "h")
+        # TODO: fix test, it is not actually checking that all the needed files names are here
+        master_h_test = source.retrieve_source_set(self.source_code_directories, "h")
+        retrieved_file_names = [file.file_name for file in master_h_test]
 
         test_h_result = {
             "advancedQueries.h",
@@ -109,7 +113,8 @@ class TestDirectedGraph(unittest.TestCase):
             file = h.file_name
             self.assertEqual(file in test_h_result, True)
 
-        master_c_test = source.retrieve_source_set(self.embedDB, "c")
+
+        master_c_test = source.retrieve_source_set(self.source_code_directories, "c")
 
         test_c_result = {
             "advancedQueries.c",
@@ -142,14 +147,14 @@ class TestDirectedGraph(unittest.TestCase):
         }
 
         # set of objects containing source files (fileNode)
-        master_h = source.retrieve_source_set(self.embedDB, "h")
-        master_c = source.retrieve_source_set(self.embedDB, "c")
+        master_h = source.retrieve_source_set(self.source_code_directories, "h")
+        master_c = source.retrieve_source_set(self.source_code_directories, "c")
 
         # set of c-standard library that the amaglamation requires
         c_standard_dep = source.combine_c_standard_lib([master_h, master_c])
 
         # test
-        self.assertEqual(expected_results == c_standard_dep, True)
+        self.assertTrue(expected_results == c_standard_dep)
 
     def test_create_dir_graph(self):
         expected_graph = {
@@ -162,7 +167,7 @@ class TestDirectedGraph(unittest.TestCase):
         }
 
         # get headers
-        master_h = source.retrieve_source_set(self.embedDB, "h")
+        master_h = source.retrieve_source_set(self.source_code_directories, "h")
 
         # create directed graph
         directed_graph = source.create_directed_graph(master_h)
@@ -176,7 +181,7 @@ class TestDirectedGraph(unittest.TestCase):
         """
 
         # get headers
-        master_h = source.retrieve_source_set(self.embedDB, "h")
+        master_h = source.retrieve_source_set(self.source_code_directories, "h")
 
         # create directed graph
         directed_graph = source.create_directed_graph(master_h)
@@ -249,7 +254,7 @@ class TestDirectedGraph(unittest.TestCase):
         """
 
         # Get headers
-        master_h = source.retrieve_source_set(self.embedDB, "h")
+        master_h = source.retrieve_source_set(self.source_code_directories, "h")
 
         # Create directed graph
         directed_graph = source.create_directed_graph(master_h)
