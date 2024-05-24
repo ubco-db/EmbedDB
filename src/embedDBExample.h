@@ -123,7 +123,7 @@ void embedDBExample() {
     }
 
     // Iterating over 10 fixed-length records
-    printf("******************* Iterating over %d fixed-length records using embedDBNext() ********************\n", totalRecordsInserted);
+    printf("******************* Iterating over %d fixed-length records using embedDBNext() ********************\n", 10);
 
     // declare EmbedDB iterator.
     embedDBIterator it;
@@ -136,7 +136,7 @@ void embedDBExample() {
 
     // specify min and max key to perform search on.
     uint32_t minKey = 0;
-    uint32_t maxKey = totalRecordsInserted - 1;  // iterating over all records
+    uint32_t maxKey = 9;  // iterating over all records
 
     // initalize buffer variables.
     it.minKey = &minKey;
