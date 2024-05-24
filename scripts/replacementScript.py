@@ -39,8 +39,13 @@ from os.path import join
 os.chdir("/home/runner")
 
 # Location of the variant folder in the platformio installation on the runner machine
-FRAMEWORK_DIR = join(".platformio", "packages",
-                     "framework-arduino-samd-adafruit", "variants", "feather_m0")
+FRAMEWORK_DIR = join(
+    ".platformio",
+    "packages",
+    "framework-arduino-samd-adafruit",
+    "variants",
+    "feather_m0",
+)
 
 # location of custom variant files in project
 VARIANT_DIR = join("work", "iondb", "iondb", "variant")
