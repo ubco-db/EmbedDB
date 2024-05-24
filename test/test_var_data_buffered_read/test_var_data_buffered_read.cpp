@@ -283,41 +283,45 @@ void test_insert_retrieve_flush_insert_retrieve_single_record_again(void) {
 
     // retrieve record
     int key = 2;
-    uint32_t expData[] = {0, 0, 0};
+    uint32_t actualFixedLengthData[] = {0, 0, 0};
     uint32_t varBufSize = 20;
     char varDataBuffer[20];
     uint32_t expectedDataSize = 14;
+    uint32_t expectedFixedLengthData[] = {1026, 0, 0};
 
     // create var data stream
     embedDBVarDataStream *varStream = NULL;
 
-    // query embedDB
-    int8_t r = embedDBGetVar(state, &key, &expData, &varStream);
-    TEST_ASSERT_EQUAL_INT_MESSAGE(r, 0, "Records should have been found.");
+    /* query database for record */
+    int8_t r = embedDBGetVar(state, &key, &actualFixedLengthData, &varStream);
+    TEST_ASSERT_EQUAL_INT8_MESSAGE(r, 0, "embedDBGetVar was unable to retrieve the record with key 2");
+    TEST_ASSERT_EQUAL_UINT32_ARRAY_MESSAGE(expectedFixedLengthData, actualFixedLengthData, 3, "embedDBGetVar did not retrieve the correct fixed length data for the record with key 2");
 
-    // retrieve variable record
+    /* retrieve variable length portion of record */
     uint32_t bytesRead = embedDBVarDataStreamRead(state, varStream, varDataBuffer, varBufSize);
     char varData[] = "Testing 002...";
-    // test
-    TEST_ASSERT_EQUAL_UINT32_MESSAGE(expectedDataSize, bytesRead, "Returned vardata was not the right length");
-    TEST_ASSERT_EQUAL_CHAR_ARRAY_MESSAGE(varData, varDataBuffer, expectedDataSize, "embedDBGetVar did not return the correct vardata");
+
+    /* test that the returned values are correct */
+    TEST_ASSERT_EQUAL_UINT32_MESSAGE(expectedDataSize, bytesRead, "embedDBGetVar did not return the right length of variable length data for the record with key 2");
+    TEST_ASSERT_EQUAL_CHAR_ARRAY_MESSAGE(varData, varDataBuffer, expectedDataSize, "embedDBGetVar did not return the correct variable length data for the record with key 2");
 
     /* tear down */
     free(varStream);
     varStream = NULL;
 
-    // free and flush
+    /* flush data to storage */
     embedDBFlush(state);
 
-    // insert more records
+    /* insert more records in to our database */
     insertRecords(55, 3);
-    // create buffer for input
-    r = embedDBGetVar(state, &key, &expData, &varStream);
-    // test that records are found
-    TEST_ASSERT_EQUAL_INT_MESSAGE(0, r, "Records should have been found");
-    // retrieve variable record
+
+    /* query database for the same record that should now be located in storage */
+    r = embedDBGetVar(state, &key, &actualFixedLengthData, &varStream);
+    TEST_ASSERT_EQUAL_INT8_MESSAGE(0, r, "embedDBGetVar was unable to retrieve the record with key 2 after flushing it to storage");
+    TEST_ASSERT_EQUAL_UINT32_ARRAY_MESSAGE(expectedFixedLengthData, actualFixedLengthData, 3, "embedDBGetVar did not retrieve the correct fixed length data for the record with key 2 after it was flushed to storage");
+
+    /* check that the vardata is correct */
     bytesRead = embedDBVarDataStreamRead(state, varStream, varDataBuffer, varBufSize);
-    // test
     TEST_ASSERT_EQUAL_UINT32_MESSAGE(expectedDataSize, bytesRead, "Returned vardata was not the right length");
     TEST_ASSERT_EQUAL_CHAR_ARRAY_MESSAGE(varData, varDataBuffer, expectedDataSize, "embedDBGetVar did not return the correct vardata");
 
