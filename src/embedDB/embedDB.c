@@ -1094,7 +1094,6 @@ int8_t linearSearch(embedDBState *state, int16_t *numReads, void *buf, void *key
  * @param   buffer  pointer to embedDB buffer
  * @param	key		Key for record
  * @param	data	Pre-allocated memory to copy data for record
- * @param   range
  * @return	Return non-negative integer representing offset if success. Non-zero value if error.
  */
 int8_t searchBuffer(embedDBState *state, void *buffer, void *key, void *data) {
@@ -1127,11 +1126,9 @@ int8_t embedDBGet(embedDBState *state, void *key, void *data) {
     void *outputBuffer = state->buffer;
     if (state->nextDataPageId == 0) {
         int8_t success = searchBuffer(state, outputBuffer, key, data);
-        if (success != NO_RECORD_FOUND) return success;
-
-#ifdef PRINT_ERRORS
-        printf("ERROR: No data in database.\n");
-#endif
+        if (success != NO_RECORD_FOUND) {
+            return 0;
+        }
         return -1;
     }
 
@@ -1284,8 +1281,9 @@ int8_t embedDBGetVar(embedDBState *state, void *key, void *data, embedDBVarDataS
     }
     void *outputBuffer = (int8_t *)state->buffer;
 
-    // search output buffer for recrd, mem copy fixed record into data
-    int recordNum = searchBuffer(state, outputBuffer, key, data);
+    // search output buffer for record, mem copy fixed record into data
+    int8_t recordNum = searchBuffer(state, outputBuffer, key, data);
+
     // if there are records found in the output buffer
     if (recordNum != NO_RECORD_FOUND) {
         // flush variable record buffer to storage to read later on
