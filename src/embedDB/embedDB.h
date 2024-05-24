@@ -261,8 +261,7 @@ typedef enum {
  * @param	indexMaxError	Max error of indexing structure (spline)
  * @return	Return 0 if success. Non-zero value if error.
  */
-int8_t
-embedDBInit(embedDBState *state, size_t indexMaxError);
+int8_t embedDBInit(embedDBState *state, size_t indexMaxError);
 
 /* Constructors */
 /**

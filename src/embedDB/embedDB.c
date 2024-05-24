@@ -1315,6 +1315,7 @@ int8_t embedDBGetVar(embedDBState *state, void *key, void *data, embedDBVarDataS
 
     return -1;
 }
+
 /**
  * @brief	Initialize iterator on embedDB structure.
  * @param	state	embedDB algorithm state structure
@@ -1498,7 +1499,7 @@ int8_t embedDBNext(embedDBState *state, embedDBIterator *it, void *key, void *da
             if (it->minData != NULL && state->compareData(data, it->minData) < 0)
                 continue;
             if (it->maxData != NULL && state->compareData(data, it->maxData) > 0)
-                continue;  // shouldn't this also return 0?
+                continue;
 
             // If we make it here, the record matches the query
             return 1;
@@ -1512,15 +1513,6 @@ int8_t embedDBNext(embedDBState *state, embedDBIterator *it, void *key, void *da
     }
 }
 
-/**
- * @brief	Return next key, data, variable data set for iterator
- * @param	state	embedDB algorithm state structure
- * @param	it		embedDB iterator state structure
- * @param	key		Return variable for key (Pre-allocated)
- * @param	data	Return variable for data (Pre-allocated)
- * @param	varData	Return variable for variable data as a embedDBVarDataStream (Unallocated). Returns NULL if no variable data. **Be sure to free the stream after you are done with it**
- * @return	1 if successful, 0 if no more records
- */
 /**
  * @brief	Return next key, data, variable data set for iterator
  * @param	state	embedDB algorithm state structure
