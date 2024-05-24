@@ -73,118 +73,156 @@ void tearDown(void) {
 }
 
 void embedDBGet_should_return_data_when_single_record_inserted_and_flushed_to_storage(void) {
-    // create a key
+    /* key to insert */
     uint32_t key = 1;
-    // save to buffer
+
+    /* insert in to database */
     insertStaticRecord(state, key, 123);
-    // flush to file storage
+
+    /* flush to storage */
     embedDBFlush(state);
-    // query data
-    uint32_t return_data[] = {0, 0, 0};
-    embedDBGet(state, &key, return_data);
-    // test
-    TEST_ASSERT_EQUAL_UINT32_MESSAGE(123, *return_data, "embedDBGet did not return the expected data for the provided key");
+
+    /* query record */
+    uint32_t actualData[] = {0, 0, 0};
+    int8_t getResult = embedDBGet(state, &key, actualData);
+
+    /* test query was successful and returned data is corrrect */
+    uint32_t expectedData[] = {123, 0, 0};
+    TEST_ASSERT_EQUAL_UINT8_MESSAGE(0, getResult, "embedDBGet was unable to return the record with key 1");
+    TEST_ASSERT_EQUAL_UINT32_ARRAY_MESSAGE(expectedData, actualData, 3, "embedDBGet did not return the expected data for the record with key 1");
 }
 
 void embedDBGet_should_return_data_when_multiple_records_inserted_and_flushed_to_storage(void) {
-    int numInserts = 100;
-    for (int i = 0; i < numInserts; ++i) {
+    /* insert records */
+    uint32_t numInserts = 100;
+    for (uint32_t i = 0; i < numInserts; ++i) {
         insertStaticRecord(state, i, (i + 100));
     }
+    /* flush records to storage */
     embedDBFlush(state);
+
+    /* query inserted record */
     uint32_t key = 93;
-    uint32_t return_data[] = {0, 0, 0};
-    embedDBGet(state, &key, return_data);
-    TEST_ASSERT_EQUAL_MESSAGE(193, *return_data, "Unable to retrieve data which was written to storage");
+    uint32_t actualData[] = {0, 0, 0};
+    int8_t getResult = embedDBGet(state, &key, actualData);
+
+    /* test that record is returned with correct data */
+    uint32_t expectedData[] = {193, 0, 0};
+    TEST_ASSERT_EQUAL_INT8_MESSAGE(0, getResult, "embedDBGet was unable to return the record with key 93");
+    TEST_ASSERT_EQUAL_UINT32_ARRAY_MESSAGE(expectedData, actualData, 3, "embedDBGet did not return the correct data for the record with key 93");
 }
 
 void embedDBGet_should_return_data_for_record_in_write_buffer(void) {
-    // create a key
+    /* insert record in to database */
     uint32_t key = 1;
-    // save to buffer
-    insertStaticRecord(state, key, 123);
-    // query data
-    uint32_t return_data[] = {0, 0, 0};
-    embedDBGet(state, &key, return_data);
-    // test
-    TEST_ASSERT_EQUAL_UINT32_MESSAGE(123, *return_data, "embedDBGet was unable to retrieve data still located in the write buffer");
+    insertStaticRecord(state, key, 245);
+
+    /* query record */
+    uint32_t actualData[] = {0, 0, 0};
+    int8_t getResult = embedDBGet(state, &key, actualData);
+
+    /* test get was successful */
+    uint32_t expectedData[] = {245, 0, 0};
+    TEST_ASSERT_EQUAL_INT8_MESSAGE(0, getResult, "embedDBGet was unable to return the record with key 100");
+    TEST_ASSERT_EQUAL_UINT32_ARRAY_MESSAGE(expectedData, actualData, 3, "embedDBGet did not retrieve the correct data for the record with key 1");
 }
 
 void embedDBGet_should_return_data_for_record_when_multiple_records_are_inserted_in_write_buffer(void) {
+    /* insert records */
     uint32_t numInserts = 31;
     for (uint32_t i = 0; i < numInserts; ++i) {
         insertStaticRecord(state, i, (i + 100));
     }
+
+    /* query records */
     uint32_t key = 30;
     uint32_t return_data[] = {0, 0, 0};
-    embedDBGet(state, &key, return_data);
-    TEST_ASSERT_EQUAL_UINT32_MESSAGE(130, *return_data, "embedDBGet was unable to retrieve the data for one of the records located in the write buffer");
+    int8_t getResult = embedDBGet(state, &key, return_data);
+
+    /* test that get was successful */
+    uint32_t expectedData[] = {130, 0, 0};
+    TEST_ASSERT_EQUAL_UINT8_MESSAGE(0, getResult, "embedDBGat was unable to retrieve the record for key 30");
+    TEST_ASSERT_EQUAL_UINT32_ARRAY_MESSAGE(expectedData, return_data, 3, "embedDBGet did not return the correct data for the record with key 30");
 }
 
 void embedDBGet_should_return_data_for_records_in_file_storage_and_write_buffer(void) {
-    // create a key
+    /* insert record */
     uint32_t key = 1;
-    // save to buffer
     insertStaticRecord(state, key, 154);
-    // query data
-    uint32_t return_data[] = {0, 0, 0};
-    embedDBGet(state, &key, return_data);
-    // test record is in buffer
-    TEST_ASSERT_EQUAL_UINT32_MESSAGE(154, *return_data, "embedDBGet was unable to retrieve the data for a record located in the write buffer");
-    // flush
+
+    /* query record */
+    uint32_t actualData[] = {0, 0, 0};
+    int8_t getResult = embedDBGet(state, &key, actualData);
+
+    /* test get was successful */
+    uint32_t expectedData[] = {154, 0, 0};
+    TEST_ASSERT_EQUAL_INT8_MESSAGE(0, getResult, "embedDBGet was unable to retrieve the record for key 1");
+    TEST_ASSERT_EQUAL_UINT32_ARRAY_MESSAGE(expectedData, actualData, 3, "embedDBGet did not return the correct data for the record with key 1");
+
+    /* flush record to storage */
     embedDBFlush(state);
-    // insert another record
+
+    /* insert another record */
     key = 2;
     insertStaticRecord(state, key, 12345);
-    embedDBGet(state, &key, return_data);
-    // test second record is retrieved from buffer
-    TEST_ASSERT_EQUAL_UINT32_MESSAGE(12345, *return_data, "embedDBGet was unable to retrieve the data for a record located in the write buffer");
-    // check if first record is retrieved from file storage
+
+    /* query new record */
+    getResult = embedDBGet(state, &key, actualData);
+
+    /* test that get for second record was successful */
+    TEST_ASSERT_EQUAL_INT8_MESSAGE(0, getResult, "embedDBGet was unable to retrieve the record for key 2");
+    expectedData[0] = 12345;
+    TEST_ASSERT_EQUAL_UINT32_ARRAY_MESSAGE(expectedData, actualData, 3, "embedDBGet did not return the correct data for the record with key 2");
+
+    /* test that the first record can still be retrieved correctly */
     key = 1;
-    embedDBGet(state, &key, return_data);
-    TEST_ASSERT_EQUAL_UINT32_MESSAGE(154, *return_data, "embedDBGet was unable to retrieve the data for a record written to file storage after being queried in the buffer");
+    getResult = embedDBGet(state, &key, actualData);
+    TEST_ASSERT_EQUAL_INT8_MESSAGE(0, getResult, "embedDbGet was unable to retrieve the record for key 1 after flushing it to storage and inserting another record in to the write buffer");
+    expectedData[0] = 154;
+    TEST_ASSERT_EQUAL_UINT32_ARRAY_MESSAGE(expectedData, actualData, 3, "embedDBGet did not return the correct data for the record with key 1 after flushing it to storage and inserting another record in to the write buffer");
 }
 
 void embedDBGet_should_return_no_data_when_requested_key_greater_than_max_buffer_key(void) {
-    // flush database to ensure nextDataPageId is > 0
+    /* flush database so nextDataPageId > 0*/
     embedDBFlush(state);
-    // insert random records
+
+    /* insert records */
     uint32_t numInserts = 8;
     for (uint32_t i = 0; i < numInserts; ++i) {
         insertStaticRecord(state, i, (i + 100));
     }
-    // query for max key not in database
+
+    /* query for key greater than max key in database */
     uint32_t key = 55;
     u_int32_t return_data[] = {0, 0, 0};
-    // test if embedDBGet can't retrieve data
-    TEST_ASSERT_EQUAL_INT8_MESSAGE(-1, embedDBGet(state, &key, return_data), "embedDBGet returned data for a key that should not exist in the database");
+    TEST_ASSERT_EQUAL_INT8_MESSAGE(-1, embedDBGet(state, &key, return_data), "embedDBGet returned data for a key greater than the maximum key in the database");
+
+    key = 8;
+    TEST_ASSERT_EQUAL_INT8_MESSAGE(-1, embedDBGet(state, &key, return_data), "embedDBGet returned data for a key greater than the maximum key in the database");
 }
 
 void embedDBGet_should_return_not_found_when_key_is_less_then_min_key(void) {
-    // flush database to ensure nextDataPageId is > 0
+    /* flush database so nextDataPageId > 0*/
     embedDBFlush(state);
-    // insert random records
+
+    /* insert some records */
     uint32_t numInserts = 8;
     for (uint32_t i = 1; i <= numInserts; ++i) {
         insertStaticRecord(state, i, (i + 100));
     }
-    // query for max key not in database
+
+    /* query for key lower then the min key in the database */
     uint32_t key = 0;
-    u_int32_t return_data[] = {0, 0, 0};
-    // test if embedDBGet can't retrieve data
-    TEST_ASSERT_EQUAL_INT8_MESSAGE(-1, embedDBGet(state, &key, return_data), "embedDBGet returned data for a key that is less than the min key in the database");
+    u_int32_t actualData[] = {0, 0, 0};
+    TEST_ASSERT_EQUAL_INT8_MESSAGE(-1, embedDBGet(state, &key, actualData), "embedDBGet returned data for a key that is less than the minimum key in the database");
 }
 
 void embedDBGet_should_return_no_data_found_when_database_and_buffer_are_empty(void) {
-    // create a key
+    /* query for key when database is empty */
     uint32_t key = 1;
-    // allocate dataSize record in heap
-    void* temp = calloc(1, state->dataSize);
-    // query embedDB and returun pointer
-    int8_t status = embedDBGet(state, &key, (void*)temp);
-    // test
+    u_int32_t actualData[] = {0, 0, 0};
+    int8_t status = embedDBGet(state, &key, actualData);
     TEST_ASSERT_EQUAL_INT8_MESSAGE(-1, status, "embedDBGet returned data when there were no keys in the database or write buffer");
-    free(temp);
 }
 
 int runUnityTests() {
