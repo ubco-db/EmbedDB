@@ -9,8 +9,8 @@ GLOBAL VARIABLES: DO NOT EDIT
 """
 
 # REGEX
-REGEX_INCLUDE = '\s*#include ((<[^>]+>)|("[^"]+"))'  # https://stackoverflow.com/questions/1420017/regular-expression-to-match-c-include-file
-REGEX_COMMENTS = "//.*?\n|/\*.*?\*/"
+REGEX_INCLUDE = r'\s*#include ((<[^>]+>)|("[^"]+"))'  # https://stackoverflow.com/questions/1420017/regular-expression-to-match-c-include-file
+REGEX_COMMENTS = r"//.*?\n|/\*.*?\*/"
 
 # Ask Ramon how he would like these dealt with
 DEFINE_SEARCH_METHOD_REGEX = "#define SEARCH_METHOD [1-9]"
