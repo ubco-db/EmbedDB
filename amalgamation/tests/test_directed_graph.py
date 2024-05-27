@@ -154,7 +154,8 @@ class TestDirectedGraph(unittest.TestCase):
     def test_create_dir_graph(self):
         expected_graph = {
             "embedDB.h": {"radixspline.h", "spline.h"},
-            "utilityFunctions.h": {"embedDB.h"},
+            # TODO: might need to modify this depending on what happens with default constructor
+            "embedDBUtility.h": {"embedDB.h"},
             "advancedQueries.h": {"embedDB.h", "schema.h"},
             "schema.h": set(),
             "radixspline.h": {"spline.h"},
@@ -168,7 +169,7 @@ class TestDirectedGraph(unittest.TestCase):
         directed_graph = source.create_directed_graph(master_h)
 
         # test
-        self.assertEqual(expected_graph == directed_graph, True)
+        self.assertEqual(expected_graph, directed_graph)
 
     def test_dfs_at_node_embedDB(self):
         """
