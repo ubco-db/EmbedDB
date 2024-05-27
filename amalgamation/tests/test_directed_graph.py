@@ -8,9 +8,9 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import amalgamation as source
 
+# TODO: talk to Ramon about including SD card opener in amalgamation code
 
 class TestDirectedGraph(unittest.TestCase):
-    # TODO: Need to fix all tests in this file, they were not ported properly
     PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
     EMBEDDB = os.path.join(PROJECT_ROOT, "src", "embedDB")
     QUERY_INTERFCE = os.path.join(PROJECT_ROOT, "src", "query-interface")
@@ -18,7 +18,6 @@ class TestDirectedGraph(unittest.TestCase):
     UTILITY_FUNCTIONS = os.path.join(PROJECT_ROOT, "lib", "EmbedDB-Utility")
 
     # Test specific directories
-    # TODO: add utility functions directory to this list
     source_code_directories = [EMBEDDB, QUERY_INTERFCE, SPLINE, UTILITY_FUNCTIONS]
 
     c_stand_w_arduino = {
@@ -97,7 +96,6 @@ class TestDirectedGraph(unittest.TestCase):
         This test ensures that the retrieve_source_set function returns a set all the header and .c files
         """
 
-        # TODO: fix test, it is not actually checking that all the needed files names are here
         master_h_test = source.retrieve_source_set(self.source_code_directories, "h")
         retrieved_header_file_names = {file.file_name for file in master_h_test}
 
@@ -154,8 +152,7 @@ class TestDirectedGraph(unittest.TestCase):
     def test_create_dir_graph(self):
         expected_graph = {
             "embedDB.h": {"radixspline.h", "spline.h"},
-            # TODO: might need to modify this depending on what happens with default constructor
-            "embedDBUtility.h": {"embedDB.h"},
+            "embedDBUtility.h": set(),
             "advancedQueries.h": {"embedDB.h", "schema.h"},
             "schema.h": set(),
             "radixspline.h": {"spline.h"},

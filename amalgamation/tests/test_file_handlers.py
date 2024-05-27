@@ -9,7 +9,7 @@ import amalgamation as source
 
 """
 Purpose of this test suite is to test the functionality of opening, searching, combining, and saving files. 
-Since the glob is part of the default Python library: opening and saving files are not tested exstensively.
+Since the glob is part of the default Python library: opening and saving files are not tested extensively.
 """
 
 
