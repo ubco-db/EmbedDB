@@ -14,12 +14,17 @@ class TestRead(unittest.TestCase):
     This test suite is responsible for testing the cleaning functionality of the amalgamation
     """
 
-    REGEX_INCLUDE = '\s*#include ((<[^>]+>)|("[^"]+"))'
+    REGEX_INCLUDE = r'\s*#include ((<[^>]+>)|("[^"]+"))'
     REGEX_DEFINE = "r'(?m)^#define (?:.*\\\r?\n)*.*$'"
+    PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
+    EMBEDDB = os.path.join(PROJECT_ROOT, "src", "embedDB")
+    QUERY_INTERFCE = os.path.join(PROJECT_ROOT, "src", "query-interface")
+    SPLINE = os.path.join(PROJECT_ROOT, "src", "spline")
+    UTILITY_FUNCTIONS = os.path.join(PROJECT_ROOT, "lib", "EmbedDB-Utility")
 
     current_dir = os.path.dirname(os.path.abspath(__file__))
     test_files = os.path.join(current_dir, "test_files")
-    embedDB_files = os.path.join(current_dir, "test_files", "EmbedDB")
+    source_code_directories = os.path.join(current_dir, "test_files", "EmbedDB")
 
     c_stand = {
         "#include <assert.h>",
@@ -128,7 +133,7 @@ class TestRead(unittest.TestCase):
         Test retrieves includes from an actual source file
         """
 
-        c_file_directoy = os.path.join(self.embedDB_files, "embedDB.c")
+        c_file_directoy = os.path.join(self.EMBEDDB, "embedDB.c")
         read_c_file = source.read_file(c_file_directoy)
 
         result = source.retrieve_pattern_from_source(read_c_file, self.REGEX_INCLUDE)
@@ -146,7 +151,7 @@ class TestRead(unittest.TestCase):
             '#include "../spline/spline.h"',
         }
 
-        self.assertEqual(result, expected_result)
+        self.assertEqual(expected_result, result)
 
     def test_primitive_remove_include(self):
         """
@@ -205,7 +210,7 @@ class TestRead(unittest.TestCase):
         total = set()
 
         # read file
-        c_file_directoy = os.path.join(self.embedDB_files, "embedDB.c")
+        c_file_directoy = os.path.join(self.EMBEDDB, "embedDB.c")
         read_c_file = source.read_file(c_file_directoy)
 
         # extract
