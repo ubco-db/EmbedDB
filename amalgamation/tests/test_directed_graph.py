@@ -15,10 +15,11 @@ class TestDirectedGraph(unittest.TestCase):
     EMBEDDB = os.path.join(PROJECT_ROOT, "src", "embedDB")
     QUERY_INTERFCE = os.path.join(PROJECT_ROOT, "src", "query-interface")
     SPLINE = os.path.join(PROJECT_ROOT, "src", "spline")
+    UTILITY_FUNCTIONS = os.path.join(PROJECT_ROOT, "lib", "EmbedDB-Utility")
 
     # Test specific directories
     # TODO: add utility functions directory to this list
-    source_code_directories = [EMBEDDB, QUERY_INTERFCE, SPLINE]
+    source_code_directories = [EMBEDDB, QUERY_INTERFCE, SPLINE, UTILITY_FUNCTIONS]
 
     c_stand_w_arduino = {
         "#include <assert.h>",
@@ -98,36 +99,30 @@ class TestDirectedGraph(unittest.TestCase):
 
         # TODO: fix test, it is not actually checking that all the needed files names are here
         master_h_test = source.retrieve_source_set(self.source_code_directories, "h")
-        retrieved_file_names = [file.file_name for file in master_h_test]
+        retrieved_header_file_names = {file.file_name for file in master_h_test}
 
-        test_h_result = {
+        expected_header_file_names = {
             "advancedQueries.h",
             "embedDB.h",
             "radixspline.h",
             "schema.h",
             "spline.h",
-            "utilityFunctions.h",
+            "embedDBUtility.h",
         }
-
-        for h in master_h_test:
-            file = h.file_name
-            self.assertEqual(file in test_h_result, True)
-
+        self.assertEqual(expected_header_file_names, retrieved_header_file_names)
 
         master_c_test = source.retrieve_source_set(self.source_code_directories, "c")
+        retrieved_c_file_names = {file.file_name for file in master_c_test}
 
-        test_c_result = {
+        expected_c_file_names = {
             "advancedQueries.c",
-            "utilityFunctions.c",
+            "embedDBUtility.c",
             "embedDB.c",
             "radixspline.c",
             "schema.c",
             "spline.c",
         }
-
-        for c in master_c_test:
-            file = c.file_name
-            self.assertEqual(file in test_c_result, True)
+        self.assertEqual(expected_c_file_names, retrieved_c_file_names)
 
     def test_combine_c_standard_lib_embedDB(self):
         """
@@ -154,7 +149,7 @@ class TestDirectedGraph(unittest.TestCase):
         c_standard_dep = source.combine_c_standard_lib([master_h, master_c])
 
         # test
-        self.assertTrue(expected_results == c_standard_dep)
+        self.assertEqual(expected_results, c_standard_dep)
 
     def test_create_dir_graph(self):
         expected_graph = {
