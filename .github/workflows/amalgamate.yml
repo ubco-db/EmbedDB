@@ -32,9 +32,10 @@ jobs:
       - name: Lint
         uses: wearerequired/lint-action@v2
         with:
-          clang_format: true
+          clang_format_auto_fix: true
           clang_format_dir: distribution/
           check_name: lint distribution
+          commit: false
 
       - name: Check for changes
         id: git_diff
