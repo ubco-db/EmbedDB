@@ -14,13 +14,13 @@ from amalgamation.tests.test_helper_functions import suppress_output
 
 class TestDirectedGraph(unittest.TestCase):
     PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
-    EMBEDDB = os.path.join(PROJECT_ROOT, "src", "embedDB")
-    QUERY_INTERFCE = os.path.join(PROJECT_ROOT, "src", "query-interface")
+    EMBED_DB = os.path.join(PROJECT_ROOT, "src", "embedDB")
+    QUERY_INTERFACE = os.path.join(PROJECT_ROOT, "src", "query-interface")
     SPLINE = os.path.join(PROJECT_ROOT, "src", "spline")
     UTILITY_FUNCTIONS = os.path.join(PROJECT_ROOT, "lib", "EmbedDB-Utility")
 
     # Test specific directories
-    source_code_directories = [EMBEDDB, QUERY_INTERFCE, SPLINE, UTILITY_FUNCTIONS]
+    source_code_directories = [EMBED_DB, QUERY_INTERFACE, SPLINE, UTILITY_FUNCTIONS]
 
     c_stand_w_arduino = {
         "#include <assert.h>",

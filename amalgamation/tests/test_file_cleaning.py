@@ -18,8 +18,8 @@ class TestRead(unittest.TestCase):
     REGEX_INCLUDE = r'\s*#include ((<[^>]+>)|("[^"]+"))'
     REGEX_DEFINE = "r'(?m)^#define (?:.*\\\r?\n)*.*$'"
     PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
-    EMBEDDB = os.path.join(PROJECT_ROOT, "src", "embedDB")
-    QUERY_INTERFCE = os.path.join(PROJECT_ROOT, "src", "query-interface")
+    EMBED_DB = os.path.join(PROJECT_ROOT, "src", "embedDB")
+    QUERY_INTERFACE = os.path.join(PROJECT_ROOT, "src", "query-interface")
     SPLINE = os.path.join(PROJECT_ROOT, "src", "spline")
     UTILITY_FUNCTIONS = os.path.join(PROJECT_ROOT, "lib", "EmbedDB-Utility")
 
@@ -134,7 +134,7 @@ class TestRead(unittest.TestCase):
         Test retrieves includes from an actual source file
         """
 
-        c_file_directoy = os.path.join(self.EMBEDDB, "embedDB.c")
+        c_file_directoy = os.path.join(self.EMBED_DB, "embedDB.c")
         read_c_file = read_file(c_file_directoy)
 
         result = retrieve_pattern_from_source(read_c_file, self.REGEX_INCLUDE)
@@ -211,7 +211,7 @@ class TestRead(unittest.TestCase):
         total = set()
 
         # read file
-        c_file_directoy = os.path.join(self.EMBEDDB, "embedDB.c")
+        c_file_directoy = os.path.join(self.EMBED_DB, "embedDB.c")
         read_c_file = read_file(c_file_directoy)
 
         # extract

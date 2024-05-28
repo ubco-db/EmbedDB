@@ -686,14 +686,19 @@ def amalgamate(
 
 def main():
     # Load directories
-    PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    EMBEDDB = os.path.join(PROJECT_ROOT, "src", "embedDB")
-    QUERY_INTERFCE = os.path.join(PROJECT_ROOT, "src", "query-interface")
-    SPLINE = os.path.join(PROJECT_ROOT, "src", "spline")
-    OUTPUT_DIRECTORY = os.path.join(PROJECT_ROOT, "src", "distribution")
+    project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    embed_db = os.path.join(project_root, "src", "embedDB")
+    query_interface = os.path.join(project_root, "src", "query-interface")
+    spline = os.path.join(project_root, "src", "spline")
+    utility = os.path.join(project_root, "lib", "EmbedDB-Utility")
+    output_directory = os.path.join(project_root, "distribution")
     # create standard embedDB amalgamation
     amalgamate(
-        [EMBEDDB, QUERY_INTERFCE, SPLINE], aud_stand, "embedDB", False, OUTPUT_DIRECTORY
+        [embed_db, query_interface, spline, utility],
+        aud_stand,
+        "embedDB",
+        False,
+        output_directory,
     )
 
 

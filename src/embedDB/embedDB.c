@@ -37,7 +37,7 @@
 
 #include <math.h>
 #include <stdbool.h>
-#include <stddef.h>"
+#include <stddef.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -46,7 +46,10 @@
 
 #include "../spline/radixspline.h"
 #include "../spline/spline.h"
+
+#if defined(ARDUINO)
 #include "serial_c_iface.h"
+#endif
 
 /**
  * 0 = Modified binary search
