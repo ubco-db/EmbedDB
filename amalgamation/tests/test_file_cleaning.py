@@ -1,12 +1,13 @@
 import unittest
-import sys
 import os
 
-# fun way to get sourceule :)
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
-# TODO: rename source as source
-import amalgamation as source
+from amalgamation.amalgamation import (
+    read_file,
+    retrieve_pattern_from_source,
+    remove_pattern_from_source,
+    check_against_standard_library,
+    format_external_lib,
+)
 
 
 class TestRead(unittest.TestCase):
@@ -65,9 +66,9 @@ class TestRead(unittest.TestCase):
 
         # read file
         c_file_directoy = os.path.join(self.test_files, "only-include.c")
-        read_c_file = source.read_file(c_file_directoy)
+        read_c_file = read_file(c_file_directoy)
 
-        result = source.retrieve_pattern_from_source(read_c_file, self.REGEX_INCLUDE)
+        result = retrieve_pattern_from_source(read_c_file, self.REGEX_INCLUDE)
 
         expected_result = {
             "#include <time.h>",
@@ -90,9 +91,9 @@ class TestRead(unittest.TestCase):
         c_file_directoy = os.path.join(
             self.test_files, "only-include-inline-comments.c"
         )
-        read_c_file = source.read_file(c_file_directoy)
+        read_c_file = read_file(c_file_directoy)
 
-        result = source.retrieve_pattern_from_source(read_c_file, self.REGEX_INCLUDE)
+        result = retrieve_pattern_from_source(read_c_file, self.REGEX_INCLUDE)
 
         expected_result = {
             "#include <time.h>",
@@ -112,9 +113,9 @@ class TestRead(unittest.TestCase):
         """
         # read file
         c_file_directoy = os.path.join(self.test_files, "only-include-duplicate.c")
-        read_c_file = source.read_file(c_file_directoy)
+        read_c_file = read_file(c_file_directoy)
 
-        result = source.retrieve_pattern_from_source(read_c_file, self.REGEX_INCLUDE)
+        result = retrieve_pattern_from_source(read_c_file, self.REGEX_INCLUDE)
 
         expected_result = {
             "#include <time.h>",
@@ -134,9 +135,9 @@ class TestRead(unittest.TestCase):
         """
 
         c_file_directoy = os.path.join(self.EMBEDDB, "embedDB.c")
-        read_c_file = source.read_file(c_file_directoy)
+        read_c_file = read_file(c_file_directoy)
 
-        result = source.retrieve_pattern_from_source(read_c_file, self.REGEX_INCLUDE)
+        result = retrieve_pattern_from_source(read_c_file, self.REGEX_INCLUDE)
 
         expected_result = {
             '#include "embedDB.h"',
@@ -162,9 +163,9 @@ class TestRead(unittest.TestCase):
 
         # read file
         c_file_directoy = os.path.join(self.test_files, "only-include.c")
-        read_c_file = source.read_file(c_file_directoy)
+        read_c_file = read_file(c_file_directoy)
 
-        removed = source.remove_pattern_from_source(read_c_file, self.REGEX_INCLUDE)
+        removed = remove_pattern_from_source(read_c_file, self.REGEX_INCLUDE)
 
         self.assertNotEqual(read_c_file, removed)
 
@@ -178,15 +179,13 @@ class TestRead(unittest.TestCase):
 
         # read file
         c_file_directoy = os.path.join(self.test_files, "only-include.c")
-        read_c_file = source.read_file(c_file_directoy)
+        read_c_file = read_file(c_file_directoy)
 
         # take result and put
-        extracted_headers = source.retrieve_pattern_from_source(
+        extracted_headers = retrieve_pattern_from_source(
             read_c_file, self.REGEX_INCLUDE
         )
-        result = source.check_against_standard_library(
-            self.c_stand, extracted_headers, total
-        )
+        result = check_against_standard_library(self.c_stand, extracted_headers, total)
 
         # test that it returns libraries that are NOT standard
         self.assertEqual(0, len(result))
@@ -213,15 +212,13 @@ class TestRead(unittest.TestCase):
 
         # read file
         c_file_directoy = os.path.join(self.EMBEDDB, "embedDB.c")
-        read_c_file = source.read_file(c_file_directoy)
+        read_c_file = read_file(c_file_directoy)
 
         # extract
-        extracted_headers = source.retrieve_pattern_from_source(
+        extracted_headers = retrieve_pattern_from_source(
             read_c_file, self.REGEX_INCLUDE
         )
-        result = source.check_against_standard_library(
-            self.c_stand, extracted_headers, total
-        )
+        result = check_against_standard_library(self.c_stand, extracted_headers, total)
 
         # test
         expected_internal_header_files = {
@@ -261,7 +258,7 @@ class TestRead(unittest.TestCase):
 
         expected_header_file_names = {"embedDB.h", "spline.h", "radixspline.h"}
 
-        actual_header_file_names = source.format_external_lib(input_1)
+        actual_header_file_names = format_external_lib(input_1)
         self.assertEqual(expected_header_file_names, actual_header_file_names)
 
         ## test input_2
@@ -279,7 +276,7 @@ class TestRead(unittest.TestCase):
             "radixspline.h",
             "file.h",
         }
-        actual_header_file_names_2 = source.format_external_lib(input_2)
+        actual_header_file_names_2 = format_external_lib(input_2)
         self.assertEqual(expected_header_file_names_2, actual_header_file_names_2)
 
         ## test input_3
@@ -294,5 +291,5 @@ class TestRead(unittest.TestCase):
         }
 
         expected_header_file_names_3 = {"embedDB.h", "spline.h", "radixspline.h"}
-        actual_header_file_names_3 = source.format_external_lib(input_3)
+        actual_header_file_names_3 = format_external_lib(input_3)
         self.assertEqual(expected_header_file_names_3, actual_header_file_names_3)

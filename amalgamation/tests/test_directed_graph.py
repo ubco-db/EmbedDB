@@ -1,14 +1,15 @@
 import os
-import sys
 import unittest
 from collections import deque
 
-# fun way to get module :)
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
-import amalgamation as source
-
-# TODO: talk to Ramon about including SD card opener in amalgamation code
+from amalgamation.amalgamation import (
+    retrieve_source_set,
+    combine_c_standard_lib,
+    create_directed_graph,
+    dfs,
+    topsort,
+)
+from amalgamation.tests.test_helper_functions import suppress_output
 
 
 class TestDirectedGraph(unittest.TestCase):
@@ -97,7 +98,7 @@ class TestDirectedGraph(unittest.TestCase):
         This test ensures that the retrieve_source_set function returns a set all the header and .c files
         """
 
-        master_h_test = source.retrieve_source_set(self.source_code_directories, "h")
+        master_h_test = retrieve_source_set(self.source_code_directories, "h")
         retrieved_header_file_names = {file.file_name for file in master_h_test}
 
         expected_header_file_names = {
@@ -110,7 +111,7 @@ class TestDirectedGraph(unittest.TestCase):
         }
         self.assertEqual(expected_header_file_names, retrieved_header_file_names)
 
-        master_c_test = source.retrieve_source_set(self.source_code_directories, "c")
+        master_c_test = retrieve_source_set(self.source_code_directories, "c")
         retrieved_c_file_names = {file.file_name for file in master_c_test}
 
         expected_c_file_names = {
@@ -141,11 +142,11 @@ class TestDirectedGraph(unittest.TestCase):
         }
 
         # set of objects containing source files (fileNode)
-        master_h = source.retrieve_source_set(self.source_code_directories, "h")
-        master_c = source.retrieve_source_set(self.source_code_directories, "c")
+        master_h = retrieve_source_set(self.source_code_directories, "h")
+        master_c = retrieve_source_set(self.source_code_directories, "c")
 
         # set of c-standard library that the amaglamation requires
-        c_standard_dep = source.combine_c_standard_lib([master_h, master_c])
+        c_standard_dep = combine_c_standard_lib([master_h, master_c])
 
         # test
         self.assertEqual(expected_results, c_standard_dep)
@@ -161,10 +162,10 @@ class TestDirectedGraph(unittest.TestCase):
         }
 
         # get headers
-        master_h = source.retrieve_source_set(self.source_code_directories, "h")
+        master_h = retrieve_source_set(self.source_code_directories, "h")
 
         # create directed graph
-        directed_graph = source.create_directed_graph(master_h)
+        directed_graph = create_directed_graph(master_h)
 
         # test
         self.assertEqual(expected_graph, directed_graph)
@@ -175,17 +176,17 @@ class TestDirectedGraph(unittest.TestCase):
         """
 
         # get headers
-        master_h = source.retrieve_source_set(self.source_code_directories, "h")
+        master_h = retrieve_source_set(self.source_code_directories, "h")
 
         # create directed graph
-        directed_graph = source.create_directed_graph(master_h)
+        directed_graph = create_directed_graph(master_h)
 
         starting_node = "embedDB.h"
         visited = set()
         stack = deque()
         visiting = []
 
-        source.dfs(directed_graph, starting_node, visited, stack, visiting)
+        dfs(directed_graph, starting_node, visited, stack, visiting)
 
         # Since the stack represents the reverse order of DFS completion,
         # convert it to a list and reverse it to match the expected DFS order
@@ -211,7 +212,7 @@ class TestDirectedGraph(unittest.TestCase):
         stack = deque()
         visiting = []
 
-        source.dfs(directed_graph, starting_node, visited, stack, visiting)
+        dfs(directed_graph, starting_node, visited, stack, visiting)
 
         stack_list = list(stack)
 
@@ -229,25 +230,21 @@ class TestDirectedGraph(unittest.TestCase):
         stack = deque()
         visiting = []
 
-        # with suppress_output():
-        with self.assertRaises(SystemExit):
-            source.dfs(
-                self.cyclic_dir_graph, starting_node, visited, stack, visiting
-            )
+        with suppress_output():
+            with self.assertRaises(SystemExit):
+                dfs(self.cyclic_dir_graph, starting_node, visited, stack, visiting)
 
-        with self.assertRaises(SystemExit):
-            source.dfs(
-                self.simple_cyclic_dir_graph,
-                starting_node,
-                visited,
-                stack,
-                visiting,
-            )
+            with self.assertRaises(SystemExit):
+                dfs(
+                    self.simple_cyclic_dir_graph,
+                    starting_node,
+                    visited,
+                    stack,
+                    visiting,
+                )
 
-        with self.assertRaises(SystemExit):
-            source.dfs(
-                self.self_ref_cyclic_graph, starting_node, visited, stack, visiting
-            )
+            with self.assertRaises(SystemExit):
+                dfs(self.self_ref_cyclic_graph, starting_node, visited, stack, visiting)
 
     def test_topological_sort_embedDB(self):
         """
@@ -255,13 +252,13 @@ class TestDirectedGraph(unittest.TestCase):
         """
 
         # Get headers
-        master_h = source.retrieve_source_set(self.source_code_directories, "h")
+        master_h = retrieve_source_set(self.source_code_directories, "h")
 
         # Create directed graph
-        directed_graph = source.create_directed_graph(master_h)
+        directed_graph = create_directed_graph(master_h)
 
         # Perform top sort
-        sorted_graph = source.topsort(directed_graph)
+        sorted_graph = topsort(directed_graph)
 
         # Check if every node in the directed graph is in the sorted result
         self.assertEqual(set(sorted_graph) == set(directed_graph.keys()), True)
@@ -271,12 +268,12 @@ class TestDirectedGraph(unittest.TestCase):
         Tests topological sort on a cyclic graph. check_topological_sort_order, should return an error
         """
 
-        # with suppress_output():
-        with self.assertRaises(SystemExit):
-            sorted_graph = source.topsort(self.cyclic_dir_graph)
+        with suppress_output():
+            with self.assertRaises(SystemExit):
+                sorted_graph = topsort(self.cyclic_dir_graph)
 
-        with self.assertRaises(SystemExit):
-            sorted_graph = source.topsort(self.simple_cyclic_dir_graph)
+            with self.assertRaises(SystemExit):
+                sorted_graph = topsort(self.simple_cyclic_dir_graph)
 
-        with self.assertRaises(SystemExit):
-            sorted_graph = source.topsort(self.self_ref_cyclic_graph)
+            with self.assertRaises(SystemExit):
+                sorted_graph = topsort(self.self_ref_cyclic_graph)

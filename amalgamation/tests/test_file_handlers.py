@@ -1,11 +1,8 @@
-import unittest
-import sys
 import os
+import unittest
 
-# fun way to get source :)
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
-import amalgamation as source
+from amalgamation.amalgamation import read_file, save_file, get_all_files_of_type
+from amalgamation.tests.test_helper_functions import suppress_output
 
 """
 Purpose of this test suite is to test the functionality of opening, searching, combining, and saving files. 
@@ -28,15 +25,16 @@ class TestFileHandlers(unittest.TestCase):
         Test ensures that file is read correctly
         """
         test_file = os.path.join(self.test_files, "hello-world.txt")
-        result = source.read_file(test_file)
+        result = read_file(test_file)
         self.assertEqual(result, "Hello World")
 
     def test_read_no_file(self):
         """
         Tests that an exception is raised if trying to access a file that does not exist
         """
-        with self.assertRaises(SystemExit):
-            source.read_file("foo")
+        with suppress_output():
+            with self.assertRaises(SystemExit):
+                read_file("foo")
 
     def test_save_file(self):
         """
@@ -47,11 +45,11 @@ class TestFileHandlers(unittest.TestCase):
         file_name = "foo"
         extension = "c"
 
-        source.save_file(content, file_name, extension)
+        save_file(content, file_name, extension)
 
         file_path = f"{file_name}.{extension}"
 
-        temp = source.read_file(file_path)
+        temp = read_file(file_path)
 
         self.assertEqual(content, temp, "Content of the file is incorrect.")
 
@@ -73,7 +71,7 @@ class TestFileHandlers(unittest.TestCase):
         ]
         c_files = []
         for directory in directories_to_check:
-            c_files.extend(source.get_all_files_of_type(directory, "c"))
+            c_files.extend(get_all_files_of_type(directory, "c"))
 
         expected_c_files = [
             os.path.join(self.query_interface_files, "advancedQueries.c"),
@@ -89,7 +87,7 @@ class TestFileHandlers(unittest.TestCase):
         # test h files
         h_files = []
         for directory in directories_to_check:
-            h_files.extend(source.get_all_files_of_type(directory, "h"))
+            h_files.extend(get_all_files_of_type(directory, "h"))
 
         expected_h_files = [
             os.path.join(self.query_interface_files, "advancedQueries.h"),
@@ -109,6 +107,6 @@ class TestFileHandlers(unittest.TestCase):
 
         blank_dir = os.path.join(self.embedDB_files, "blank")
 
-        files = source.get_all_files_of_type(blank_dir, "c")
+        files = get_all_files_of_type(blank_dir, "c")
 
         self.assertEqual(len(files), 0)
