@@ -1,0 +1,51 @@
+name: Build Amalgamation Distribution
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v3
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+
+      - name: Run amalgamation
+        run: |
+          python ./amalgamation/amalgamation.py
+
+      - name: Install Clang Format
+        run: sudo apt-get install -y clang-format
+
+      - name: Lint
+        uses: wearerequired/lint-action@v2
+        with:
+          clang_format: true
+          clang_format_dir: distribution/
+          check_name: lint distribution
+
+      - name: Check for changes
+        id: git_diff
+        run: |
+          git config --global user.name 'github-actions[bot]'
+          git config --global user.email 'github-actions[bot]@users.noreply.github.com'
+          git add ./distribution
+          git diff --cached --exit-code || echo "has_changes=true" >> $GITHUB_ENV
+
+      - name: Commit and push changes
+        if: env.has_changes == 'true'
+        run: |
+          git commit -m "Automated file generation"
+          git push
