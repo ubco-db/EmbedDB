@@ -1,3 +1,5 @@
+name: Run Tests and Lint
+
 on:
   push:
     branches: [ "main" ]
