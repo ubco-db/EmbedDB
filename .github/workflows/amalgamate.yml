@@ -42,7 +42,7 @@ jobs:
           git add ./distribution
           git diff --cached --exit-code || echo "has_changes=true" >> $GITHUB_ENV
 
-      - name: Commit and push changes
+      - name: Commit Changes
         if: env.has_changes == 'true'
         run: |
           git commit -m "Automated file generation"
