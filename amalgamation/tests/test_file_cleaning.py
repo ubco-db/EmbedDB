@@ -79,7 +79,7 @@ class TestRead(unittest.TestCase):
             "#include <stdlib.h>",
         }
 
-        self.assertEqual(result, expected_result)
+        self.assertEqual(expected_result, result)
 
     def test_primitive_retrieve_include_comments(self):
         """
@@ -104,7 +104,7 @@ class TestRead(unittest.TestCase):
             "#include <stdlib.h>",
         }
 
-        self.assertEqual(result, expected_result)
+        self.assertEqual(expected_result, result)
 
     def test_primitive_includes_no_duplicates(self):
         """
@@ -126,7 +126,7 @@ class TestRead(unittest.TestCase):
             "#include <stdlib.h>",
         }
 
-        self.assertEqual(result, expected_result)
+        self.assertEqual(expected_result, result)
 
     def test_retrieve_pattern_from_source(self):
         """
@@ -141,7 +141,9 @@ class TestRead(unittest.TestCase):
         expected_result = {
             '#include "embedDB.h"',
             "#include <math.h>",
+            '#include "serial_c_iface.h"',
             "#include <stdbool.h>",
+            "#include <stddef.h>",
             "#include <stdint.h>",
             "#include <stdio.h>",
             "#include <stdlib.h>",
@@ -164,11 +166,11 @@ class TestRead(unittest.TestCase):
 
         removed = source.remove_pattern_from_source(read_c_file, self.REGEX_INCLUDE)
 
-        self.assertEqual(removed == read_c_file, False)
+        self.assertNotEqual(read_c_file, removed)
 
     def test_check_default_libraries_includes_primitive(self):
         """
-        Test checks extracted included statements are part of the standard C libarray
+        Test checks extracted included statements are part of the standard C library
         """
 
         # set for all includes
@@ -187,7 +189,7 @@ class TestRead(unittest.TestCase):
         )
 
         # test that it returns libraries that are NOT standard
-        self.assertEqual(len(result), 0)
+        self.assertEqual(0, len(result))
 
         expected_total = {
             "#include <time.h>",
@@ -199,7 +201,7 @@ class TestRead(unittest.TestCase):
             "#include <stdlib.h>",
         }
 
-        self.assertEqual(total, expected_total)
+        self.assertEqual(expected_total, total)
 
     def test_check_default_libraries_source_file(self):
         """
@@ -222,29 +224,31 @@ class TestRead(unittest.TestCase):
         )
 
         # test
-        correct_result = {
+        expected_internal_header_files = {
             '#include "embedDB.h"',
             '#include "../spline/spline.h"',
             '#include "../spline/radixspline.h"',
+            '#include "serial_c_iface.h"',
         }
 
-        self.assertEqual(result, correct_result)
+        self.assertEqual(expected_internal_header_files, result)
 
-        expected_total = {
+        expected_external_header_files = {
             "#include <math.h>",
             "#include <stdbool.h>",
             "#include <stdint.h>",
+            "#include <stddef.h>",
             "#include <stdio.h>",
             "#include <stdlib.h>",
             "#include <string.h>",
             "#include <time.h>",
         }
 
-        self.assertEqual(expected_total, total)
+        self.assertEqual(expected_external_header_files, total)
 
     def test_check_format_external_lib(self):
         """
-        Comphrensive test for the format_external_lib function
+        Comprehensive test for the format_external_lib function
         """
 
         ## test input_1
@@ -255,10 +259,10 @@ class TestRead(unittest.TestCase):
             '#include "../spline/radixspline.h"',
         }
 
-        correct_result_1 = {"embedDB.h", "spline.h", "radixspline.h"}
+        expected_header_file_names = {"embedDB.h", "spline.h", "radixspline.h"}
 
-        result_1 = source.format_external_lib(input_1)
-        self.assertEqual(result_1, correct_result_1)
+        actual_header_file_names = source.format_external_lib(input_1)
+        self.assertEqual(expected_header_file_names, actual_header_file_names)
 
         ## test input_2
 
@@ -269,10 +273,14 @@ class TestRead(unittest.TestCase):
             '#include "../../../../../../spline-and-then/cats/foo/file.h"',
         }
 
-        correct_result_2 = {"embedDB.h", "spline.h", "radixspline.h", "file.h"}
-
-        result_2 = source.format_external_lib(input_2)
-        self.assertEqual(result_2, correct_result_2)
+        expected_header_file_names_2 = {
+            "embedDB.h",
+            "spline.h",
+            "radixspline.h",
+            "file.h",
+        }
+        actual_header_file_names_2 = source.format_external_lib(input_2)
+        self.assertEqual(expected_header_file_names_2, actual_header_file_names_2)
 
         ## test input_3
 
@@ -285,12 +293,6 @@ class TestRead(unittest.TestCase):
             '#include "../spline/radixspline.h"',
         }
 
-        correct_result_3 = {"embedDB.h", "spline.h", "radixspline.h"}
-
-        result_3 = source.format_external_lib(input_3)
-
-        self.assertEqual(result_3, correct_result_3)
-
-
-if __name__ == "__main__":
-    unittest.main()
+        expected_header_file_names_3 = {"embedDB.h", "spline.h", "radixspline.h"}
+        actual_header_file_names_3 = source.format_external_lib(input_3)
+        self.assertEqual(expected_header_file_names_3, actual_header_file_names_3)

@@ -1,7 +1,7 @@
-from collections import deque
-import unittest
-import sys
 import os
+import sys
+import unittest
+from collections import deque
 
 # fun way to get module :)
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -9,6 +9,7 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import amalgamation as source
 
 # TODO: talk to Ramon about including SD card opener in amalgamation code
+
 
 class TestDirectedGraph(unittest.TestCase):
     PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
@@ -228,12 +229,19 @@ class TestDirectedGraph(unittest.TestCase):
         stack = deque()
         visiting = []
 
+        # with suppress_output():
         with self.assertRaises(SystemExit):
-            source.dfs(self.cyclic_dir_graph, starting_node, visited, stack, visiting)
+            source.dfs(
+                self.cyclic_dir_graph, starting_node, visited, stack, visiting
+            )
 
         with self.assertRaises(SystemExit):
             source.dfs(
-                self.simple_cyclic_dir_graph, starting_node, visited, stack, visiting
+                self.simple_cyclic_dir_graph,
+                starting_node,
+                visited,
+                stack,
+                visiting,
             )
 
         with self.assertRaises(SystemExit):
@@ -263,6 +271,7 @@ class TestDirectedGraph(unittest.TestCase):
         Tests topological sort on a cyclic graph. check_topological_sort_order, should return an error
         """
 
+        # with suppress_output():
         with self.assertRaises(SystemExit):
             sorted_graph = source.topsort(self.cyclic_dir_graph)
 
@@ -271,7 +280,3 @@ class TestDirectedGraph(unittest.TestCase):
 
         with self.assertRaises(SystemExit):
             sorted_graph = source.topsort(self.self_ref_cyclic_graph)
-
-
-if __name__ == "__main__":
-    unittest.main()

@@ -15,9 +15,13 @@ Since the glob is part of the default Python library: opening and saving files a
 
 class TestFileHandlers(unittest.TestCase):
     # source file directory, makes it easy
+    PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
     current_dir = os.path.dirname(os.path.abspath(__file__))
     test_files = os.path.join(current_dir, "test_files")
-    embedDB_files = os.path.join(current_dir, "test_files", "EmbedDB")
+    embedDB_files = os.path.join(PROJECT_ROOT, "src", "embedDB")
+    query_interface_files = os.path.join(PROJECT_ROOT, "src", "query-interface")
+    spline_files = os.path.join(PROJECT_ROOT, "src", "spline")
+    utility_functions_files = os.path.join(PROJECT_ROOT, "lib", "EmbedDB-Utility")
 
     def test_read(self):
         """
@@ -61,35 +65,42 @@ class TestFileHandlers(unittest.TestCase):
         """
 
         # test c files
-        c_files = source.get_all_files_of_type(self.embedDB_files, "c")
-
-        print("hello world")
-        # print(c_files)
+        directories_to_check = [
+            self.embedDB_files,
+            self.spline_files,
+            self.utility_functions_files,
+            self.query_interface_files,
+        ]
+        c_files = []
+        for directory in directories_to_check:
+            c_files.extend(source.get_all_files_of_type(directory, "c"))
 
         expected_c_files = [
-            os.path.join(self.embedDB_files, "advancedQueries.c"),
+            os.path.join(self.query_interface_files, "advancedQueries.c"),
             os.path.join(self.embedDB_files, "embedDB.c"),
-            os.path.join(self.embedDB_files, "radixspline.c"),
-            os.path.join(self.embedDB_files, "schema.c"),
-            os.path.join(self.embedDB_files, "spline.c"),
-            os.path.join(self.embedDB_files, "utilityFunctions.c"),
+            os.path.join(self.spline_files, "radixspline.c"),
+            os.path.join(self.query_interface_files, "schema.c"),
+            os.path.join(self.spline_files, "spline.c"),
+            os.path.join(self.utility_functions_files, "embedDBUtility.c"),
         ]
 
-        self.assertEqual(expected_c_files == c_files, True)
+        self.assertCountEqual(expected_c_files, c_files)
 
         # test h files
-        h_files = source.get_all_files_of_type(self.embedDB_files, "h")
+        h_files = []
+        for directory in directories_to_check:
+            h_files.extend(source.get_all_files_of_type(directory, "h"))
 
         expected_h_files = [
-            os.path.join(self.embedDB_files, "advancedQueries.h"),
+            os.path.join(self.query_interface_files, "advancedQueries.h"),
             os.path.join(self.embedDB_files, "embedDB.h"),
-            os.path.join(self.embedDB_files, "radixspline.h"),
-            os.path.join(self.embedDB_files, "schema.h"),
-            os.path.join(self.embedDB_files, "spline.h"),
-            os.path.join(self.embedDB_files, "utilityFunctions.h"),
+            os.path.join(self.spline_files, "radixspline.h"),
+            os.path.join(self.query_interface_files, "schema.h"),
+            os.path.join(self.spline_files, "spline.h"),
+            os.path.join(self.utility_functions_files, "embedDBUtility.h"),
         ]
 
-        self.assertEqual(expected_h_files == h_files, True)
+        self.assertCountEqual(expected_h_files, h_files)
 
     def test_get_all_files_of_type_blank_dir(self):
         """
@@ -101,10 +112,3 @@ class TestFileHandlers(unittest.TestCase):
         files = source.get_all_files_of_type(blank_dir, "c")
 
         self.assertEqual(len(files), 0)
-
-        if files:
-            self.assertEqual(True, False)
-
-
-if __name__ == "__main__":
-    unittest.main()
