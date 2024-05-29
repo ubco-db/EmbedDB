@@ -644,6 +644,8 @@ def amalgamate(
     c_standard_dep = combine_c_standard_lib(
         [header_file_nodes, source_file_nodes, cpp_files_nodes if isCpp else []]
     )
+    for item in header_file_nodes:
+        print(f"Name: {item.file_name}  Header Dependencies: {item.header_dep}  Files Dependencies: {item.c_stand_dep}")
 
     """
     Next step is iterting over the set containing the header files and creating a directed graph for all the dependencies. After that, a topological sort is performed
