@@ -644,10 +644,6 @@ def amalgamate(
     c_standard_dep = combine_c_standard_lib(
         [header_file_nodes, source_file_nodes, cpp_files_nodes if isCpp else []]
     )
-    for item in header_file_nodes:
-        print(
-            f"Name: {item.file_name}  Header Dependencies: {item.header_dep}  Files Dependencies: {item.c_stand_dep}"
-        )
 
     """
     Next step is iterating over the set containing the header files and creating a directed graph for all the dependencies. After that, a topological sort is performed
@@ -656,7 +652,6 @@ def amalgamate(
     dir_graph = create_directed_graph(header_file_nodes)
     alphabetical_directory_graph = dict(sorted(dir_graph.items()))
     sorted_graph = topsort(alphabetical_directory_graph)
-    print(f"Sorted Graph: {sorted_graph}")
 
     """
     The sorted_graph does not sort by filename right now unfortunately, but future iterations of this amalgamation could include that functionality, so comparing
