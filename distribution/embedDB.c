@@ -34,6 +34,536 @@
  *  POSSIBILITY OF SUCH DAMAGE.
  */
 /******************************************************************************/
+/************************************************************schema.c************************************************************/
+/******************************************************************************/
+/**
+ * @file        schema.c
+ * @author      EmbedDB Team (See Authors.md)
+ * @brief       Source code file for the schema for EmbedDB query interface
+ * @copyright   Copyright 2024
+ *              EmbedDB Team
+ * @par Redistribution and use in source and binary forms, with or without
+ *  modification, are permitted provided that the following conditions are met:
+ *
+ * @par 1.Redistributions of source code must retain the above copyright notice,
+ *  this list of conditions and the following disclaimer.
+ *
+ * @par 2.Redistributions in binary form must reproduce the above copyright notice,
+ *  this list of conditions and the following disclaimer in the documentation
+ *  and/or other materials provided with the distribution.
+ *
+ * @par 3.Neither the name of the copyright holder nor the names of its contributors
+ *  may be used to endorse or promote products derived from this software without
+ *  specific prior written permission.
+ *
+ * @par THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+ *  AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ *  IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+ *  ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE
+ *  LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+ *  CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+ *  SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+ *  INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+ *  CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+ *  ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+ *  POSSIBILITY OF SUCH DAMAGE.
+ */
+/******************************************************************************/
+
+/**
+ * @brief	Create an embedDBSchema from a list of column sizes including both key and data
+ * @param	numCols			The total number of columns in table
+ * @param	colSizes		An array with the size of each column. Max size is 127
+ * @param	colSignedness	An array describing if the data in the column is signed or unsigned. Use the defined constants embedDB_COLUMNN_SIGNED or embedDB_COLUMN_UNSIGNED
+ */
+embedDBSchema *embedDBCreateSchema(uint8_t numCols, int8_t *colSizes, int8_t *colSignedness) {
+    embedDBSchema *schema = malloc(sizeof(embedDBSchema));
+    schema->columnSizes = malloc(numCols * sizeof(int8_t));
+    schema->numCols = numCols;
+    uint16_t totalSize = 0;
+    for (uint8_t i = 0; i < numCols; i++) {
+        int8_t sign = colSignedness[i];
+        uint8_t colSize = colSizes[i];
+        totalSize += colSize;
+        if (colSize <= 0) {
+#ifdef PRINT_ERRORS
+            printf("ERROR: Column size must be greater than zero\n");
+#endif
+            return NULL;
+        }
+        if (sign == embedDB_COLUMN_SIGNED) {
+            schema->columnSizes[i] = -colSizes[i];
+        } else if (sign == embedDB_COLUMN_UNSIGNED) {
+            schema->columnSizes[i] = colSizes[i];
+        } else {
+#ifdef PRINT_ERRORS
+            printf("ERROR: Must only use embedDB_COLUMN_SIGNED or embedDB_COLUMN_UNSIGNED to describe column signedness\n");
+#endif
+            return NULL;
+        }
+    }
+
+    return schema;
+}
+
+/**
+ * @brief	Free a schema. Sets the schema pointer to NULL.
+ */
+void embedDBFreeSchema(embedDBSchema **schema) {
+    if (*schema == NULL) return;
+    free((*schema)->columnSizes);
+    free(*schema);
+    *schema = NULL;
+}
+
+/**
+ * @brief	Uses schema to determine the length of buffer to allocate and callocs that space
+ */
+void *createBufferFromSchema(embedDBSchema *schema) {
+    uint16_t totalSize = 0;
+    for (uint8_t i = 0; i < schema->numCols; i++) {
+        totalSize += abs(schema->columnSizes[i]);
+    }
+    return calloc(1, totalSize);
+}
+
+/**
+ * @brief	Deep copy schema and return a pointer to the copy
+ */
+embedDBSchema *copySchema(const embedDBSchema *schema) {
+    embedDBSchema *copy = malloc(sizeof(embedDBSchema));
+    if (copy == NULL) {
+#ifdef PRINT_ERRORS
+        printf("ERROR: malloc failed while copying schema\n");
+#endif
+        return NULL;
+    }
+    copy->numCols = schema->numCols;
+    copy->columnSizes = malloc(schema->numCols * sizeof(int8_t));
+    if (copy->columnSizes == NULL) {
+#ifdef PRINT_ERRORS
+        printf("ERROR: malloc failed while copying schema\n");
+#endif
+        return NULL;
+    }
+    memcpy(copy->columnSizes, schema->columnSizes, schema->numCols * sizeof(int8_t));
+    return copy;
+}
+
+/**
+ * @brief	Finds byte offset of the column from the beginning of the record
+ */
+uint16_t getColOffsetFromSchema(embedDBSchema *schema, uint8_t colNum) {
+    uint16_t pos = 0;
+    for (uint8_t i = 0; i < colNum; i++) {
+        pos += abs(schema->columnSizes[i]);
+    }
+    return pos;
+}
+
+/**
+ * @brief	Calculates record size from schema
+ */
+uint16_t getRecordSizeFromSchema(embedDBSchema *schema) {
+    uint16_t size = 0;
+    for (uint8_t i = 0; i < schema->numCols; i++) {
+        size += abs(schema->columnSizes[i]);
+    }
+    return size;
+}
+
+void printSchema(embedDBSchema *schema) {
+    for (uint8_t i = 0; i < schema->numCols; i++) {
+        if (i) {
+            printf(", ");
+        }
+        int8_t col = schema->columnSizes[i];
+        printf("%sint%d", embedDB_IS_COL_SIGNED(col) ? "" : "u", abs(col));
+    }
+    printf("\n");
+}
+
+/************************************************************radixspline.c************************************************************/
+/******************************************************************************/
+/**
+ * @file        radixspline.c
+ * @author      EmbedDB Team (See Authors.md)
+ * @brief       Implementation of radix spline for embedded devices.
+ *              Based on "RadixSpline: a single-pass learned index" by
+ *              A. Kipf, R. Marcus, A. van Renen, M. Stoian, A. Kemper,
+ *              T. Kraska, and T. Neumann
+ *              https://github.com/learnedsystems/RadixSpline
+ * @copyright   Copyright 2024
+ *              EmbedDB Team
+ * @par Redistribution and use in source and binary forms, with or without
+ *  modification, are permitted provided that the following conditions are met:
+ *
+ * @par 1.Redistributions of source code must retain the above copyright notice,
+ *  this list of conditions and the following disclaimer.
+ *
+ * @par 2.Redistributions in binary form must reproduce the above copyright notice,
+ *  this list of conditions and the following disclaimer in the documentation
+ *  and/or other materials provided with the distribution.
+ *
+ * @par 3.Neither the name of the copyright holder nor the names of its contributors
+ *  may be used to endorse or promote products derived from this software without
+ *  specific prior written permission.
+ *
+ * @par THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+ *  AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ *  IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+ *  ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE
+ *  LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+ *  CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+ *  SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+ *  INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+ *  CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+ *  ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+ *  POSSIBILITY OF SUCH DAMAGE.
+ */
+/******************************************************************************/
+
+/**
+ * @brief   Build the radix table
+ * @param   rsdix       Radix spline structure
+ * @param   keys        Data points to be indexed
+ * @param   numKeys     Number of data items
+ */
+void radixsplineBuild(radixspline *rsidx, void **keys, uint32_t numKeys) {
+    rsidx->pointsSeen = 0;
+    rsidx->prevPrefix = 0;
+
+    for (uint32_t i = 0; i < numKeys; i++) {
+        void *key;
+        memcpy(&key, keys + i, sizeof(void *));
+        radixsplineAddPoint(rsidx, key, i);
+    }
+}
+
+/**
+ * @brief   Rebuild the radix table with new shift amount
+ * @param   rsdix       Radix spline structure
+ * @param   spl         Spline structure
+ * @param   radixSize   Size of radix table
+ * @param   shiftAmount Difference in shift amount between current radix table and desired radix table
+ */
+void radixsplineRebuild(radixspline *rsidx, int8_t radixSize, int8_t shiftAmount) {
+    // radixsplinePrint(rsidx);
+    rsidx->prevPrefix = rsidx->prevPrefix >> shiftAmount;
+
+    for (id_t i = 0; i < rsidx->size / pow(2, shiftAmount); i++) {
+        memcpy((int8_t *)rsidx->table + i * rsidx->keySize, (int8_t *)rsidx->table + (i << shiftAmount) * rsidx->keySize, rsidx->keySize);
+    }
+    uint64_t maxKey = UINT64_MAX;
+    for (id_t i = rsidx->size / pow(2, shiftAmount); i < rsidx->size; i++) {
+        memcpy((int8_t *)rsidx->table + i * rsidx->keySize, &maxKey, rsidx->keySize);
+    }
+}
+
+/**
+ * @brief	Add a point to be indexed by the radix spline structure
+ * @param	rsdix	Radix spline structure
+ * @param	key		New point to be indexed by radix spline
+ * @param   page    Page number for spline point to add
+ */
+void radixsplineAddPoint(radixspline *rsidx, void *key, uint32_t page) {
+    splineAdd(rsidx->spl, key, page);
+
+    // Return if not using Radix table
+    if (rsidx->radixSize == 0) {
+        return;
+    }
+
+    // Determine if need to update radix table based on adding point to spline
+    if (rsidx->spl->count <= rsidx->pointsSeen)
+        return;  // Nothing to do
+
+    // take the last point that was added to spline
+    key = splinePointLocation(rsidx->spl, rsidx->spl->count - 1);
+
+    // Initialize table and minKey on first key added
+    if (rsidx->pointsSeen == 0) {
+        rsidx->table = malloc(sizeof(id_t) * rsidx->size);
+        uint64_t maxKey = UINT64_MAX;
+        for (int32_t counter = 1; counter < rsidx->size; counter++) {
+            memcpy(rsidx->table + counter, &maxKey, sizeof(id_t));
+        }
+        rsidx->minKey = key;
+    }
+
+    // Check if prefix will fit in radix table
+    uint64_t keyDiff;
+    if (rsidx->keySize <= 4) {
+        uint32_t keyVal = 0, minKeyVal = 0;
+        memcpy(&keyVal, key, rsidx->keySize);
+        memcpy(&minKeyVal, rsidx->minKey, rsidx->keySize);
+        keyDiff = keyVal - minKeyVal;
+    } else {
+        uint64_t keyVal = 0, minKeyVal = 0;
+        memcpy(&keyVal, key, rsidx->keySize);
+        memcpy(&minKeyVal, rsidx->minKey, rsidx->keySize);
+        keyDiff = keyVal - minKeyVal;
+    }
+
+    uint8_t bitsToRepresentKey = ceil(log2f((float)keyDiff));
+    int8_t newShiftSize;
+    if (bitsToRepresentKey < rsidx->radixSize) {
+        newShiftSize = 0;
+    } else {
+        newShiftSize = bitsToRepresentKey - rsidx->radixSize;
+    }
+
+    // if the shift size changes, need to remake table from scratch using new shift size
+    if (newShiftSize > rsidx->shiftSize) {
+        radixsplineRebuild(rsidx, rsidx->radixSize, newShiftSize - rsidx->shiftSize);
+        rsidx->shiftSize = newShiftSize;
+    }
+
+    id_t prefix = keyDiff >> rsidx->shiftSize;
+    if (prefix != rsidx->prevPrefix) {
+        // Make all new rows in the radix table point to the last point seen
+        for (id_t pr = rsidx->prevPrefix; pr < prefix; pr++) {
+            memcpy(rsidx->table + pr, &rsidx->pointsSeen, sizeof(id_t));
+        }
+
+        rsidx->prevPrefix = prefix;
+    }
+
+    memcpy(rsidx->table + prefix, &rsidx->pointsSeen, sizeof(id_t));
+
+    rsidx->pointsSeen++;
+}
+
+/**
+ * @brief	Initialize an empty radix spline index of given size
+ * @param	rsdix		Radix spline structure
+ * @param	spl			Spline structure
+ * @param	radixSize	Size of radix table
+ * @param	keySize		Size of keys to be stored in radix table
+ */
+void radixsplineInit(radixspline *rsidx, spline *spl, int8_t radixSize, uint8_t keySize) {
+    rsidx->spl = spl;
+    rsidx->radixSize = radixSize;
+    rsidx->keySize = keySize;
+    rsidx->shiftSize = 0;
+    rsidx->size = pow(2, radixSize);
+
+    /* Determine the prefix size (shift bits) based on min and max keys */
+    rsidx->minKey = spl->points;
+
+    /* Initialize points seen */
+    rsidx->pointsSeen = 0;
+    rsidx->prevPrefix = 0;
+}
+
+/**
+ * @brief	Performs a recursive binary search on the spine points for a key
+ * @param	rsidx		Array to search through
+ * @param	low		    Lower search bound (Index of spline point)
+ * @param	high	    Higher search bound (Index of spline point)
+ * @param	key		    Key to search for
+ * @param	compareKey	Function to compare keys
+ * @return	Index of spline point that is the upper end of the spline segment that contains the key
+ */
+size_t radixBinarySearch(radixspline *rsidx, int low, int high, void *key, int8_t compareKey(void *, void *)) {
+    int32_t mid;
+    if (high >= low) {
+        mid = low + (high - low) / 2;
+        void *midKey = splinePointLocation(rsidx->spl, mid);
+        void *midKeyMinusOne = splinePointLocation(rsidx->spl, mid - 1);
+        if (compareKey(midKey, key) >= 0 && compareKey(midKeyMinusOne, key) <= 0)
+            return mid;
+
+        if (compareKey(midKey, key) > 0)
+            return radixBinarySearch(rsidx, low, mid - 1, key, compareKey);
+
+        return radixBinarySearch(rsidx, mid + 1, high, key, compareKey);
+    }
+
+    mid = low + (high - low) / 2;
+    if (mid >= high) {
+        return high;
+    } else {
+        return low;
+    }
+}
+
+/**
+ * @brief	Initialize and build a radix spline index of given size using pre-built spline structure.
+ * @param	rsdix		Radix spline structure
+ * @param	spl			Spline structure
+ * @param	radixSize	Size of radix table
+ * @param	keys		Keys to be indexed
+ * @param	numKeys 	Number of keys in `keys`
+ * @param	keySize		Size of keys to be stored in radix table
+ */
+void radixsplineInitBuild(radixspline *rsidx, spline *spl, uint32_t radixSize, void **keys, uint32_t numKeys, uint8_t keySize) {
+    radixsplineInit(rsidx, spl, radixSize, keySize);
+    radixsplineBuild(rsidx, keys, numKeys);
+}
+
+/**
+ * @brief	Returns the radix index that is end of spline segment containing key using radix table.
+ * @param	rsidx	    Radix spline structure
+ * @param	key		    Search key
+ * @param	compareKey	Function to compare keys
+ * @return	Index of spline point that is the upper end of the spline segment that contains the key
+ */
+size_t radixsplineGetEntry(radixspline *rsidx, void *key, int8_t compareKey(void *, void *)) {
+    /* Use radix table to find range of spline points */
+
+    uint64_t keyVal = 0, minKeyVal = 0;
+    memcpy(&keyVal, key, rsidx->keySize);
+    memcpy(&minKeyVal, rsidx->minKey, rsidx->keySize);
+
+    uint32_t prefix = (keyVal - minKeyVal) >> rsidx->shiftSize;
+
+    uint32_t begin, end;
+
+    // Determine end, use next higher radix point if within bounds, unless key is exactly prefix
+    if (keyVal == ((uint64_t)prefix << rsidx->shiftSize)) {
+        memcpy(&end, rsidx->table + prefix, sizeof(id_t));
+    } else {
+        if ((prefix + 1) < rsidx->size) {
+            memcpy(&end, rsidx->table + (prefix + 1), sizeof(id_t));
+        } else {
+            memcpy(&end, rsidx->table + (rsidx->size - 1), sizeof(id_t));
+        }
+    }
+
+    // check end is in bounds since radix table values are initiated to INT_MAX
+    if (end >= rsidx->spl->count) {
+        end = rsidx->spl->count - 1;
+    }
+
+    // use previous adjacent radix point for lower bounds
+    if (prefix == 0) {
+        begin = 0;
+    } else {
+        memcpy(&begin, rsidx->table + (prefix - 1), sizeof(id_t));
+    }
+
+    return radixBinarySearch(rsidx, begin, end, key, compareKey);
+}
+
+/**
+ * @brief	Returns the radix index that is end of spline segment containing key using binary search.
+ * @param	rsidx	    Radix spline structure
+ * @param	key		    Search key
+ * @param	compareKey	Function to compare keys
+ * @return  Index of spline point that is the upper end of the spline segment that contains the key
+ */
+size_t radixsplineGetEntryBinarySearch(radixspline *rsidx, void *key, int8_t compareKey(void *, void *)) {
+    return radixBinarySearch(rsidx, 0, rsidx->spl->count - 1, key, compareKey);
+}
+
+/**
+ * @brief	Estimate location of key in data using spline points.
+ * @param	rsidx	Radix spline structure
+ * @param	key		Search key
+ * @param	compareKey	Function to compare keys
+ * @return	Estimated page number that contains key
+ */
+size_t radixsplineEstimateLocation(radixspline *rsidx, void *key, int8_t compareKey(void *, void *)) {
+    uint64_t keyVal = 0, minKeyVal = 0;
+    memcpy(&keyVal, key, rsidx->keySize);
+    memcpy(&minKeyVal, rsidx->minKey, rsidx->keySize);
+
+    if (keyVal < minKeyVal)
+        return 0;
+
+    size_t index;
+    if (rsidx->radixSize == 0) {
+        /* Get index using binary search */
+        index = radixsplineGetEntryBinarySearch(rsidx, key, compareKey);
+    } else {
+        /* Get index using radix table */
+        index = radixsplineGetEntry(rsidx, key, compareKey);
+    }
+
+    /* Interpolate between two spline points */
+    void *down = splinePointLocation(rsidx->spl, index - 1);
+    void *up = splinePointLocation(rsidx->spl, index);
+
+    uint64_t downKey = 0, upKey = 0;
+    memcpy(&downKey, down, rsidx->keySize);
+    memcpy(&upKey, up, rsidx->keySize);
+
+    uint32_t upPage = 0;
+    uint32_t downPage = 0;
+    memcpy(&upPage, (int8_t *)up + rsidx->spl->keySize, sizeof(uint32_t));
+    memcpy(&downPage, (int8_t *)down + rsidx->spl->keySize, sizeof(uint32_t));
+
+    /* Keydiff * slope + y */
+    uint32_t estimatedPage = (uint32_t)((keyVal - downKey) * (upPage - downPage) / (long double)(upKey - downKey)) + downPage;
+    return estimatedPage > upPage ? upPage : estimatedPage;
+}
+
+/**
+ * @brief	Finds a value using index. Returns predicted location and low and high error bounds.
+ * @param	rsidx	    Radix spline structure
+ * @param	key		    Search key
+ * @param   compareKey  Function to compare keys
+ * @param	loc		    Return of predicted location
+ * @param	low		    Return of low bound on predicted location
+ * @param	high	    Return of high bound on predicted location
+ */
+void radixsplineFind(radixspline *rsidx, void *key, int8_t compareKey(void *, void *), id_t *loc, id_t *low, id_t *high) {
+    /* Estimate location */
+    id_t locationEstimate = radixsplineEstimateLocation(rsidx, key, compareKey);
+    memcpy(loc, &locationEstimate, sizeof(id_t));
+
+    /* Set error bounds based on maxError from spline construction */
+    id_t lowEstimate = (rsidx->spl->maxError > locationEstimate) ? 0 : locationEstimate - rsidx->spl->maxError;
+    memcpy(low, &lowEstimate, sizeof(id_t));
+    void *lastSplinePoint = splinePointLocation(rsidx->spl, rsidx->spl->count - 1);
+    uint64_t lastKey = 0;
+    memcpy(&lastKey, lastSplinePoint, rsidx->keySize);
+    id_t highEstimate = (locationEstimate + rsidx->spl->maxError > lastKey) ? lastKey : locationEstimate + rsidx->spl->maxError;
+    memcpy(high, &highEstimate, sizeof(id_t));
+}
+
+/**
+ * @brief	Print radix spline structure.
+ * @param	rsidx	Radix spline structure
+ */
+void radixsplinePrint(radixspline *rsidx) {
+    if (rsidx == NULL || rsidx->radixSize == 0) {
+        printf("No radix spline index to print.\n");
+        return;
+    }
+
+    printf("Radix table (%lu):\n", rsidx->size);
+    // for (id_t i=0; i < 20; i++)
+    uint64_t minKeyVal = 0;
+    id_t tableVal;
+    memcpy(&minKeyVal, rsidx->minKey, rsidx->keySize);
+    for (id_t i = 0; i < rsidx->size; i++) {
+        printf("[" TO_BINARY_PATTERN "] ", TO_BINARY((uint8_t)(i)));
+        memcpy(&tableVal, rsidx->table + i, sizeof(id_t));
+        printf("(%lu): --> %lu\n", (i << rsidx->shiftSize) + minKeyVal, tableVal);
+    }
+    printf("\n");
+}
+
+/**
+ * @brief	Returns size of radix spline index structure in bytes
+ * @param	rsidx	Radix spline structure
+ */
+size_t radixsplineSize(radixspline *rsidx) {
+    return sizeof(rsidx) + rsidx->size * sizeof(uint32_t) + splineSize(rsidx->spl);
+}
+
+/**
+ * @brief	Closes and frees space for radix spline index structure
+ * @param	rsidx	Radix spline structure
+ */
+void radixsplineClose(radixspline *rsidx) {
+    splineClose(rsidx->spl);
+    free(rsidx->spl);
+    free(rsidx->table);
+}
+
 /************************************************************embedDB.c************************************************************/
 /******************************************************************************/
 /**
@@ -2219,926 +2749,6 @@ int8_t int64Comparator(void *a, void *b) {
     return 0;
 }
 
-/************************************************************radixspline.c************************************************************/
-/******************************************************************************/
-/**
- * @file        radixspline.c
- * @author      EmbedDB Team (See Authors.md)
- * @brief       Implementation of radix spline for embedded devices.
- *              Based on "RadixSpline: a single-pass learned index" by
- *              A. Kipf, R. Marcus, A. van Renen, M. Stoian, A. Kemper,
- *              T. Kraska, and T. Neumann
- *              https://github.com/learnedsystems/RadixSpline
- * @copyright   Copyright 2024
- *              EmbedDB Team
- * @par Redistribution and use in source and binary forms, with or without
- *  modification, are permitted provided that the following conditions are met:
- *
- * @par 1.Redistributions of source code must retain the above copyright notice,
- *  this list of conditions and the following disclaimer.
- *
- * @par 2.Redistributions in binary form must reproduce the above copyright notice,
- *  this list of conditions and the following disclaimer in the documentation
- *  and/or other materials provided with the distribution.
- *
- * @par 3.Neither the name of the copyright holder nor the names of its contributors
- *  may be used to endorse or promote products derived from this software without
- *  specific prior written permission.
- *
- * @par THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
- *  AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
- *  IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
- *  ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE
- *  LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
- *  CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
- *  SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
- *  INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
- *  CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
- *  ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
- *  POSSIBILITY OF SUCH DAMAGE.
- */
-/******************************************************************************/
-
-/**
- * @brief   Build the radix table
- * @param   rsdix       Radix spline structure
- * @param   keys        Data points to be indexed
- * @param   numKeys     Number of data items
- */
-void radixsplineBuild(radixspline *rsidx, void **keys, uint32_t numKeys) {
-    rsidx->pointsSeen = 0;
-    rsidx->prevPrefix = 0;
-
-    for (uint32_t i = 0; i < numKeys; i++) {
-        void *key;
-        memcpy(&key, keys + i, sizeof(void *));
-        radixsplineAddPoint(rsidx, key, i);
-    }
-}
-
-/**
- * @brief   Rebuild the radix table with new shift amount
- * @param   rsdix       Radix spline structure
- * @param   spl         Spline structure
- * @param   radixSize   Size of radix table
- * @param   shiftAmount Difference in shift amount between current radix table and desired radix table
- */
-void radixsplineRebuild(radixspline *rsidx, int8_t radixSize, int8_t shiftAmount) {
-    // radixsplinePrint(rsidx);
-    rsidx->prevPrefix = rsidx->prevPrefix >> shiftAmount;
-
-    for (id_t i = 0; i < rsidx->size / pow(2, shiftAmount); i++) {
-        memcpy((int8_t *)rsidx->table + i * rsidx->keySize, (int8_t *)rsidx->table + (i << shiftAmount) * rsidx->keySize, rsidx->keySize);
-    }
-    uint64_t maxKey = UINT64_MAX;
-    for (id_t i = rsidx->size / pow(2, shiftAmount); i < rsidx->size; i++) {
-        memcpy((int8_t *)rsidx->table + i * rsidx->keySize, &maxKey, rsidx->keySize);
-    }
-}
-
-/**
- * @brief	Add a point to be indexed by the radix spline structure
- * @param	rsdix	Radix spline structure
- * @param	key		New point to be indexed by radix spline
- * @param   page    Page number for spline point to add
- */
-void radixsplineAddPoint(radixspline *rsidx, void *key, uint32_t page) {
-    splineAdd(rsidx->spl, key, page);
-
-    // Return if not using Radix table
-    if (rsidx->radixSize == 0) {
-        return;
-    }
-
-    // Determine if need to update radix table based on adding point to spline
-    if (rsidx->spl->count <= rsidx->pointsSeen)
-        return;  // Nothing to do
-
-    // take the last point that was added to spline
-    key = splinePointLocation(rsidx->spl, rsidx->spl->count - 1);
-
-    // Initialize table and minKey on first key added
-    if (rsidx->pointsSeen == 0) {
-        rsidx->table = malloc(sizeof(id_t) * rsidx->size);
-        uint64_t maxKey = UINT64_MAX;
-        for (int32_t counter = 1; counter < rsidx->size; counter++) {
-            memcpy(rsidx->table + counter, &maxKey, sizeof(id_t));
-        }
-        rsidx->minKey = key;
-    }
-
-    // Check if prefix will fit in radix table
-    uint64_t keyDiff;
-    if (rsidx->keySize <= 4) {
-        uint32_t keyVal = 0, minKeyVal = 0;
-        memcpy(&keyVal, key, rsidx->keySize);
-        memcpy(&minKeyVal, rsidx->minKey, rsidx->keySize);
-        keyDiff = keyVal - minKeyVal;
-    } else {
-        uint64_t keyVal = 0, minKeyVal = 0;
-        memcpy(&keyVal, key, rsidx->keySize);
-        memcpy(&minKeyVal, rsidx->minKey, rsidx->keySize);
-        keyDiff = keyVal - minKeyVal;
-    }
-
-    uint8_t bitsToRepresentKey = ceil(log2f((float)keyDiff));
-    int8_t newShiftSize;
-    if (bitsToRepresentKey < rsidx->radixSize) {
-        newShiftSize = 0;
-    } else {
-        newShiftSize = bitsToRepresentKey - rsidx->radixSize;
-    }
-
-    // if the shift size changes, need to remake table from scratch using new shift size
-    if (newShiftSize > rsidx->shiftSize) {
-        radixsplineRebuild(rsidx, rsidx->radixSize, newShiftSize - rsidx->shiftSize);
-        rsidx->shiftSize = newShiftSize;
-    }
-
-    id_t prefix = keyDiff >> rsidx->shiftSize;
-    if (prefix != rsidx->prevPrefix) {
-        // Make all new rows in the radix table point to the last point seen
-        for (id_t pr = rsidx->prevPrefix; pr < prefix; pr++) {
-            memcpy(rsidx->table + pr, &rsidx->pointsSeen, sizeof(id_t));
-        }
-
-        rsidx->prevPrefix = prefix;
-    }
-
-    memcpy(rsidx->table + prefix, &rsidx->pointsSeen, sizeof(id_t));
-
-    rsidx->pointsSeen++;
-}
-
-/**
- * @brief	Initialize an empty radix spline index of given size
- * @param	rsdix		Radix spline structure
- * @param	spl			Spline structure
- * @param	radixSize	Size of radix table
- * @param	keySize		Size of keys to be stored in radix table
- */
-void radixsplineInit(radixspline *rsidx, spline *spl, int8_t radixSize, uint8_t keySize) {
-    rsidx->spl = spl;
-    rsidx->radixSize = radixSize;
-    rsidx->keySize = keySize;
-    rsidx->shiftSize = 0;
-    rsidx->size = pow(2, radixSize);
-
-    /* Determine the prefix size (shift bits) based on min and max keys */
-    rsidx->minKey = spl->points;
-
-    /* Initialize points seen */
-    rsidx->pointsSeen = 0;
-    rsidx->prevPrefix = 0;
-}
-
-/**
- * @brief	Performs a recursive binary search on the spine points for a key
- * @param	rsidx		Array to search through
- * @param	low		    Lower search bound (Index of spline point)
- * @param	high	    Higher search bound (Index of spline point)
- * @param	key		    Key to search for
- * @param	compareKey	Function to compare keys
- * @return	Index of spline point that is the upper end of the spline segment that contains the key
- */
-size_t radixBinarySearch(radixspline *rsidx, int low, int high, void *key, int8_t compareKey(void *, void *)) {
-    int32_t mid;
-    if (high >= low) {
-        mid = low + (high - low) / 2;
-        void *midKey = splinePointLocation(rsidx->spl, mid);
-        void *midKeyMinusOne = splinePointLocation(rsidx->spl, mid - 1);
-        if (compareKey(midKey, key) >= 0 && compareKey(midKeyMinusOne, key) <= 0)
-            return mid;
-
-        if (compareKey(midKey, key) > 0)
-            return radixBinarySearch(rsidx, low, mid - 1, key, compareKey);
-
-        return radixBinarySearch(rsidx, mid + 1, high, key, compareKey);
-    }
-
-    mid = low + (high - low) / 2;
-    if (mid >= high) {
-        return high;
-    } else {
-        return low;
-    }
-}
-
-/**
- * @brief	Initialize and build a radix spline index of given size using pre-built spline structure.
- * @param	rsdix		Radix spline structure
- * @param	spl			Spline structure
- * @param	radixSize	Size of radix table
- * @param	keys		Keys to be indexed
- * @param	numKeys 	Number of keys in `keys`
- * @param	keySize		Size of keys to be stored in radix table
- */
-void radixsplineInitBuild(radixspline *rsidx, spline *spl, uint32_t radixSize, void **keys, uint32_t numKeys, uint8_t keySize) {
-    radixsplineInit(rsidx, spl, radixSize, keySize);
-    radixsplineBuild(rsidx, keys, numKeys);
-}
-
-/**
- * @brief	Returns the radix index that is end of spline segment containing key using radix table.
- * @param	rsidx	    Radix spline structure
- * @param	key		    Search key
- * @param	compareKey	Function to compare keys
- * @return	Index of spline point that is the upper end of the spline segment that contains the key
- */
-size_t radixsplineGetEntry(radixspline *rsidx, void *key, int8_t compareKey(void *, void *)) {
-    /* Use radix table to find range of spline points */
-
-    uint64_t keyVal = 0, minKeyVal = 0;
-    memcpy(&keyVal, key, rsidx->keySize);
-    memcpy(&minKeyVal, rsidx->minKey, rsidx->keySize);
-
-    uint32_t prefix = (keyVal - minKeyVal) >> rsidx->shiftSize;
-
-    uint32_t begin, end;
-
-    // Determine end, use next higher radix point if within bounds, unless key is exactly prefix
-    if (keyVal == ((uint64_t)prefix << rsidx->shiftSize)) {
-        memcpy(&end, rsidx->table + prefix, sizeof(id_t));
-    } else {
-        if ((prefix + 1) < rsidx->size) {
-            memcpy(&end, rsidx->table + (prefix + 1), sizeof(id_t));
-        } else {
-            memcpy(&end, rsidx->table + (rsidx->size - 1), sizeof(id_t));
-        }
-    }
-
-    // check end is in bounds since radix table values are initiated to INT_MAX
-    if (end >= rsidx->spl->count) {
-        end = rsidx->spl->count - 1;
-    }
-
-    // use previous adjacent radix point for lower bounds
-    if (prefix == 0) {
-        begin = 0;
-    } else {
-        memcpy(&begin, rsidx->table + (prefix - 1), sizeof(id_t));
-    }
-
-    return radixBinarySearch(rsidx, begin, end, key, compareKey);
-}
-
-/**
- * @brief	Returns the radix index that is end of spline segment containing key using binary search.
- * @param	rsidx	    Radix spline structure
- * @param	key		    Search key
- * @param	compareKey	Function to compare keys
- * @return  Index of spline point that is the upper end of the spline segment that contains the key
- */
-size_t radixsplineGetEntryBinarySearch(radixspline *rsidx, void *key, int8_t compareKey(void *, void *)) {
-    return radixBinarySearch(rsidx, 0, rsidx->spl->count - 1, key, compareKey);
-}
-
-/**
- * @brief	Estimate location of key in data using spline points.
- * @param	rsidx	Radix spline structure
- * @param	key		Search key
- * @param	compareKey	Function to compare keys
- * @return	Estimated page number that contains key
- */
-size_t radixsplineEstimateLocation(radixspline *rsidx, void *key, int8_t compareKey(void *, void *)) {
-    uint64_t keyVal = 0, minKeyVal = 0;
-    memcpy(&keyVal, key, rsidx->keySize);
-    memcpy(&minKeyVal, rsidx->minKey, rsidx->keySize);
-
-    if (keyVal < minKeyVal)
-        return 0;
-
-    size_t index;
-    if (rsidx->radixSize == 0) {
-        /* Get index using binary search */
-        index = radixsplineGetEntryBinarySearch(rsidx, key, compareKey);
-    } else {
-        /* Get index using radix table */
-        index = radixsplineGetEntry(rsidx, key, compareKey);
-    }
-
-    /* Interpolate between two spline points */
-    void *down = splinePointLocation(rsidx->spl, index - 1);
-    void *up = splinePointLocation(rsidx->spl, index);
-
-    uint64_t downKey = 0, upKey = 0;
-    memcpy(&downKey, down, rsidx->keySize);
-    memcpy(&upKey, up, rsidx->keySize);
-
-    uint32_t upPage = 0;
-    uint32_t downPage = 0;
-    memcpy(&upPage, (int8_t *)up + rsidx->spl->keySize, sizeof(uint32_t));
-    memcpy(&downPage, (int8_t *)down + rsidx->spl->keySize, sizeof(uint32_t));
-
-    /* Keydiff * slope + y */
-    uint32_t estimatedPage = (uint32_t)((keyVal - downKey) * (upPage - downPage) / (long double)(upKey - downKey)) + downPage;
-    return estimatedPage > upPage ? upPage : estimatedPage;
-}
-
-/**
- * @brief	Finds a value using index. Returns predicted location and low and high error bounds.
- * @param	rsidx	    Radix spline structure
- * @param	key		    Search key
- * @param   compareKey  Function to compare keys
- * @param	loc		    Return of predicted location
- * @param	low		    Return of low bound on predicted location
- * @param	high	    Return of high bound on predicted location
- */
-void radixsplineFind(radixspline *rsidx, void *key, int8_t compareKey(void *, void *), id_t *loc, id_t *low, id_t *high) {
-    /* Estimate location */
-    id_t locationEstimate = radixsplineEstimateLocation(rsidx, key, compareKey);
-    memcpy(loc, &locationEstimate, sizeof(id_t));
-
-    /* Set error bounds based on maxError from spline construction */
-    id_t lowEstimate = (rsidx->spl->maxError > locationEstimate) ? 0 : locationEstimate - rsidx->spl->maxError;
-    memcpy(low, &lowEstimate, sizeof(id_t));
-    void *lastSplinePoint = splinePointLocation(rsidx->spl, rsidx->spl->count - 1);
-    uint64_t lastKey = 0;
-    memcpy(&lastKey, lastSplinePoint, rsidx->keySize);
-    id_t highEstimate = (locationEstimate + rsidx->spl->maxError > lastKey) ? lastKey : locationEstimate + rsidx->spl->maxError;
-    memcpy(high, &highEstimate, sizeof(id_t));
-}
-
-/**
- * @brief	Print radix spline structure.
- * @param	rsidx	Radix spline structure
- */
-void radixsplinePrint(radixspline *rsidx) {
-    if (rsidx == NULL || rsidx->radixSize == 0) {
-        printf("No radix spline index to print.\n");
-        return;
-    }
-
-    printf("Radix table (%lu):\n", rsidx->size);
-    // for (id_t i=0; i < 20; i++)
-    uint64_t minKeyVal = 0;
-    id_t tableVal;
-    memcpy(&minKeyVal, rsidx->minKey, rsidx->keySize);
-    for (id_t i = 0; i < rsidx->size; i++) {
-        printf("[" TO_BINARY_PATTERN "] ", TO_BINARY((uint8_t)(i)));
-        memcpy(&tableVal, rsidx->table + i, sizeof(id_t));
-        printf("(%lu): --> %lu\n", (i << rsidx->shiftSize) + minKeyVal, tableVal);
-    }
-    printf("\n");
-}
-
-/**
- * @brief	Returns size of radix spline index structure in bytes
- * @param	rsidx	Radix spline structure
- */
-size_t radixsplineSize(radixspline *rsidx) {
-    return sizeof(rsidx) + rsidx->size * sizeof(uint32_t) + splineSize(rsidx->spl);
-}
-
-/**
- * @brief	Closes and frees space for radix spline index structure
- * @param	rsidx	Radix spline structure
- */
-void radixsplineClose(radixspline *rsidx) {
-    splineClose(rsidx->spl);
-    free(rsidx->spl);
-    free(rsidx->table);
-}
-
-/************************************************************schema.c************************************************************/
-/******************************************************************************/
-/**
- * @file        schema.c
- * @author      EmbedDB Team (See Authors.md)
- * @brief       Source code file for the schema for EmbedDB query interface
- * @copyright   Copyright 2024
- *              EmbedDB Team
- * @par Redistribution and use in source and binary forms, with or without
- *  modification, are permitted provided that the following conditions are met:
- *
- * @par 1.Redistributions of source code must retain the above copyright notice,
- *  this list of conditions and the following disclaimer.
- *
- * @par 2.Redistributions in binary form must reproduce the above copyright notice,
- *  this list of conditions and the following disclaimer in the documentation
- *  and/or other materials provided with the distribution.
- *
- * @par 3.Neither the name of the copyright holder nor the names of its contributors
- *  may be used to endorse or promote products derived from this software without
- *  specific prior written permission.
- *
- * @par THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
- *  AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
- *  IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
- *  ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE
- *  LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
- *  CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
- *  SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
- *  INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
- *  CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
- *  ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
- *  POSSIBILITY OF SUCH DAMAGE.
- */
-/******************************************************************************/
-
-/**
- * @brief	Create an embedDBSchema from a list of column sizes including both key and data
- * @param	numCols			The total number of columns in table
- * @param	colSizes		An array with the size of each column. Max size is 127
- * @param	colSignedness	An array describing if the data in the column is signed or unsigned. Use the defined constants embedDB_COLUMNN_SIGNED or embedDB_COLUMN_UNSIGNED
- */
-embedDBSchema *embedDBCreateSchema(uint8_t numCols, int8_t *colSizes, int8_t *colSignedness) {
-    embedDBSchema *schema = malloc(sizeof(embedDBSchema));
-    schema->columnSizes = malloc(numCols * sizeof(int8_t));
-    schema->numCols = numCols;
-    uint16_t totalSize = 0;
-    for (uint8_t i = 0; i < numCols; i++) {
-        int8_t sign = colSignedness[i];
-        uint8_t colSize = colSizes[i];
-        totalSize += colSize;
-        if (colSize <= 0) {
-#ifdef PRINT_ERRORS
-            printf("ERROR: Column size must be greater than zero\n");
-#endif
-            return NULL;
-        }
-        if (sign == embedDB_COLUMN_SIGNED) {
-            schema->columnSizes[i] = -colSizes[i];
-        } else if (sign == embedDB_COLUMN_UNSIGNED) {
-            schema->columnSizes[i] = colSizes[i];
-        } else {
-#ifdef PRINT_ERRORS
-            printf("ERROR: Must only use embedDB_COLUMN_SIGNED or embedDB_COLUMN_UNSIGNED to describe column signedness\n");
-#endif
-            return NULL;
-        }
-    }
-
-    return schema;
-}
-
-/**
- * @brief	Free a schema. Sets the schema pointer to NULL.
- */
-void embedDBFreeSchema(embedDBSchema **schema) {
-    if (*schema == NULL) return;
-    free((*schema)->columnSizes);
-    free(*schema);
-    *schema = NULL;
-}
-
-/**
- * @brief	Uses schema to determine the length of buffer to allocate and callocs that space
- */
-void *createBufferFromSchema(embedDBSchema *schema) {
-    uint16_t totalSize = 0;
-    for (uint8_t i = 0; i < schema->numCols; i++) {
-        totalSize += abs(schema->columnSizes[i]);
-    }
-    return calloc(1, totalSize);
-}
-
-/**
- * @brief	Deep copy schema and return a pointer to the copy
- */
-embedDBSchema *copySchema(const embedDBSchema *schema) {
-    embedDBSchema *copy = malloc(sizeof(embedDBSchema));
-    if (copy == NULL) {
-#ifdef PRINT_ERRORS
-        printf("ERROR: malloc failed while copying schema\n");
-#endif
-        return NULL;
-    }
-    copy->numCols = schema->numCols;
-    copy->columnSizes = malloc(schema->numCols * sizeof(int8_t));
-    if (copy->columnSizes == NULL) {
-#ifdef PRINT_ERRORS
-        printf("ERROR: malloc failed while copying schema\n");
-#endif
-        return NULL;
-    }
-    memcpy(copy->columnSizes, schema->columnSizes, schema->numCols * sizeof(int8_t));
-    return copy;
-}
-
-/**
- * @brief	Finds byte offset of the column from the beginning of the record
- */
-uint16_t getColOffsetFromSchema(embedDBSchema *schema, uint8_t colNum) {
-    uint16_t pos = 0;
-    for (uint8_t i = 0; i < colNum; i++) {
-        pos += abs(schema->columnSizes[i]);
-    }
-    return pos;
-}
-
-/**
- * @brief	Calculates record size from schema
- */
-uint16_t getRecordSizeFromSchema(embedDBSchema *schema) {
-    uint16_t size = 0;
-    for (uint8_t i = 0; i < schema->numCols; i++) {
-        size += abs(schema->columnSizes[i]);
-    }
-    return size;
-}
-
-void printSchema(embedDBSchema *schema) {
-    for (uint8_t i = 0; i < schema->numCols; i++) {
-        if (i) {
-            printf(", ");
-        }
-        int8_t col = schema->columnSizes[i];
-        printf("%sint%d", embedDB_IS_COL_SIGNED(col) ? "" : "u", abs(col));
-    }
-    printf("\n");
-}
-
-/************************************************************spline.c************************************************************/
-/******************************************************************************/
-/**
- * @file        spline.c
- * @author      EmbedDB Team (See Authors.md)
- * @brief       Implementation of spline.
- * @copyright   Copyright 2024
- *              EmbedDB Team
- * @par Redistribution and use in source and binary forms, with or without
- *  modification, are permitted provided that the following conditions are met:
- *
- * @par 1.Redistributions of source code must retain the above copyright notice,
- *  this list of conditions and the following disclaimer.
- *
- * @par 2.Redistributions in binary form must reproduce the above copyright notice,
- *  this list of conditions and the following disclaimer in the documentation
- *  and/or other materials provided with the distribution.
- *
- * @par 3.Neither the name of the copyright holder nor the names of its contributors
- *  may be used to endorse or promote products derived from this software without
- *  specific prior written permission.
- *
- * @par THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
- *  AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
- *  IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
- *  ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE
- *  LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
- *  CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
- *  SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
- *  INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
- *  CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
- *  ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
- *  POSSIBILITY OF SUCH DAMAGE.
- */
-/******************************************************************************/
-
-/**
- * @brief    Initialize a spline structure with given maximum size and error.
- * @param    spl        Spline structure
- * @param    size       Maximum size of spline
- * @param    maxError   Maximum error allowed in spline
- * @param    keySize    Size of key in bytes
- */
-void splineInit(spline *spl, id_t size, size_t maxError, uint8_t keySize) {
-    uint8_t pointSize = sizeof(uint32_t) + keySize;
-    spl->count = 0;
-    spl->pointsStartIndex = 0;
-    spl->eraseSize = 1;
-    spl->size = size;
-    spl->maxError = maxError;
-    spl->points = (void *)malloc(pointSize * size);
-    spl->tempLastPoint = 0;
-    spl->keySize = keySize;
-    spl->lastKey = malloc(keySize);
-    spl->lower = malloc(pointSize);
-    spl->upper = malloc(pointSize);
-    spl->firstSplinePoint = malloc(pointSize);
-    spl->numAddCalls = 0;
-}
-
-/**
- * @brief    Check if first line is to the left (counter-clockwise) of the second.
- */
-static inline int8_t splineIsLeft(uint64_t x1, int64_t y1, uint64_t x2, int64_t y2) {
-    return y1 * x2 > y2 * x1;
-}
-
-/**
- * @brief    Check if first line is to the right (clockwise) of the second.
- */
-static inline int8_t splineIsRight(uint64_t x1, int64_t y1, uint64_t x2, int64_t y2) {
-    return y1 * x2 < y2 * x1;
-}
-
-/**
- * @brief   Adds point to spline structure
- * @param   spl     Spline structure
- * @param   key     Data key to be added (must be incrementing)
- * @param   page    Page number for spline point to add
- */
-void splineAdd(spline *spl, void *key, uint32_t page) {
-    spl->numAddCalls++;
-    /* Check if no spline points are currently empty */
-    if (spl->numAddCalls == 1) {
-        /* Add first point in data set to spline. */
-        void *firstPoint = splinePointLocation(spl, 0);
-        memcpy(firstPoint, key, spl->keySize);
-        memcpy(((int8_t *)firstPoint + spl->keySize), &page, sizeof(uint32_t));
-        /* Log first point for wrap around purposes */
-        memcpy(spl->firstSplinePoint, key, spl->keySize);
-        memcpy(((int8_t *)spl->firstSplinePoint + spl->keySize), &page, sizeof(uint32_t));
-        spl->count++;
-        memcpy(spl->lastKey, key, spl->keySize);
-        return;
-    }
-
-    /* Check if there is only one spline point (need to initialize upper and lower limits using 2nd point) */
-    if (spl->numAddCalls == 2) {
-        /* Initialize upper and lower limits using second (unique) data point */
-        memcpy(spl->lower, key, spl->keySize);
-        uint32_t lowerPage = page < spl->maxError ? 0 : page - spl->maxError;
-        memcpy(((int8_t *)spl->lower + spl->keySize), &lowerPage, sizeof(uint32_t));
-        memcpy(spl->upper, key, spl->keySize);
-        uint32_t upperPage = page + spl->maxError;
-        memcpy(((int8_t *)spl->upper + spl->keySize), &upperPage, sizeof(uint32_t));
-        memcpy(spl->lastKey, key, spl->keySize);
-        spl->lastLoc = page;
-        return;
-    }
-
-    /* Skip duplicates */
-    uint64_t keyVal = 0, lastKeyVal = 0;
-    memcpy(&keyVal, key, spl->keySize);
-    memcpy(&lastKeyVal, spl->lastKey, spl->keySize);
-
-    if (keyVal <= lastKeyVal)
-        return;
-
-    /* Last point added to spline, check if previous point is temporary - overwrite previous point if temporary */
-    if (spl->tempLastPoint != 0) {
-        spl->count--;
-    }
-
-    uint32_t lastPage = 0;
-    uint64_t lastPointKey = 0, upperKey = 0, lowerKey = 0;
-    void *lastPointLocation = splinePointLocation(spl, spl->count - 1);
-    memcpy(&lastPointKey, lastPointLocation, spl->keySize);
-    memcpy(&upperKey, spl->upper, spl->keySize);
-    memcpy(&lowerKey, spl->lower, spl->keySize);
-    memcpy(&lastPage, (int8_t *)lastPointLocation + spl->keySize, sizeof(uint32_t));
-
-    uint64_t xdiff, upperXDiff, lowerXDiff = 0;
-    uint32_t ydiff, upperYDiff = 0;
-    int64_t lowerYDiff = 0; /* This may be negative */
-
-    xdiff = keyVal - lastPointKey;
-    ydiff = page - lastPage;
-    upperXDiff = upperKey - lastPointKey;
-    memcpy(&upperYDiff, (int8_t *)spl->upper + spl->keySize, sizeof(uint32_t));
-    upperYDiff -= lastPage;
-    lowerXDiff = lowerKey - lastPointKey;
-    memcpy(&lowerYDiff, (int8_t *)spl->lower + spl->keySize, sizeof(uint32_t));
-    lowerYDiff -= lastPage;
-
-    if (spl->count >= spl->size)
-        splineErase(spl, spl->eraseSize);
-
-    /* Check if next point still in error corridor */
-    if (splineIsLeft(xdiff, ydiff, upperXDiff, upperYDiff) == 1 ||
-        splineIsRight(xdiff, ydiff, lowerXDiff, lowerYDiff) == 1) {
-        /* Point is not in error corridor. Add previous point to spline. */
-        void *nextSplinePoint = splinePointLocation(spl, spl->count);
-        memcpy(nextSplinePoint, spl->lastKey, spl->keySize);
-        memcpy((int8_t *)nextSplinePoint + spl->keySize, &spl->lastLoc, sizeof(uint32_t));
-        spl->count++;
-        spl->tempLastPoint = 0;
-
-        /* Update upper and lower limits. */
-        memcpy(spl->lower, key, spl->keySize);
-        uint32_t lowerPage = page < spl->maxError ? 0 : page - spl->maxError;
-        memcpy((int8_t *)spl->lower + spl->keySize, &lowerPage, sizeof(uint32_t));
-        memcpy(spl->upper, key, spl->keySize);
-        uint32_t upperPage = page + spl->maxError;
-        memcpy((int8_t *)spl->upper + spl->keySize, &upperPage, sizeof(uint32_t));
-    } else {
-        /* Check if must update upper or lower limits */
-
-        /* Upper limit */
-        if (splineIsLeft(upperXDiff, upperYDiff, xdiff, page + spl->maxError - lastPage) == 1) {
-            memcpy(spl->upper, key, spl->keySize);
-            uint32_t upperPage = page + spl->maxError;
-            memcpy((int8_t *)spl->upper + spl->keySize, &upperPage, sizeof(uint32_t));
-        }
-
-        /* Lower limit */
-        if (splineIsRight(lowerXDiff, lowerYDiff, xdiff, (page < spl->maxError ? 0 : page - spl->maxError) - lastPage) == 1) {
-            memcpy(spl->lower, key, spl->keySize);
-            uint32_t lowerPage = page < spl->maxError ? 0 : page - spl->maxError;
-            memcpy((int8_t *)spl->lower + spl->keySize, &lowerPage, sizeof(uint32_t));
-        }
-    }
-
-    spl->lastLoc = page;
-
-    /* Add last key on spline if not already there. */
-    /* This will get overwritten the next time a new spline point is added */
-    memcpy(spl->lastKey, key, spl->keySize);
-    void *tempSplinePoint = splinePointLocation(spl, spl->count);
-    memcpy(tempSplinePoint, spl->lastKey, spl->keySize);
-    memcpy((int8_t *)tempSplinePoint + spl->keySize, &spl->lastLoc, sizeof(uint32_t));
-    spl->count++;
-
-    spl->tempLastPoint = 1;
-}
-
-/**
- * @brief   Removes points from the spline
- * @param   spl         The spline structure to search
- * @param   numPoints   The number of points to remove from the spline
- * @return  Returns zero if successful and one if not
- */
-int splineErase(spline *spl, uint32_t numPoints) {
-    /* If the user tries to delete more points than they allocated or deleting would only leave one spline point */
-    if (numPoints > spl->count || spl->count - numPoints == 1)
-        return 1;
-    if (numPoints == 0)
-        return 0;
-
-    spl->count -= numPoints;
-    spl->pointsStartIndex = (spl->pointsStartIndex + numPoints) % spl->size;
-    if (spl->count == 0)
-        spl->numAddCalls = 0;
-    return 0;
-}
-
-/**
- * @brief	Builds a spline structure given a sorted data set. GreedySplineCorridor
- * implementation from "Smooth interpolating histograms with error guarantees"
- * (BNCOD'08) by T. Neumann and S. Michel.
- * @param	spl			Spline structure
- * @param	data		Array of sorted data
- * @param	size		Number of values in array
- * @param	maxError	Maximum error for each spline
- */
-void splineBuild(spline *spl, void **data, id_t size, size_t maxError) {
-    spl->maxError = maxError;
-
-    for (id_t i = 0; i < size; i++) {
-        void *key;
-        memcpy(&key, data + i, sizeof(void *));
-        splineAdd(spl, key, i);
-    }
-}
-
-/**
- * @brief    Print a spline structure.
- * @param    spl     Spline structure
- */
-void splinePrint(spline *spl) {
-    if (spl == NULL) {
-        printf("No spline to print.\n");
-        return;
-    }
-    printf("Spline max error (%lu):\n", spl->maxError);
-    printf("Spline points (%lu):\n", spl->count);
-    uint64_t keyVal = 0;
-    uint32_t page = 0;
-    for (id_t i = 0; i < spl->count; i++) {
-        void *point = splinePointLocation(spl, i);
-        memcpy(&keyVal, point, spl->keySize);
-        memcpy(&page, (int8_t *)point + spl->keySize, sizeof(uint32_t));
-        printf("[%lu]: (%lu, %li)\n", i, keyVal, page);
-    }
-    printf("\n");
-}
-
-/**
- * @brief    Return spline structure size in bytes.
- * @param    spl     Spline structure
- * @return   size of the spline in bytes
- */
-uint32_t splineSize(spline *spl) {
-    return sizeof(spline) + (spl->size * (spl->keySize + sizeof(uint32_t)));
-}
-
-/**
- * @brief	Performs a recursive binary search on the spine points for a key
- * @param	arr			Array of spline points to search through
- * @param	low		    Lower search bound (Index of spline point)
- * @param	high	    Higher search bound (Index of spline point)
- * @param	key		    Key to search for
- * @param	compareKey	Function to compare keys
- * @return	Index of spline point that is the upper end of the spline segment that contains the key
- */
-size_t pointsBinarySearch(spline *spl, int low, int high, void *key, int8_t compareKey(void *, void *)) {
-    int32_t mid;
-    if (high >= low) {
-        mid = low + (high - low) / 2;
-
-        // If mid is zero, then low = 0 and high = 1. Therefore there is only one spline segment and we return 1, the upper bound.
-        if (mid == 0) {
-            return 1;
-        }
-
-        void *midSplinePoint = splinePointLocation(spl, mid);
-        void *midSplineMinusOnePoint = splinePointLocation(spl, mid - 1);
-
-        if (compareKey(midSplinePoint, key) >= 0 && compareKey(midSplineMinusOnePoint, key) <= 0)
-            return mid;
-
-        if (compareKey(midSplinePoint, key) > 0)
-            return pointsBinarySearch(spl, low, mid - 1, key, compareKey);
-
-        return pointsBinarySearch(spl, mid + 1, high, key, compareKey);
-    }
-
-    mid = low + (high - low) / 2;
-    if (mid >= high) {
-        return high;
-    } else {
-        return low;
-    }
-}
-
-/**
- * @brief	Estimate the page number of a given key
- * @param	spl			The spline structure to search
- * @param	key			The key to search for
- * @param	compareKey	Function to compare keys
- * @param	loc			A return value for the best estimate of which page the key is on
- * @param	low			A return value for the smallest page that it could be on
- * @param	high		A return value for the largest page it could be on
- */
-void splineFind(spline *spl, void *key, int8_t compareKey(void *, void *), id_t *loc, id_t *low, id_t *high) {
-    size_t pointIdx;
-    uint64_t keyVal = 0, smallestKeyVal = 0, largestKeyVal = 0;
-    void *smallestSplinePoint = splinePointLocation(spl, 0);
-    void *largestSplinePoint = splinePointLocation(spl, spl->count - 1);
-    memcpy(&keyVal, key, spl->keySize);
-    memcpy(&smallestKeyVal, smallestSplinePoint, spl->keySize);
-    memcpy(&largestKeyVal, largestSplinePoint, spl->keySize);
-
-    if (compareKey(key, splinePointLocation(spl, 0)) < 0 || spl->count <= 1) {
-        // Key is smaller than any we have on record
-        uint32_t lowEstimate, highEstimate, locEstimate = 0;
-        memcpy(&lowEstimate, (int8_t *)spl->firstSplinePoint + spl->keySize, sizeof(uint32_t));
-        memcpy(&highEstimate, (int8_t *)smallestSplinePoint + spl->keySize, sizeof(uint32_t));
-        locEstimate = (lowEstimate + highEstimate) / 2;
-
-        memcpy(loc, &locEstimate, sizeof(uint32_t));
-        memcpy(low, &lowEstimate, sizeof(uint32_t));
-        memcpy(high, &highEstimate, sizeof(uint32_t));
-        return;
-    } else if (compareKey(key, splinePointLocation(spl, spl->count - 1)) > 0) {
-        memcpy(loc, (int8_t *)largestSplinePoint + spl->keySize, sizeof(uint32_t));
-        memcpy(low, (int8_t *)largestSplinePoint + spl->keySize, sizeof(uint32_t));
-        memcpy(high, (int8_t *)largestSplinePoint + spl->keySize, sizeof(uint32_t));
-        return;
-    } else {
-        // Perform a binary seach to find the spline point above the key we're looking for
-        pointIdx = pointsBinarySearch(spl, 0, spl->count - 1, key, compareKey);
-    }
-
-    // Interpolate between two spline points
-    void *downKey = splinePointLocation(spl, pointIdx - 1);
-    uint32_t downPage = 0;
-    memcpy(&downPage, (int8_t *)downKey + spl->keySize, sizeof(uint32_t));
-    void *upKey = splinePointLocation(spl, pointIdx);
-    uint32_t upPage = 0;
-    memcpy(&upPage, (int8_t *)upKey + spl->keySize, sizeof(uint32_t));
-    uint64_t downKeyVal = 0, upKeyVal = 0;
-    memcpy(&downKeyVal, downKey, spl->keySize);
-    memcpy(&upKeyVal, upKey, spl->keySize);
-
-    // Estimate location as page number
-    // Keydiff * slope + y
-    id_t locationEstimate = (id_t)((keyVal - downKeyVal) * (upPage - downPage) / (long double)(upKeyVal - downKeyVal)) + downPage;
-    memcpy(loc, &locationEstimate, sizeof(id_t));
-
-    // Set error bounds based on maxError from spline construction
-    id_t lowEstiamte = (spl->maxError > locationEstimate) ? 0 : locationEstimate - spl->maxError;
-    memcpy(low, &lowEstiamte, sizeof(id_t));
-    void *lastSplinePoint = splinePointLocation(spl, spl->count - 1);
-    uint32_t lastSplinePointPage = 0;
-    memcpy(&lastSplinePointPage, (int8_t *)lastSplinePoint + spl->keySize, sizeof(uint32_t));
-    id_t highEstimate = (locationEstimate + spl->maxError > lastSplinePointPage) ? lastSplinePointPage : locationEstimate + spl->maxError;
-    memcpy(high, &highEstimate, sizeof(id_t));
-}
-
-/**
- * @brief    Free memory allocated for spline structure.
- * @param    spl        Spline structure
- */
-void splineClose(spline *spl) {
-    free(spl->points);
-    free(spl->lastKey);
-    free(spl->lower);
-    free(spl->upper);
-    free(spl->firstSplinePoint);
-}
-
-/**
- * @brief   Returns a pointer to the location of the specified spline point in memory. Note that this method does not check if there is a point there, so it may be garbage data.
- * @param   spl         The spline structure that contains the points
- * @param   pointIndex  The index of the point to return a pointer to
- */
-void *splinePointLocation(spline *spl, size_t pointIndex) {
-    return (int8_t *)spl->points + (((pointIndex + spl->pointsStartIndex) % spl->size) * (spl->keySize + sizeof(uint32_t)));
-}
-
 /************************************************************advancedQueries.c************************************************************/
 /******************************************************************************/
 /**
@@ -4295,4 +3905,394 @@ void embedDBFreeOperatorRecursive(embedDBOperator **op) {
     }
     free(*op);
     (*op) = NULL;
+}
+
+/************************************************************spline.c************************************************************/
+/******************************************************************************/
+/**
+ * @file        spline.c
+ * @author      EmbedDB Team (See Authors.md)
+ * @brief       Implementation of spline.
+ * @copyright   Copyright 2024
+ *              EmbedDB Team
+ * @par Redistribution and use in source and binary forms, with or without
+ *  modification, are permitted provided that the following conditions are met:
+ *
+ * @par 1.Redistributions of source code must retain the above copyright notice,
+ *  this list of conditions and the following disclaimer.
+ *
+ * @par 2.Redistributions in binary form must reproduce the above copyright notice,
+ *  this list of conditions and the following disclaimer in the documentation
+ *  and/or other materials provided with the distribution.
+ *
+ * @par 3.Neither the name of the copyright holder nor the names of its contributors
+ *  may be used to endorse or promote products derived from this software without
+ *  specific prior written permission.
+ *
+ * @par THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+ *  AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ *  IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+ *  ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE
+ *  LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+ *  CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+ *  SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+ *  INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+ *  CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+ *  ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+ *  POSSIBILITY OF SUCH DAMAGE.
+ */
+/******************************************************************************/
+
+/**
+ * @brief    Initialize a spline structure with given maximum size and error.
+ * @param    spl        Spline structure
+ * @param    size       Maximum size of spline
+ * @param    maxError   Maximum error allowed in spline
+ * @param    keySize    Size of key in bytes
+ */
+void splineInit(spline *spl, id_t size, size_t maxError, uint8_t keySize) {
+    uint8_t pointSize = sizeof(uint32_t) + keySize;
+    spl->count = 0;
+    spl->pointsStartIndex = 0;
+    spl->eraseSize = 1;
+    spl->size = size;
+    spl->maxError = maxError;
+    spl->points = (void *)malloc(pointSize * size);
+    spl->tempLastPoint = 0;
+    spl->keySize = keySize;
+    spl->lastKey = malloc(keySize);
+    spl->lower = malloc(pointSize);
+    spl->upper = malloc(pointSize);
+    spl->firstSplinePoint = malloc(pointSize);
+    spl->numAddCalls = 0;
+}
+
+/**
+ * @brief    Check if first line is to the left (counter-clockwise) of the second.
+ */
+static inline int8_t splineIsLeft(uint64_t x1, int64_t y1, uint64_t x2, int64_t y2) {
+    return y1 * x2 > y2 * x1;
+}
+
+/**
+ * @brief    Check if first line is to the right (clockwise) of the second.
+ */
+static inline int8_t splineIsRight(uint64_t x1, int64_t y1, uint64_t x2, int64_t y2) {
+    return y1 * x2 < y2 * x1;
+}
+
+/**
+ * @brief   Adds point to spline structure
+ * @param   spl     Spline structure
+ * @param   key     Data key to be added (must be incrementing)
+ * @param   page    Page number for spline point to add
+ */
+void splineAdd(spline *spl, void *key, uint32_t page) {
+    spl->numAddCalls++;
+    /* Check if no spline points are currently empty */
+    if (spl->numAddCalls == 1) {
+        /* Add first point in data set to spline. */
+        void *firstPoint = splinePointLocation(spl, 0);
+        memcpy(firstPoint, key, spl->keySize);
+        memcpy(((int8_t *)firstPoint + spl->keySize), &page, sizeof(uint32_t));
+        /* Log first point for wrap around purposes */
+        memcpy(spl->firstSplinePoint, key, spl->keySize);
+        memcpy(((int8_t *)spl->firstSplinePoint + spl->keySize), &page, sizeof(uint32_t));
+        spl->count++;
+        memcpy(spl->lastKey, key, spl->keySize);
+        return;
+    }
+
+    /* Check if there is only one spline point (need to initialize upper and lower limits using 2nd point) */
+    if (spl->numAddCalls == 2) {
+        /* Initialize upper and lower limits using second (unique) data point */
+        memcpy(spl->lower, key, spl->keySize);
+        uint32_t lowerPage = page < spl->maxError ? 0 : page - spl->maxError;
+        memcpy(((int8_t *)spl->lower + spl->keySize), &lowerPage, sizeof(uint32_t));
+        memcpy(spl->upper, key, spl->keySize);
+        uint32_t upperPage = page + spl->maxError;
+        memcpy(((int8_t *)spl->upper + spl->keySize), &upperPage, sizeof(uint32_t));
+        memcpy(spl->lastKey, key, spl->keySize);
+        spl->lastLoc = page;
+        return;
+    }
+
+    /* Skip duplicates */
+    uint64_t keyVal = 0, lastKeyVal = 0;
+    memcpy(&keyVal, key, spl->keySize);
+    memcpy(&lastKeyVal, spl->lastKey, spl->keySize);
+
+    if (keyVal <= lastKeyVal)
+        return;
+
+    /* Last point added to spline, check if previous point is temporary - overwrite previous point if temporary */
+    if (spl->tempLastPoint != 0) {
+        spl->count--;
+    }
+
+    uint32_t lastPage = 0;
+    uint64_t lastPointKey = 0, upperKey = 0, lowerKey = 0;
+    void *lastPointLocation = splinePointLocation(spl, spl->count - 1);
+    memcpy(&lastPointKey, lastPointLocation, spl->keySize);
+    memcpy(&upperKey, spl->upper, spl->keySize);
+    memcpy(&lowerKey, spl->lower, spl->keySize);
+    memcpy(&lastPage, (int8_t *)lastPointLocation + spl->keySize, sizeof(uint32_t));
+
+    uint64_t xdiff, upperXDiff, lowerXDiff = 0;
+    uint32_t ydiff, upperYDiff = 0;
+    int64_t lowerYDiff = 0; /* This may be negative */
+
+    xdiff = keyVal - lastPointKey;
+    ydiff = page - lastPage;
+    upperXDiff = upperKey - lastPointKey;
+    memcpy(&upperYDiff, (int8_t *)spl->upper + spl->keySize, sizeof(uint32_t));
+    upperYDiff -= lastPage;
+    lowerXDiff = lowerKey - lastPointKey;
+    memcpy(&lowerYDiff, (int8_t *)spl->lower + spl->keySize, sizeof(uint32_t));
+    lowerYDiff -= lastPage;
+
+    if (spl->count >= spl->size)
+        splineErase(spl, spl->eraseSize);
+
+    /* Check if next point still in error corridor */
+    if (splineIsLeft(xdiff, ydiff, upperXDiff, upperYDiff) == 1 ||
+        splineIsRight(xdiff, ydiff, lowerXDiff, lowerYDiff) == 1) {
+        /* Point is not in error corridor. Add previous point to spline. */
+        void *nextSplinePoint = splinePointLocation(spl, spl->count);
+        memcpy(nextSplinePoint, spl->lastKey, spl->keySize);
+        memcpy((int8_t *)nextSplinePoint + spl->keySize, &spl->lastLoc, sizeof(uint32_t));
+        spl->count++;
+        spl->tempLastPoint = 0;
+
+        /* Update upper and lower limits. */
+        memcpy(spl->lower, key, spl->keySize);
+        uint32_t lowerPage = page < spl->maxError ? 0 : page - spl->maxError;
+        memcpy((int8_t *)spl->lower + spl->keySize, &lowerPage, sizeof(uint32_t));
+        memcpy(spl->upper, key, spl->keySize);
+        uint32_t upperPage = page + spl->maxError;
+        memcpy((int8_t *)spl->upper + spl->keySize, &upperPage, sizeof(uint32_t));
+    } else {
+        /* Check if must update upper or lower limits */
+
+        /* Upper limit */
+        if (splineIsLeft(upperXDiff, upperYDiff, xdiff, page + spl->maxError - lastPage) == 1) {
+            memcpy(spl->upper, key, spl->keySize);
+            uint32_t upperPage = page + spl->maxError;
+            memcpy((int8_t *)spl->upper + spl->keySize, &upperPage, sizeof(uint32_t));
+        }
+
+        /* Lower limit */
+        if (splineIsRight(lowerXDiff, lowerYDiff, xdiff, (page < spl->maxError ? 0 : page - spl->maxError) - lastPage) == 1) {
+            memcpy(spl->lower, key, spl->keySize);
+            uint32_t lowerPage = page < spl->maxError ? 0 : page - spl->maxError;
+            memcpy((int8_t *)spl->lower + spl->keySize, &lowerPage, sizeof(uint32_t));
+        }
+    }
+
+    spl->lastLoc = page;
+
+    /* Add last key on spline if not already there. */
+    /* This will get overwritten the next time a new spline point is added */
+    memcpy(spl->lastKey, key, spl->keySize);
+    void *tempSplinePoint = splinePointLocation(spl, spl->count);
+    memcpy(tempSplinePoint, spl->lastKey, spl->keySize);
+    memcpy((int8_t *)tempSplinePoint + spl->keySize, &spl->lastLoc, sizeof(uint32_t));
+    spl->count++;
+
+    spl->tempLastPoint = 1;
+}
+
+/**
+ * @brief   Removes points from the spline
+ * @param   spl         The spline structure to search
+ * @param   numPoints   The number of points to remove from the spline
+ * @return  Returns zero if successful and one if not
+ */
+int splineErase(spline *spl, uint32_t numPoints) {
+    /* If the user tries to delete more points than they allocated or deleting would only leave one spline point */
+    if (numPoints > spl->count || spl->count - numPoints == 1)
+        return 1;
+    if (numPoints == 0)
+        return 0;
+
+    spl->count -= numPoints;
+    spl->pointsStartIndex = (spl->pointsStartIndex + numPoints) % spl->size;
+    if (spl->count == 0)
+        spl->numAddCalls = 0;
+    return 0;
+}
+
+/**
+ * @brief	Builds a spline structure given a sorted data set. GreedySplineCorridor
+ * implementation from "Smooth interpolating histograms with error guarantees"
+ * (BNCOD'08) by T. Neumann and S. Michel.
+ * @param	spl			Spline structure
+ * @param	data		Array of sorted data
+ * @param	size		Number of values in array
+ * @param	maxError	Maximum error for each spline
+ */
+void splineBuild(spline *spl, void **data, id_t size, size_t maxError) {
+    spl->maxError = maxError;
+
+    for (id_t i = 0; i < size; i++) {
+        void *key;
+        memcpy(&key, data + i, sizeof(void *));
+        splineAdd(spl, key, i);
+    }
+}
+
+/**
+ * @brief    Print a spline structure.
+ * @param    spl     Spline structure
+ */
+void splinePrint(spline *spl) {
+    if (spl == NULL) {
+        printf("No spline to print.\n");
+        return;
+    }
+    printf("Spline max error (%lu):\n", spl->maxError);
+    printf("Spline points (%lu):\n", spl->count);
+    uint64_t keyVal = 0;
+    uint32_t page = 0;
+    for (id_t i = 0; i < spl->count; i++) {
+        void *point = splinePointLocation(spl, i);
+        memcpy(&keyVal, point, spl->keySize);
+        memcpy(&page, (int8_t *)point + spl->keySize, sizeof(uint32_t));
+        printf("[%lu]: (%lu, %li)\n", i, keyVal, page);
+    }
+    printf("\n");
+}
+
+/**
+ * @brief    Return spline structure size in bytes.
+ * @param    spl     Spline structure
+ * @return   size of the spline in bytes
+ */
+uint32_t splineSize(spline *spl) {
+    return sizeof(spline) + (spl->size * (spl->keySize + sizeof(uint32_t)));
+}
+
+/**
+ * @brief	Performs a recursive binary search on the spine points for a key
+ * @param	arr			Array of spline points to search through
+ * @param	low		    Lower search bound (Index of spline point)
+ * @param	high	    Higher search bound (Index of spline point)
+ * @param	key		    Key to search for
+ * @param	compareKey	Function to compare keys
+ * @return	Index of spline point that is the upper end of the spline segment that contains the key
+ */
+size_t pointsBinarySearch(spline *spl, int low, int high, void *key, int8_t compareKey(void *, void *)) {
+    int32_t mid;
+    if (high >= low) {
+        mid = low + (high - low) / 2;
+
+        // If mid is zero, then low = 0 and high = 1. Therefore there is only one spline segment and we return 1, the upper bound.
+        if (mid == 0) {
+            return 1;
+        }
+
+        void *midSplinePoint = splinePointLocation(spl, mid);
+        void *midSplineMinusOnePoint = splinePointLocation(spl, mid - 1);
+
+        if (compareKey(midSplinePoint, key) >= 0 && compareKey(midSplineMinusOnePoint, key) <= 0)
+            return mid;
+
+        if (compareKey(midSplinePoint, key) > 0)
+            return pointsBinarySearch(spl, low, mid - 1, key, compareKey);
+
+        return pointsBinarySearch(spl, mid + 1, high, key, compareKey);
+    }
+
+    mid = low + (high - low) / 2;
+    if (mid >= high) {
+        return high;
+    } else {
+        return low;
+    }
+}
+
+/**
+ * @brief	Estimate the page number of a given key
+ * @param	spl			The spline structure to search
+ * @param	key			The key to search for
+ * @param	compareKey	Function to compare keys
+ * @param	loc			A return value for the best estimate of which page the key is on
+ * @param	low			A return value for the smallest page that it could be on
+ * @param	high		A return value for the largest page it could be on
+ */
+void splineFind(spline *spl, void *key, int8_t compareKey(void *, void *), id_t *loc, id_t *low, id_t *high) {
+    size_t pointIdx;
+    uint64_t keyVal = 0, smallestKeyVal = 0, largestKeyVal = 0;
+    void *smallestSplinePoint = splinePointLocation(spl, 0);
+    void *largestSplinePoint = splinePointLocation(spl, spl->count - 1);
+    memcpy(&keyVal, key, spl->keySize);
+    memcpy(&smallestKeyVal, smallestSplinePoint, spl->keySize);
+    memcpy(&largestKeyVal, largestSplinePoint, spl->keySize);
+
+    if (compareKey(key, splinePointLocation(spl, 0)) < 0 || spl->count <= 1) {
+        // Key is smaller than any we have on record
+        uint32_t lowEstimate, highEstimate, locEstimate = 0;
+        memcpy(&lowEstimate, (int8_t *)spl->firstSplinePoint + spl->keySize, sizeof(uint32_t));
+        memcpy(&highEstimate, (int8_t *)smallestSplinePoint + spl->keySize, sizeof(uint32_t));
+        locEstimate = (lowEstimate + highEstimate) / 2;
+
+        memcpy(loc, &locEstimate, sizeof(uint32_t));
+        memcpy(low, &lowEstimate, sizeof(uint32_t));
+        memcpy(high, &highEstimate, sizeof(uint32_t));
+        return;
+    } else if (compareKey(key, splinePointLocation(spl, spl->count - 1)) > 0) {
+        memcpy(loc, (int8_t *)largestSplinePoint + spl->keySize, sizeof(uint32_t));
+        memcpy(low, (int8_t *)largestSplinePoint + spl->keySize, sizeof(uint32_t));
+        memcpy(high, (int8_t *)largestSplinePoint + spl->keySize, sizeof(uint32_t));
+        return;
+    } else {
+        // Perform a binary seach to find the spline point above the key we're looking for
+        pointIdx = pointsBinarySearch(spl, 0, spl->count - 1, key, compareKey);
+    }
+
+    // Interpolate between two spline points
+    void *downKey = splinePointLocation(spl, pointIdx - 1);
+    uint32_t downPage = 0;
+    memcpy(&downPage, (int8_t *)downKey + spl->keySize, sizeof(uint32_t));
+    void *upKey = splinePointLocation(spl, pointIdx);
+    uint32_t upPage = 0;
+    memcpy(&upPage, (int8_t *)upKey + spl->keySize, sizeof(uint32_t));
+    uint64_t downKeyVal = 0, upKeyVal = 0;
+    memcpy(&downKeyVal, downKey, spl->keySize);
+    memcpy(&upKeyVal, upKey, spl->keySize);
+
+    // Estimate location as page number
+    // Keydiff * slope + y
+    id_t locationEstimate = (id_t)((keyVal - downKeyVal) * (upPage - downPage) / (long double)(upKeyVal - downKeyVal)) + downPage;
+    memcpy(loc, &locationEstimate, sizeof(id_t));
+
+    // Set error bounds based on maxError from spline construction
+    id_t lowEstiamte = (spl->maxError > locationEstimate) ? 0 : locationEstimate - spl->maxError;
+    memcpy(low, &lowEstiamte, sizeof(id_t));
+    void *lastSplinePoint = splinePointLocation(spl, spl->count - 1);
+    uint32_t lastSplinePointPage = 0;
+    memcpy(&lastSplinePointPage, (int8_t *)lastSplinePoint + spl->keySize, sizeof(uint32_t));
+    id_t highEstimate = (locationEstimate + spl->maxError > lastSplinePointPage) ? lastSplinePointPage : locationEstimate + spl->maxError;
+    memcpy(high, &highEstimate, sizeof(id_t));
+}
+
+/**
+ * @brief    Free memory allocated for spline structure.
+ * @param    spl        Spline structure
+ */
+void splineClose(spline *spl) {
+    free(spl->points);
+    free(spl->lastKey);
+    free(spl->lower);
+    free(spl->upper);
+    free(spl->firstSplinePoint);
+}
+
+/**
+ * @brief   Returns a pointer to the location of the specified spline point in memory. Note that this method does not check if there is a point there, so it may be garbage data.
+ * @param   spl         The spline structure that contains the points
+ * @param   pointIndex  The index of the point to return a pointer to
+ */
+void *splinePointLocation(spline *spl, size_t pointIndex) {
+    return (int8_t *)spl->points + (((pointIndex + spl->pointsStartIndex) % spl->size) * (spl->keySize + sizeof(uint32_t)));
 }
