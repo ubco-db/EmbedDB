@@ -651,6 +651,7 @@ def amalgamate(
     """
     dir_graph = create_directed_graph(header_file_nodes)
     sorted_graph = topsort(dir_graph)
+    print(f"Sorted Graph: {sorted_graph}")
 
     """
     The sorted_graph does not sort by filename right now unfortiantely, but future iterations of this amalgamation could include that functionality, so comparing
@@ -658,7 +659,6 @@ def amalgamate(
     and the other having all the .h code so it's easy to include in other projects, and finally saving the files.
     """
     sorted_h = order_file_nodes_by_sorted_filenames(header_file_nodes, sorted_graph)
-
     amalg_h = create_amalgamation(c_standard_dep, isCpp) + create_amalgamation(
         sorted_h, isCpp
     )
