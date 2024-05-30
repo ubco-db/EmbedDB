@@ -709,7 +709,7 @@ def main():
     output_directory = os.path.join(project_root, "distribution")
     # create standard embedDB amalgamation
     amalgamate(
-        [embed_db, query_interface, spline, utility],
+        [embed_db, query_interface, spline],
         aud_stand,
         "embedDB",
         False,
