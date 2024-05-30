@@ -650,8 +650,16 @@ def amalgamate(
     which will create a non-unique but somewhat deterministic sort since the files are sorted alphabetically. 
     """
     dir_graph = create_directed_graph(header_file_nodes)
+
+    # Need to alphabetize the items before getting the sorted graph
     alphabetical_directory_graph = dict(sorted(dir_graph.items()))
-    sorted_graph = topsort(alphabetical_directory_graph)
+    print(alphabetical_directory_graph)
+    list_graph = {
+        key: sorted(list(value)) for key, value in alphabetical_directory_graph.items()
+    }
+    print(list_graph)
+    sorted_graph = topsort(list_graph)
+    print(sorted_graph)
 
     """
     The sorted_graph does not sort by filename right now unfortunately, but future iterations of this amalgamation could include that functionality, so comparing
