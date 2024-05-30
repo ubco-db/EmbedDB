@@ -44,9 +44,6 @@
 #include <string.h>
 #include <time.h>
 
-#include "../spline/radixspline.h"
-#include "../spline/spline.h"
-
 #if defined(ARDUINO)
 #include "serial_c_iface.h"
 #endif
