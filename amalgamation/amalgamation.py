@@ -653,13 +653,10 @@ def amalgamate(
 
     # Need to alphabetize the items before getting the sorted graph
     alphabetical_directory_graph = dict(sorted(dir_graph.items()))
-    print(alphabetical_directory_graph)
     list_graph = {
         key: sorted(list(value)) for key, value in alphabetical_directory_graph.items()
     }
-    print(list_graph)
     sorted_graph = topsort(list_graph)
-    print(sorted_graph)
 
     """
     The sorted_graph does not sort by filename right now unfortunately, but future iterations of this amalgamation could include that functionality, so comparing
