@@ -646,38 +646,23 @@ def amalgamate(
     )
 
     """
-    Next step is iterating over the set containing the header files and creating a directed graph for all the dependencies. 
+    Next step is iterting over the set containing the header files and creating a directed graph for all the dependencies. After that, a topological sort is performed
+    which will create a non-unique but somewhat deterministic sort since the files are sorted alphabetically. 
     """
     dir_graph = create_directed_graph(header_file_nodes)
+    sorted_graph = topsort(dir_graph)
 
     """
-    Need to alphabetize the items before getting the sorted graph so the same output is produced if there are no actual 
-    changes in the files.
-    """
-    alphabetical_directory_graph = dict(sorted(dir_graph.items()))
-    list_graph = {
-        key: sorted(list(value)) for key, value in alphabetical_directory_graph.items()
-    }
-
-    """
-    Perform a topological sort to determine the ordering of the files
-    """
-    sorted_graph = topsort(list_graph)
-
-    """
-    The next step is taking the topological sort and basically extracting them into two files, one having all the .c code 
+    The sorted_graph does not sort by filename right now unfortiantely, but future iterations of this amalgamation could include that functionality, so comparing
+    directly to the original source is nec. The next step is taking the topological sort and bassically extracting them into two files, one having all the .c code 
     and the other having all the .h code so it's easy to include in other projects, and finally saving the files.
     """
     sorted_h = order_file_nodes_by_sorted_filenames(header_file_nodes, sorted_graph)
+
     amalg_h = create_amalgamation(c_standard_dep, isCpp) + create_amalgamation(
         sorted_h, isCpp
     )
-
-    sorted_graph_c_files = [item.replace(".h", ".c") for item in sorted_graph]
-    sorted_c = order_file_nodes_by_sorted_filenames(
-        source_file_nodes, sorted_graph_c_files
-    )
-    amalg_c = create_amalgamation(sorted_c, isCpp)
+    amalg_c = create_amalgamation(source_file_nodes, isCpp)
     if isCpp:
         amalg_cpp = create_amalgamation(cpp_files_nodes, isCpp)
 
@@ -709,7 +694,7 @@ def main():
     output_directory = os.path.join(project_root, "distribution")
     # create standard embedDB amalgamation
     amalgamate(
-        [embed_db, query_interface, spline],
+        [embed_db, query_interface, spline, utility],
         aud_stand,
         "embedDB",
         False,
