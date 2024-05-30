@@ -43,7 +43,12 @@ extern "C" {
 #include <stdint.h>
 #include <string.h>
 
+#if defined(DIST)
+#include "../../distribution/embedDB.h"
+#else
 #include "../../src/embedDB/embedDB.h"
+#endif
+
 #include "sdcard_c_iface.h"
 
 embedDBFileInterface *getSDInterface();
