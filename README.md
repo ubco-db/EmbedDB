@@ -56,21 +56,30 @@ embedDBGet(state, (void*) &key, (void*) returnDataPtr);
 
 ## Quick Start
 
-Core source files needed: [embedDB.h](src/embedDB/embedDB.h), [embedDB.c](src/embedDB/embedDB.c)
+EmbedDB consists of a series of files located in the [source](src/) folder. For convience, these files have been combined into distribution version of the project located in the [distribution](distribution/) folder. To use EmbedDB in your project, add the two core source files listed below to your project.
+
+Core source files needed: [embedDB.h](distribution/embedDB.h), [embedDB.c](distribution/embedDB.c)
+
+### Running Our Code
+
+To run our project on your machine, please see the instructions [here](docs/quickStart.md).
+
+If you want to run the distribution version of the project, please look at the [distribution](docs/distribution.md) instructions.
 
 Examples:
--  [dueMain.cpp](src/dueMain.cpp), [megaMain.cpp](src/megaMain.cpp), [memboardMain.cpp](src/memBoardMain.cpp) are main files for the Arduino Due, Mega, and custom hardware respectively.
--  [embedDBExample](src/embedDBExample.h) - An example file demonstrating how to get, put, and iterate through data in index. 
--  [embedDBVariableDataExample](src/embedDBVariableDataExample.h) - An example file demonstrating the use of records with variable-sized data. 
--  [embedDBQueryInterfaceExamples](src/advancedQueryInterfaceExample.h) - An example file demonstrating the included embedDB query library. 
+
+- [dueMain.cpp](src/dueMain.cpp), [megaMain.cpp](src/megaMain.cpp), [memboardMain.cpp](src/memBoardMain.cpp) are main files for the Arduino Due, Mega, and a custom Arduino board respectively.
+- [embedDBExample](src/embedDBExample.h) - An example file demonstrating how to get, put, and iterate through data in index.
+- [embedDBVariableDataExample](src/embedDBVariableDataExample.h) - An example file demonstrating the use of records with variable-sized data.
+- [embedDBQueryInterfaceExamples](src/advancedQueryInterfaceExample.h) - An example file demonstrating the included embedDB query library.
 
 ## Documentation
 
-- [Setup & usage](docs/usageInfo.md)
+- [Setup & Usage](docs/usageInfo.md)
 - [Simple Query Interface](docs/advancedQueries.md)
-- [Setting up a file interface](docs/fileInterface.md)
+- [Configuring a File Interface](docs/fileInterface.md)
 - [Performance Benchmarks](benchmarks/README.md)
-- [Time Series Index Publication](docs/SBITS_time_series_index.pdf) 
+- [Time Series Index Publication](docs/SBITS_time_series_index.pdf)
 - [Time Series Learned Index Publication](https://arxiv.org/abs/2302.03085)
 <!-- TODO: EmbedDB publication -->
   
