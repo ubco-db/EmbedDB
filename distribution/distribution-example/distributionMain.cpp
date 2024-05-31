@@ -48,7 +48,7 @@ static ArduinoOutStream cout(Serial);
 #include <math.h>
 
 #include "SdFat.h"
-#include "embedDBExample.h"
+#include "embedDBDistributionExample.h"
 #include "sd_test.h"
 #include "sdcard_c_iface.h"
 #include "serial_c_iface.h"

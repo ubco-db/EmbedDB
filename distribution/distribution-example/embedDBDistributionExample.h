@@ -39,7 +39,7 @@
 #include <string.h>
 #include <time.h>
 
-#include "embedDB.h"
+#include "../embedDB.h"
 #include "sdcard_c_iface.h"
 
 #if defined(MEGA)

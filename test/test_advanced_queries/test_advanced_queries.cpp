@@ -36,9 +36,13 @@
 #include <math.h>
 #include <string.h>
 
-#include "../../src/embedDB/embedDB.h"
-#include "../../src/query-interface/advancedQueries.h"
+#ifdef DIST
+#include "embedDB.h"
+#else
+#include "embedDB/embedDB.h"
 #include "embedDBUtility.h"
+#include "query-interface/advancedQueries.h"
+#endif
 
 #if defined(MEMBOARD)
 #include "memboardTestSetup.h"
