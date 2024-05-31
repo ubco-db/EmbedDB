@@ -34,12 +34,15 @@
  *  POSSIBILITY OF SUCH DAMAGE.
  */
 /******************************************************************************/
-/************************************************************schema.c************************************************************/
+/************************************************************embedDBUtility.c************************************************************/
 /******************************************************************************/
 /**
- * @file        schema.c
+ * @file        embedDBUtility.c
  * @author      EmbedDB Team (See Authors.md)
- * @brief       Source code file for the schema for EmbedDB query interface
+ * @brief       This file contains some utility functions to be used with embedDB.
+ *              These include functions required to use the bitmap option, and a
+ *              comparator for comparing keys. They can be modified or implemented
+ *              differently depending on the application.
  * @copyright   Copyright 2024
  *              EmbedDB Team
  * @par Redistribution and use in source and binary forms, with or without
@@ -70,117 +73,217 @@
  */
 /******************************************************************************/
 
-/**
- * @brief	Create an embedDBSchema from a list of column sizes including both key and data
- * @param	numCols			The total number of columns in table
- * @param	colSizes		An array with the size of each column. Max size is 127
- * @param	colSignedness	An array describing if the data in the column is signed or unsigned. Use the defined constants embedDB_COLUMNN_SIGNED or embedDB_COLUMN_UNSIGNED
- */
-embedDBSchema *embedDBCreateSchema(uint8_t numCols, int8_t *colSizes, int8_t *colSignedness) {
-    embedDBSchema *schema = malloc(sizeof(embedDBSchema));
-    schema->columnSizes = malloc(numCols * sizeof(int8_t));
-    schema->numCols = numCols;
-    uint16_t totalSize = 0;
-    for (uint8_t i = 0; i < numCols; i++) {
-        int8_t sign = colSignedness[i];
-        uint8_t colSize = colSizes[i];
-        totalSize += colSize;
-        if (colSize <= 0) {
-#ifdef PRINT_ERRORS
-            printf("ERROR: Column size must be greater than zero\n");
-#endif
-            return NULL;
+/* A bitmap with 8 buckets (bits). Range 0 to 100. */
+void updateBitmapInt8(void *data, void *bm) {
+    // Note: Assuming int key is right at the start of the data record
+    int32_t val = *((int16_t *)data);
+    uint8_t *bmval = (uint8_t *)bm;
+
+    if (val < 10)
+        *bmval = *bmval | 128;
+    else if (val < 20)
+        *bmval = *bmval | 64;
+    else if (val < 30)
+        *bmval = *bmval | 32;
+    else if (val < 40)
+        *bmval = *bmval | 16;
+    else if (val < 50)
+        *bmval = *bmval | 8;
+    else if (val < 60)
+        *bmval = *bmval | 4;
+    else if (val < 100)
+        *bmval = *bmval | 2;
+    else
+        *bmval = *bmval | 1;
+}
+
+/* A bitmap with 8 buckets (bits). Range 0 to 100. Build bitmap based on min and max value. */
+void buildBitmapInt8FromRange(void *min, void *max, void *bm) {
+    if (min == NULL && max == NULL) {
+        *(uint8_t *)bm = 255; /* Everything */
+    } else {
+        uint8_t minMap = 0, maxMap = 0;
+        if (min != NULL) {
+            updateBitmapInt8(min, &minMap);
+            // Turn on all bits below the bit for min value (cause the lsb are for the higher values)
+            minMap = minMap | (minMap - 1);
+            if (max == NULL) {
+                *(uint8_t *)bm = minMap;
+                return;
+            }
         }
-        if (sign == embedDB_COLUMN_SIGNED) {
-            schema->columnSizes[i] = -colSizes[i];
-        } else if (sign == embedDB_COLUMN_UNSIGNED) {
-            schema->columnSizes[i] = colSizes[i];
-        } else {
-#ifdef PRINT_ERRORS
-            printf("ERROR: Must only use embedDB_COLUMN_SIGNED or embedDB_COLUMN_UNSIGNED to describe column signedness\n");
-#endif
-            return NULL;
+        if (max != NULL) {
+            updateBitmapInt8(max, &maxMap);
+            // Turn on all bits above the bit for max value (cause the msb are for the lower values)
+            maxMap = ~(maxMap - 1);
+            if (min == NULL) {
+                *(uint8_t *)bm = maxMap;
+                return;
+            }
         }
+        *(uint8_t *)bm = minMap & maxMap;
     }
+}
 
-    return schema;
+int8_t inBitmapInt8(void *data, void *bm) {
+    uint8_t *bmval = (uint8_t *)bm;
+
+    uint8_t tmpbm = 0;
+    updateBitmapInt8(data, &tmpbm);
+
+    // Return a number great than 1 if there is an overlap
+    return tmpbm & *bmval;
+}
+
+/* A 16-bit bitmap on a 32-bit int value */
+void updateBitmapInt16(void *data, void *bm) {
+    int32_t val = *((int32_t *)data);
+    uint16_t *bmval = (uint16_t *)bm;
+
+    /* Using a demo range of 0 to 100 */
+    // int16_t stepSize = 100 / 15;
+    int16_t stepSize = 450 / 15;  // Temperature data in F. Scaled by 10. */
+    int16_t minBase = 320;
+    int32_t current = minBase;
+    uint16_t num = 32768;
+    while (val > current) {
+        current += stepSize;
+        num = num / 2;
+    }
+    if (num == 0)
+        num = 1; /* Always set last bit if value bigger than largest cutoff */
+    *bmval = *bmval | num;
+}
+
+int8_t inBitmapInt16(void *data, void *bm) {
+    uint16_t *bmval = (uint16_t *)bm;
+
+    uint16_t tmpbm = 0;
+    updateBitmapInt16(data, &tmpbm);
+
+    // Return a number great than 1 if there is an overlap
+    return tmpbm & *bmval;
 }
 
 /**
- * @brief	Free a schema. Sets the schema pointer to NULL.
+ * @brief	Builds 16-bit bitmap from (min, max) range.
+ * @param	state	embedDB state structure
+ * @param	min		minimum value (may be NULL)
+ * @param	max		maximum value (may be NULL)
+ * @param	bm		bitmap created
  */
-void embedDBFreeSchema(embedDBSchema **schema) {
-    if (*schema == NULL) return;
-    free((*schema)->columnSizes);
-    free(*schema);
-    *schema = NULL;
-}
-
-/**
- * @brief	Uses schema to determine the length of buffer to allocate and callocs that space
- */
-void *createBufferFromSchema(embedDBSchema *schema) {
-    uint16_t totalSize = 0;
-    for (uint8_t i = 0; i < schema->numCols; i++) {
-        totalSize += abs(schema->columnSizes[i]);
-    }
-    return calloc(1, totalSize);
-}
-
-/**
- * @brief	Deep copy schema and return a pointer to the copy
- */
-embedDBSchema *copySchema(const embedDBSchema *schema) {
-    embedDBSchema *copy = malloc(sizeof(embedDBSchema));
-    if (copy == NULL) {
-#ifdef PRINT_ERRORS
-        printf("ERROR: malloc failed while copying schema\n");
-#endif
-        return NULL;
-    }
-    copy->numCols = schema->numCols;
-    copy->columnSizes = malloc(schema->numCols * sizeof(int8_t));
-    if (copy->columnSizes == NULL) {
-#ifdef PRINT_ERRORS
-        printf("ERROR: malloc failed while copying schema\n");
-#endif
-        return NULL;
-    }
-    memcpy(copy->columnSizes, schema->columnSizes, schema->numCols * sizeof(int8_t));
-    return copy;
-}
-
-/**
- * @brief	Finds byte offset of the column from the beginning of the record
- */
-uint16_t getColOffsetFromSchema(embedDBSchema *schema, uint8_t colNum) {
-    uint16_t pos = 0;
-    for (uint8_t i = 0; i < colNum; i++) {
-        pos += abs(schema->columnSizes[i]);
-    }
-    return pos;
-}
-
-/**
- * @brief	Calculates record size from schema
- */
-uint16_t getRecordSizeFromSchema(embedDBSchema *schema) {
-    uint16_t size = 0;
-    for (uint8_t i = 0; i < schema->numCols; i++) {
-        size += abs(schema->columnSizes[i]);
-    }
-    return size;
-}
-
-void printSchema(embedDBSchema *schema) {
-    for (uint8_t i = 0; i < schema->numCols; i++) {
-        if (i) {
-            printf(", ");
+void buildBitmapInt16FromRange(void *min, void *max, void *bm) {
+    if (min == NULL && max == NULL) {
+        *(uint16_t *)bm = 65535; /* Everything */
+        return;
+    } else {
+        uint16_t minMap = 0, maxMap = 0;
+        if (min != NULL) {
+            updateBitmapInt16(min, &minMap);
+            // Turn on all bits below the bit for min value (cause the lsb are for the higher values)
+            minMap = minMap | (minMap - 1);
+            if (max == NULL) {
+                *(uint16_t *)bm = minMap;
+                return;
+            }
         }
-        int8_t col = schema->columnSizes[i];
-        printf("%sint%d", embedDB_IS_COL_SIGNED(col) ? "" : "u", abs(col));
+        if (max != NULL) {
+            updateBitmapInt16(max, &maxMap);
+            // Turn on all bits above the bit for max value (cause the msb are for the lower values)
+            maxMap = ~(maxMap - 1);
+            if (min == NULL) {
+                *(uint16_t *)bm = maxMap;
+                return;
+            }
+        }
+        *(uint16_t *)bm = minMap & maxMap;
     }
-    printf("\n");
+}
+
+/* A 64-bit bitmap on a 32-bit int value */
+void updateBitmapInt64(void *data, void *bm) {
+    int32_t val = *((int32_t *)data);
+
+    int16_t stepSize = 10;  // Temperature data in F. Scaled by 10. */
+    int32_t current = 320;
+    int8_t bmsize = 63;
+    int8_t count = 0;
+
+    while (val > current && count < bmsize) {
+        current += stepSize;
+        count++;
+    }
+    uint8_t b = 128;
+    int8_t offset = count / 8;
+    b = b >> (count & 7);
+
+    *((char *)((char *)bm + offset)) = *((char *)((char *)bm + offset)) | b;
+}
+
+int8_t inBitmapInt64(void *data, void *bm) {
+    uint64_t *bmval = (uint64_t *)bm;
+
+    uint64_t tmpbm = 0;
+    updateBitmapInt64(data, &tmpbm);
+
+    // Return a number great than 1 if there is an overlap
+    return tmpbm & *bmval;
+}
+
+/**
+ * @brief	Builds 64-bit bitmap from (min, max) range.
+ * @param	state	embedDB state structure
+ * @param	min		minimum value (may be NULL)
+ * @param	max		maximum value (may be NULL)
+ * @param	bm		bitmap created
+ */
+void buildBitmapInt64FromRange(void *min, void *max, void *bm) {
+    if (min == NULL && max == NULL) {
+        *(uint64_t *)bm = UINT64_MAX; /* Everything */
+        return;
+    } else {
+        uint64_t minMap = 0, maxMap = 0;
+        if (min != NULL) {
+            updateBitmapInt64(min, &minMap);
+            // Turn on all bits below the bit for min value (cause the lsb are for the higher values)
+            minMap = minMap | (minMap - 1);
+            if (max == NULL) {
+                *(uint64_t *)bm = minMap;
+                return;
+            }
+        }
+        if (max != NULL) {
+            updateBitmapInt64(max, &maxMap);
+            // Turn on all bits above the bit for max value (cause the msb are for the lower values)
+            maxMap = ~(maxMap - 1);
+            if (min == NULL) {
+                *(uint64_t *)bm = maxMap;
+                return;
+            }
+        }
+        *(uint64_t *)bm = minMap & maxMap;
+    }
+}
+
+int8_t int32Comparator(void *a, void *b) {
+    int32_t i1, i2;
+    memcpy(&i1, a, sizeof(int32_t));
+    memcpy(&i2, b, sizeof(int32_t));
+    int32_t result = i1 - i2;
+    if (result < 0)
+        return -1;
+    if (result > 0)
+        return 1;
+    return 0;
+}
+
+int8_t int64Comparator(void *a, void *b) {
+    int64_t result = *((int64_t *)a) - *((int64_t *)b);
+    if (result < 0)
+        return -1;
+    if (result > 0)
+        return 1;
+    return 0;
 }
 
 /************************************************************advancedQueries.c************************************************************/
@@ -313,298 +416,1032 @@ void initTableScan(embedDBOperator *op) {
         return;
     }
 
-    /* Check if there is only one spline point (need to initialize upper and lower limits using 2nd point) */
-    if (spl->numAddCalls == 2) {
-        /* Initialize upper and lower limits using second (unique) data point */
-        memcpy(spl->lower, key, spl->keySize);
-        uint32_t lowerPage = page < spl->maxError ? 0 : page - spl->maxError;
-        memcpy(((int8_t *)spl->lower + spl->keySize), &lowerPage, sizeof(uint32_t));
-        memcpy(spl->upper, key, spl->keySize);
-        uint32_t upperPage = page + spl->maxError;
-        memcpy(((int8_t *)spl->upper + spl->keySize), &upperPage, sizeof(uint32_t));
-        memcpy(spl->lastKey, key, spl->keySize);
-        spl->lastLoc = page;
+    if (op->schema->numCols < 2) {
+#ifdef PRINT_ERRORS
+        printf("ERROR: When creating a table scan, you must include at least two columns: one for the key and one for the data from the iterator\n");
+#endif
         return;
     }
 
-    /* Skip duplicates */
-    uint64_t keyVal = 0, lastKeyVal = 0;
-    memcpy(&keyVal, key, spl->keySize);
-    memcpy(&lastKeyVal, spl->lastKey, spl->keySize);
-
-    if (keyVal <= lastKeyVal)
+    // Check that the provided key schema matches what is in the state
+    embedDBState *embedDBstate = (embedDBState *)(((void **)op->state)[0]);
+    if (op->schema->columnSizes[0] <= 0 || abs(op->schema->columnSizes[0]) != embedDBstate->keySize) {
+#ifdef PRINT_ERRORS
+        printf("ERROR: Make sure the the key column is at index 0 of the schema initialization and that it matches the keySize in the state and is unsigned\n");
+#endif
         return;
-
-    /* Last point added to spline, check if previous point is temporary - overwrite previous point if temporary */
-    if (spl->tempLastPoint != 0) {
-        spl->count--;
+    }
+    if (getRecordSizeFromSchema(op->schema) != (embedDBstate->keySize + embedDBstate->dataSize)) {
+#ifdef PRINT_ERRORS
+        printf("ERROR: Size of provided schema doesn't match the size that will be returned by the provided iterator\n");
+#endif
+        return;
     }
 
-    uint32_t lastPage = 0;
-    uint64_t lastPointKey = 0, upperKey = 0, lowerKey = 0;
-    void *lastPointLocation = splinePointLocation(spl, spl->count - 1);
-    memcpy(&lastPointKey, lastPointLocation, spl->keySize);
-    memcpy(&upperKey, spl->upper, spl->keySize);
-    memcpy(&lowerKey, spl->lower, spl->keySize);
-    memcpy(&lastPage, (int8_t *)lastPointLocation + spl->keySize, sizeof(uint32_t));
-
-    uint64_t xdiff, upperXDiff, lowerXDiff = 0;
-    uint32_t ydiff, upperYDiff = 0;
-    int64_t lowerYDiff = 0; /* This may be negative */
-
-    xdiff = keyVal - lastPointKey;
-    ydiff = page - lastPage;
-    upperXDiff = upperKey - lastPointKey;
-    memcpy(&upperYDiff, (int8_t *)spl->upper + spl->keySize, sizeof(uint32_t));
-    upperYDiff -= lastPage;
-    lowerXDiff = lowerKey - lastPointKey;
-    memcpy(&lowerYDiff, (int8_t *)spl->lower + spl->keySize, sizeof(uint32_t));
-    lowerYDiff -= lastPage;
-
-    if (spl->count >= spl->size)
-        splineErase(spl, spl->eraseSize);
-
-    /* Check if next point still in error corridor */
-    if (splineIsLeft(xdiff, ydiff, upperXDiff, upperYDiff) == 1 ||
-        splineIsRight(xdiff, ydiff, lowerXDiff, lowerYDiff) == 1) {
-        /* Point is not in error corridor. Add previous point to spline. */
-        void *nextSplinePoint = splinePointLocation(spl, spl->count);
-        memcpy(nextSplinePoint, spl->lastKey, spl->keySize);
-        memcpy((int8_t *)nextSplinePoint + spl->keySize, &spl->lastLoc, sizeof(uint32_t));
-        spl->count++;
-        spl->tempLastPoint = 0;
-
-        /* Update upper and lower limits. */
-        memcpy(spl->lower, key, spl->keySize);
-        uint32_t lowerPage = page < spl->maxError ? 0 : page - spl->maxError;
-        memcpy((int8_t *)spl->lower + spl->keySize, &lowerPage, sizeof(uint32_t));
-        memcpy(spl->upper, key, spl->keySize);
-        uint32_t upperPage = page + spl->maxError;
-        memcpy((int8_t *)spl->upper + spl->keySize, &upperPage, sizeof(uint32_t));
-    } else {
-        /* Check if must update upper or lower limits */
-
-        /* Upper limit */
-        if (splineIsLeft(upperXDiff, upperYDiff, xdiff, page + spl->maxError - lastPage) == 1) {
-            memcpy(spl->upper, key, spl->keySize);
-            uint32_t upperPage = page + spl->maxError;
-            memcpy((int8_t *)spl->upper + spl->keySize, &upperPage, sizeof(uint32_t));
-        }
-
-        /* Lower limit */
-        if (splineIsRight(lowerXDiff, lowerYDiff, xdiff, (page < spl->maxError ? 0 : page - spl->maxError) - lastPage) == 1) {
-            memcpy(spl->lower, key, spl->keySize);
-            uint32_t lowerPage = page < spl->maxError ? 0 : page - spl->maxError;
-            memcpy((int8_t *)spl->lower + spl->keySize, &lowerPage, sizeof(uint32_t));
+    // Init buffer
+    if (op->recordBuffer == NULL) {
+        op->recordBuffer = createBufferFromSchema(op->schema);
+        if (op->recordBuffer == NULL) {
+#ifdef PRINT_ERRORS
+            printf("ERROR: Failed to allocate buffer for TableScan operator\n");
+#endif
+            return;
         }
     }
+}
 
-    spl->lastLoc = page;
+int8_t nextTableScan(embedDBOperator *op) {
+    // Check that a schema was set
+    if (op->schema == NULL) {
+#ifdef PRINT_ERRORS
+        printf("ERROR: Must provide a base schema for a table scan operator\n");
+#endif
+        return 0;
+    }
 
-    /* Add last key on spline if not already there. */
-    /* This will get overwritten the next time a new spline point is added */
-    memcpy(spl->lastKey, key, spl->keySize);
-    void *tempSplinePoint = splinePointLocation(spl, spl->count);
-    memcpy(tempSplinePoint, spl->lastKey, spl->keySize);
-    memcpy((int8_t *)tempSplinePoint + spl->keySize, &spl->lastLoc, sizeof(uint32_t));
-    spl->count++;
+    // Get next record
+    embedDBState *state = (embedDBState *)(((void **)op->state)[0]);
+    embedDBIterator *it = (embedDBIterator *)(((void **)op->state)[1]);
+    if (!embedDBNext(state, it, op->recordBuffer, (int8_t *)op->recordBuffer + state->keySize)) {
+        return 0;
+    }
 
-    spl->tempLastPoint = 1;
+    return 1;
+}
+
+void closeTableScan(embedDBOperator *op) {
+    embedDBFreeSchema(&op->schema);
+    free(op->recordBuffer);
+    op->recordBuffer = NULL;
+    free(op->state);
+    op->state = NULL;
 }
 
 /**
- * @brief   Removes points from the spline
- * @param   spl         The spline structure to search
- * @param   numPoints   The number of points to remove from the spline
- * @return  Returns zero if successful and one if not
+ * @brief	Used as the bottom operator that will read records from the database
+ * @param	state		The state associated with the database to read from
+ * @param	it			An initialized iterator setup to read relevent records for this query
+ * @param	baseSchema	The schema of the database being read from
  */
-int splineErase(spline *spl, uint32_t numPoints) {
-    /* If the user tries to delete more points than they allocated or deleting would only leave one spline point */
-    if (numPoints > spl->count || spl->count - numPoints == 1)
-        return 1;
-    if (numPoints == 0)
-        return 0;
+embedDBOperator *createTableScanOperator(embedDBState *state, embedDBIterator *it, embedDBSchema *baseSchema) {
+    // Ensure all fields are not NULL
+    if (state == NULL || it == NULL || baseSchema == NULL) {
+#ifdef PRINT_ERRORS
+        printf("ERROR: All parameters must be provided to create a TableScan operator\n");
+#endif
+        return NULL;
+    }
 
-    spl->count -= numPoints;
-    spl->pointsStartIndex = (spl->pointsStartIndex + numPoints) % spl->size;
-    if (spl->count == 0)
-        spl->numAddCalls = 0;
+    embedDBOperator *op = malloc(sizeof(embedDBOperator));
+    if (op == NULL) {
+#ifdef PRINT_ERRORS
+        printf("ERROR: malloc failed while creating TableScan operator\n");
+#endif
+        return NULL;
+    }
+
+    op->state = malloc(2 * sizeof(void *));
+    if (op->state == NULL) {
+#ifdef PRINT_ERRORS
+        printf("ERROR: malloc failed while creating TableScan operator\n");
+#endif
+        return NULL;
+    }
+    memcpy(op->state, &state, sizeof(void *));
+    memcpy((int8_t *)op->state + sizeof(void *), &it, sizeof(void *));
+
+    op->schema = copySchema(baseSchema);
+    op->input = NULL;
+    op->recordBuffer = NULL;
+
+    op->init = initTableScan;
+    op->next = nextTableScan;
+    op->close = closeTableScan;
+
+    return op;
+}
+
+void initProjection(embedDBOperator *op) {
+    if (op->input == NULL) {
+#ifdef PRINT_ERRORS
+        printf("ERROR: Projection operator needs an input operator\n");
+#endif
+        return;
+    }
+
+    // Init input
+    op->input->init(op->input);
+
+    // Get state
+    uint8_t numCols = *(uint8_t *)op->state;
+    uint8_t *cols = (uint8_t *)op->state + 1;
+    const embedDBSchema *inputSchema = op->input->schema;
+
+    // Init output schema
+    if (op->schema == NULL) {
+        op->schema = malloc(sizeof(embedDBSchema));
+        if (op->schema == NULL) {
+#ifdef PRINT_ERRORS
+            printf("ERROR: Failed to allocate space for projection schema\n");
+#endif
+            return;
+        }
+        op->schema->numCols = numCols;
+        op->schema->columnSizes = malloc(numCols * sizeof(int8_t));
+        if (op->schema->columnSizes == NULL) {
+#ifdef PRINT_ERRORS
+            printf("ERROR: Failed to allocate space for projection while building schema\n");
+#endif
+            return;
+        }
+        for (uint8_t i = 0; i < numCols; i++) {
+            op->schema->columnSizes[i] = inputSchema->columnSizes[cols[i]];
+        }
+    }
+
+    // Init output buffer
+    if (op->recordBuffer == NULL) {
+        op->recordBuffer = createBufferFromSchema(op->schema);
+        if (op->recordBuffer == NULL) {
+#ifdef PRINT_ERRORS
+            printf("ERROR: Failed to allocate buffer for TableScan operator\n");
+#endif
+            return;
+        }
+    }
+}
+
+int8_t nextProjection(embedDBOperator *op) {
+    uint8_t numCols = *(uint8_t *)op->state;
+    uint8_t *cols = (uint8_t *)op->state + 1;
+    embedDBSchema *inputSchema = op->input->schema;
+
+    // Get next record
+    if (op->input->next(op->input)) {
+        uint16_t curColPos = 0;
+        for (uint8_t colIdx = 0; colIdx < numCols; colIdx++) {
+            uint8_t col = cols[colIdx];
+            uint8_t colSize = abs(inputSchema->columnSizes[col]);
+            uint16_t srcColPos = getColOffsetFromSchema(inputSchema, col);
+            memcpy((int8_t *)op->recordBuffer + curColPos, (int8_t *)op->input->recordBuffer + srcColPos, colSize);
+            curColPos += colSize;
+        }
+        return 1;
+    } else {
+        return 0;
+    }
+}
+
+void closeProjection(embedDBOperator *op) {
+    op->input->close(op->input);
+
+    embedDBFreeSchema(&op->schema);
+    free(op->state);
+    op->state = NULL;
+    free(op->recordBuffer);
+    op->recordBuffer = NULL;
+}
+
+/**
+ * @brief	Creates an operator capable of projecting the specified columns. Cannot re-order columns
+ * @param	input	The operator that this operator can pull records from
+ * @param	numCols	How many columns will be in the final projection
+ * @param	cols	The indexes of the columns to be outputted. Zero indexed. Column indexes must be strictly increasing i.e. columns must stay in the same order, can only remove columns from input
+ */
+embedDBOperator *createProjectionOperator(embedDBOperator *input, uint8_t numCols, uint8_t *cols) {
+    // Create state
+    uint8_t *state = malloc(numCols + 1);
+    if (state == NULL) {
+#ifdef PRINT_ERRORS
+        printf("ERROR: malloc failed while creating Projection operator\n");
+#endif
+        return NULL;
+    }
+    state[0] = numCols;
+    memcpy(state + 1, cols, numCols);
+
+    embedDBOperator *op = malloc(sizeof(embedDBOperator));
+    if (op == NULL) {
+#ifdef PRINT_ERRORS
+        printf("ERROR: malloc failed while creating Projection operator\n");
+#endif
+        return NULL;
+    }
+
+    op->state = state;
+    op->input = input;
+    op->schema = NULL;
+    op->recordBuffer = NULL;
+    op->init = initProjection;
+    op->next = nextProjection;
+    op->close = closeProjection;
+
+    return op;
+}
+
+struct selectionInfo {
+    int8_t colNum;
+    int8_t operation;
+    void *compVal;
+};
+
+void initSelection(embedDBOperator *op) {
+    if (op->input == NULL) {
+#ifdef PRINT_ERRORS
+        printf("ERROR: Projection operator needs an input operator\n");
+#endif
+        return;
+    }
+
+    // Init input
+    op->input->init(op->input);
+
+    // Init output schema
+    if (op->schema == NULL) {
+        op->schema = copySchema(op->input->schema);
+    }
+
+    // Init output buffer
+    if (op->recordBuffer == NULL) {
+        op->recordBuffer = createBufferFromSchema(op->schema);
+        if (op->recordBuffer == NULL) {
+#ifdef PRINT_ERRORS
+            printf("ERROR: Failed to allocate buffer for TableScan operator\n");
+#endif
+            return;
+        }
+    }
+}
+
+int8_t nextSelection(embedDBOperator *op) {
+    embedDBSchema *schema = op->input->schema;
+    struct selectionInfo *state = op->state;
+
+    int8_t colNum = state->colNum;
+    uint16_t colPos = getColOffsetFromSchema(schema, colNum);
+    int8_t operation = state->operation;
+    int8_t colSize = schema->columnSizes[colNum];
+    int8_t isSigned = 0;
+    if (colSize < 0) {
+        colSize = -colSize;
+        isSigned = 1;
+    }
+
+    while (op->input->next(op->input)) {
+        void *colData = (int8_t *)op->input->recordBuffer + colPos;
+        if (compare(colData, operation, state->compVal, isSigned, colSize)) {
+            memcpy(op->recordBuffer, op->input->recordBuffer, getRecordSizeFromSchema(op->schema));
+            return 1;
+        }
+    }
+
     return 0;
 }
 
-/**
- * @brief	Builds a spline structure given a sorted data set. GreedySplineCorridor
- * implementation from "Smooth interpolating histograms with error guarantees"
- * (BNCOD'08) by T. Neumann and S. Michel.
- * @param	spl			Spline structure
- * @param	data		Array of sorted data
- * @param	size		Number of values in array
- * @param	maxError	Maximum error for each spline
- */
-void splineBuild(spline *spl, void **data, id_t size, size_t maxError) {
-    spl->maxError = maxError;
+void closeSelection(embedDBOperator *op) {
+    op->input->close(op->input);
 
-    for (id_t i = 0; i < size; i++) {
-        void *key;
-        memcpy(&key, data + i, sizeof(void *));
-        splineAdd(spl, key, i);
-    }
+    embedDBFreeSchema(&op->schema);
+    free(op->state);
+    op->state = NULL;
+    free(op->recordBuffer);
+    op->recordBuffer = NULL;
 }
 
 /**
- * @brief    Print a spline structure.
- * @param    spl     Spline structure
+ * @brief	Creates an operator that selects records based on simple selection rules
+ * @param	input		The operator that this operator can pull records from
+ * @param	colNum		The index (zero-indexed) of the column base the select on
+ * @param	operation	A constant representing which comparison operation to perform. (e.g. SELECT_GT, SELECT_EQ, etc)
+ * @param	compVal		A pointer to the value to compare with. Make sure the size of this is the same number of bytes as is described in the schema
  */
-void splinePrint(spline *spl) {
-    if (spl == NULL) {
-        printf("No spline to print.\n");
+embedDBOperator *createSelectionOperator(embedDBOperator *input, int8_t colNum, int8_t operation, void *compVal) {
+    struct selectionInfo *state = malloc(sizeof(struct selectionInfo));
+    if (state == NULL) {
+#ifdef PRINT_ERRORS
+        printf("ERROR: Failed to malloc while creating Selection operator\n");
+#endif
+        return NULL;
+    }
+    state->colNum = colNum;
+    state->operation = operation;
+    memcpy(&state->compVal, &compVal, sizeof(void *));
+
+    embedDBOperator *op = malloc(sizeof(embedDBOperator));
+    if (op == NULL) {
+#ifdef PRINT_ERRORS
+        printf("ERROR: Failed to malloc while creating Selection operator\n");
+#endif
+        return NULL;
+    }
+    op->state = state;
+    op->input = input;
+    op->schema = NULL;
+    op->recordBuffer = NULL;
+    op->init = initSelection;
+    op->next = nextSelection;
+    op->close = closeSelection;
+
+    return op;
+}
+
+/**
+ * @brief	A private struct to hold the state of the aggregate operator
+ */
+struct aggregateInfo {
+    int8_t (*groupfunc)(const void *lastRecord, const void *record);  // Function that determins if both records are in the same group
+    embedDBAggregateFunc *functions;                                  // An array of aggregate functions
+    uint32_t functionsLength;                                         // The length of the functions array
+    void *lastRecordBuffer;                                           // Buffer for the last record read by input->next
+    uint16_t bufferSize;                                              // Size of the input buffer (and lastRecordBuffer)
+    int8_t isLastRecordUsable;                                        // Is the data in lastRecordBuffer usable for checking if the recently read record is in the same group? Is set to 0 at start, and also after the last record
+};
+
+void initAggregate(embedDBOperator *op) {
+    if (op->input == NULL) {
+#ifdef PRINT_ERRORS
+        printf("ERROR: Aggregate operator needs an input operator\n");
+#endif
         return;
     }
-    printf("Spline max error (%lu):\n", spl->maxError);
-    printf("Spline points (%lu):\n", spl->count);
-    uint64_t keyVal = 0;
-    uint32_t page = 0;
-    for (id_t i = 0; i < spl->count; i++) {
-        void *point = splinePointLocation(spl, i);
-        memcpy(&keyVal, point, spl->keySize);
-        memcpy(&page, (int8_t *)point + spl->keySize, sizeof(uint32_t));
-        printf("[%lu]: (%lu, %li)\n", i, keyVal, page);
+
+    // Init input
+    op->input->init(op->input);
+
+    struct aggregateInfo *state = op->state;
+    state->isLastRecordUsable = 0;
+
+    // Init output schema
+    if (op->schema == NULL) {
+        op->schema = malloc(sizeof(embedDBSchema));
+        if (op->schema == NULL) {
+#ifdef PRINT_ERRORS
+            printf("ERROR: Failed to malloc while initializing aggregate operator\n");
+#endif
+            return;
+        }
+        op->schema->numCols = state->functionsLength;
+        op->schema->columnSizes = malloc(state->functionsLength);
+        if (op->schema->columnSizes == NULL) {
+#ifdef PRINT_ERRORS
+            printf("ERROR: Failed to malloc while initializing aggregate operator\n");
+#endif
+            return;
+        }
+        for (uint8_t i = 0; i < state->functionsLength; i++) {
+            op->schema->columnSizes[i] = state->functions[i].colSize;
+            state->functions[i].colNum = i;
+        }
     }
-    printf("\n");
+
+    // Init buffers
+    state->bufferSize = getRecordSizeFromSchema(op->input->schema);
+    if (op->recordBuffer == NULL) {
+        op->recordBuffer = createBufferFromSchema(op->schema);
+        if (op->recordBuffer == NULL) {
+#ifdef PRINT_ERRORS
+            printf("ERROR: Failed to malloc while initializing aggregate operator\n");
+#endif
+            return;
+        }
+    }
+    if (state->lastRecordBuffer == NULL) {
+        state->lastRecordBuffer = malloc(state->bufferSize);
+        if (state->lastRecordBuffer == NULL) {
+#ifdef PRINT_ERRORS
+            printf("ERROR: Failed to malloc while initializing aggregate operator\n");
+#endif
+            return;
+        }
+    }
 }
 
-/**
- * @brief    Return spline structure size in bytes.
- * @param    spl     Spline structure
- * @return   size of the spline in bytes
- */
-uint32_t splineSize(spline *spl) {
-    return sizeof(spline) + (spl->size * (spl->keySize + sizeof(uint32_t)));
-}
+int8_t nextAggregate(embedDBOperator *op) {
+    struct aggregateInfo *state = op->state;
+    embedDBOperator *input = op->input;
 
-/**
- * @brief	Performs a recursive binary search on the spine points for a key
- * @param	arr			Array of spline points to search through
- * @param	low		    Lower search bound (Index of spline point)
- * @param	high	    Higher search bound (Index of spline point)
- * @param	key		    Key to search for
- * @param	compareKey	Function to compare keys
- * @return	Index of spline point that is the upper end of the spline segment that contains the key
- */
-size_t pointsBinarySearch(spline *spl, int low, int high, void *key, int8_t compareKey(void *, void *)) {
-    int32_t mid;
-    if (high >= low) {
-        mid = low + (high - low) / 2;
+    // Reset each operator
+    for (int i = 0; i < state->functionsLength; i++) {
+        if (state->functions[i].reset != NULL) {
+            state->functions[i].reset(state->functions + i, input->schema);
+        }
+    }
 
-        // If mid is zero, then low = 0 and high = 1. Therefore there is only one spline segment and we return 1, the upper bound.
-        if (mid == 0) {
-            return 1;
+    int8_t recordsInGroup = 0;
+
+    // Check flag used to indicate whether the last record read has been added to a group
+    if (state->isLastRecordUsable) {
+        recordsInGroup = 1;
+        for (int i = 0; i < state->functionsLength; i++) {
+            if (state->functions[i].add != NULL) {
+                state->functions[i].add(state->functions + i, input->schema, state->lastRecordBuffer);
+            }
+        }
+    }
+
+    int8_t exitType = 0;
+    while (input->next(input)) {
+        // Check if record is in the same group as the last record
+        if (!state->isLastRecordUsable || state->groupfunc(state->lastRecordBuffer, input->recordBuffer)) {
+            recordsInGroup = 1;
+            for (int i = 0; i < state->functionsLength; i++) {
+                if (state->functions[i].add != NULL) {
+                    state->functions[i].add(state->functions + i, input->schema, input->recordBuffer);
+                }
+            }
+        } else {
+            exitType = 1;
+            break;
         }
 
-        void *midSplinePoint = splinePointLocation(spl, mid);
-        void *midSplineMinusOnePoint = splinePointLocation(spl, mid - 1);
-
-        if (compareKey(midSplinePoint, key) >= 0 && compareKey(midSplineMinusOnePoint, key) <= 0)
-            return mid;
-
-        if (compareKey(midSplinePoint, key) > 0)
-            return pointsBinarySearch(spl, low, mid - 1, key, compareKey);
-
-        return pointsBinarySearch(spl, mid + 1, high, key, compareKey);
+        // Save this record
+        memcpy(state->lastRecordBuffer, input->recordBuffer, state->bufferSize);
+        state->isLastRecordUsable = 1;
     }
 
-    mid = low + (high - low) / 2;
-    if (mid >= high) {
-        return high;
-    } else {
-        return low;
+    if (!recordsInGroup) {
+        return 0;
     }
+
+    if (exitType == 0) {
+        // Exited because ran out of records, so all read records have been added to a group
+        state->isLastRecordUsable = 0;
+    }
+
+    // Perform final compute on all functions
+    for (int i = 0; i < state->functionsLength; i++) {
+        if (state->functions[i].compute != NULL) {
+            state->functions[i].compute(state->functions + i, op->schema, op->recordBuffer, state->lastRecordBuffer);
+        }
+    }
+
+    // Put last read record into lastRecordBuffer
+    memcpy(state->lastRecordBuffer, input->recordBuffer, state->bufferSize);
+
+    return 1;
+}
+
+void closeAggregate(embedDBOperator *op) {
+    op->input->close(op->input);
+    op->input = NULL;
+    embedDBFreeSchema(&op->schema);
+    free(((struct aggregateInfo *)op->state)->lastRecordBuffer);
+    free(op->state);
+    op->state = NULL;
+    free(op->recordBuffer);
+    op->recordBuffer = NULL;
 }
 
 /**
- * @brief	Estimate the page number of a given key
- * @param	spl			The spline structure to search
- * @param	key			The key to search for
- * @param	compareKey	Function to compare keys
- * @param	loc			A return value for the best estimate of which page the key is on
- * @param	low			A return value for the smallest page that it could be on
- * @param	high		A return value for the largest page it could be on
+ * @brief	Creates an operator that will find groups and preform aggregate functions over each group.
+ * @param	input			The operator that this operator can pull records from
+ * @param	groupfunc		A function that returns whether or not the @c record is part of the same group as the @c lastRecord. Assumes that records in groups are always next to each other and sorted when read in (i.e. Groups need to be 1122333, not 13213213)
+ * @param	functions		An array of aggregate functions, each of which will be updated with each record read from the iterator
+ * @param	functionsLength			The number of embedDBAggregateFuncs in @c functions
  */
-void splineFind(spline *spl, void *key, int8_t compareKey(void *, void *), id_t *loc, id_t *low, id_t *high) {
-    size_t pointIdx;
-    uint64_t keyVal = 0, smallestKeyVal = 0, largestKeyVal = 0;
-    void *smallestSplinePoint = splinePointLocation(spl, 0);
-    void *largestSplinePoint = splinePointLocation(spl, spl->count - 1);
-    memcpy(&keyVal, key, spl->keySize);
-    memcpy(&smallestKeyVal, smallestSplinePoint, spl->keySize);
-    memcpy(&largestKeyVal, largestSplinePoint, spl->keySize);
+embedDBOperator *createAggregateOperator(embedDBOperator *input, int8_t (*groupfunc)(const void *lastRecord, const void *record), embedDBAggregateFunc *functions, uint32_t functionsLength) {
+    struct aggregateInfo *state = malloc(sizeof(struct aggregateInfo));
+    if (state == NULL) {
+#ifdef PRINT_ERRORS
+        printf("ERROR: Failed to malloc while creating aggregate operator\n");
+#endif
+        return NULL;
+    }
 
-    if (compareKey(key, splinePointLocation(spl, 0)) < 0 || spl->count <= 1) {
-        // Key is smaller than any we have on record
-        uint32_t lowEstimate, highEstimate, locEstimate = 0;
-        memcpy(&lowEstimate, (int8_t *)spl->firstSplinePoint + spl->keySize, sizeof(uint32_t));
-        memcpy(&highEstimate, (int8_t *)smallestSplinePoint + spl->keySize, sizeof(uint32_t));
-        locEstimate = (lowEstimate + highEstimate) / 2;
+    state->groupfunc = groupfunc;
+    state->functions = functions;
+    state->functionsLength = functionsLength;
+    state->lastRecordBuffer = NULL;
 
-        memcpy(loc, &locEstimate, sizeof(uint32_t));
-        memcpy(low, &lowEstimate, sizeof(uint32_t));
-        memcpy(high, &highEstimate, sizeof(uint32_t));
+    embedDBOperator *op = malloc(sizeof(embedDBOperator));
+    if (op == NULL) {
+#ifdef PRINT_ERRORS
+        printf("ERROR: Failed to malloc while creating aggregate operator\n");
+#endif
+        return NULL;
+    }
+
+    op->state = state;
+    op->input = input;
+    op->schema = NULL;
+    op->recordBuffer = NULL;
+    op->init = initAggregate;
+    op->next = nextAggregate;
+    op->close = closeAggregate;
+
+    return op;
+}
+
+struct keyJoinInfo {
+    embedDBOperator *input2;
+    int8_t firstCall;
+};
+
+void initKeyJoin(embedDBOperator *op) {
+    struct keyJoinInfo *state = op->state;
+    embedDBOperator *input1 = op->input;
+    embedDBOperator *input2 = state->input2;
+
+    // Init inputs
+    input1->init(input1);
+    input2->init(input2);
+
+    embedDBSchema *schema1 = input1->schema;
+    embedDBSchema *schema2 = input2->schema;
+
+    // Check that join is compatible
+    if (schema1->columnSizes[0] != schema2->columnSizes[0] || schema1->columnSizes[0] < 0 || schema2->columnSizes[0] < 0) {
+#ifdef PRINT_ERRORS
+        printf("ERROR: The first columns of the two tables must be the key and must be the same size. Make sure you haven't projected them out.\n");
+#endif
         return;
-    } else if (compareKey(key, splinePointLocation(spl, spl->count - 1)) > 0) {
-        memcpy(loc, (int8_t *)largestSplinePoint + spl->keySize, sizeof(uint32_t));
-        memcpy(low, (int8_t *)largestSplinePoint + spl->keySize, sizeof(uint32_t));
-        memcpy(high, (int8_t *)largestSplinePoint + spl->keySize, sizeof(uint32_t));
-        return;
-    } else {
-        // Perform a binary seach to find the spline point above the key we're looking for
-        pointIdx = pointsBinarySearch(spl, 0, spl->count - 1, key, compareKey);
     }
 
-    // Interpolate between two spline points
-    void *downKey = splinePointLocation(spl, pointIdx - 1);
-    uint32_t downPage = 0;
-    memcpy(&downPage, (int8_t *)downKey + spl->keySize, sizeof(uint32_t));
-    void *upKey = splinePointLocation(spl, pointIdx);
-    uint32_t upPage = 0;
-    memcpy(&upPage, (int8_t *)upKey + spl->keySize, sizeof(uint32_t));
-    uint64_t downKeyVal = 0, upKeyVal = 0;
-    memcpy(&downKeyVal, downKey, spl->keySize);
-    memcpy(&upKeyVal, upKey, spl->keySize);
+    // Setup schema
+    if (op->schema == NULL) {
+        op->schema = malloc(sizeof(embedDBSchema));
+        if (op->schema == NULL) {
+#ifdef PRINT_ERRORS
+            printf("ERROR: Failed to malloc while initializing join operator\n");
+#endif
+            return;
+        }
+        op->schema->numCols = schema1->numCols + schema2->numCols;
+        op->schema->columnSizes = malloc(op->schema->numCols * sizeof(int8_t));
+        if (op->schema->columnSizes == NULL) {
+#ifdef PRINT_ERRORS
+            printf("ERROR: Failed to malloc while initializing join operator\n");
+#endif
+            return;
+        }
+        memcpy(op->schema->columnSizes, schema1->columnSizes, schema1->numCols);
+        memcpy(op->schema->columnSizes + schema1->numCols, schema2->columnSizes, schema2->numCols);
+    }
 
-    // Estimate location as page number
-    // Keydiff * slope + y
-    id_t locationEstimate = (id_t)((keyVal - downKeyVal) * (upPage - downPage) / (long double)(upKeyVal - downKeyVal)) + downPage;
-    memcpy(loc, &locationEstimate, sizeof(id_t));
+    // Allocate recordBuffer
+    op->recordBuffer = malloc(getRecordSizeFromSchema(op->schema));
+    if (op->recordBuffer == NULL) {
+#ifdef PRINT_ERRORS
+        printf("ERROR: Failed to malloc while initializing join operator\n");
+#endif
+        return;
+    }
 
-    // Set error bounds based on maxError from spline construction
-    id_t lowEstiamte = (spl->maxError > locationEstimate) ? 0 : locationEstimate - spl->maxError;
-    memcpy(low, &lowEstiamte, sizeof(id_t));
-    void *lastSplinePoint = splinePointLocation(spl, spl->count - 1);
-    uint32_t lastSplinePointPage = 0;
-    memcpy(&lastSplinePointPage, (int8_t *)lastSplinePoint + spl->keySize, sizeof(uint32_t));
-    id_t highEstimate = (locationEstimate + spl->maxError > lastSplinePointPage) ? lastSplinePointPage : locationEstimate + spl->maxError;
-    memcpy(high, &highEstimate, sizeof(id_t));
+    state->firstCall = 1;
+}
+
+int8_t nextKeyJoin(embedDBOperator *op) {
+    struct keyJoinInfo *state = op->state;
+    embedDBOperator *input1 = op->input;
+    embedDBOperator *input2 = state->input2;
+    embedDBSchema *schema1 = input1->schema;
+    embedDBSchema *schema2 = input2->schema;
+
+    // We've already used this match
+    void *record1 = input1->recordBuffer;
+    void *record2 = input2->recordBuffer;
+
+    int8_t colSize = abs(schema1->columnSizes[0]);
+
+    if (state->firstCall) {
+        state->firstCall = 0;
+
+        if (!input1->next(input1) || !input2->next(input2)) {
+            // If this case happens, you goofed, but I'll handle it anyway
+            return 0;
+        }
+        goto check;
+    }
+
+    while (1) {
+        // Advance the input with the smaller value
+        int8_t comp = compareUnsignedNumbers(record1, record2, colSize);
+        if (comp == 0) {
+            // Move both forward because if they match at this point, they've already been matched
+            if (!input1->next(input1) || !input2->next(input2)) {
+                return 0;
+            }
+        } else if (comp < 0) {
+            // Move record 1 forward
+            if (!input1->next(input1)) {
+                // We are out of records on one side. Given the assumption that the inputs are sorted, there are no more possible joins
+                return 0;
+            }
+        } else {
+            // Move record 2 forward
+            if (!input2->next(input2)) {
+                // We are out of records on one side. Given the assumption that the inputs are sorted, there are no more possible joins
+                return 0;
+            }
+        }
+
+    check:
+        // See if these records join
+        if (compareUnsignedNumbers(record1, record2, colSize) == 0) {
+            // Copy both records into the output
+            uint16_t record1Size = getRecordSizeFromSchema(schema1);
+            memcpy(op->recordBuffer, input1->recordBuffer, record1Size);
+            memcpy((int8_t *)op->recordBuffer + record1Size, input2->recordBuffer, getRecordSizeFromSchema(schema2));
+            return 1;
+        }
+        // Else keep advancing inputs until a match is found
+    }
+
+    return 0;
+}
+
+void closeKeyJoin(embedDBOperator *op) {
+    struct keyJoinInfo *state = op->state;
+    embedDBOperator *input1 = op->input;
+    embedDBOperator *input2 = state->input2;
+    input1->close(input1);
+    input2->close(input2);
+
+    embedDBFreeSchema(&op->schema);
+    free(op->state);
+    op->state = NULL;
+    free(op->recordBuffer);
+    op->recordBuffer = NULL;
 }
 
 /**
- * @brief    Free memory allocated for spline structure.
- * @param    spl        Spline structure
+ * @brief	Creates an operator for perfoming an equijoin on the keys (sorted and distinct) of two tables
  */
-void splineClose(spline *spl) {
-    free(spl->points);
-    free(spl->lastKey);
-    free(spl->lower);
-    free(spl->upper);
-    free(spl->firstSplinePoint);
+embedDBOperator *createKeyJoinOperator(embedDBOperator *input1, embedDBOperator *input2) {
+    embedDBOperator *op = malloc(sizeof(embedDBOperator));
+    if (op == NULL) {
+#ifdef PRINT_ERRORS
+        printf("ERROR: Failed to malloc while creating join operator\n");
+#endif
+        return NULL;
+    }
+
+    struct keyJoinInfo *state = malloc(sizeof(struct keyJoinInfo));
+    if (state == NULL) {
+#ifdef PRINT_ERRORS
+        printf("ERROR: Failed to malloc while creating join operator\n");
+#endif
+        return NULL;
+    }
+    state->input2 = input2;
+
+    op->input = input1;
+    op->state = state;
+    op->recordBuffer = NULL;
+    op->schema = NULL;
+    op->init = initKeyJoin;
+    op->next = nextKeyJoin;
+    op->close = closeKeyJoin;
+
+    return op;
+}
+
+void countReset(embedDBAggregateFunc *aggFunc, embedDBSchema *inputSchema) {
+    *(uint32_t *)aggFunc->state = 0;
+}
+
+void countAdd(embedDBAggregateFunc *aggFunc, embedDBSchema *inputSchema, const void *recordBuffer) {
+    (*(uint32_t *)aggFunc->state)++;
+}
+
+void countCompute(embedDBAggregateFunc *aggFunc, embedDBSchema *outputSchema, void *recordBuffer, const void *lastRecord) {
+    // Put count in record
+    memcpy((int8_t *)recordBuffer + getColOffsetFromSchema(outputSchema, aggFunc->colNum), aggFunc->state, sizeof(uint32_t));
 }
 
 /**
- * @brief   Returns a pointer to the location of the specified spline point in memory. Note that this method does not check if there is a point there, so it may be garbage data.
- * @param   spl         The spline structure that contains the points
- * @param   pointIndex  The index of the point to return a pointer to
+ * @brief	Creates an aggregate function to count the number of records in a group. To be used in combination with an embedDBOperator produced by createAggregateOperator
  */
-void *splinePointLocation(spline *spl, size_t pointIndex) {
-    return (int8_t *)spl->points + (((pointIndex + spl->pointsStartIndex) % spl->size) * (spl->keySize + sizeof(uint32_t)));
+embedDBAggregateFunc *createCountAggregate() {
+    embedDBAggregateFunc *aggFunc = malloc(sizeof(embedDBAggregateFunc));
+    aggFunc->reset = countReset;
+    aggFunc->add = countAdd;
+    aggFunc->compute = countCompute;
+    aggFunc->state = malloc(sizeof(uint32_t));
+    aggFunc->colSize = 4;
+    return aggFunc;
+}
+
+void sumReset(embedDBAggregateFunc *aggFunc, embedDBSchema *inputSchema) {
+    if (abs(inputSchema->columnSizes[*((uint8_t *)aggFunc->state + sizeof(int64_t))]) > 8) {
+#ifdef PRINT_ERRORS
+        printf("WARNING: Can't use this sum function for columns bigger than 8 bytes\n");
+#endif
+    }
+    *(int64_t *)aggFunc->state = 0;
+}
+
+void sumAdd(embedDBAggregateFunc *aggFunc, embedDBSchema *inputSchema, const void *recordBuffer) {
+    uint8_t colNum = *((uint8_t *)aggFunc->state + sizeof(int64_t));
+    int8_t colSize = inputSchema->columnSizes[colNum];
+    int8_t isSigned = embedDB_IS_COL_SIGNED(colSize);
+    colSize = min(abs(colSize), sizeof(int64_t));
+    void *colPos = (int8_t *)recordBuffer + getColOffsetFromSchema(inputSchema, colNum);
+    if (isSigned) {
+        // Get val to sum from record
+        int64_t val = 0;
+        memcpy(&val, colPos, colSize);
+        // Extend two's complement sign to fill 64 bit number if val is negative
+        int64_t sign = val & (128 << ((colSize - 1) * 8));
+        if (sign != 0) {
+            memset(((int8_t *)(&val)) + colSize, 0xff, sizeof(int64_t) - colSize);
+        }
+        (*(int64_t *)aggFunc->state) += val;
+    } else {
+        uint64_t val = 0;
+        memcpy(&val, colPos, colSize);
+        (*(uint64_t *)aggFunc->state) += val;
+    }
+}
+
+void sumCompute(embedDBAggregateFunc *aggFunc, embedDBSchema *outputSchema, void *recordBuffer, const void *lastRecord) {
+    // Put count in record
+    memcpy((int8_t *)recordBuffer + getColOffsetFromSchema(outputSchema, aggFunc->colNum), aggFunc->state, sizeof(int64_t));
+}
+
+/**
+ * @brief	Creates an aggregate function to sum a column over a group. To be used in combination with an embedDBOperator produced by createAggregateOperator. Column must be no bigger than 8 bytes.
+ * @param	colNum	The index (zero-indexed) of the column which you want to sum. Column must be <= 8 bytes
+ */
+embedDBAggregateFunc *createSumAggregate(uint8_t colNum) {
+    embedDBAggregateFunc *aggFunc = malloc(sizeof(embedDBAggregateFunc));
+    aggFunc->reset = sumReset;
+    aggFunc->add = sumAdd;
+    aggFunc->compute = sumCompute;
+    aggFunc->state = malloc(sizeof(int8_t) + sizeof(int64_t));
+    *((uint8_t *)aggFunc->state + sizeof(int64_t)) = colNum;
+    aggFunc->colSize = -8;
+    return aggFunc;
+}
+
+struct minMaxState {
+    uint8_t colNum;  // Which column of input to use
+    void *current;   // The value currently regarded as the min/max
+};
+
+void minReset(embedDBAggregateFunc *aggFunc, embedDBSchema *inputSchema) {
+    struct minMaxState *state = aggFunc->state;
+    int8_t colSize = inputSchema->columnSizes[state->colNum];
+    if (aggFunc->colSize != colSize) {
+#ifdef PRINT_ERRORS
+        printf("WARNING: Your provided column size for min aggregate function doesn't match the column size in the input schema\n");
+#endif
+    }
+    int8_t isSigned = embedDB_IS_COL_SIGNED(colSize);
+    colSize = abs(colSize);
+    memset(state->current, 0xff, colSize);
+    if (isSigned) {
+        // If the number is signed, flip MSB else it will read as -1, not MAX_INT
+        memset((int8_t *)state->current + colSize - 1, 0x7f, 1);
+    }
+}
+
+void minAdd(embedDBAggregateFunc *aggFunc, embedDBSchema *inputSchema, const void *record) {
+    struct minMaxState *state = aggFunc->state;
+    int8_t colSize = inputSchema->columnSizes[state->colNum];
+    int8_t isSigned = embedDB_IS_COL_SIGNED(colSize);
+    colSize = abs(colSize);
+    void *newValue = (int8_t *)record + getColOffsetFromSchema(inputSchema, state->colNum);
+    if (compare(newValue, SELECT_LT, state->current, isSigned, colSize)) {
+        memcpy(state->current, newValue, colSize);
+    }
+}
+
+void minMaxCompute(embedDBAggregateFunc *aggFunc, embedDBSchema *outputSchema, void *recordBuffer, const void *lastRecord) {
+    // Put count in record
+    memcpy((int8_t *)recordBuffer + getColOffsetFromSchema(outputSchema, aggFunc->colNum), ((struct minMaxState *)aggFunc->state)->current, abs(outputSchema->columnSizes[aggFunc->colNum]));
+}
+
+/**
+ * @brief	Creates an aggregate function to find the min value in a group
+ * @param	colNum	The zero-indexed column to find the min of
+ * @param	colSize	The size, in bytes, of the column to find the min of. Negative number represents a signed number, positive is unsigned.
+ */
+embedDBAggregateFunc *createMinAggregate(uint8_t colNum, int8_t colSize) {
+    embedDBAggregateFunc *aggFunc = malloc(sizeof(embedDBAggregateFunc));
+    if (aggFunc == NULL) {
+#ifdef PRINT_ERRORS
+        printf("ERROR: Failed to allocate while creating min aggregate function\n");
+#endif
+        return NULL;
+    }
+    struct minMaxState *state = malloc(sizeof(struct minMaxState));
+    if (state == NULL) {
+#ifdef PRINT_ERRORS
+        printf("ERROR: Failed to allocate while creating min aggregate function\n");
+#endif
+        return NULL;
+    }
+    state->colNum = colNum;
+    state->current = malloc(abs(colSize));
+    if (state->current == NULL) {
+#ifdef PRINT_ERRORS
+        printf("ERROR: Failed to allocate while creating min aggregate function\n");
+#endif
+        return NULL;
+    }
+    aggFunc->state = state;
+    aggFunc->colSize = colSize;
+    aggFunc->reset = minReset;
+    aggFunc->add = minAdd;
+    aggFunc->compute = minMaxCompute;
+
+    return aggFunc;
+}
+
+void maxReset(embedDBAggregateFunc *aggFunc, embedDBSchema *inputSchema) {
+    struct minMaxState *state = aggFunc->state;
+    int8_t colSize = inputSchema->columnSizes[state->colNum];
+    if (aggFunc->colSize != colSize) {
+#ifdef PRINT_ERRORS
+        printf("WARNING: Your provided column size for max aggregate function doesn't match the column size in the input schema\n");
+#endif
+    }
+    int8_t isSigned = embedDB_IS_COL_SIGNED(colSize);
+    colSize = abs(colSize);
+    memset(state->current, 0, colSize);
+    if (isSigned) {
+        // If the number is signed, flip MSB else it will read as 0, not MIN_INT
+        memset((int8_t *)state->current + colSize - 1, 0x80, 1);
+    }
+}
+
+void maxAdd(embedDBAggregateFunc *aggFunc, embedDBSchema *inputSchema, const void *record) {
+    struct minMaxState *state = aggFunc->state;
+    int8_t colSize = inputSchema->columnSizes[state->colNum];
+    int8_t isSigned = embedDB_IS_COL_SIGNED(colSize);
+    colSize = abs(colSize);
+    void *newValue = (int8_t *)record + getColOffsetFromSchema(inputSchema, state->colNum);
+    if (compare(newValue, SELECT_GT, state->current, isSigned, colSize)) {
+        memcpy(state->current, newValue, colSize);
+    }
+}
+
+/**
+ * @brief	Creates an aggregate function to find the max value in a group
+ * @param	colNum	The zero-indexed column to find the max of
+ * @param	colSize	The size, in bytes, of the column to find the max of. Negative number represents a signed number, positive is unsigned.
+ */
+embedDBAggregateFunc *createMaxAggregate(uint8_t colNum, int8_t colSize) {
+    embedDBAggregateFunc *aggFunc = malloc(sizeof(embedDBAggregateFunc));
+    if (aggFunc == NULL) {
+#ifdef PRINT_ERRORS
+        printf("ERROR: Failed to allocate while creating max aggregate function\n");
+#endif
+        return NULL;
+    }
+    struct minMaxState *state = malloc(sizeof(struct minMaxState));
+    if (state == NULL) {
+#ifdef PRINT_ERRORS
+        printf("ERROR: Failed to allocate while creating max aggregate function\n");
+#endif
+        return NULL;
+    }
+    state->colNum = colNum;
+    state->current = malloc(abs(colSize));
+    if (state->current == NULL) {
+#ifdef PRINT_ERRORS
+        printf("ERROR: Failed to allocate while creating max aggregate function\n");
+#endif
+        return NULL;
+    }
+    aggFunc->state = state;
+    aggFunc->colSize = colSize;
+    aggFunc->reset = maxReset;
+    aggFunc->add = maxAdd;
+    aggFunc->compute = minMaxCompute;
+
+    return aggFunc;
+}
+
+struct avgState {
+    uint8_t colNum;   // Column to take avg of
+    int8_t isSigned;  // Is input column signed?
+    uint32_t count;   // Count of records seen in group so far
+    int64_t sum;      // Sum of records seen in group so far
+};
+
+void avgReset(struct embedDBAggregateFunc *aggFunc, embedDBSchema *inputSchema) {
+    struct avgState *state = aggFunc->state;
+    if (abs(inputSchema->columnSizes[state->colNum]) > 8) {
+#ifdef PRINT_ERRORS
+        printf("WARNING: Can't use this sum function for columns bigger than 8 bytes\n");
+#endif
+    }
+    state->count = 0;
+    state->sum = 0;
+    state->isSigned = embedDB_IS_COL_SIGNED(inputSchema->columnSizes[state->colNum]);
+}
+
+void avgAdd(struct embedDBAggregateFunc *aggFunc, embedDBSchema *inputSchema, const void *record) {
+    struct avgState *state = aggFunc->state;
+    uint8_t colNum = state->colNum;
+    int8_t colSize = inputSchema->columnSizes[colNum];
+    int8_t isSigned = embedDB_IS_COL_SIGNED(colSize);
+    colSize = min(abs(colSize), sizeof(int64_t));
+    void *colPos = (int8_t *)record + getColOffsetFromSchema(inputSchema, colNum);
+    if (isSigned) {
+        // Get val to sum from record
+        int64_t val = 0;
+        memcpy(&val, colPos, colSize);
+        // Extend two's complement sign to fill 64 bit number if val is negative
+        int64_t sign = val & (128 << ((colSize - 1) * 8));
+        if (sign != 0) {
+            memset(((int8_t *)(&val)) + colSize, 0xff, sizeof(int64_t) - colSize);
+        }
+        state->sum += val;
+    } else {
+        uint64_t val = 0;
+        memcpy(&val, colPos, colSize);
+        val += (uint64_t)state->sum;
+        memcpy(&state->sum, &val, sizeof(uint64_t));
+    }
+    state->count++;
+}
+
+void avgCompute(struct embedDBAggregateFunc *aggFunc, embedDBSchema *outputSchema, void *recordBuffer, const void *lastRecord) {
+    struct avgState *state = aggFunc->state;
+    if (aggFunc->colSize == 8) {
+        double avg = state->sum / (double)state->count;
+        if (state->isSigned) {
+            avg = state->sum / (double)state->count;
+        } else {
+            avg = (uint64_t)state->sum / (double)state->count;
+        }
+        memcpy((int8_t *)recordBuffer + getColOffsetFromSchema(outputSchema, aggFunc->colNum), &avg, sizeof(double));
+    } else {
+        float avg;
+        if (state->isSigned) {
+            avg = state->sum / (float)state->count;
+        } else {
+            avg = (uint64_t)state->sum / (float)state->count;
+        }
+        memcpy((int8_t *)recordBuffer + getColOffsetFromSchema(outputSchema, aggFunc->colNum), &avg, sizeof(float));
+    }
+}
+
+/**
+ * @brief	Creates an operator to compute the average of a column over a group. **WARNING: Outputs a floating point number that may not be compatible with other operators**
+ * @param	colNum			Zero-indexed column to take average of
+ * @param	outputFloatSize	Size of float to output. Must be either 4 (float) or 8 (double)
+ */
+embedDBAggregateFunc *createAvgAggregate(uint8_t colNum, int8_t outputFloatSize) {
+    embedDBAggregateFunc *aggFunc = malloc(sizeof(embedDBAggregateFunc));
+    if (aggFunc == NULL) {
+#ifdef PRINT_ERRORS
+        printf("ERROR: Failed to allocate while creating avg aggregate function\n");
+#endif
+        return NULL;
+    }
+    struct avgState *state = malloc(sizeof(struct avgState));
+    if (state == NULL) {
+#ifdef PRINT_ERRORS
+        printf("ERROR: Failed to allocate while creating avg aggregate function\n");
+#endif
+        return NULL;
+    }
+    state->colNum = colNum;
+    aggFunc->state = state;
+    if (outputFloatSize > 8 || (outputFloatSize < 8 && outputFloatSize > 4)) {
+#ifdef PRINT_ERRORS
+        printf("WARNING: The size of the output float for AVG must be exactly 4 or 8. Defaulting to 8.");
+#endif
+        aggFunc->colSize = 8;
+    } else if (outputFloatSize < 4) {
+#ifdef PRINT_ERRORS
+        printf("WARNING: The size of the output float for AVG must be exactly 4 or 8. Defaulting to 4.");
+#endif
+        aggFunc->colSize = 4;
+    } else {
+        aggFunc->colSize = outputFloatSize;
+    }
+    aggFunc->reset = avgReset;
+    aggFunc->add = avgAdd;
+    aggFunc->compute = avgCompute;
+
+    return aggFunc;
+}
+
+/**
+ * @brief	Completely free a chain of functions recursively after it's already been closed.
+ */
+void embedDBFreeOperatorRecursive(embedDBOperator **op) {
+    if ((*op)->input != NULL) {
+        embedDBFreeOperatorRecursive(&(*op)->input);
+    }
+    if ((*op)->state != NULL) {
+        free((*op)->state);
+        (*op)->state = NULL;
+    }
+    if ((*op)->schema != NULL) {
+        embedDBFreeSchema(&(*op)->schema);
+    }
+    if ((*op)->recordBuffer != NULL) {
+        free((*op)->recordBuffer);
+        (*op)->recordBuffer = NULL;
+    }
+    free(*op);
+    (*op) = NULL;
 }
 
 /************************************************************radixspline.c************************************************************/
@@ -2921,258 +3758,6 @@ void embedDBClose(embedDBState *state) {
     }
 }
 
-/************************************************************embedDBUtility.c************************************************************/
-/******************************************************************************/
-/**
- * @file        embedDBUtility.c
- * @author      EmbedDB Team (See Authors.md)
- * @brief       This file contains some utility functions to be used with embedDB.
- *              These include functions required to use the bitmap option, and a
- *              comparator for comparing keys. They can be modified or implemented
- *              differently depending on the application.
- * @copyright   Copyright 2024
- *              EmbedDB Team
- * @par Redistribution and use in source and binary forms, with or without
- *  modification, are permitted provided that the following conditions are met:
- *
- * @par 1.Redistributions of source code must retain the above copyright notice,
- *  this list of conditions and the following disclaimer.
- *
- * @par 2.Redistributions in binary form must reproduce the above copyright notice,
- *  this list of conditions and the following disclaimer in the documentation
- *  and/or other materials provided with the distribution.
- *
- * @par 3.Neither the name of the copyright holder nor the names of its contributors
- *  may be used to endorse or promote products derived from this software without
- *  specific prior written permission.
- *
- * @par THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
- *  AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
- *  IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
- *  ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE
- *  LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
- *  CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
- *  SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
- *  INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
- *  CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
- *  ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
- *  POSSIBILITY OF SUCH DAMAGE.
- */
-/******************************************************************************/
-
-/* A bitmap with 8 buckets (bits). Range 0 to 100. */
-void updateBitmapInt8(void *data, void *bm) {
-    // Note: Assuming int key is right at the start of the data record
-    int32_t val = *((int16_t *)data);
-    uint8_t *bmval = (uint8_t *)bm;
-
-    if (val < 10)
-        *bmval = *bmval | 128;
-    else if (val < 20)
-        *bmval = *bmval | 64;
-    else if (val < 30)
-        *bmval = *bmval | 32;
-    else if (val < 40)
-        *bmval = *bmval | 16;
-    else if (val < 50)
-        *bmval = *bmval | 8;
-    else if (val < 60)
-        *bmval = *bmval | 4;
-    else if (val < 100)
-        *bmval = *bmval | 2;
-    else
-        *bmval = *bmval | 1;
-}
-
-/* A bitmap with 8 buckets (bits). Range 0 to 100. Build bitmap based on min and max value. */
-void buildBitmapInt8FromRange(void *min, void *max, void *bm) {
-    if (min == NULL && max == NULL) {
-        *(uint8_t *)bm = 255; /* Everything */
-    } else {
-        uint8_t minMap = 0, maxMap = 0;
-        if (min != NULL) {
-            updateBitmapInt8(min, &minMap);
-            // Turn on all bits below the bit for min value (cause the lsb are for the higher values)
-            minMap = minMap | (minMap - 1);
-            if (max == NULL) {
-                *(uint8_t *)bm = minMap;
-                return;
-            }
-        }
-        if (max != NULL) {
-            updateBitmapInt8(max, &maxMap);
-            // Turn on all bits above the bit for max value (cause the msb are for the lower values)
-            maxMap = ~(maxMap - 1);
-            if (min == NULL) {
-                *(uint8_t *)bm = maxMap;
-                return;
-            }
-        }
-        *(uint8_t *)bm = minMap & maxMap;
-    }
-}
-
-int8_t inBitmapInt8(void *data, void *bm) {
-    uint8_t *bmval = (uint8_t *)bm;
-
-    uint8_t tmpbm = 0;
-    updateBitmapInt8(data, &tmpbm);
-
-    // Return a number great than 1 if there is an overlap
-    return tmpbm & *bmval;
-}
-
-/* A 16-bit bitmap on a 32-bit int value */
-void updateBitmapInt16(void *data, void *bm) {
-    int32_t val = *((int32_t *)data);
-    uint16_t *bmval = (uint16_t *)bm;
-
-    /* Using a demo range of 0 to 100 */
-    // int16_t stepSize = 100 / 15;
-    int16_t stepSize = 450 / 15;  // Temperature data in F. Scaled by 10. */
-    int16_t minBase = 320;
-    int32_t current = minBase;
-    uint16_t num = 32768;
-    while (val > current) {
-        current += stepSize;
-        num = num / 2;
-    }
-    if (num == 0)
-        num = 1; /* Always set last bit if value bigger than largest cutoff */
-    *bmval = *bmval | num;
-}
-
-int8_t inBitmapInt16(void *data, void *bm) {
-    uint16_t *bmval = (uint16_t *)bm;
-
-    uint16_t tmpbm = 0;
-    updateBitmapInt16(data, &tmpbm);
-
-    // Return a number great than 1 if there is an overlap
-    return tmpbm & *bmval;
-}
-
-/**
- * @brief	Builds 16-bit bitmap from (min, max) range.
- * @param	state	embedDB state structure
- * @param	min		minimum value (may be NULL)
- * @param	max		maximum value (may be NULL)
- * @param	bm		bitmap created
- */
-void buildBitmapInt16FromRange(void *min, void *max, void *bm) {
-    if (min == NULL && max == NULL) {
-        *(uint16_t *)bm = 65535; /* Everything */
-        return;
-    } else {
-        uint16_t minMap = 0, maxMap = 0;
-        if (min != NULL) {
-            updateBitmapInt16(min, &minMap);
-            // Turn on all bits below the bit for min value (cause the lsb are for the higher values)
-            minMap = minMap | (minMap - 1);
-            if (max == NULL) {
-                *(uint16_t *)bm = minMap;
-                return;
-            }
-        }
-        if (max != NULL) {
-            updateBitmapInt16(max, &maxMap);
-            // Turn on all bits above the bit for max value (cause the msb are for the lower values)
-            maxMap = ~(maxMap - 1);
-            if (min == NULL) {
-                *(uint16_t *)bm = maxMap;
-                return;
-            }
-        }
-        *(uint16_t *)bm = minMap & maxMap;
-    }
-}
-
-/* A 64-bit bitmap on a 32-bit int value */
-void updateBitmapInt64(void *data, void *bm) {
-    int32_t val = *((int32_t *)data);
-
-    int16_t stepSize = 10;  // Temperature data in F. Scaled by 10. */
-    int32_t current = 320;
-    int8_t bmsize = 63;
-    int8_t count = 0;
-
-    while (val > current && count < bmsize) {
-        current += stepSize;
-        count++;
-    }
-    uint8_t b = 128;
-    int8_t offset = count / 8;
-    b = b >> (count & 7);
-
-    *((char *)((char *)bm + offset)) = *((char *)((char *)bm + offset)) | b;
-}
-
-int8_t inBitmapInt64(void *data, void *bm) {
-    uint64_t *bmval = (uint64_t *)bm;
-
-    uint64_t tmpbm = 0;
-    updateBitmapInt64(data, &tmpbm);
-
-    // Return a number great than 1 if there is an overlap
-    return tmpbm & *bmval;
-}
-
-/**
- * @brief	Builds 64-bit bitmap from (min, max) range.
- * @param	state	embedDB state structure
- * @param	min		minimum value (may be NULL)
- * @param	max		maximum value (may be NULL)
- * @param	bm		bitmap created
- */
-void buildBitmapInt64FromRange(void *min, void *max, void *bm) {
-    if (min == NULL && max == NULL) {
-        *(uint64_t *)bm = UINT64_MAX; /* Everything */
-        return;
-    } else {
-        uint64_t minMap = 0, maxMap = 0;
-        if (min != NULL) {
-            updateBitmapInt64(min, &minMap);
-            // Turn on all bits below the bit for min value (cause the lsb are for the higher values)
-            minMap = minMap | (minMap - 1);
-            if (max == NULL) {
-                *(uint64_t *)bm = minMap;
-                return;
-            }
-        }
-        if (max != NULL) {
-            updateBitmapInt64(max, &maxMap);
-            // Turn on all bits above the bit for max value (cause the msb are for the lower values)
-            maxMap = ~(maxMap - 1);
-            if (min == NULL) {
-                *(uint64_t *)bm = maxMap;
-                return;
-            }
-        }
-        *(uint64_t *)bm = minMap & maxMap;
-    }
-}
-
-int8_t int32Comparator(void *a, void *b) {
-    int32_t i1, i2;
-    memcpy(&i1, a, sizeof(int32_t));
-    memcpy(&i2, b, sizeof(int32_t));
-    int32_t result = i1 - i2;
-    if (result < 0)
-        return -1;
-    if (result > 0)
-        return 1;
-    return 0;
-}
-
-int8_t int64Comparator(void *a, void *b) {
-    int64_t result = *((int64_t *)a) - *((int64_t *)b);
-    if (result < 0)
-        return -1;
-    if (result > 0)
-        return 1;
-    return 0;
-}
-
 /************************************************************spline.c************************************************************/
 /******************************************************************************/
 /**
@@ -3269,1030 +3854,445 @@ void splineAdd(spline *spl, void *key, uint32_t page) {
         return;
     }
 
-    if (op->schema->numCols < 2) {
-#ifdef PRINT_ERRORS
-        printf("ERROR: When creating a table scan, you must include at least two columns: one for the key and one for the data from the iterator\n");
-#endif
+    /* Check if there is only one spline point (need to initialize upper and lower limits using 2nd point) */
+    if (spl->numAddCalls == 2) {
+        /* Initialize upper and lower limits using second (unique) data point */
+        memcpy(spl->lower, key, spl->keySize);
+        uint32_t lowerPage = page < spl->maxError ? 0 : page - spl->maxError;
+        memcpy(((int8_t *)spl->lower + spl->keySize), &lowerPage, sizeof(uint32_t));
+        memcpy(spl->upper, key, spl->keySize);
+        uint32_t upperPage = page + spl->maxError;
+        memcpy(((int8_t *)spl->upper + spl->keySize), &upperPage, sizeof(uint32_t));
+        memcpy(spl->lastKey, key, spl->keySize);
+        spl->lastLoc = page;
         return;
     }
 
-    // Check that the provided key schema matches what is in the state
-    embedDBState *embedDBstate = (embedDBState *)(((void **)op->state)[0]);
-    if (op->schema->columnSizes[0] <= 0 || abs(op->schema->columnSizes[0]) != embedDBstate->keySize) {
-#ifdef PRINT_ERRORS
-        printf("ERROR: Make sure the the key column is at index 0 of the schema initialization and that it matches the keySize in the state and is unsigned\n");
-#endif
+    /* Skip duplicates */
+    uint64_t keyVal = 0, lastKeyVal = 0;
+    memcpy(&keyVal, key, spl->keySize);
+    memcpy(&lastKeyVal, spl->lastKey, spl->keySize);
+
+    if (keyVal <= lastKeyVal)
         return;
-    }
-    if (getRecordSizeFromSchema(op->schema) != (embedDBstate->keySize + embedDBstate->dataSize)) {
-#ifdef PRINT_ERRORS
-        printf("ERROR: Size of provided schema doesn't match the size that will be returned by the provided iterator\n");
-#endif
-        return;
+
+    /* Last point added to spline, check if previous point is temporary - overwrite previous point if temporary */
+    if (spl->tempLastPoint != 0) {
+        spl->count--;
     }
 
-    // Init buffer
-    if (op->recordBuffer == NULL) {
-        op->recordBuffer = createBufferFromSchema(op->schema);
-        if (op->recordBuffer == NULL) {
-#ifdef PRINT_ERRORS
-            printf("ERROR: Failed to allocate buffer for TableScan operator\n");
-#endif
-            return;
+    uint32_t lastPage = 0;
+    uint64_t lastPointKey = 0, upperKey = 0, lowerKey = 0;
+    void *lastPointLocation = splinePointLocation(spl, spl->count - 1);
+    memcpy(&lastPointKey, lastPointLocation, spl->keySize);
+    memcpy(&upperKey, spl->upper, spl->keySize);
+    memcpy(&lowerKey, spl->lower, spl->keySize);
+    memcpy(&lastPage, (int8_t *)lastPointLocation + spl->keySize, sizeof(uint32_t));
+
+    uint64_t xdiff, upperXDiff, lowerXDiff = 0;
+    uint32_t ydiff, upperYDiff = 0;
+    int64_t lowerYDiff = 0; /* This may be negative */
+
+    xdiff = keyVal - lastPointKey;
+    ydiff = page - lastPage;
+    upperXDiff = upperKey - lastPointKey;
+    memcpy(&upperYDiff, (int8_t *)spl->upper + spl->keySize, sizeof(uint32_t));
+    upperYDiff -= lastPage;
+    lowerXDiff = lowerKey - lastPointKey;
+    memcpy(&lowerYDiff, (int8_t *)spl->lower + spl->keySize, sizeof(uint32_t));
+    lowerYDiff -= lastPage;
+
+    if (spl->count >= spl->size)
+        splineErase(spl, spl->eraseSize);
+
+    /* Check if next point still in error corridor */
+    if (splineIsLeft(xdiff, ydiff, upperXDiff, upperYDiff) == 1 ||
+        splineIsRight(xdiff, ydiff, lowerXDiff, lowerYDiff) == 1) {
+        /* Point is not in error corridor. Add previous point to spline. */
+        void *nextSplinePoint = splinePointLocation(spl, spl->count);
+        memcpy(nextSplinePoint, spl->lastKey, spl->keySize);
+        memcpy((int8_t *)nextSplinePoint + spl->keySize, &spl->lastLoc, sizeof(uint32_t));
+        spl->count++;
+        spl->tempLastPoint = 0;
+
+        /* Update upper and lower limits. */
+        memcpy(spl->lower, key, spl->keySize);
+        uint32_t lowerPage = page < spl->maxError ? 0 : page - spl->maxError;
+        memcpy((int8_t *)spl->lower + spl->keySize, &lowerPage, sizeof(uint32_t));
+        memcpy(spl->upper, key, spl->keySize);
+        uint32_t upperPage = page + spl->maxError;
+        memcpy((int8_t *)spl->upper + spl->keySize, &upperPage, sizeof(uint32_t));
+    } else {
+        /* Check if must update upper or lower limits */
+
+        /* Upper limit */
+        if (splineIsLeft(upperXDiff, upperYDiff, xdiff, page + spl->maxError - lastPage) == 1) {
+            memcpy(spl->upper, key, spl->keySize);
+            uint32_t upperPage = page + spl->maxError;
+            memcpy((int8_t *)spl->upper + spl->keySize, &upperPage, sizeof(uint32_t));
+        }
+
+        /* Lower limit */
+        if (splineIsRight(lowerXDiff, lowerYDiff, xdiff, (page < spl->maxError ? 0 : page - spl->maxError) - lastPage) == 1) {
+            memcpy(spl->lower, key, spl->keySize);
+            uint32_t lowerPage = page < spl->maxError ? 0 : page - spl->maxError;
+            memcpy((int8_t *)spl->lower + spl->keySize, &lowerPage, sizeof(uint32_t));
         }
     }
-}
 
-int8_t nextTableScan(embedDBOperator *op) {
-    // Check that a schema was set
-    if (op->schema == NULL) {
-#ifdef PRINT_ERRORS
-        printf("ERROR: Must provide a base schema for a table scan operator\n");
-#endif
-        return 0;
-    }
+    spl->lastLoc = page;
 
-    // Get next record
-    embedDBState *state = (embedDBState *)(((void **)op->state)[0]);
-    embedDBIterator *it = (embedDBIterator *)(((void **)op->state)[1]);
-    if (!embedDBNext(state, it, op->recordBuffer, (int8_t *)op->recordBuffer + state->keySize)) {
-        return 0;
-    }
+    /* Add last key on spline if not already there. */
+    /* This will get overwritten the next time a new spline point is added */
+    memcpy(spl->lastKey, key, spl->keySize);
+    void *tempSplinePoint = splinePointLocation(spl, spl->count);
+    memcpy(tempSplinePoint, spl->lastKey, spl->keySize);
+    memcpy((int8_t *)tempSplinePoint + spl->keySize, &spl->lastLoc, sizeof(uint32_t));
+    spl->count++;
 
-    return 1;
-}
-
-void closeTableScan(embedDBOperator *op) {
-    embedDBFreeSchema(&op->schema);
-    free(op->recordBuffer);
-    op->recordBuffer = NULL;
-    free(op->state);
-    op->state = NULL;
+    spl->tempLastPoint = 1;
 }
 
 /**
- * @brief	Used as the bottom operator that will read records from the database
- * @param	state		The state associated with the database to read from
- * @param	it			An initialized iterator setup to read relevent records for this query
- * @param	baseSchema	The schema of the database being read from
+ * @brief   Removes points from the spline
+ * @param   spl         The spline structure to search
+ * @param   numPoints   The number of points to remove from the spline
+ * @return  Returns zero if successful and one if not
  */
-embedDBOperator *createTableScanOperator(embedDBState *state, embedDBIterator *it, embedDBSchema *baseSchema) {
-    // Ensure all fields are not NULL
-    if (state == NULL || it == NULL || baseSchema == NULL) {
-#ifdef PRINT_ERRORS
-        printf("ERROR: All parameters must be provided to create a TableScan operator\n");
-#endif
-        return NULL;
-    }
-
-    embedDBOperator *op = malloc(sizeof(embedDBOperator));
-    if (op == NULL) {
-#ifdef PRINT_ERRORS
-        printf("ERROR: malloc failed while creating TableScan operator\n");
-#endif
-        return NULL;
-    }
-
-    op->state = malloc(2 * sizeof(void *));
-    if (op->state == NULL) {
-#ifdef PRINT_ERRORS
-        printf("ERROR: malloc failed while creating TableScan operator\n");
-#endif
-        return NULL;
-    }
-    memcpy(op->state, &state, sizeof(void *));
-    memcpy((int8_t *)op->state + sizeof(void *), &it, sizeof(void *));
-
-    op->schema = copySchema(baseSchema);
-    op->input = NULL;
-    op->recordBuffer = NULL;
-
-    op->init = initTableScan;
-    op->next = nextTableScan;
-    op->close = closeTableScan;
-
-    return op;
-}
-
-void initProjection(embedDBOperator *op) {
-    if (op->input == NULL) {
-#ifdef PRINT_ERRORS
-        printf("ERROR: Projection operator needs an input operator\n");
-#endif
-        return;
-    }
-
-    // Init input
-    op->input->init(op->input);
-
-    // Get state
-    uint8_t numCols = *(uint8_t *)op->state;
-    uint8_t *cols = (uint8_t *)op->state + 1;
-    const embedDBSchema *inputSchema = op->input->schema;
-
-    // Init output schema
-    if (op->schema == NULL) {
-        op->schema = malloc(sizeof(embedDBSchema));
-        if (op->schema == NULL) {
-#ifdef PRINT_ERRORS
-            printf("ERROR: Failed to allocate space for projection schema\n");
-#endif
-            return;
-        }
-        op->schema->numCols = numCols;
-        op->schema->columnSizes = malloc(numCols * sizeof(int8_t));
-        if (op->schema->columnSizes == NULL) {
-#ifdef PRINT_ERRORS
-            printf("ERROR: Failed to allocate space for projection while building schema\n");
-#endif
-            return;
-        }
-        for (uint8_t i = 0; i < numCols; i++) {
-            op->schema->columnSizes[i] = inputSchema->columnSizes[cols[i]];
-        }
-    }
-
-    // Init output buffer
-    if (op->recordBuffer == NULL) {
-        op->recordBuffer = createBufferFromSchema(op->schema);
-        if (op->recordBuffer == NULL) {
-#ifdef PRINT_ERRORS
-            printf("ERROR: Failed to allocate buffer for TableScan operator\n");
-#endif
-            return;
-        }
-    }
-}
-
-int8_t nextProjection(embedDBOperator *op) {
-    uint8_t numCols = *(uint8_t *)op->state;
-    uint8_t *cols = (uint8_t *)op->state + 1;
-    embedDBSchema *inputSchema = op->input->schema;
-
-    // Get next record
-    if (op->input->next(op->input)) {
-        uint16_t curColPos = 0;
-        for (uint8_t colIdx = 0; colIdx < numCols; colIdx++) {
-            uint8_t col = cols[colIdx];
-            uint8_t colSize = abs(inputSchema->columnSizes[col]);
-            uint16_t srcColPos = getColOffsetFromSchema(inputSchema, col);
-            memcpy((int8_t *)op->recordBuffer + curColPos, (int8_t *)op->input->recordBuffer + srcColPos, colSize);
-            curColPos += colSize;
-        }
+int splineErase(spline *spl, uint32_t numPoints) {
+    /* If the user tries to delete more points than they allocated or deleting would only leave one spline point */
+    if (numPoints > spl->count || spl->count - numPoints == 1)
         return 1;
-    } else {
+    if (numPoints == 0)
         return 0;
-    }
-}
 
-void closeProjection(embedDBOperator *op) {
-    op->input->close(op->input);
-
-    embedDBFreeSchema(&op->schema);
-    free(op->state);
-    op->state = NULL;
-    free(op->recordBuffer);
-    op->recordBuffer = NULL;
-}
-
-/**
- * @brief	Creates an operator capable of projecting the specified columns. Cannot re-order columns
- * @param	input	The operator that this operator can pull records from
- * @param	numCols	How many columns will be in the final projection
- * @param	cols	The indexes of the columns to be outputted. Zero indexed. Column indexes must be strictly increasing i.e. columns must stay in the same order, can only remove columns from input
- */
-embedDBOperator *createProjectionOperator(embedDBOperator *input, uint8_t numCols, uint8_t *cols) {
-    // Create state
-    uint8_t *state = malloc(numCols + 1);
-    if (state == NULL) {
-#ifdef PRINT_ERRORS
-        printf("ERROR: malloc failed while creating Projection operator\n");
-#endif
-        return NULL;
-    }
-    state[0] = numCols;
-    memcpy(state + 1, cols, numCols);
-
-    embedDBOperator *op = malloc(sizeof(embedDBOperator));
-    if (op == NULL) {
-#ifdef PRINT_ERRORS
-        printf("ERROR: malloc failed while creating Projection operator\n");
-#endif
-        return NULL;
-    }
-
-    op->state = state;
-    op->input = input;
-    op->schema = NULL;
-    op->recordBuffer = NULL;
-    op->init = initProjection;
-    op->next = nextProjection;
-    op->close = closeProjection;
-
-    return op;
-}
-
-struct selectionInfo {
-    int8_t colNum;
-    int8_t operation;
-    void *compVal;
-};
-
-void initSelection(embedDBOperator *op) {
-    if (op->input == NULL) {
-#ifdef PRINT_ERRORS
-        printf("ERROR: Projection operator needs an input operator\n");
-#endif
-        return;
-    }
-
-    // Init input
-    op->input->init(op->input);
-
-    // Init output schema
-    if (op->schema == NULL) {
-        op->schema = copySchema(op->input->schema);
-    }
-
-    // Init output buffer
-    if (op->recordBuffer == NULL) {
-        op->recordBuffer = createBufferFromSchema(op->schema);
-        if (op->recordBuffer == NULL) {
-#ifdef PRINT_ERRORS
-            printf("ERROR: Failed to allocate buffer for TableScan operator\n");
-#endif
-            return;
-        }
-    }
-}
-
-int8_t nextSelection(embedDBOperator *op) {
-    embedDBSchema *schema = op->input->schema;
-    struct selectionInfo *state = op->state;
-
-    int8_t colNum = state->colNum;
-    uint16_t colPos = getColOffsetFromSchema(schema, colNum);
-    int8_t operation = state->operation;
-    int8_t colSize = schema->columnSizes[colNum];
-    int8_t isSigned = 0;
-    if (colSize < 0) {
-        colSize = -colSize;
-        isSigned = 1;
-    }
-
-    while (op->input->next(op->input)) {
-        void *colData = (int8_t *)op->input->recordBuffer + colPos;
-        if (compare(colData, operation, state->compVal, isSigned, colSize)) {
-            memcpy(op->recordBuffer, op->input->recordBuffer, getRecordSizeFromSchema(op->schema));
-            return 1;
-        }
-    }
-
+    spl->count -= numPoints;
+    spl->pointsStartIndex = (spl->pointsStartIndex + numPoints) % spl->size;
+    if (spl->count == 0)
+        spl->numAddCalls = 0;
     return 0;
 }
 
-void closeSelection(embedDBOperator *op) {
-    op->input->close(op->input);
+/**
+ * @brief	Builds a spline structure given a sorted data set. GreedySplineCorridor
+ * implementation from "Smooth interpolating histograms with error guarantees"
+ * (BNCOD'08) by T. Neumann and S. Michel.
+ * @param	spl			Spline structure
+ * @param	data		Array of sorted data
+ * @param	size		Number of values in array
+ * @param	maxError	Maximum error for each spline
+ */
+void splineBuild(spline *spl, void **data, id_t size, size_t maxError) {
+    spl->maxError = maxError;
 
-    embedDBFreeSchema(&op->schema);
-    free(op->state);
-    op->state = NULL;
-    free(op->recordBuffer);
-    op->recordBuffer = NULL;
+    for (id_t i = 0; i < size; i++) {
+        void *key;
+        memcpy(&key, data + i, sizeof(void *));
+        splineAdd(spl, key, i);
+    }
 }
 
 /**
- * @brief	Creates an operator that selects records based on simple selection rules
- * @param	input		The operator that this operator can pull records from
- * @param	colNum		The index (zero-indexed) of the column base the select on
- * @param	operation	A constant representing which comparison operation to perform. (e.g. SELECT_GT, SELECT_EQ, etc)
- * @param	compVal		A pointer to the value to compare with. Make sure the size of this is the same number of bytes as is described in the schema
+ * @brief    Print a spline structure.
+ * @param    spl     Spline structure
  */
-embedDBOperator *createSelectionOperator(embedDBOperator *input, int8_t colNum, int8_t operation, void *compVal) {
-    struct selectionInfo *state = malloc(sizeof(struct selectionInfo));
-    if (state == NULL) {
-#ifdef PRINT_ERRORS
-        printf("ERROR: Failed to malloc while creating Selection operator\n");
-#endif
-        return NULL;
+void splinePrint(spline *spl) {
+    if (spl == NULL) {
+        printf("No spline to print.\n");
+        return;
     }
-    state->colNum = colNum;
-    state->operation = operation;
-    memcpy(&state->compVal, &compVal, sizeof(void *));
-
-    embedDBOperator *op = malloc(sizeof(embedDBOperator));
-    if (op == NULL) {
-#ifdef PRINT_ERRORS
-        printf("ERROR: Failed to malloc while creating Selection operator\n");
-#endif
-        return NULL;
+    printf("Spline max error (%lu):\n", spl->maxError);
+    printf("Spline points (%lu):\n", spl->count);
+    uint64_t keyVal = 0;
+    uint32_t page = 0;
+    for (id_t i = 0; i < spl->count; i++) {
+        void *point = splinePointLocation(spl, i);
+        memcpy(&keyVal, point, spl->keySize);
+        memcpy(&page, (int8_t *)point + spl->keySize, sizeof(uint32_t));
+        printf("[%lu]: (%lu, %li)\n", i, keyVal, page);
     }
-    op->state = state;
-    op->input = input;
-    op->schema = NULL;
-    op->recordBuffer = NULL;
-    op->init = initSelection;
-    op->next = nextSelection;
-    op->close = closeSelection;
-
-    return op;
+    printf("\n");
 }
 
 /**
- * @brief	A private struct to hold the state of the aggregate operator
+ * @brief    Return spline structure size in bytes.
+ * @param    spl     Spline structure
+ * @return   size of the spline in bytes
  */
-struct aggregateInfo {
-    int8_t (*groupfunc)(const void *lastRecord, const void *record);  // Function that determins if both records are in the same group
-    embedDBAggregateFunc *functions;                                  // An array of aggregate functions
-    uint32_t functionsLength;                                         // The length of the functions array
-    void *lastRecordBuffer;                                           // Buffer for the last record read by input->next
-    uint16_t bufferSize;                                              // Size of the input buffer (and lastRecordBuffer)
-    int8_t isLastRecordUsable;                                        // Is the data in lastRecordBuffer usable for checking if the recently read record is in the same group? Is set to 0 at start, and also after the last record
-};
-
-void initAggregate(embedDBOperator *op) {
-    if (op->input == NULL) {
-#ifdef PRINT_ERRORS
-        printf("ERROR: Aggregate operator needs an input operator\n");
-#endif
-        return;
-    }
-
-    // Init input
-    op->input->init(op->input);
-
-    struct aggregateInfo *state = op->state;
-    state->isLastRecordUsable = 0;
-
-    // Init output schema
-    if (op->schema == NULL) {
-        op->schema = malloc(sizeof(embedDBSchema));
-        if (op->schema == NULL) {
-#ifdef PRINT_ERRORS
-            printf("ERROR: Failed to malloc while initializing aggregate operator\n");
-#endif
-            return;
-        }
-        op->schema->numCols = state->functionsLength;
-        op->schema->columnSizes = malloc(state->functionsLength);
-        if (op->schema->columnSizes == NULL) {
-#ifdef PRINT_ERRORS
-            printf("ERROR: Failed to malloc while initializing aggregate operator\n");
-#endif
-            return;
-        }
-        for (uint8_t i = 0; i < state->functionsLength; i++) {
-            op->schema->columnSizes[i] = state->functions[i].colSize;
-            state->functions[i].colNum = i;
-        }
-    }
-
-    // Init buffers
-    state->bufferSize = getRecordSizeFromSchema(op->input->schema);
-    if (op->recordBuffer == NULL) {
-        op->recordBuffer = createBufferFromSchema(op->schema);
-        if (op->recordBuffer == NULL) {
-#ifdef PRINT_ERRORS
-            printf("ERROR: Failed to malloc while initializing aggregate operator\n");
-#endif
-            return;
-        }
-    }
-    if (state->lastRecordBuffer == NULL) {
-        state->lastRecordBuffer = malloc(state->bufferSize);
-        if (state->lastRecordBuffer == NULL) {
-#ifdef PRINT_ERRORS
-            printf("ERROR: Failed to malloc while initializing aggregate operator\n");
-#endif
-            return;
-        }
-    }
-}
-
-int8_t nextAggregate(embedDBOperator *op) {
-    struct aggregateInfo *state = op->state;
-    embedDBOperator *input = op->input;
-
-    // Reset each operator
-    for (int i = 0; i < state->functionsLength; i++) {
-        if (state->functions[i].reset != NULL) {
-            state->functions[i].reset(state->functions + i, input->schema);
-        }
-    }
-
-    int8_t recordsInGroup = 0;
-
-    // Check flag used to indicate whether the last record read has been added to a group
-    if (state->isLastRecordUsable) {
-        recordsInGroup = 1;
-        for (int i = 0; i < state->functionsLength; i++) {
-            if (state->functions[i].add != NULL) {
-                state->functions[i].add(state->functions + i, input->schema, state->lastRecordBuffer);
-            }
-        }
-    }
-
-    int8_t exitType = 0;
-    while (input->next(input)) {
-        // Check if record is in the same group as the last record
-        if (!state->isLastRecordUsable || state->groupfunc(state->lastRecordBuffer, input->recordBuffer)) {
-            recordsInGroup = 1;
-            for (int i = 0; i < state->functionsLength; i++) {
-                if (state->functions[i].add != NULL) {
-                    state->functions[i].add(state->functions + i, input->schema, input->recordBuffer);
-                }
-            }
-        } else {
-            exitType = 1;
-            break;
-        }
-
-        // Save this record
-        memcpy(state->lastRecordBuffer, input->recordBuffer, state->bufferSize);
-        state->isLastRecordUsable = 1;
-    }
-
-    if (!recordsInGroup) {
-        return 0;
-    }
-
-    if (exitType == 0) {
-        // Exited because ran out of records, so all read records have been added to a group
-        state->isLastRecordUsable = 0;
-    }
-
-    // Perform final compute on all functions
-    for (int i = 0; i < state->functionsLength; i++) {
-        if (state->functions[i].compute != NULL) {
-            state->functions[i].compute(state->functions + i, op->schema, op->recordBuffer, state->lastRecordBuffer);
-        }
-    }
-
-    // Put last read record into lastRecordBuffer
-    memcpy(state->lastRecordBuffer, input->recordBuffer, state->bufferSize);
-
-    return 1;
-}
-
-void closeAggregate(embedDBOperator *op) {
-    op->input->close(op->input);
-    op->input = NULL;
-    embedDBFreeSchema(&op->schema);
-    free(((struct aggregateInfo *)op->state)->lastRecordBuffer);
-    free(op->state);
-    op->state = NULL;
-    free(op->recordBuffer);
-    op->recordBuffer = NULL;
+uint32_t splineSize(spline *spl) {
+    return sizeof(spline) + (spl->size * (spl->keySize + sizeof(uint32_t)));
 }
 
 /**
- * @brief	Creates an operator that will find groups and preform aggregate functions over each group.
- * @param	input			The operator that this operator can pull records from
- * @param	groupfunc		A function that returns whether or not the @c record is part of the same group as the @c lastRecord. Assumes that records in groups are always next to each other and sorted when read in (i.e. Groups need to be 1122333, not 13213213)
- * @param	functions		An array of aggregate functions, each of which will be updated with each record read from the iterator
- * @param	functionsLength			The number of embedDBAggregateFuncs in @c functions
+ * @brief	Performs a recursive binary search on the spine points for a key
+ * @param	arr			Array of spline points to search through
+ * @param	low		    Lower search bound (Index of spline point)
+ * @param	high	    Higher search bound (Index of spline point)
+ * @param	key		    Key to search for
+ * @param	compareKey	Function to compare keys
+ * @return	Index of spline point that is the upper end of the spline segment that contains the key
  */
-embedDBOperator *createAggregateOperator(embedDBOperator *input, int8_t (*groupfunc)(const void *lastRecord, const void *record), embedDBAggregateFunc *functions, uint32_t functionsLength) {
-    struct aggregateInfo *state = malloc(sizeof(struct aggregateInfo));
-    if (state == NULL) {
-#ifdef PRINT_ERRORS
-        printf("ERROR: Failed to malloc while creating aggregate operator\n");
-#endif
-        return NULL;
-    }
+size_t pointsBinarySearch(spline *spl, int low, int high, void *key, int8_t compareKey(void *, void *)) {
+    int32_t mid;
+    if (high >= low) {
+        mid = low + (high - low) / 2;
 
-    state->groupfunc = groupfunc;
-    state->functions = functions;
-    state->functionsLength = functionsLength;
-    state->lastRecordBuffer = NULL;
-
-    embedDBOperator *op = malloc(sizeof(embedDBOperator));
-    if (op == NULL) {
-#ifdef PRINT_ERRORS
-        printf("ERROR: Failed to malloc while creating aggregate operator\n");
-#endif
-        return NULL;
-    }
-
-    op->state = state;
-    op->input = input;
-    op->schema = NULL;
-    op->recordBuffer = NULL;
-    op->init = initAggregate;
-    op->next = nextAggregate;
-    op->close = closeAggregate;
-
-    return op;
-}
-
-struct keyJoinInfo {
-    embedDBOperator *input2;
-    int8_t firstCall;
-};
-
-void initKeyJoin(embedDBOperator *op) {
-    struct keyJoinInfo *state = op->state;
-    embedDBOperator *input1 = op->input;
-    embedDBOperator *input2 = state->input2;
-
-    // Init inputs
-    input1->init(input1);
-    input2->init(input2);
-
-    embedDBSchema *schema1 = input1->schema;
-    embedDBSchema *schema2 = input2->schema;
-
-    // Check that join is compatible
-    if (schema1->columnSizes[0] != schema2->columnSizes[0] || schema1->columnSizes[0] < 0 || schema2->columnSizes[0] < 0) {
-#ifdef PRINT_ERRORS
-        printf("ERROR: The first columns of the two tables must be the key and must be the same size. Make sure you haven't projected them out.\n");
-#endif
-        return;
-    }
-
-    // Setup schema
-    if (op->schema == NULL) {
-        op->schema = malloc(sizeof(embedDBSchema));
-        if (op->schema == NULL) {
-#ifdef PRINT_ERRORS
-            printf("ERROR: Failed to malloc while initializing join operator\n");
-#endif
-            return;
-        }
-        op->schema->numCols = schema1->numCols + schema2->numCols;
-        op->schema->columnSizes = malloc(op->schema->numCols * sizeof(int8_t));
-        if (op->schema->columnSizes == NULL) {
-#ifdef PRINT_ERRORS
-            printf("ERROR: Failed to malloc while initializing join operator\n");
-#endif
-            return;
-        }
-        memcpy(op->schema->columnSizes, schema1->columnSizes, schema1->numCols);
-        memcpy(op->schema->columnSizes + schema1->numCols, schema2->columnSizes, schema2->numCols);
-    }
-
-    // Allocate recordBuffer
-    op->recordBuffer = malloc(getRecordSizeFromSchema(op->schema));
-    if (op->recordBuffer == NULL) {
-#ifdef PRINT_ERRORS
-        printf("ERROR: Failed to malloc while initializing join operator\n");
-#endif
-        return;
-    }
-
-    state->firstCall = 1;
-}
-
-int8_t nextKeyJoin(embedDBOperator *op) {
-    struct keyJoinInfo *state = op->state;
-    embedDBOperator *input1 = op->input;
-    embedDBOperator *input2 = state->input2;
-    embedDBSchema *schema1 = input1->schema;
-    embedDBSchema *schema2 = input2->schema;
-
-    // We've already used this match
-    void *record1 = input1->recordBuffer;
-    void *record2 = input2->recordBuffer;
-
-    int8_t colSize = abs(schema1->columnSizes[0]);
-
-    if (state->firstCall) {
-        state->firstCall = 0;
-
-        if (!input1->next(input1) || !input2->next(input2)) {
-            // If this case happens, you goofed, but I'll handle it anyway
-            return 0;
-        }
-        goto check;
-    }
-
-    while (1) {
-        // Advance the input with the smaller value
-        int8_t comp = compareUnsignedNumbers(record1, record2, colSize);
-        if (comp == 0) {
-            // Move both forward because if they match at this point, they've already been matched
-            if (!input1->next(input1) || !input2->next(input2)) {
-                return 0;
-            }
-        } else if (comp < 0) {
-            // Move record 1 forward
-            if (!input1->next(input1)) {
-                // We are out of records on one side. Given the assumption that the inputs are sorted, there are no more possible joins
-                return 0;
-            }
-        } else {
-            // Move record 2 forward
-            if (!input2->next(input2)) {
-                // We are out of records on one side. Given the assumption that the inputs are sorted, there are no more possible joins
-                return 0;
-            }
-        }
-
-    check:
-        // See if these records join
-        if (compareUnsignedNumbers(record1, record2, colSize) == 0) {
-            // Copy both records into the output
-            uint16_t record1Size = getRecordSizeFromSchema(schema1);
-            memcpy(op->recordBuffer, input1->recordBuffer, record1Size);
-            memcpy((int8_t *)op->recordBuffer + record1Size, input2->recordBuffer, getRecordSizeFromSchema(schema2));
+        // If mid is zero, then low = 0 and high = 1. Therefore there is only one spline segment and we return 1, the upper bound.
+        if (mid == 0) {
             return 1;
         }
-        // Else keep advancing inputs until a match is found
+
+        void *midSplinePoint = splinePointLocation(spl, mid);
+        void *midSplineMinusOnePoint = splinePointLocation(spl, mid - 1);
+
+        if (compareKey(midSplinePoint, key) >= 0 && compareKey(midSplineMinusOnePoint, key) <= 0)
+            return mid;
+
+        if (compareKey(midSplinePoint, key) > 0)
+            return pointsBinarySearch(spl, low, mid - 1, key, compareKey);
+
+        return pointsBinarySearch(spl, mid + 1, high, key, compareKey);
     }
 
-    return 0;
-}
-
-void closeKeyJoin(embedDBOperator *op) {
-    struct keyJoinInfo *state = op->state;
-    embedDBOperator *input1 = op->input;
-    embedDBOperator *input2 = state->input2;
-    input1->close(input1);
-    input2->close(input2);
-
-    embedDBFreeSchema(&op->schema);
-    free(op->state);
-    op->state = NULL;
-    free(op->recordBuffer);
-    op->recordBuffer = NULL;
-}
-
-/**
- * @brief	Creates an operator for perfoming an equijoin on the keys (sorted and distinct) of two tables
- */
-embedDBOperator *createKeyJoinOperator(embedDBOperator *input1, embedDBOperator *input2) {
-    embedDBOperator *op = malloc(sizeof(embedDBOperator));
-    if (op == NULL) {
-#ifdef PRINT_ERRORS
-        printf("ERROR: Failed to malloc while creating join operator\n");
-#endif
-        return NULL;
-    }
-
-    struct keyJoinInfo *state = malloc(sizeof(struct keyJoinInfo));
-    if (state == NULL) {
-#ifdef PRINT_ERRORS
-        printf("ERROR: Failed to malloc while creating join operator\n");
-#endif
-        return NULL;
-    }
-    state->input2 = input2;
-
-    op->input = input1;
-    op->state = state;
-    op->recordBuffer = NULL;
-    op->schema = NULL;
-    op->init = initKeyJoin;
-    op->next = nextKeyJoin;
-    op->close = closeKeyJoin;
-
-    return op;
-}
-
-void countReset(embedDBAggregateFunc *aggFunc, embedDBSchema *inputSchema) {
-    *(uint32_t *)aggFunc->state = 0;
-}
-
-void countAdd(embedDBAggregateFunc *aggFunc, embedDBSchema *inputSchema, const void *recordBuffer) {
-    (*(uint32_t *)aggFunc->state)++;
-}
-
-void countCompute(embedDBAggregateFunc *aggFunc, embedDBSchema *outputSchema, void *recordBuffer, const void *lastRecord) {
-    // Put count in record
-    memcpy((int8_t *)recordBuffer + getColOffsetFromSchema(outputSchema, aggFunc->colNum), aggFunc->state, sizeof(uint32_t));
-}
-
-/**
- * @brief	Creates an aggregate function to count the number of records in a group. To be used in combination with an embedDBOperator produced by createAggregateOperator
- */
-embedDBAggregateFunc *createCountAggregate() {
-    embedDBAggregateFunc *aggFunc = malloc(sizeof(embedDBAggregateFunc));
-    aggFunc->reset = countReset;
-    aggFunc->add = countAdd;
-    aggFunc->compute = countCompute;
-    aggFunc->state = malloc(sizeof(uint32_t));
-    aggFunc->colSize = 4;
-    return aggFunc;
-}
-
-void sumReset(embedDBAggregateFunc *aggFunc, embedDBSchema *inputSchema) {
-    if (abs(inputSchema->columnSizes[*((uint8_t *)aggFunc->state + sizeof(int64_t))]) > 8) {
-#ifdef PRINT_ERRORS
-        printf("WARNING: Can't use this sum function for columns bigger than 8 bytes\n");
-#endif
-    }
-    *(int64_t *)aggFunc->state = 0;
-}
-
-void sumAdd(embedDBAggregateFunc *aggFunc, embedDBSchema *inputSchema, const void *recordBuffer) {
-    uint8_t colNum = *((uint8_t *)aggFunc->state + sizeof(int64_t));
-    int8_t colSize = inputSchema->columnSizes[colNum];
-    int8_t isSigned = embedDB_IS_COL_SIGNED(colSize);
-    colSize = min(abs(colSize), sizeof(int64_t));
-    void *colPos = (int8_t *)recordBuffer + getColOffsetFromSchema(inputSchema, colNum);
-    if (isSigned) {
-        // Get val to sum from record
-        int64_t val = 0;
-        memcpy(&val, colPos, colSize);
-        // Extend two's complement sign to fill 64 bit number if val is negative
-        int64_t sign = val & (128 << ((colSize - 1) * 8));
-        if (sign != 0) {
-            memset(((int8_t *)(&val)) + colSize, 0xff, sizeof(int64_t) - colSize);
-        }
-        (*(int64_t *)aggFunc->state) += val;
+    mid = low + (high - low) / 2;
+    if (mid >= high) {
+        return high;
     } else {
-        uint64_t val = 0;
-        memcpy(&val, colPos, colSize);
-        (*(uint64_t *)aggFunc->state) += val;
-    }
-}
-
-void sumCompute(embedDBAggregateFunc *aggFunc, embedDBSchema *outputSchema, void *recordBuffer, const void *lastRecord) {
-    // Put count in record
-    memcpy((int8_t *)recordBuffer + getColOffsetFromSchema(outputSchema, aggFunc->colNum), aggFunc->state, sizeof(int64_t));
-}
-
-/**
- * @brief	Creates an aggregate function to sum a column over a group. To be used in combination with an embedDBOperator produced by createAggregateOperator. Column must be no bigger than 8 bytes.
- * @param	colNum	The index (zero-indexed) of the column which you want to sum. Column must be <= 8 bytes
- */
-embedDBAggregateFunc *createSumAggregate(uint8_t colNum) {
-    embedDBAggregateFunc *aggFunc = malloc(sizeof(embedDBAggregateFunc));
-    aggFunc->reset = sumReset;
-    aggFunc->add = sumAdd;
-    aggFunc->compute = sumCompute;
-    aggFunc->state = malloc(sizeof(int8_t) + sizeof(int64_t));
-    *((uint8_t *)aggFunc->state + sizeof(int64_t)) = colNum;
-    aggFunc->colSize = -8;
-    return aggFunc;
-}
-
-struct minMaxState {
-    uint8_t colNum;  // Which column of input to use
-    void *current;   // The value currently regarded as the min/max
-};
-
-void minReset(embedDBAggregateFunc *aggFunc, embedDBSchema *inputSchema) {
-    struct minMaxState *state = aggFunc->state;
-    int8_t colSize = inputSchema->columnSizes[state->colNum];
-    if (aggFunc->colSize != colSize) {
-#ifdef PRINT_ERRORS
-        printf("WARNING: Your provided column size for min aggregate function doesn't match the column size in the input schema\n");
-#endif
-    }
-    int8_t isSigned = embedDB_IS_COL_SIGNED(colSize);
-    colSize = abs(colSize);
-    memset(state->current, 0xff, colSize);
-    if (isSigned) {
-        // If the number is signed, flip MSB else it will read as -1, not MAX_INT
-        memset((int8_t *)state->current + colSize - 1, 0x7f, 1);
-    }
-}
-
-void minAdd(embedDBAggregateFunc *aggFunc, embedDBSchema *inputSchema, const void *record) {
-    struct minMaxState *state = aggFunc->state;
-    int8_t colSize = inputSchema->columnSizes[state->colNum];
-    int8_t isSigned = embedDB_IS_COL_SIGNED(colSize);
-    colSize = abs(colSize);
-    void *newValue = (int8_t *)record + getColOffsetFromSchema(inputSchema, state->colNum);
-    if (compare(newValue, SELECT_LT, state->current, isSigned, colSize)) {
-        memcpy(state->current, newValue, colSize);
-    }
-}
-
-void minMaxCompute(embedDBAggregateFunc *aggFunc, embedDBSchema *outputSchema, void *recordBuffer, const void *lastRecord) {
-    // Put count in record
-    memcpy((int8_t *)recordBuffer + getColOffsetFromSchema(outputSchema, aggFunc->colNum), ((struct minMaxState *)aggFunc->state)->current, abs(outputSchema->columnSizes[aggFunc->colNum]));
-}
-
-/**
- * @brief	Creates an aggregate function to find the min value in a group
- * @param	colNum	The zero-indexed column to find the min of
- * @param	colSize	The size, in bytes, of the column to find the min of. Negative number represents a signed number, positive is unsigned.
- */
-embedDBAggregateFunc *createMinAggregate(uint8_t colNum, int8_t colSize) {
-    embedDBAggregateFunc *aggFunc = malloc(sizeof(embedDBAggregateFunc));
-    if (aggFunc == NULL) {
-#ifdef PRINT_ERRORS
-        printf("ERROR: Failed to allocate while creating min aggregate function\n");
-#endif
-        return NULL;
-    }
-    struct minMaxState *state = malloc(sizeof(struct minMaxState));
-    if (state == NULL) {
-#ifdef PRINT_ERRORS
-        printf("ERROR: Failed to allocate while creating min aggregate function\n");
-#endif
-        return NULL;
-    }
-    state->colNum = colNum;
-    state->current = malloc(abs(colSize));
-    if (state->current == NULL) {
-#ifdef PRINT_ERRORS
-        printf("ERROR: Failed to allocate while creating min aggregate function\n");
-#endif
-        return NULL;
-    }
-    aggFunc->state = state;
-    aggFunc->colSize = colSize;
-    aggFunc->reset = minReset;
-    aggFunc->add = minAdd;
-    aggFunc->compute = minMaxCompute;
-
-    return aggFunc;
-}
-
-void maxReset(embedDBAggregateFunc *aggFunc, embedDBSchema *inputSchema) {
-    struct minMaxState *state = aggFunc->state;
-    int8_t colSize = inputSchema->columnSizes[state->colNum];
-    if (aggFunc->colSize != colSize) {
-#ifdef PRINT_ERRORS
-        printf("WARNING: Your provided column size for max aggregate function doesn't match the column size in the input schema\n");
-#endif
-    }
-    int8_t isSigned = embedDB_IS_COL_SIGNED(colSize);
-    colSize = abs(colSize);
-    memset(state->current, 0, colSize);
-    if (isSigned) {
-        // If the number is signed, flip MSB else it will read as 0, not MIN_INT
-        memset((int8_t *)state->current + colSize - 1, 0x80, 1);
-    }
-}
-
-void maxAdd(embedDBAggregateFunc *aggFunc, embedDBSchema *inputSchema, const void *record) {
-    struct minMaxState *state = aggFunc->state;
-    int8_t colSize = inputSchema->columnSizes[state->colNum];
-    int8_t isSigned = embedDB_IS_COL_SIGNED(colSize);
-    colSize = abs(colSize);
-    void *newValue = (int8_t *)record + getColOffsetFromSchema(inputSchema, state->colNum);
-    if (compare(newValue, SELECT_GT, state->current, isSigned, colSize)) {
-        memcpy(state->current, newValue, colSize);
+        return low;
     }
 }
 
 /**
- * @brief	Creates an aggregate function to find the max value in a group
- * @param	colNum	The zero-indexed column to find the max of
- * @param	colSize	The size, in bytes, of the column to find the max of. Negative number represents a signed number, positive is unsigned.
+ * @brief	Estimate the page number of a given key
+ * @param	spl			The spline structure to search
+ * @param	key			The key to search for
+ * @param	compareKey	Function to compare keys
+ * @param	loc			A return value for the best estimate of which page the key is on
+ * @param	low			A return value for the smallest page that it could be on
+ * @param	high		A return value for the largest page it could be on
  */
-embedDBAggregateFunc *createMaxAggregate(uint8_t colNum, int8_t colSize) {
-    embedDBAggregateFunc *aggFunc = malloc(sizeof(embedDBAggregateFunc));
-    if (aggFunc == NULL) {
-#ifdef PRINT_ERRORS
-        printf("ERROR: Failed to allocate while creating max aggregate function\n");
-#endif
-        return NULL;
-    }
-    struct minMaxState *state = malloc(sizeof(struct minMaxState));
-    if (state == NULL) {
-#ifdef PRINT_ERRORS
-        printf("ERROR: Failed to allocate while creating max aggregate function\n");
-#endif
-        return NULL;
-    }
-    state->colNum = colNum;
-    state->current = malloc(abs(colSize));
-    if (state->current == NULL) {
-#ifdef PRINT_ERRORS
-        printf("ERROR: Failed to allocate while creating max aggregate function\n");
-#endif
-        return NULL;
-    }
-    aggFunc->state = state;
-    aggFunc->colSize = colSize;
-    aggFunc->reset = maxReset;
-    aggFunc->add = maxAdd;
-    aggFunc->compute = minMaxCompute;
+void splineFind(spline *spl, void *key, int8_t compareKey(void *, void *), id_t *loc, id_t *low, id_t *high) {
+    size_t pointIdx;
+    uint64_t keyVal = 0, smallestKeyVal = 0, largestKeyVal = 0;
+    void *smallestSplinePoint = splinePointLocation(spl, 0);
+    void *largestSplinePoint = splinePointLocation(spl, spl->count - 1);
+    memcpy(&keyVal, key, spl->keySize);
+    memcpy(&smallestKeyVal, smallestSplinePoint, spl->keySize);
+    memcpy(&largestKeyVal, largestSplinePoint, spl->keySize);
 
-    return aggFunc;
-}
+    if (compareKey(key, splinePointLocation(spl, 0)) < 0 || spl->count <= 1) {
+        // Key is smaller than any we have on record
+        uint32_t lowEstimate, highEstimate, locEstimate = 0;
+        memcpy(&lowEstimate, (int8_t *)spl->firstSplinePoint + spl->keySize, sizeof(uint32_t));
+        memcpy(&highEstimate, (int8_t *)smallestSplinePoint + spl->keySize, sizeof(uint32_t));
+        locEstimate = (lowEstimate + highEstimate) / 2;
 
-struct avgState {
-    uint8_t colNum;   // Column to take avg of
-    int8_t isSigned;  // Is input column signed?
-    uint32_t count;   // Count of records seen in group so far
-    int64_t sum;      // Sum of records seen in group so far
-};
-
-void avgReset(struct embedDBAggregateFunc *aggFunc, embedDBSchema *inputSchema) {
-    struct avgState *state = aggFunc->state;
-    if (abs(inputSchema->columnSizes[state->colNum]) > 8) {
-#ifdef PRINT_ERRORS
-        printf("WARNING: Can't use this sum function for columns bigger than 8 bytes\n");
-#endif
-    }
-    state->count = 0;
-    state->sum = 0;
-    state->isSigned = embedDB_IS_COL_SIGNED(inputSchema->columnSizes[state->colNum]);
-}
-
-void avgAdd(struct embedDBAggregateFunc *aggFunc, embedDBSchema *inputSchema, const void *record) {
-    struct avgState *state = aggFunc->state;
-    uint8_t colNum = state->colNum;
-    int8_t colSize = inputSchema->columnSizes[colNum];
-    int8_t isSigned = embedDB_IS_COL_SIGNED(colSize);
-    colSize = min(abs(colSize), sizeof(int64_t));
-    void *colPos = (int8_t *)record + getColOffsetFromSchema(inputSchema, colNum);
-    if (isSigned) {
-        // Get val to sum from record
-        int64_t val = 0;
-        memcpy(&val, colPos, colSize);
-        // Extend two's complement sign to fill 64 bit number if val is negative
-        int64_t sign = val & (128 << ((colSize - 1) * 8));
-        if (sign != 0) {
-            memset(((int8_t *)(&val)) + colSize, 0xff, sizeof(int64_t) - colSize);
-        }
-        state->sum += val;
+        memcpy(loc, &locEstimate, sizeof(uint32_t));
+        memcpy(low, &lowEstimate, sizeof(uint32_t));
+        memcpy(high, &highEstimate, sizeof(uint32_t));
+        return;
+    } else if (compareKey(key, splinePointLocation(spl, spl->count - 1)) > 0) {
+        memcpy(loc, (int8_t *)largestSplinePoint + spl->keySize, sizeof(uint32_t));
+        memcpy(low, (int8_t *)largestSplinePoint + spl->keySize, sizeof(uint32_t));
+        memcpy(high, (int8_t *)largestSplinePoint + spl->keySize, sizeof(uint32_t));
+        return;
     } else {
-        uint64_t val = 0;
-        memcpy(&val, colPos, colSize);
-        val += (uint64_t)state->sum;
-        memcpy(&state->sum, &val, sizeof(uint64_t));
+        // Perform a binary seach to find the spline point above the key we're looking for
+        pointIdx = pointsBinarySearch(spl, 0, spl->count - 1, key, compareKey);
     }
-    state->count++;
+
+    // Interpolate between two spline points
+    void *downKey = splinePointLocation(spl, pointIdx - 1);
+    uint32_t downPage = 0;
+    memcpy(&downPage, (int8_t *)downKey + spl->keySize, sizeof(uint32_t));
+    void *upKey = splinePointLocation(spl, pointIdx);
+    uint32_t upPage = 0;
+    memcpy(&upPage, (int8_t *)upKey + spl->keySize, sizeof(uint32_t));
+    uint64_t downKeyVal = 0, upKeyVal = 0;
+    memcpy(&downKeyVal, downKey, spl->keySize);
+    memcpy(&upKeyVal, upKey, spl->keySize);
+
+    // Estimate location as page number
+    // Keydiff * slope + y
+    id_t locationEstimate = (id_t)((keyVal - downKeyVal) * (upPage - downPage) / (long double)(upKeyVal - downKeyVal)) + downPage;
+    memcpy(loc, &locationEstimate, sizeof(id_t));
+
+    // Set error bounds based on maxError from spline construction
+    id_t lowEstiamte = (spl->maxError > locationEstimate) ? 0 : locationEstimate - spl->maxError;
+    memcpy(low, &lowEstiamte, sizeof(id_t));
+    void *lastSplinePoint = splinePointLocation(spl, spl->count - 1);
+    uint32_t lastSplinePointPage = 0;
+    memcpy(&lastSplinePointPage, (int8_t *)lastSplinePoint + spl->keySize, sizeof(uint32_t));
+    id_t highEstimate = (locationEstimate + spl->maxError > lastSplinePointPage) ? lastSplinePointPage : locationEstimate + spl->maxError;
+    memcpy(high, &highEstimate, sizeof(id_t));
 }
 
-void avgCompute(struct embedDBAggregateFunc *aggFunc, embedDBSchema *outputSchema, void *recordBuffer, const void *lastRecord) {
-    struct avgState *state = aggFunc->state;
-    if (aggFunc->colSize == 8) {
-        double avg = state->sum / (double)state->count;
-        if (state->isSigned) {
-            avg = state->sum / (double)state->count;
+/**
+ * @brief    Free memory allocated for spline structure.
+ * @param    spl        Spline structure
+ */
+void splineClose(spline *spl) {
+    free(spl->points);
+    free(spl->lastKey);
+    free(spl->lower);
+    free(spl->upper);
+    free(spl->firstSplinePoint);
+}
+
+/**
+ * @brief   Returns a pointer to the location of the specified spline point in memory. Note that this method does not check if there is a point there, so it may be garbage data.
+ * @param   spl         The spline structure that contains the points
+ * @param   pointIndex  The index of the point to return a pointer to
+ */
+void *splinePointLocation(spline *spl, size_t pointIndex) {
+    return (int8_t *)spl->points + (((pointIndex + spl->pointsStartIndex) % spl->size) * (spl->keySize + sizeof(uint32_t)));
+}
+
+/************************************************************schema.c************************************************************/
+/******************************************************************************/
+/**
+ * @file        schema.c
+ * @author      EmbedDB Team (See Authors.md)
+ * @brief       Source code file for the schema for EmbedDB query interface
+ * @copyright   Copyright 2024
+ *              EmbedDB Team
+ * @par Redistribution and use in source and binary forms, with or without
+ *  modification, are permitted provided that the following conditions are met:
+ *
+ * @par 1.Redistributions of source code must retain the above copyright notice,
+ *  this list of conditions and the following disclaimer.
+ *
+ * @par 2.Redistributions in binary form must reproduce the above copyright notice,
+ *  this list of conditions and the following disclaimer in the documentation
+ *  and/or other materials provided with the distribution.
+ *
+ * @par 3.Neither the name of the copyright holder nor the names of its contributors
+ *  may be used to endorse or promote products derived from this software without
+ *  specific prior written permission.
+ *
+ * @par THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+ *  AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ *  IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+ *  ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE
+ *  LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+ *  CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+ *  SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+ *  INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+ *  CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+ *  ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+ *  POSSIBILITY OF SUCH DAMAGE.
+ */
+/******************************************************************************/
+
+/**
+ * @brief	Create an embedDBSchema from a list of column sizes including both key and data
+ * @param	numCols			The total number of columns in table
+ * @param	colSizes		An array with the size of each column. Max size is 127
+ * @param	colSignedness	An array describing if the data in the column is signed or unsigned. Use the defined constants embedDB_COLUMNN_SIGNED or embedDB_COLUMN_UNSIGNED
+ */
+embedDBSchema *embedDBCreateSchema(uint8_t numCols, int8_t *colSizes, int8_t *colSignedness) {
+    embedDBSchema *schema = malloc(sizeof(embedDBSchema));
+    schema->columnSizes = malloc(numCols * sizeof(int8_t));
+    schema->numCols = numCols;
+    uint16_t totalSize = 0;
+    for (uint8_t i = 0; i < numCols; i++) {
+        int8_t sign = colSignedness[i];
+        uint8_t colSize = colSizes[i];
+        totalSize += colSize;
+        if (colSize <= 0) {
+#ifdef PRINT_ERRORS
+            printf("ERROR: Column size must be greater than zero\n");
+#endif
+            return NULL;
+        }
+        if (sign == embedDB_COLUMN_SIGNED) {
+            schema->columnSizes[i] = -colSizes[i];
+        } else if (sign == embedDB_COLUMN_UNSIGNED) {
+            schema->columnSizes[i] = colSizes[i];
         } else {
-            avg = (uint64_t)state->sum / (double)state->count;
+#ifdef PRINT_ERRORS
+            printf("ERROR: Must only use embedDB_COLUMN_SIGNED or embedDB_COLUMN_UNSIGNED to describe column signedness\n");
+#endif
+            return NULL;
         }
-        memcpy((int8_t *)recordBuffer + getColOffsetFromSchema(outputSchema, aggFunc->colNum), &avg, sizeof(double));
-    } else {
-        float avg;
-        if (state->isSigned) {
-            avg = state->sum / (float)state->count;
-        } else {
-            avg = (uint64_t)state->sum / (float)state->count;
-        }
-        memcpy((int8_t *)recordBuffer + getColOffsetFromSchema(outputSchema, aggFunc->colNum), &avg, sizeof(float));
     }
+
+    return schema;
 }
 
 /**
- * @brief	Creates an operator to compute the average of a column over a group. **WARNING: Outputs a floating point number that may not be compatible with other operators**
- * @param	colNum			Zero-indexed column to take average of
- * @param	outputFloatSize	Size of float to output. Must be either 4 (float) or 8 (double)
+ * @brief	Free a schema. Sets the schema pointer to NULL.
  */
-embedDBAggregateFunc *createAvgAggregate(uint8_t colNum, int8_t outputFloatSize) {
-    embedDBAggregateFunc *aggFunc = malloc(sizeof(embedDBAggregateFunc));
-    if (aggFunc == NULL) {
-#ifdef PRINT_ERRORS
-        printf("ERROR: Failed to allocate while creating avg aggregate function\n");
-#endif
-        return NULL;
-    }
-    struct avgState *state = malloc(sizeof(struct avgState));
-    if (state == NULL) {
-#ifdef PRINT_ERRORS
-        printf("ERROR: Failed to allocate while creating avg aggregate function\n");
-#endif
-        return NULL;
-    }
-    state->colNum = colNum;
-    aggFunc->state = state;
-    if (outputFloatSize > 8 || (outputFloatSize < 8 && outputFloatSize > 4)) {
-#ifdef PRINT_ERRORS
-        printf("WARNING: The size of the output float for AVG must be exactly 4 or 8. Defaulting to 8.");
-#endif
-        aggFunc->colSize = 8;
-    } else if (outputFloatSize < 4) {
-#ifdef PRINT_ERRORS
-        printf("WARNING: The size of the output float for AVG must be exactly 4 or 8. Defaulting to 4.");
-#endif
-        aggFunc->colSize = 4;
-    } else {
-        aggFunc->colSize = outputFloatSize;
-    }
-    aggFunc->reset = avgReset;
-    aggFunc->add = avgAdd;
-    aggFunc->compute = avgCompute;
-
-    return aggFunc;
+void embedDBFreeSchema(embedDBSchema **schema) {
+    if (*schema == NULL) return;
+    free((*schema)->columnSizes);
+    free(*schema);
+    *schema = NULL;
 }
 
 /**
- * @brief	Completely free a chain of functions recursively after it's already been closed.
+ * @brief	Uses schema to determine the length of buffer to allocate and callocs that space
  */
-void embedDBFreeOperatorRecursive(embedDBOperator **op) {
-    if ((*op)->input != NULL) {
-        embedDBFreeOperatorRecursive(&(*op)->input);
+void *createBufferFromSchema(embedDBSchema *schema) {
+    uint16_t totalSize = 0;
+    for (uint8_t i = 0; i < schema->numCols; i++) {
+        totalSize += abs(schema->columnSizes[i]);
     }
-    if ((*op)->state != NULL) {
-        free((*op)->state);
-        (*op)->state = NULL;
+    return calloc(1, totalSize);
+}
+
+/**
+ * @brief	Deep copy schema and return a pointer to the copy
+ */
+embedDBSchema *copySchema(const embedDBSchema *schema) {
+    embedDBSchema *copy = malloc(sizeof(embedDBSchema));
+    if (copy == NULL) {
+#ifdef PRINT_ERRORS
+        printf("ERROR: malloc failed while copying schema\n");
+#endif
+        return NULL;
     }
-    if ((*op)->schema != NULL) {
-        embedDBFreeSchema(&(*op)->schema);
+    copy->numCols = schema->numCols;
+    copy->columnSizes = malloc(schema->numCols * sizeof(int8_t));
+    if (copy->columnSizes == NULL) {
+#ifdef PRINT_ERRORS
+        printf("ERROR: malloc failed while copying schema\n");
+#endif
+        return NULL;
     }
-    if ((*op)->recordBuffer != NULL) {
-        free((*op)->recordBuffer);
-        (*op)->recordBuffer = NULL;
+    memcpy(copy->columnSizes, schema->columnSizes, schema->numCols * sizeof(int8_t));
+    return copy;
+}
+
+/**
+ * @brief	Finds byte offset of the column from the beginning of the record
+ */
+uint16_t getColOffsetFromSchema(embedDBSchema *schema, uint8_t colNum) {
+    uint16_t pos = 0;
+    for (uint8_t i = 0; i < colNum; i++) {
+        pos += abs(schema->columnSizes[i]);
     }
-    free(*op);
-    (*op) = NULL;
+    return pos;
+}
+
+/**
+ * @brief	Calculates record size from schema
+ */
+uint16_t getRecordSizeFromSchema(embedDBSchema *schema) {
+    uint16_t size = 0;
+    for (uint8_t i = 0; i < schema->numCols; i++) {
+        size += abs(schema->columnSizes[i]);
+    }
+    return size;
+}
+
+void printSchema(embedDBSchema *schema) {
+    for (uint8_t i = 0; i < schema->numCols; i++) {
+        if (i) {
+            printf(", ");
+        }
+        int8_t col = schema->columnSizes[i];
+        printf("%sint%d", embedDB_IS_COL_SIGNED(col) ? "" : "u", abs(col));
+    }
+    printf("\n");
 }
