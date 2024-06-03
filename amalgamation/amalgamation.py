@@ -670,7 +670,7 @@ def amalgamate(
     if split_header_files:
         save_file(header + amalg_h, file_name, "h", save_directory)
         save_file(
-            '#include "./EmbedDB.h"\n' + header + amalg_c,
+            '#include "./embedDB.h"\n' + header + amalg_c,
             file_name,
             "cpp" if isCpp else "c",
             save_directory,
