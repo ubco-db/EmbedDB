@@ -150,8 +150,6 @@ class TestRead(unittest.TestCase):
             "#include <stdlib.h>",
             "#include <string.h>",
             "#include <time.h>",
-            '#include "../spline/radixspline.h"',
-            '#include "../spline/spline.h"',
         }
 
         self.assertEqual(expected_result, result)
@@ -223,8 +221,6 @@ class TestRead(unittest.TestCase):
         # test
         expected_internal_header_files = {
             '#include "embedDB.h"',
-            '#include "../spline/spline.h"',
-            '#include "../spline/radixspline.h"',
             '#include "serial_c_iface.h"',
         }
 

@@ -37,8 +37,12 @@
 
 #include <iostream>
 
-#include "../src/embedDB/embedDB.h"
+#ifdef DIST
+#include "embedDB.h"
+#else
+#include "embedDB/embedDB.h"
 #include "embedDBUtility.h"
+#endif
 
 #if defined(MEMBOARD)
 #include "memboardTestSetup.h"

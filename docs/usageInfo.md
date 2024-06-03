@@ -1,27 +1,27 @@
 # Usage & Setup Documentation
 
-This guide provides comprehensive instructions for configuring, initializing, and using EmbedDB in your application, covering everything from setup, record management, to teardown. 
+This guide provides comprehensive instructions for configuring, initializing, and using EmbedDB in your application, covering everything from setup, record management, to teardown.
 
 ## Table of Contents
 
--   [Configure EmbedDB State](#configure-records)
-    -   [Create an EmbedDB state](#create-an-embeddb-state)
-    -   [Size of records](#configure-size-of-records)
-    -   [Comparator Functions](#comparator-functions)
-	-	[Storage Addresses](#configure-file-storage)
-    -   [Memory Buffers](#configure-memory-buffers)
-    -   [Other Parameters](#other-parameters)
-    -   [Final Initialization](#final-initilization)
--   [Setup Index](#setup-index-method-and-optional-radix-table)
--   [Insert Records](#insert-put-items-into-table)
--   [Query Records](#query-get-items-from-table)
--   [Iterate over Records](#iterate-through-items-in-table)
-    -   [Filter by key](#iterator-with-filter-on-keys)
-    -   [Filter by data](#iterator-with-filter-on-data)
-    -   [Iterate with vardata](#iterate-over-records-with-vardata)
+- [Configure EmbedDB State](#configure-records)
+  - [Create an EmbedDB state](#create-an-embeddb-state)
+  - [Size of records](#configure-size-of-records)
+  - [Comparator Functions](#comparator-functions)
+    - [Storage Addresses](#configure-file-storage)
+  - [Memory Buffers](#configure-memory-buffers)
+  - [Other Parameters](#other-parameters)
+  - [Final Initialization](#final-initilization)
+- [Setup Index](#setup-index-method-and-optional-radix-table)
+- [Insert Records](#insert-put-items-into-table)
+- [Query Records](#query-get-items-from-table)
+- [Iterate over Records](#iterate-through-items-in-table)
+  - [Filter by key](#iterator-with-filter-on-keys)
+  - [Filter by data](#iterator-with-filter-on-data)
+  - [Iterate with vardata](#iterate-over-records-with-vardata)
 - [Print Errors](#print-errors)
 - [Flush EmbedDB](#flush-embeddb)
--   [Disposing of EmbedDB state](#disposing-of-embedDB-state)
+- [Disposing of EmbedDB state](#disposing-of-embeddb-state)
 
 ## Configure Records
 
@@ -35,21 +35,21 @@ embedDBState* state = (embedDBState*) malloc(sizeof(embedDBState));
 
 ### Configure Size of Records
 
-These attributes are only for fixed-size data/keys. If you require variable-sized records, see below. 
+These attributes are only for fixed-size data/keys. If you require variable-sized records, see below.
 
 - **Key Size**: Maximum allowed up to 8 bytes.
-- **Data Size**: No limit, but at least one record can fit on a page after the header. 
+- **Data Size**: No limit, but at least one record can fit on a page after the header.
 
 ```c
 state->keySize = 4;  
 state->dataSize = 12;  
 ```
+
 *Note `state->recordsize` is not necessarily the sum of `state->keySize` and `state->dataSize`. If you have variable data enabled, a 4-byte pointer exists in the fixed record that points to the record in variable storage.*
 
 ### Comparator Functions
 
 Customize comparator functions for keys and data. Example implementations that you can use can be found in [utilityFunctions](../src/embedDB/utilityFunctions.c).
-
 
 ```c
 // Function pointers that can compare two keys/data
@@ -64,6 +64,7 @@ Configure the number of bytes per page and the minimum erase size for your stora
 *Note: it is not necessary to allocate the nVarPages pages if you are not using variable data. If you do wish to use these options, you must enable them in [Other Parameters](#other-parameters)*.
 
 **Page and Erase Size**
+
 ```c
 state->pageSize = 512;
 state->eraseSizeInPages = 4;
@@ -93,11 +94,11 @@ state->varFile = setupSDFile(varPath);
 
 Allocate memory buffers based on your requirements. Since EmbedDB has support for variable records and indexing, additional buffers need to be created to support those features. If you would like to use variable records, you must enable them in [Other Parameters](#other-parameters).
 
--   Required:
-    -   2 blocks for record read/write buffers
--   Optional:
-    -   2 blocks for index read/write buffers (Writing the bitmap index to file)
-    -   2 blocks for variable data read/write buffers (If you need to have a variable sized portion of the record) 
+- Required:
+  - 2 blocks for record read/write buffers
+- Optional:
+  - 2 blocks for index read/write buffers (Writing the bitmap index to file)
+  - 2 blocks for variable data read/write buffers (If you need to have a variable sized portion of the record)
 
 ```c
 // ONLY USING READ/WRITE
@@ -113,33 +114,28 @@ state->bufferSizeInBlocks = 6; //6 buffers is needed when using index and variab
 state->buffer = malloc((size_t) state->bufferSizeInBlocks * state->pageSize);
 ```
 
+### Other parameters
 
-
-### Other parameters:
-
-Here is how you can enable EmbedDB to use other included features. Below is an explanation of all the features EmbedDB comes with. 
-
+Here is how you can enable EmbedDB to use other included features. Below is an explanation of all the features EmbedDB comes with.
 
 ```c
 // Set EmbedDb to include bitmap in header, writing bitmap to a file, and support varaible data.
 state->parameters = EMBEDDB_USE_BMAP | EMBEDDB_USE_INDEX | EMBEDDB_USE_VDATA;
 ```
 
-- `EMBEDDB_USE_INDEX` - Writes the bitmap to a file for fast queries on the data (Usually used in conjuction with EMBEDDB_USE_BMAP). 
-- `EMBEDDB_USE_BMAP` - Includes the bitmap in each page header so that it is easy to tell if a buffered page may contain a given key. 
-- `EMBEDDB_USE_MAX_MIN` - Includes the max and min records in each page header. 
-- `EMBEDDB_USE_VDATA` - Enables including variable-sized data with each record. 
+- `EMBEDDB_USE_INDEX` - Writes the bitmap to a file for fast queries on the data (Usually used in conjuction with EMBEDDB_USE_BMAP).
+- `EMBEDDB_USE_BMAP` - Includes the bitmap in each page header so that it is easy to tell if a buffered page may contain a given key.
+- `EMBEDDB_USE_MAX_MIN` - Includes the max and min records in each page header.
+- `EMBEDDB_USE_VDATA` - Enables including variable-sized data with each record.
 - `EMBEDDB_RESET_DATA` - Disables data recovery.
-
 
 *Note: If `EMBEDDB_RESET_DATA` is not enabled, embedDB will check if the file already exists, and if it does, it will attempt at recovering the data.*
 
-### Bitmap 
+### Bitmap
 
-The bitmap is used for indexing data. It must be enabled as shown above but it is not mandatory. Depending on if `EMBEDDB_USE_INDEX` is enabled, the data will be saved in two locations (datafile.bin) and on the index file. 
+The bitmap is used for indexing data. It must be enabled as shown above but it is not mandatory. Depending on if `EMBEDDB_USE_INDEX` is enabled, the data will be saved in two locations (datafile.bin) and on the index file.
 
 Just like the comparator, you may customize the bitmap's functions to your liking. A sample implementation can be found in [utilityFunctions](../src/embedDB/utilityFunctions.c).
-
 
 ```c
 // define how many buckets data will fall into. 
@@ -150,7 +146,6 @@ state->inBitmap = inBitmapInt64;
 state->updateBitmap = updateBitmapInt64;
 state->buildBitmapFromRange = buildBitmapInt64FromRange;
 ```
-
 
 ### Final initialization
 
@@ -170,9 +165,9 @@ embedDBInit(state, splineMaxError);
 
 The `SEARCH_METHOD` defines the method used for indexing physical data pages.
 
--   0 Uses a linear function to approximate data page locations.
--   1 Performs a binary search over all data pages.
--   **2 Uses a Spline structure (with optional Radix table) to index data pages. _This is the recommended option_**
+- 0 Uses a linear function to approximate data page locations.
+- 1 Performs a binary search over all data pages.
+- **2 Uses a Spline structure (with optional Radix table) to index data pages. *This is the recommended option***
 
 The `RADIX_BITS` constant defines how many bits are indexed by the Radix table when using `SEARCH_METHOD 2`.
 Setting this constant to 0 will omit the Radix table, and indexing will rely solely on the Spline structure.
@@ -187,24 +182,24 @@ Use the `embedDBPut` function to insert fixed length records into the database. 
 
 ### Inserting Fixed-Size Data
 
-`key` is the key to insert. `dataPtr` points to associated data value. 
+`key` is the key to insert. `dataPtr` points to associated data value.
 
 **Method:**
 
 ```c
 embedDBPut(state, (void*) key, (void*) dataPtr)
 ```
+
 **Parameters**
 <pre>
-- state:				EmbedDB algorithm state structure.
-- key:					The key for the record. 
-- dataPtr:				Fixed-size data for the record. 
+- state:    EmbedDB algorithm state structure.
+- key:     The key for the record.
+- dataPtr:    Fixed-size data for the record.
 </pre>
 
-
-**Returns** 
+**Returns**
 <pre>
-0 if success, Non-zero value if error. 
+0 if success, Non-zero value if error.
 </pre>
 
 **Example:**
@@ -230,25 +225,23 @@ EmbedDB has support for variable length records, but only when `EMBEDDB_USE_VDAT
 
 **Method:**
 
-```c 
+```c
 embedDBPutVar(state, (void*) &key, (void*) dataPtr, (void*) varPtr, (uint32_t) length);
 ```
 
 **Parameters**
 <pre>
-state:				EmbedDB algorithm state structure.
-key: 				Key for record. 
-dataPtr: 			Data for record. 
-varPtr:				Variable length data for record.  
-length: 			Length of the variable length data, in bytes.
+state:    EmbedDB algorithm state structure.
+key:     Key for record.
+dataPtr:    Data for record.
+varPtr:    Variable length data for record.  
+length:    Length of the variable length data, in bytes.
 </pre>
 
-**Returns** 
+**Returns**
 <pre>
-0 if success. Non-zero value if error. 
+0 if success. Non-zero value if error.
 </pre>
-
-
 
 **Example:**
 
@@ -274,12 +267,11 @@ dataPtr = NULL;
 
 ### Overview
 
-Use the `embedDBGet` function to retrieve fixed-length records from the database. You can use `embedDBGetVar` to retrieve variable-length records only when `EMBEDDB_USE_VDATA` is enabled. EmbedDB will handle searching the write buffer for you, so there is no need to flush the storage. 
-
+Use the `embedDBGet` function to retrieve fixed-length records from the database. You can use `embedDBGetVar` to retrieve variable-length records only when `EMBEDDB_USE_VDATA` is enabled. EmbedDB will handle searching the write buffer for you, so there is no need to flush the storage.
 
 ### Fixed-Length Record
 
-`keyPtr` points to a key that `embedDBGet` will search for and `returnDataPtr` points to a pre-allocated space for this function to copy data into. It is important to note that `returnDataPtr` must be >= `state->recordSize` to allocate the appropriate amount of space for this incoming data. 
+`keyPtr` points to a key that `embedDBGet` will search for and `returnDataPtr` points to a pre-allocated space for this function to copy data into. It is important to note that `returnDataPtr` must be >= `state->recordSize` to allocate the appropriate amount of space for this incoming data.
 
 **Method:**
 
@@ -289,9 +281,9 @@ embedDBGet(state, (void*) keyPtr, (void*) returnDataPtr);
 
 **Parameters**
 <pre>
-state:				EmbedDB algorithm state structure.			
-keyPtr:				Key for record.
-returnDataPtr:		        Pre-allocated memory to copy data into. 
+state:    EmbedDB algorithm state structure.
+keyPtr:    Key for record.
+returnDataPtr:          Pre-allocated memory to copy data into.
 </pre>
 
 **Returns**
@@ -315,41 +307,43 @@ embedDBGet(state, (void*) &key, (void*) returnDataPtr);
 
 ### Variable-Length Records
 
-Variable-length-data can be read only when the `EMBEDDB_USE_VDATA` parameter is enabled. A variable-length data stream must be created to retrieve variable-length records. `varStream` is an un-allocated `embedDBVarDataStream`; it will only return a data stream when there is data to read. Variable data is read in chunks from this stream. The size of these chunks are the length parameter for `embedDBVarDataStreamRead`. `bytesRead` is the number of bytes read into the buffer and is <=`varBufSize`. 
+Variable-length-data can be read only when the `EMBEDDB_USE_VDATA` parameter is enabled. A variable-length data stream must be created to retrieve variable-length records. `varStream` is an un-allocated `embedDBVarDataStream`; it will only return a data stream when there is data to read. Variable data is read in chunks from this stream. The size of these chunks are the length parameter for `embedDBVarDataStreamRead`. `bytesRead` is the number of bytes read into the buffer and is <=`varBufSize`.
 
-In a similar fashion to reading static records, you must pre-allocate storage for `embedDBVarDataStreamRead` to insert variable-length records into. Since variable length records are inserted alongside fixed length records, we can also retrieve that fixed-length record as well, so ensure there is a seperate pre-allocated storage in the memory when retrieving the fixed length record. You may even retrieve the fixed length record by doing `embedDBGet` for a key that has a variable record. 
+In a similar fashion to reading static records, you must pre-allocate storage for `embedDBVarDataStreamRead` to insert variable-length records into. Since variable length records are inserted alongside fixed length records, we can also retrieve that fixed-length record as well, so ensure there is a seperate pre-allocated storage in the memory when retrieving the fixed length record. You may even retrieve the fixed length record by doing `embedDBGet` for a key that has a variable record.
 
+<ins>**Method**</ins>
 
-<ins>**Method**</ins> 
 ```c
 embedDBGetVar(embedDBState *state, void *key, void *data, embedDBVarDataStream **varData); 
 ```
+
 **Parameters**
 <pre>
-state:				EmbedDB algorithm state structure. 
-key:				Key for record.
-data:				Pre-allocated memory to copy data for record.
-varData:			Return variable for data as an embedDBVarDataStream.
+state:    EmbedDB algorithm state structure.
+key:    Key for record.
+data:    Pre-allocated memory to copy data for record.
+varData:   Return variable for data as an embedDBVarDataStream.
 </pre>
 
 **Returns**
 <pre>
-Return 0 for success. 
-Return -1 for error reading file or failed memory allocation. 
+Return 0 for success.
+Return -1 for error reading file or failed memory allocation.
 Return 1 if variable data was deleted for making room for new data.
 </pre>
 
-<ins>**Method**</ins> 
+<ins>**Method**</ins>
+
 ```c
 embedDBVarDataStreamRead(embedDBState *state, embedDBVarDataStream *stream, void *buffer, uint32_t length)
 ```
 
 **Parameters**
 <pre>
-state:				EmbedDB algorithm state structure. 		
-stream: 			Variable data stream. 
-buffer: 			Buffer to read variable data into. 
-length: 			Number of bytes to read. Must be <= buffer size. 		
+state:    EmbedDB algorithm state structure.
+stream:    Variable data stream.
+buffer:    Buffer to read variable data into.
+length:    Number of bytes to read. Must be <= buffer size.
 </pre>
 
 **Returns**
@@ -357,19 +351,17 @@ length: 			Number of bytes to read. Must be <= buffer size.
 Number of bytes read.
 </pre>
 
-
-**Example:** 
+**Example:**
 
 *Recall in the embedDBPutVar example, we inserted a key of 1234, with fixed data being 12234565
 and a 12 byte variable record that contained "Hello World".*
-
 
 ```c
 // key you would like to retrieve data for. 
 uint32_t key = 124; 
 
 // declare a varDataStream. 
-embedDBVarDataStream *varStream = NULL;	 
+embedDBVarDataStream *varStream = NULL;  
 
 // allocate memory to read fixed data into.
 char fixedRec[] = {0,0,0};
@@ -386,13 +378,13 @@ embedDBGetVar(state, (void*) key, (void*) fixedRec, &varStream);
 
 // read data from varStream 
 if (varStream != NULL) {
-	uint32_t bytesRead;
-	// as long as there is bytes to read
+ uint32_t bytesRead;
+ // as long as there is bytes to read
         while ((bytesRead = embedDBVarDataStreamRead(state, varStream, varRecBufPtr, varRecSize)) > 0) {
-		// Process each incoming chunk of data in varRecBufPtr that is the size of varRecSize.
-	}
-	free(varStream);
-	varStream = NULL;
+  // Process each incoming chunk of data in varRecBufPtr that is the size of varRecSize.
+ }
+ free(varStream);
+ varStream = NULL;
 }
 free(varRecBufPtr);
 varRecBufPtr = NULL;
@@ -402,24 +394,24 @@ varRecBufPtr = NULL;
 
 ### Overview
 
-EmbedDB has support for iterating through keys and data sequentially for both fixed and variable records. A comparator function must be initialized as discussed when [setting up EmbedDBState](#comparator-functions). Remember, `EMBEDDB_USE_VDATA` must be enabled to use variable data. 
+EmbedDB has support for iterating through keys and data sequentially for both fixed and variable records. A comparator function must be initialized as discussed when [setting up EmbedDBState](#comparator-functions). Remember, `EMBEDDB_USE_VDATA` must be enabled to use variable data.
 
 You must first declare an `embedDBIterator` type and specify the minKey/maxKey or minData/maxData depending on the type of filter you would like to perform. `embedDBInitIterator` will initialize this iterator and use indexing to predict where the record will be in storage. `embedDBNext` will copy the requested key and data into pre allocated storage until there are no more records to read. `embedDBNext` will also locate records that are held in the write buffer.
 
-It is important that you pre allocate enough storage for the key and data to fit into. Also make sure to call `embedDBCloseIterator` to close the iterator after use. 
+It is important that you pre allocate enough storage for the key and data to fit into. Also make sure to call `embedDBCloseIterator` to close the iterator after use.
 
+Here are the methods that are common to both approaches.
 
-Here are the methods that are common to both approaches. 
+<ins>**Method**</ins>
 
-<ins>**Method**</ins> 
 ```c
 embedDBInitIterator(embedDBState *state, embedDBIterator *it);
 ```
 
 **Parameters**
 <pre>
-state:				EmbedDB algorithm state structure.
-it: 				EmbedDB iterator state structure.
+state:    EmbedDB algorithm state structure.
+it:     EmbedDB iterator state structure.
 </pre>
 
 **Returns**
@@ -427,33 +419,35 @@ it: 				EmbedDB iterator state structure.
 void
 </pre>
 
-<ins>**Method**</ins> 
+<ins>**Method**</ins>
+
 ```c
 embedDBNext(embedDBState *state, embedDBIterator *it, void *key, void *data);
 ```
 
 **Parameters**
 <pre>
-state:				EmbedDB algorithm state structure.
-it: 				EmbedDB iteraator state structure. 
-key: 				Return variable for key (pre allocated).
-data:				Return variable for data (pre allocated).
+state:    EmbedDB algorithm state structure.
+it:     EmbedDB iteraator state structure.
+key:     Return variable for key (pre allocated).
+data:    Return variable for data (pre allocated).
 </pre>
 
 **Returns**
 <pre>
-1 if successful 
+1 if successful
 0 if no more records
 </pre>
 
-<ins>**Method**</ins> 
+<ins>**Method**</ins>
+
 ```c
 embedDBCloseIterator(embedDBIterator *it)
 ```
 
 **Parameters**
 <pre>
-it:				EmbedDB iterator structure. 
+it:    EmbedDB iterator structure.
 </pre>
 
 **Returns**
@@ -461,12 +455,9 @@ it:				EmbedDB iterator structure.
 void
 </pre>
 
-
 ### Iterator with filter on keys
 
 EmbedDB can iterate through a range of keys sequentially. `minKey` specifies the minimum key to begin the search at and `maxKey` is where the search will stop. Since we are not iterating by data, ensure that `it.minData` and `it.maxData` is set to `NULL`.
-
-
 
 **Example**
 
@@ -477,7 +468,7 @@ EmbedDB can iterate through a range of keys sequentially. `minKey` specifies the
 embedDBIterator it;
 
 // ensure that itKey is the same size as state->recordSize.
-uint32_t *itKey;				 
+uint32_t *itKey;     
 
 // Allocate memory for itData matching the size of state->datasize.
 uint32_t* itData[] = {0,0,0};
@@ -495,7 +486,7 @@ embedDBInitIterator(state, &it);
 
 // while there are records to read. 
 while (embedDBNext(state, &it, (void**) &itKey, (void**) &itData)) {
-	/* Process record */
+ /* Process record */
 }
 
 embedDBCloseIterator(&it);
@@ -504,7 +495,6 @@ embedDBCloseIterator(&it);
 ### Iterator with filter on data
 
 EmbedDB can iterate through a range of data sequentially. This time, `minData` specifies the minimum data value to begin the search at and `maxData` is where the search will stop. Since we are not iterating by key, ensure that `it.minKey` and `it.maxKey` is set to `NULL`.
-
 
 **Example**
 
@@ -515,7 +505,7 @@ EmbedDB can iterate through a range of data sequentially. This time, `minData` s
 embedDBIterator it;
 
 // ensure that itKey is the same size as state->recordSize.
-uint32_t *itKey;				 
+uint32_t *itKey;     
 
 // Allocate memory for itData matching the size of state->datasize.
 uint32_t* itData[] = {0,0,0};
@@ -531,7 +521,7 @@ it.maxData = &maxData;
 embedDBInitIterator(state, &it);
 
 while (embedDBNext(state, &it, (void**) &itKey, (void**) &itData)) {
-	/* Process record */
+ /* Process record */
 }
 
 embedDBCloseIterator(&it);
@@ -539,38 +529,37 @@ embedDBCloseIterator(&it);
 
 ## Iterate over records with vardata
 
-### Overview 
+### Overview
 
 As [mentioned earlier](#iterate-through-items-in-table), EmbedDB can iterate over variable records when `EMBEDDB_USE_VDATA` is enabled. The strategy is similar to the above and, in that we are going to initialize an EmbedDB iterator with our minimum/maximum keys or data to iterate over, however, we need to declare and initialize an `embedDBVarDataStream` to perform the iteration, which is similar to how variable records are retrieved. Be sure to use `embedDBCloseIterator` to close the iterator after use. Also ensure that you free the `embedDBVarDataStream`.
 
+These are methods common to iteratring over variable records specifically. It is recommended you read this entire section to gain an understanding of how the iterator works.
 
-These are methods common to iteratring over variable records specifically. It is recommended you read this entire section to gain an understanding of how the iterator works. 
+<ins>**Method**</ins>
 
-<ins>**Method**</ins> 
 ```c
 embedDBNextVar(embedDBState *state, embedDBIterator *it, void *key, void *data, embedDBVarDataStream **varData)
 ```
 
 **Parameters**
 <pre>
-state:				EmbedDB algorithm state structure.
-it:			        EmbedDB iterator state structure. 
-key:				Return variable for key (pre allocated).
-data:				Return variable for data (pre allocated).
-varData:			Return variable for variable data as an embedDBVarDataStream.
+state:    EmbedDB algorithm state structure.
+it:           EmbedDB iterator state structure.
+key:    Return variable for key (pre allocated).
+data:    Return variable for data (pre allocated).
+varData:   Return variable for variable data as an embedDBVarDataStream.
 </pre>
-
 
 **Returns**
 <pre>
-1 if successful 
+1 if successful
 0 if no more records
-NULL if three is no variable data. 
+NULL if three is no variable data.
 </pre>
 
 ### Filter on Keys
 
-`minKey` specifies the minimum key to begin the search at and `maxKey` is where the search will stop. Since we are not iterating by data, ensure that `it.minData` and `it.maxData` is set to `NULL`. The process is very similar to retreiving variable records. 
+`minKey` specifies the minimum key to begin the search at and `maxKey` is where the search will stop. Since we are not iterating by data, ensure that `it.minData` and `it.maxData` is set to `NULL`. The process is very similar to retreiving variable records.
 
 ```c
 // declare embedDB iterator
@@ -593,17 +582,17 @@ void *varDataBuffer = malloc(varBufSize);
 embedDBInitIterator(state, &it);
 
 while (embedDBNextVar(state, &it, &itKey, itData, &varStream)) {
-	/* Process fixed part of record */
-	
-	/* Process vardata if this record has it */
-	if (varStream != NULL) {
-		uint32_t numBytesRead = 0;
-		while ((numBytesRead = embedDBVarDataStreamRead(state, varStream, varDataBuffer, varBufSize)) > 0) {
-			/* Process the data read into the buffer */
-		}
-		free(varStream);embedDBVarDataStreamRead
-		varStream = NULL;
-	}
+ /* Process fixed part of record */
+ 
+ /* Process vardata if this record has it */
+ if (varStream != NULL) {
+  uint32_t numBytesRead = 0;
+  while ((numBytesRead = embedDBVarDataStreamRead(state, varStream, varDataBuffer, varBufSize)) > 0) {
+   /* Process the data read into the buffer */
+  }
+  free(varStream);embedDBVarDataStreamRead
+  varStream = NULL;
+ }
 }
 
 free(varDataBuffer);
@@ -616,7 +605,7 @@ embedDBCloseIterator(&it);
 Filtering on data is similar to above. Set the minData and maxData for the fixed-size record and ensure minKey and maxKey are set to `NULL.`
 
 ```c
-	embedDBIterator it;
+ embedDBIterator it;
     uint32_t *itKey;
 
     int itData[] = {0,0,0};
@@ -649,7 +638,7 @@ Filtering on data is similar to above. Set the minData and maxData for the fixed
         }
 
     free(varDataBuffer);
-	varDataBuffer = NULL;
+ varDataBuffer = NULL;
     embedDBCloseIterator(&it);
 
 
@@ -657,13 +646,13 @@ Filtering on data is similar to above. Set the minData and maxData for the fixed
 
 ## Print Errors
 
-EmbedDB has a macro used to `PRINT ERRORS` that EmbedDB might generate. This is useful for debugging but not every board will have a terminal output. 
+EmbedDB has a macro used to `PRINT ERRORS` that EmbedDB might generate. This is useful for debugging but not every board will have a terminal output.
 
 To use, ensure you add `PRINT_ERRORS` as a compilation flag when making EmbedDB.
 
 ## Flush EmbedDB
 
-Flush the EmbedDB buffer to write the currently buffered page to storage manually. EmbedDB will automatically handle this for you when a read/write buffer is full. 
+Flush the EmbedDB buffer to write the currently buffered page to storage manually. EmbedDB will automatically handle this for you when a read/write buffer is full.
 
 ```c
 embedDBFlush(state);
@@ -676,7 +665,7 @@ embedDBFlush(state);
 ```c
 embedDBClose(state);
 tearDownFile(state->dataFile); 
-tearDownFile(state->indexFile);	
+tearDownFile(state->indexFile); 
 tearDownFile(state->varFile);
 free(state->fileInterface);
 free(state->buffer);
