@@ -2,7 +2,7 @@ name: Run Distribution tests
 
 on:
     push:
-      branches: [ "update-distribution" ]
+      branches: [ "action-testing" ]
 
 jobs:
     build:
