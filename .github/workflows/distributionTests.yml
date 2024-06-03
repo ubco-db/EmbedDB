@@ -19,6 +19,7 @@ jobs:
               pip install platformio
           - name: Configure Source Directory
             run: 
+                export PLATFORMIO_SRC_DIR=distribution/
           - name: Run tests on the embedded target
             env:
               PLATFORMIO_AUTH_TOKEN: ${{ secrets.PLATFORMIO_AUTH_TOKEN }}
