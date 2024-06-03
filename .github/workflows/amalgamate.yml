@@ -31,7 +31,9 @@ jobs:
         run: sudo apt-get install -y clang-format
 
       - name: Lint
-        run: clang-format -i  distribution/*
+        run: |
+          clang-format -i  distribution/embedDB.c
+          clang-format -i  distribution/embedDB.h
 
       - name: Check for changes
         id: git_diff
