@@ -20,6 +20,5 @@ jobs:
           - name: Run tests on the embedded target
             env:
               PLATFORMIO_AUTH_TOKEN: ${{ secrets.PLATFORMIO_AUTH_TOKEN }}
-            run: |
-              export PLATFORMIO_SRC_DIR=distribution/
+            run:
               platformio remote test -r -v -e due-dist
