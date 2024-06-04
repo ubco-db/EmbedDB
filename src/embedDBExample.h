@@ -39,8 +39,13 @@
 #include <string.h>
 #include <time.h>
 
+#ifdef DIST
+#include "embedDB.h"
+#else
 #include "embedDB/embedDB.h"
 #include "embedDBUtility.h"
+#endif
+
 #include "sdcard_c_iface.h"
 
 #if defined(MEGA)
