@@ -32,8 +32,7 @@ jobs:
 
       - name: Lint
         run: |
-          clang-format -i  distribution/embedDB.c
-          clang-format -i  distribution/embedDB.h
+          clang-format -i  lib/Distribution/*
 
       - name: Check for changes
         id: git_diff

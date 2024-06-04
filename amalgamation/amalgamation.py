@@ -691,7 +691,7 @@ def main():
     query_interface = os.path.join(project_root, "src", "query-interface")
     spline = os.path.join(project_root, "src", "spline")
     utility = os.path.join(project_root, "lib", "EmbedDB-Utility")
-    output_directory = os.path.join(project_root, "distribution")
+    output_directory = os.path.join(project_root, "lib", "Distribution")
     # create standard embedDB amalgamation
     amalgamate(
         [embed_db, query_interface, spline, utility],

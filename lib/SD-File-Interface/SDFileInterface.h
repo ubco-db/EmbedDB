@@ -44,7 +44,7 @@ extern "C" {
 #include <string.h>
 
 #if defined(DIST)
-#include "../../distribution/embedDB.h"
+#include "embedDB.h"
 #else
 #include "../../src/embedDB/embedDB.h"
 #endif
