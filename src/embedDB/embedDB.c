@@ -107,7 +107,6 @@ void initBufferPage(embedDBState *state, int pageNum) {
     uint16_t i = 0;
     void *buf = (char *)state->buffer + pageNum * state->pageSize;
 
-    /* testing */
     for (i = 0; i < state->pageSize; i++) {
         ((int8_t *)buf)[i] = 0;
     }
