@@ -1,10 +1,16 @@
 name: Run Tests and Lint
 
 on:
-  push:
-    branches-ignore:
-      - 'update-distribution'
+    push:
+      branches-ignore:
+        - 'update-distribution'
 
+
+concurrency:
+    group: ${{ github.workflow }}-${{ github.ref }}
+    cancel-in-progress: true
+
+    
 jobs:
 
   lint:
@@ -34,6 +40,9 @@ jobs:
   build:
     name: Run Tests
     runs-on: ubuntu-latest
+    concurrency:
+        group: board-required
+        cancel-in-progress: false
 
     steps:
       - uses: actions/checkout@v3

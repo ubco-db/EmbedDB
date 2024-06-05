@@ -4,10 +4,17 @@ on:
     push:
       branches: [ "update-distribution" ]
 
+concurrency:
+    group: ${{ github.workflow }}-${{ github.ref }}
+    cancel-in-progress: true
+
 jobs:
     build:
         name: Run Distibution Tests
         runs-on: ubuntu-latest
+        concurrency:
+          group: board-required
+          cancel-in-progress: false
 
         steps:
           - uses: actions/checkout@v3
