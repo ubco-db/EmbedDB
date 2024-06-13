@@ -46,18 +46,14 @@
 #include "embedDBUtility.h"
 #endif
 
-#include "sdcard_c_iface.h"
-
-#if defined(MEGA)
+#if defined(ARDUINO)
 #include "SDFileInterface.h"
-#endif
-
-#if defined(DUE)
-#include "SDFileInterface.h"
+#include "serial_c_iface.h"
+#else
+#include "nativeFileInterface.h"
 #endif
 
 #if defined(MEMBOARD)
-#include "SDFileInterface.h"
 #include "dataflashFileInterface.h"
 #endif
 
@@ -72,12 +68,7 @@
 embedDBState* init_state();
 embedDBState* state;
 
-/*
-    TODO: This file requires some of the other changes made to EmebedDB, so it does not completely work currently.
-    This will be fixed in a seperate PR when the other changes to the main EmbedDB file are made.
- */
-
-void embedDBExample() {
+uint32_t embedDBExample() {
     uint32_t totalRecordsInserted = 0;
     uint32_t totalRecordsToInsert = 10;
 
@@ -154,7 +145,7 @@ void embedDBExample() {
 
     // while there are records to read.
     while (embedDBNext(state, &it, (void**)&itKey, (void**)&itData)) {
-        printf("Iterated key = %ld and data = %ld \n", (long)itKey, *(long*)itData);
+        printf("Iterated key = %d and data = %ld \n", itKey, *(long*)itData);
     }
 
     // flushing the 10 records from the fixed-length write buffer into non volitile storage
@@ -262,6 +253,7 @@ void embedDBExample() {
     embedDBCloseIterator(&varIt);
 
     printf("Example completed!\n");
+    return 0;
 }
 
 embedDBState* init_state() {
@@ -297,6 +289,7 @@ embedDBState* init_state() {
     state->numVarPages = 75;
     state->eraseSizeInPages = 4;
 
+#if defined(ARDUINO)
     // configure file interface
     if (STORAGE_TYPE == 0) {
         char dataPath[] = "dataFile.bin", indexPath[] = "indexFile.bin", varPath[] = "varFile.bin";
@@ -313,6 +306,13 @@ embedDBState* init_state() {
         state->indexFile = setupDataflashFile(state->numDataPages, state->numIndexPages);
         state->varFile = setupDataflashFile(state->numDataPages + state->numIndexPages, state->numVarPages);
     }
+#endif
+#else
+    char dataPath[] = "build/artifacts/dataFile.bin", indexPath[] = "build/artifacts/indexFile.bin", varPath[] = "build/artifacts/varFile.bin";
+    state->fileInterface = getFileInterface();
+    state->dataFile = setupFile(dataPath);
+    state->indexFile = setupFile(indexPath);
+    state->varFile = setupFile(varPath);
 #endif
 
     // enable parameters

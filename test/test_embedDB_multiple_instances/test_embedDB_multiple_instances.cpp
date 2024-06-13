@@ -40,6 +40,12 @@
 #include "embedDBUtility.h"
 #endif
 
+#ifdef ARDUINO
+#include "SDFileInterface.h"
+#else
+#include "nativeFileInterface.h"
+#endif
+
 #if defined(MEMBOARD)
 #include "memboardTestSetup.h"
 #endif
@@ -52,8 +58,6 @@
 #include "dueTestSetup.h"
 #endif
 
-#include "SDFileInterface.h"
-#include "sdcard_c_iface.h"
 #include "unity.h"
 
 const char uwaDatafileName[] = "data/uwa500K.bin";

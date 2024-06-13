@@ -42,18 +42,15 @@
 
 #include "embedDB/embedDB.h"
 #include "embedDBUtility.h"
-#include "sdcard_c_iface.h"
 
-#if defined(MEGA)
+#if defined(ARDUINO)
 #include "SDFileInterface.h"
-#endif
-
-#if defined(DUE)
-#include "SDFileInterface.h"
+#include "serial_c_iface.h"
+#else
+#include "nativeFileInterface.h"
 #endif
 
 #if defined(MEMBOARD)
-#include "SDFileInterface.h"
 #include "dataflashFileInterface.h"
 #endif
 

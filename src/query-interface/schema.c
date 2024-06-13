@@ -40,7 +40,9 @@
 #include <stdlib.h>
 #include <string.h>
 
+#if defined(ARDUINO)
 #include "serial_c_iface.h"
+#endif
 
 /**
  * @brief	Create an embedDBSchema from a list of column sizes including both key and data

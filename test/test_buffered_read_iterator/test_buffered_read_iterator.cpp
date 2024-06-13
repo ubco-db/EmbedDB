@@ -44,6 +44,12 @@
 #include "embedDBUtility.h"
 #endif
 
+#ifdef ARDUINO
+#include "SDFileInterface.h"
+#else
+#include "nativeFileInterface.h"
+#endif
+
 #if defined(MEMBOARD)
 #include "memboardTestSetup.h"
 #endif
@@ -56,7 +62,6 @@
 #include "dueTestSetup.h"
 #endif
 
-#include "SDFileInterface.h"
 #include "unity.h"
 
 int insertStaticRecord(embedDBState* state, uint32_t key, uint32_t data);
