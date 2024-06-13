@@ -16,8 +16,6 @@ EmbedDB is a high performance embedded data storage and index structure optimize
 
 ## License
 
-Smoll change
-
 [![License](https://img.shields.io/badge/License-BSD%203--Clause-blue.svg)](https://opensource.org/licenses/BSD-3-Clause)
 
 ## Example Usage
