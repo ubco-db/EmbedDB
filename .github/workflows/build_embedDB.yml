@@ -1,28 +1,40 @@
 name: Run Tests and Lint
 
 on:
-    push:
-      branches-ignore:
-        - 'update-distribution'
-      paths:
-        - 'lib/**'
-        - 'src/**'
-        - 'test/**'
-        - 'platformio.ini'
+  pull_request:
+    branches:
+      - "main"
 
 concurrency:
-    group: ${{ github.workflow }}-${{ github.ref }}
-    cancel-in-progress: true
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
-    
 jobs:
+  changes:
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: read
+    outputs:
+      changes-detected: ${{ steps.filter.outputs.changes-detected }}
+    steps:
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            changes-detected:
+                - 'lib/**'
+                - 'src/**'
+                - 'test/**'
+                - 'platformio.ini'
 
   lint:
+    needs: changes
+    if: ${{ needs.changes.outputs.changes-detected == 'true'}}
     name: Run Linter
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        subdir: [ test, src ]
+        subdir: [test, src]
 
     steps:
       - name: Check out Git repository
@@ -43,10 +55,11 @@ jobs:
 
   build:
     name: Run Tests
+    needs: lint
     runs-on: ubuntu-latest
     concurrency:
-        group: board-required
-        cancel-in-progress: false
+      group: board-required
+      cancel-in-progress: false
 
     steps:
       - uses: actions/checkout@v3
@@ -59,5 +72,4 @@ jobs:
       - name: Run tests on the embedded target
         env:
           PLATFORMIO_AUTH_TOKEN: ${{ secrets.PLATFORMIO_AUTH_TOKEN }}
-        run:
-          platformio remote test -r -v -e due
+        run: platformio remote test -r -v -e due
