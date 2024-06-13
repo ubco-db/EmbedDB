@@ -69,7 +69,6 @@ void setUp(void) {
     state = init_state();
 }
 
-/* more comment much wow */
 void tearDown(void) {
     free(state->buffer);
     embedDBClose(state);
