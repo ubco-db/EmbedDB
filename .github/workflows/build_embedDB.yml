@@ -11,6 +11,7 @@ concurrency:
 
 jobs:
   changes:
+    name: Check for EmbedDB Changes
     runs-on: ubuntu-latest
     permissions:
       pull-requests: read
