@@ -57,15 +57,18 @@
 
 #ifdef ARDUINO
 #include "SDFileInterface.h"
+#define getFileInterface getSDInterface
+#define setupFile setupSDFile
+#define tearDownFile tearDownSDFile
+#define DATA_FILE_PATH "dataFile.bin"
 #else
 #include "nativeFileInterface.h"
+#define DATA_FILE_PATH "build/artifacts/dataFile.bin"
 #endif
 
 #include "unity.h"
 
 embedDBState *state;
-void setupStorage();
-void tearDownStorage();
 
 void setupEmbedDB() {
     state = (embedDBState *)malloc(sizeof(embedDBState));
@@ -80,7 +83,11 @@ void setupEmbedDB() {
     state->numDataPages = 1000;
     state->parameters = EMBEDDB_RESET_DATA;
     state->eraseSizeInPages = 4;
-    setupStorage();
+
+    /* setup data file for EmbedDB */
+    state->fileInterface = getFileInterface();
+    state->dataFile = setupFile(DATA_FILE_PATH);
+
     state->compareKey = int32Comparator;
     state->compareData = int32Comparator;
     int8_t result = embedDBInit(state, 1);
@@ -94,7 +101,7 @@ void setUp(void) {
 void tearDown(void) {
     free(state->buffer);
     embedDBClose(state);
-    tearDownStorage();
+    tearDownFile(state->dataFile);
     free(state->fileInterface);
     free(state);
 }
@@ -252,30 +259,10 @@ void setup() {
 
 void loop() {}
 
-void setupStorage() {
-    state->fileInterface = getSDInterface();
-    char dataPath[] = "dataFile.bin";
-    state->dataFile = setupSDFile(dataPath);
-}
-
-void tearDownStorage() {
-    tearDownSDFile(state->dataFile);
-}
-
 #else
 
 int main() {
     return runUnityTests();
-}
-
-void setupStorage() {
-    state->fileInterface = getFileInterface();
-    char dataPath[] = "build/artifacts/dataFile.bin";
-    state->dataFile = setupFile(dataPath);
-}
-
-void tearDownStorage() {
-    tearDownFile(state->dataFile);
 }
 
 #endif

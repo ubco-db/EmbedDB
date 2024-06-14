@@ -40,12 +40,6 @@
 #include "embedDBUtility.h"
 #endif
 
-#ifdef ARDUINO
-#include "SDFileInterface.h"
-#else
-#include "nativeFileInterface.h"
-#endif
-
 #if defined(MEMBOARD)
 #include "memboardTestSetup.h"
 #endif
@@ -56,6 +50,17 @@
 
 #if defined(DUE)
 #include "dueTestSetup.h"
+#endif
+
+#ifdef ARDUINO
+#include "SDFileInterface.h"
+#define getFileInterface getSDInterface
+#define setupFile setupSDFile
+#define tearDownFile tearDownSDFile
+#define DATA_FILE_PATH "dataFile.bin"
+#else
+#include "nativeFileInterface.h"
+#define DATA_FILE_PATH "build/artifacts/dataFile.bin"
 #endif
 
 #include "unity.h"
@@ -74,9 +79,11 @@ void setupEmbedDB() {
     state->numSplinePoints = 4;
     state->buffer = malloc((size_t)state->bufferSizeInBlocks * state->pageSize);
     TEST_ASSERT_NOT_NULL_MESSAGE(state->buffer, "Failed to allocate buffer for EmbedDB.");
-    state->fileInterface = getSDInterface();
-    char dataPath[] = "dataFile.bin";
-    state->dataFile = setupSDFile(dataPath);
+
+    /* configure EmbedDB storage */
+    state->fileInterface = getFileInterface();
+    state->dataFile = setupFile(DATA_FILE_PATH);
+
     state->numDataPages = 93;
     state->eraseSizeInPages = 4;
     state->parameters = EMBEDDB_RESET_DATA;
@@ -97,9 +104,9 @@ void initalizeEmbedDBFromFile(void) {
     state->buffer = malloc((size_t)state->bufferSizeInBlocks * state->pageSize);
     TEST_ASSERT_NOT_NULL_MESSAGE(state->buffer, "Failed to allocate buffer for EmbedDB.");
 
-    state->fileInterface = getSDInterface();
-    char dataPath[] = "dataFile.bin";
-    state->dataFile = setupSDFile(dataPath);
+    /* Setup EmbedDB storage */
+    state->fileInterface = getFileInterface();
+    state->dataFile = setupFile(DATA_FILE_PATH);
 
     state->numDataPages = 93;
     state->eraseSizeInPages = 4;
@@ -117,7 +124,7 @@ void setUp() {
 void tearDown() {
     free(state->buffer);
     embedDBClose(state);
-    tearDownSDFile(state->dataFile);
+    tearDownFile(state->dataFile);
     free(state->fileInterface);
     free(state);
 }
@@ -307,18 +314,20 @@ int runUnityTests() {
     return UNITY_END();
 }
 
-int main() {
-    return runUnityTests();
-}
-
 #ifdef ARDUINO
 
 void setup() {
     delay(2000);
     setupBoard();
-    main();
+    runUnityTests();
 }
 
 void loop() {}
+
+#else
+
+int main() {
+    return runUnityTests();
+}
 
 #endif
