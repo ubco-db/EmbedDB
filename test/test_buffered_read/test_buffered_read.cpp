@@ -43,12 +43,6 @@
 #include "embedDBUtility.h"
 #endif
 
-#ifdef ARDUINO
-#include "SDFileInterface.h"
-#else
-#include "nativeFileInterface.h"
-#endif
-
 #if defined(MEMBOARD)
 #include "memboardTestSetup.h"
 #endif
@@ -59,6 +53,15 @@
 
 #if defined(DUE)
 #include "dueTestSetup.h"
+#endif
+
+#ifdef ARDUINO
+#include "SDFileInterface.h"
+#define getFileInterface getSDInterface
+#define setupFile setupSDFile
+#define tearDownFile tearDownSDFile
+#else
+#include "nativeFileInterface.h"
 #endif
 
 #include "unity.h"
@@ -75,7 +78,8 @@ void setUp(void) {
 void tearDown(void) {
     free(state->buffer);
     embedDBClose(state);
-    tearDownSDFile(state->dataFile);
+    tearDownFile(state->dataFile);
+    tearDownFile(state->indexFile);
     free(state->fileInterface);
     free(state);
     state = NULL;
@@ -203,7 +207,7 @@ void embedDBGet_should_return_no_data_when_requested_key_greater_than_max_buffer
 
     /* query for key greater than max key in database */
     uint32_t key = 55;
-    u_int32_t return_data[] = {0, 0, 0};
+    uint32_t return_data[] = {0, 0, 0};
     TEST_ASSERT_EQUAL_INT8_MESSAGE(-1, embedDBGet(state, &key, return_data), "embedDBGet returned data for a key greater than the maximum key in the database");
 
     key = 8;
@@ -222,14 +226,16 @@ void embedDBGet_should_return_not_found_when_key_is_less_then_min_key(void) {
 
     /* query for key lower then the min key in the database */
     uint32_t key = 0;
-    u_int32_t actualData[] = {0, 0, 0};
-    TEST_ASSERT_EQUAL_INT8_MESSAGE(-1, embedDBGet(state, &key, actualData), "embedDBGet returned data for a key that is less than the minimum key in the database");
+    uint32_t actualData[] = {0, 0, 0};
+    int8_t embedDBGetResult = embedDBGet(state, &key, actualData);
+
+    TEST_ASSERT_EQUAL_INT8_MESSAGE(-1, embedDBGetResult, "embedDBGet returned data for a key that is less than the minimum key in the database");
 }
 
 void embedDBGet_should_return_no_data_found_when_database_and_buffer_are_empty(void) {
     /* query for key when database is empty */
     uint32_t key = 1;
-    u_int32_t actualData[] = {0, 0, 0};
+    uint32_t actualData[] = {0, 0, 0};
     int8_t status = embedDBGet(state, &key, actualData);
     TEST_ASSERT_EQUAL_INT8_MESSAGE(-1, status, "embedDBGet returned data when there were no keys in the database or write buffer");
 }
@@ -292,9 +298,9 @@ embedDBState* init_state() {
 
     // configure file interface
     char dataPath[] = "dataFile.bin", indexPath[] = "indexFile.bin";
-    state->fileInterface = getSDInterface();
-    state->dataFile = setupSDFile(dataPath);
-    state->indexFile = setupSDFile(indexPath);
+    state->fileInterface = getFileInterface();
+    state->dataFile = setupFile(dataPath);
+    state->indexFile = setupFile(indexPath);
 
     // configure state
     state->parameters = EMBEDDB_USE_BMAP | EMBEDDB_USE_INDEX | EMBEDDB_RESET_DATA;
@@ -312,18 +318,20 @@ embedDBState* init_state() {
     return state;
 }
 
-int main() {
-    runUnityTests();
-}
-
 #ifdef ARDUINO
 
 void setup() {
     delay(2000);
     setupBoard();
-    main();
+    runUnityTests();
 }
 
 void loop() {}
+
+#else
+
+int main() {
+    return runUnityTests();
+}
 
 #endif

@@ -44,12 +44,6 @@
 #include "embedDBUtility.h"
 #endif
 
-#ifdef ARDUINO
-#include "SDFileInterface.h"
-#else
-#include "nativeFileInterface.h"
-#endif
-
 #if defined(MEMBOARD)
 #include "memboardTestSetup.h"
 #endif
@@ -60,6 +54,15 @@
 
 #if defined(DUE)
 #include "dueTestSetup.h"
+#endif
+
+#ifdef ARDUINO
+#include "SDFileInterface.h"
+#define getFileInterface getSDInterface
+#define setupFile setupSDFile
+#define tearDownFile tearDownSDFile
+#else
+#include "nativeFileInterface.h"
 #endif
 
 #include "unity.h"
@@ -77,7 +80,7 @@ void setUp(void) {
 void tearDown(void) {
     free(state->buffer);
     embedDBClose(state);
-    tearDownSDFile(state->dataFile);
+    tearDownFile(state->dataFile);
     free(state->fileInterface);
     free(state);
     state = NULL;
@@ -190,7 +193,7 @@ void embedDBIterator_should_return_keys_in_write_buffer_when_no_data_has_been_fl
 
     /* initialize iterator */
     embedDBIterator it;
-    uint32_t* actualKeyValue;
+    uint32_t actualKeyValue;
     uint32_t minKey = 1000, maxKey = 1015;
     it.minKey = &minKey;
     it.maxKey = &maxKey;
@@ -377,9 +380,9 @@ embedDBState* init_state() {
 
     // configure file interface
     char dataPath[] = "dataFile.bin", indexPath[] = "indexFile.bin";
-    state->fileInterface = getSDInterface();
-    state->dataFile = setupSDFile(dataPath);
-    state->indexFile = setupSDFile(indexPath);
+    state->fileInterface = getFileInterface();
+    state->dataFile = setupFile(dataPath);
+    state->indexFile = setupFile(indexPath);
 
     // configure state
     state->parameters = EMBEDDB_USE_BMAP | EMBEDDB_USE_INDEX | EMBEDDB_RESET_DATA;
@@ -397,18 +400,20 @@ embedDBState* init_state() {
     return state;
 }
 
-int main() {
-    return runUnityTests();
-}
-
 #ifdef ARDUINO
 
 void setup() {
     delay(2000);
     setupBoard();
-    main();
+    runUnityTests();
 }
 
 void loop() {}
+
+#else
+
+int main() {
+    return runUnityTests();
+}
 
 #endif
