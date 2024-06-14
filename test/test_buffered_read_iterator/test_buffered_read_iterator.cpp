@@ -315,14 +315,6 @@ int runUnityTests() {
     return UNITY_END();
 }
 
-void setup() {
-    delay(2000);
-    setupBoard();
-    runUnityTests();
-}
-
-void loop() {}
-
 /* function puts a static record into buffer without flushing. Creates and frees record allocation in the heap.*/
 int insertStaticRecord(embedDBState* state, uint32_t key, uint32_t data) {
     // calloc dataSize bytes in heap.
@@ -404,3 +396,19 @@ embedDBState* init_state() {
 
     return state;
 }
+
+int main() {
+    return runUnityTests();
+}
+
+#ifdef ARDUINO
+
+void setup() {
+    delay(2000);
+    setupBoard();
+    main();
+}
+
+void loop() {}
+
+#endif

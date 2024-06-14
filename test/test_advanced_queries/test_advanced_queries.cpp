@@ -386,7 +386,7 @@ void tearDown(void) {
     free(seaData);
 }
 
-void runUnityTests(void) {
+int runUnityTests(void) {
     UNITY_BEGIN();
 
     RUN_TEST(test_projection);
@@ -394,7 +394,7 @@ void runUnityTests(void) {
     RUN_TEST(test_aggregate);
     RUN_TEST(test_join);
 
-    UNITY_END();
+    return UNITY_END();
 }
 
 void insertData(embedDBState* state, const char* filename) {
@@ -465,10 +465,18 @@ void setUp() {
     setUpEmbedDB();
 }
 
+int main() {
+    return runUnityTests();
+}
+
+#ifdef ARDUINO
+
 void setup() {
     delay(2000);
     setupBoard();
-    runUnityTests();
+    main();
 }
 
 void loop() {}
+
+#endif
