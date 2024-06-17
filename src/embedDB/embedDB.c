@@ -1067,7 +1067,7 @@ int8_t searchBuffer(embedDBState *state, void *buffer, void *key, void *data) {
  * @param	state	embedDB algorithm state structure
  * @param	key		Key for record
  * @param	data	Pre-allocated memory to copy data for record
- * @return	Return 0 if success. Non-zero value if error.
+ * @return	Return 0 if success. Returns -2 if requested key is less than the minimum stored key. Non-zero value if error.
  */
 int8_t embedDBGet(embedDBState *state, void *key, void *data) {
     void *outputBuffer = state->buffer;
@@ -1081,6 +1081,10 @@ int8_t embedDBGet(embedDBState *state, void *key, void *data) {
 
     uint64_t thisKey = 0;
     memcpy(&thisKey, key, state->keySize);
+
+    /* Check if requested key is less than min key */
+    if (thisKey < state->minKey)
+        return -2;
 
     void *buf = (int8_t *)state->buffer + state->pageSize;
     int16_t numReads = 0;

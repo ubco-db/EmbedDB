@@ -68,10 +68,18 @@
 #define setupFile setupSDFile
 #define tearDownFile tearDownSDFile
 #define JOIN_FILE "expected_join_output.bin"
+#define DATA_PATH_UWA "dataFileUWA.bin"
+#define INDEX_PATH_UWA "indexFileUWA.bin"
+#define DATA_PATH_SEA "dataFileSEA.bin"
+#define INDEX_PATH_SEA "indexFileSEA.bin"
 #else
 #include "nativeFileInterface.h"
 #define FILE_TYPE FILE
 #define JOIN_FILE "data/expected_join_output.bin"
+#define DATA_PATH_UWA "build/artifacts/dataFileUWA.bin"
+#define INDEX_PATH_UWA "build/artifacts/indexFileUWA.bin"
+#define DATA_PATH_SEA "build/artifacts/dataFileSEA.bin"
+#define INDEX_PATH_SEA "build/artifacts/indexFileSEA.bin"
 #endif
 
 typedef struct DataSource {
@@ -107,7 +115,7 @@ void setUpEmbedDB() {
     stateUWA->numSplinePoints = 30;
 
     /* Setup file IO for UWA data */
-    char dataPath[] = "dataFile.bin", indexPath[] = "indexFile.bin";
+    char dataPath[] = DATA_PATH_UWA, indexPath[] = INDEX_PATH_UWA;
     stateUWA->fileInterface = getFileInterface();
     stateUWA->dataFile = setupFile(dataPath);
     stateUWA->indexFile = setupFile(indexPath);
@@ -132,13 +140,13 @@ void setUpEmbedDB() {
     stateSEA->compareKey = int32Comparator;
     stateSEA->compareData = int32Comparator;
     stateSEA->pageSize = 512;
-    stateSEA->eraseSizeInPages = 4;
+    ` stateSEA->eraseSizeInPages = 4;
     stateSEA->numDataPages = 20000;
     stateSEA->numIndexPages = 1000;
     stateSEA->numSplinePoints = 120;
 
     /* Setup file IO for SEA data*/
-    char dataPath2[] = "dataFile2.bin", indexPath2[] = "indexFile2.bin";
+    char dataPath2[] = DATA_PATH_SEA, indexPath2[] = INDEX_PATH_SEA;
     stateSEA->fileInterface = getFileInterface();
     stateSEA->dataFile = setupFile(dataPath2);
     stateSEA->indexFile = setupFile(indexPath2);

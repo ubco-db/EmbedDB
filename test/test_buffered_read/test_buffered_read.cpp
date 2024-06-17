@@ -60,8 +60,12 @@
 #define getFileInterface getSDInterface
 #define setupFile setupSDFile
 #define tearDownFile tearDownSDFile
+#define DATA_PATH "dataFile.bin"
+#define INDEX_PATH "indexFile.bin"
 #else
 #include "nativeFileInterface.h"
+#define DATA_PATH "build/artifacts/dataFile.bin"
+#define INDEX_PATH "build/artifacts/indexFile.bin"
 #endif
 
 #include "unity.h"
@@ -229,7 +233,7 @@ void embedDBGet_should_return_not_found_when_key_is_less_then_min_key(void) {
     uint32_t actualData[] = {0, 0, 0};
     int8_t embedDBGetResult = embedDBGet(state, &key, actualData);
 
-    TEST_ASSERT_EQUAL_INT8_MESSAGE(-1, embedDBGetResult, "embedDBGet returned data for a key that is less than the minimum key in the database");
+    TEST_ASSERT_EQUAL_INT8_MESSAGE(-2, embedDBGetResult, "embedDBGet returned data for a key that is less than the minimum key in the database");
 }
 
 void embedDBGet_should_return_no_data_found_when_database_and_buffer_are_empty(void) {
@@ -297,7 +301,7 @@ embedDBState* init_state() {
     state->eraseSizeInPages = 4;
 
     // configure file interface
-    char dataPath[] = "dataFile.bin", indexPath[] = "indexFile.bin";
+    char dataPath[] = DATA_PATH, indexPath[] = INDEX_PATH;
     state->fileInterface = getFileInterface();
     state->dataFile = setupFile(dataPath);
     state->indexFile = setupFile(indexPath);
