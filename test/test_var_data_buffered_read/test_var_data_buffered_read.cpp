@@ -40,12 +40,6 @@
 #include "embedDBUtility.h"
 #endif
 
-#ifdef ARDUINO
-#include "SDFileInterface.h"
-#else
-#include "nativeFileInterface.h"
-#endif
-
 #if defined(MEMBOARD)
 #include "memboardTestSetup.h"
 #endif
@@ -56,6 +50,21 @@
 
 #if defined(DUE)
 #include "dueTestSetup.h"
+#endif
+
+#ifdef ARDUINO
+#include "SDFileInterface.h"
+#define getFileInterface getSDInterface
+#define setupFile setupSDFile
+#define tearDownFile tearDownSDFile
+#define DATA_FILE_PATH "dataFile.bin"
+#define INDEX_FILE_PATH "indexFile.bin"
+#define VAR_DATA_FILE_PATH "varFile.bin"
+#else
+#include "nativeFileInterface.h"
+#define DATA_FILE_PATH "build/artifacts/dataFile.bin"
+#define INDEX_FILE_PATH "build/artifacts/indexFile.bin"
+#define VAR_DATA_FILE_PATH "build/artifacts/varFile.bin"
 #endif
 
 #include "unity.h"
@@ -70,9 +79,9 @@ void setUp(void) {
 
 void tearDown() {
     embedDBClose(state);
-    tearDownSDFile(state->dataFile);
-    tearDownSDFile(state->indexFile);
-    tearDownSDFile(state->varFile);
+    tearDownFile(state->dataFile);
+    tearDownFile(state->indexFile);
+    tearDownFile(state->varFile);
     free(state->buffer);
     free(state->fileInterface);
     free(state);
@@ -182,7 +191,7 @@ void embedDBIterator_should_query_variable_lenth_data_for_fixed_length_records_l
 
     /* setup iterator to retrieve records */
     embedDBIterator it;
-    uint32_t *itKey;
+    uint32_t itKey = 0;
     uint32_t fixedLengthData[] = {0, 0, 0};
     uint32_t minKey = 0;
     uint32_t maxKey = 3;
@@ -457,11 +466,11 @@ embedDBState *init_state() {
     state->eraseSizeInPages = 4;
 
     // configure file interface
-    char dataPath[] = "dataFile.bin", indexPath[] = "indexFile.bin", varPath[] = "varFile.bin";
-    state->fileInterface = getSDInterface();
-    state->dataFile = setupSDFile(dataPath);
-    state->indexFile = setupSDFile(indexPath);
-    state->varFile = setupSDFile(varPath);
+    char dataPath[] = DATA_FILE_PATH, indexPath[] = INDEX_FILE_PATH, varPath[] = VAR_DATA_FILE_PATH;
+    state->fileInterface = getFileInterface();
+    state->dataFile = setupFile(dataPath);
+    state->indexFile = setupFile(indexPath);
+    state->varFile = setupFile(varPath);
 
     // configure state
     state->parameters = EMBEDDB_USE_BMAP | EMBEDDB_USE_INDEX | EMBEDDB_USE_VDATA | EMBEDDB_RESET_DATA;  // Setup for data and bitmap comparison functions */

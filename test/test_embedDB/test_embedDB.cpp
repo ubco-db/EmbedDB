@@ -60,10 +60,10 @@
 #define getFileInterface getSDInterface
 #define setupFile setupSDFile
 #define tearDownFile tearDownSDFile
-#define DATA_FILE_PATH "dataFile.bin"
+#define DATA_PATH "dataFile.bin"
 #else
 #include "nativeFileInterface.h"
-#define DATA_FILE_PATH "build/artifacts/dataFile.bin"
+#define DATA_PATH "build/artifacts/dataFile.bin"
 #endif
 
 #include "unity.h"
@@ -86,7 +86,8 @@ void setupEmbedDB() {
 
     /* setup data file for EmbedDB */
     state->fileInterface = getFileInterface();
-    state->dataFile = setupFile(DATA_FILE_PATH);
+    char dataPath[] = DATA_PATH;
+    state->dataFile = setupFile(dataPath);
 
     state->compareKey = int32Comparator;
     state->compareData = int32Comparator;

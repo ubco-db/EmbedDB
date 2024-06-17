@@ -40,12 +40,6 @@
 #include "embedDBUtility.h"
 #endif
 
-#ifdef ARDUINO
-#include "SDFileInterface.h"
-#else
-#include "nativeFileInterface.h"
-#endif
-
 #if defined(MEMBOARD)
 #include "memboardTestSetup.h"
 #endif
@@ -56,6 +50,26 @@
 
 #if defined(DUE)
 #include "dueTestSetup.h"
+#endif
+
+#ifdef ARDUINO
+#include "SDFileInterface.h"
+#define FILE_TYPE SD_FILE
+#define fopen sd_fopen
+#define fread sd_fread
+#define fclose sd_fclose
+#define getFileInterface getSDInterface
+#define setupFile setupSDFile
+#define tearDownFile tearDownSDFile
+#define DATA_FILE_PATH "dataFile%li.bin"
+#define INDEX_FILE_PATH "indexFile%li.bin"
+#define VAR_DATA_FILE_PATH "varFile%li.bin"
+#else
+#include "nativeFileInterface.h"
+#define FILE_TYPE FILE
+#define DATA_FILE_PATH "build/artifacts/dataFile%li.bin"
+#define INDEX_FILE_PATH "build/artifacts/indexFile%li.bin"
+#define VAR_DATA_FILE_PATH "build/artifacts/varFile%li.bin"
 #endif
 
 #include "unity.h"
@@ -77,10 +91,10 @@ void setupembedDBInstanceKeySize4DataSize4(embedDBState *state, int number) {
     state->numDataPages = 2000;
     state->parameters = EMBEDDB_RESET_DATA;
     state->eraseSizeInPages = 4;
-    state->fileInterface = getSDInterface();
+    state->fileInterface = getFileInterface();
     char dataPath[40];
-    snprintf(dataPath, 40, "dataFile%i.bin", number);
-    state->dataFile = setupSDFile(dataPath);
+    snprintf(dataPath, 40, DATA_FILE_PATH, number);
+    state->dataFile = setupFile(dataPath);
     state->compareKey = int32Comparator;
     state->compareData = int32Comparator;
     int8_t result = embedDBInit(state, 1);
@@ -120,14 +134,14 @@ void queryRecords(embedDBState *state, int32_t numberOfRecords, int32_t starting
 }
 
 void insertRecordsFromFile(embedDBState *state, const char *fileName, int32_t numRecords) {
-    SD_FILE *infile;
-    infile = sd_fopen(fileName, "r+b");
+    FILE_TYPE *infile;
+    infile = fopen(fileName, "r+b");
     char infileBuffer[512];
     int8_t headerSize = 16;
     int32_t numInserted = 0;
     char message[100];
     while (numInserted < numRecords) {
-        if (0 == sd_fread(infileBuffer, state->pageSize, 1, infile))
+        if (0 == fread(infileBuffer, state->pageSize, 1, infile))
             break;
         int16_t count = *((int16_t *)(infileBuffer + 4));
         for (int16_t i = 0; i < count; i++) {
@@ -142,12 +156,12 @@ void insertRecordsFromFile(embedDBState *state, const char *fileName, int32_t nu
         }
     }
     embedDBFlush(state);
-    sd_fclose(infile);
+    fclose(infile);
 }
 
 void insertRecordsFromFileWithVarData(embedDBState *state, const char *fileName, int32_t numRecords) {
-    SD_FILE *infile;
-    infile = sd_fopen(fileName, "r+b");
+    FILE_TYPE *infile;
+    infile = fopen(fileName, "r+b");
     TEST_ASSERT_NOT_NULL_MESSAGE(infile, "Error opening file.");
     char infileBuffer[512];
     int8_t headerSize = 16;
@@ -155,7 +169,7 @@ void insertRecordsFromFileWithVarData(embedDBState *state, const char *fileName,
     char message[100];
     char *varData = (char *)calloc(30, sizeof(char));
     while (numInserted < numRecords) {
-        if (0 == sd_fread(infileBuffer, state->pageSize, 1, infile))
+        if (0 == fread(infileBuffer, state->pageSize, 1, infile))
             break;
         int16_t count = *((int16_t *)(infileBuffer + 4));
         for (int16_t i = 0; i < count; i++) {
@@ -174,19 +188,19 @@ void insertRecordsFromFileWithVarData(embedDBState *state, const char *fileName,
     }
     free(varData);
     embedDBFlush(state);
-    sd_fclose(infile);
+    fclose(infile);
 }
 
 void queryRecordsFromFile(embedDBState *state, const char *fileName, int32_t numRecords) {
-    SD_FILE *infile;
-    infile = sd_fopen(fileName, "r+b");
+    FILE_TYPE *infile;
+    infile = fopen(fileName, "r+b");
     char infileBuffer[512];
     int8_t headerSize = 16;
     int32_t numRead = 0;
     int8_t *dataBuffer = (int8_t *)malloc(state->dataSize);
     char message[100];
     while (numRead < numRecords) {
-        if (0 == sd_fread(infileBuffer, state->pageSize, 1, infile))
+        if (0 == fread(infileBuffer, state->pageSize, 1, infile))
             break;
         int16_t count = 0;
         memcpy(&count, infileBuffer + 4, sizeof(int16_t));
@@ -206,12 +220,12 @@ void queryRecordsFromFile(embedDBState *state, const char *fileName, int32_t num
     }
     TEST_ASSERT_EQUAL_INT32_MESSAGE(numRecords, numRead, "The number of records read was not equal to the number of records inserted.");
     free(dataBuffer);
-    sd_fclose(infile);
+    fclose(infile);
 }
 
 void queryRecordsFromFileWithVarData(embedDBState *state, const char *fileName, int32_t numRecords) {
-    SD_FILE *infile;
-    infile = sd_fopen(fileName, "r+b");
+    FILE_TYPE *infile;
+    infile = fopen(fileName, "r+b");
     char infileBuffer[512];
     int8_t headerSize = 16;
     int32_t numRead = 0;
@@ -220,7 +234,7 @@ void queryRecordsFromFileWithVarData(embedDBState *state, const char *fileName, 
     char *varDataExpected = (char *)calloc(30, sizeof(char));
     char message[100];
     while (numRead < numRecords) {
-        if (0 == sd_fread(infileBuffer, state->pageSize, 1, infile))
+        if (0 == fread(infileBuffer, state->pageSize, 1, infile))
             break;
         int16_t count = 0;
         memcpy(&count, infileBuffer + 4, sizeof(int16_t));
@@ -248,7 +262,7 @@ void queryRecordsFromFileWithVarData(embedDBState *state, const char *fileName, 
         }
     }
     TEST_ASSERT_EQUAL_INT32_MESSAGE(numRecords, numRead, "The number of records read was not equal to the number of records inserted.");
-    sd_fclose(infile);
+    fclose(infile);
     free(dataBuffer);
     free(varDataBuffer);
     free(varDataExpected);
@@ -266,12 +280,12 @@ void setupembedDBInstanceKeySize4DataSize12(embedDBState *state, uint32_t number
     state->numIndexPages = 1000;
     state->parameters = EMBEDDB_RESET_DATA | EMBEDDB_USE_INDEX;
     state->eraseSizeInPages = 4;
-    state->fileInterface = getSDInterface();
+    state->fileInterface = getFileInterface();
     char path[40];
-    snprintf(path, 40, "dataFile%li.bin", number);
-    state->dataFile = setupSDFile(path);
-    snprintf(path, 40, "indexFile%li.bin", number);
-    state->indexFile = setupSDFile(path);
+    snprintf(path, 40, DATA_FILE_PATH, number);
+    state->dataFile = setupFile(path);
+    snprintf(path, 40, INDEX_FILE_PATH, number);
+    state->indexFile = setupFile(path);
     state->bitmapSize = 1;
     state->inBitmap = inBitmapInt8;
     state->updateBitmap = updateBitmapInt8;
@@ -295,14 +309,14 @@ void setupembedDBInstanceKeySize4DataSize12WithVarData(embedDBState *state, uint
     state->numVarPages = 44000;
     state->parameters = EMBEDDB_RESET_DATA | EMBEDDB_USE_INDEX | EMBEDDB_USE_VDATA;
     state->eraseSizeInPages = 4;
-    state->fileInterface = getSDInterface();
+    state->fileInterface = getFileInterface();
     char path[40];
-    snprintf(path, 40, "dataFile%li.bin", number);
-    state->dataFile = setupSDFile(path);
-    snprintf(path, 40, "indexFile%li.bin", number);
-    state->indexFile = setupSDFile(path);
-    snprintf(path, 40, "varFile%li.bin", number);
-    state->varFile = setupSDFile(path);
+    snprintf(path, 40, DATA_FILE_PATH, number);
+    state->dataFile = setupFile(path);
+    snprintf(path, 40, INDEX_FILE_PATH, number);
+    state->indexFile = setupFile(path);
+    snprintf(path, 40, VAR_DATA_FILE_PATH, number);
+    state->varFile = setupFile(path);
     state->bitmapSize = 1;
     state->inBitmap = inBitmapInt8;
     state->updateBitmap = updateBitmapInt8;
@@ -315,7 +329,7 @@ void setupembedDBInstanceKeySize4DataSize12WithVarData(embedDBState *state, uint
 
 void closeState(embedDBState *state) {
     embedDBClose(state);
-    tearDownSDFile(state->dataFile);
+    tearDownFile(state->dataFile);
     free(state->buffer);
     free(state->fileInterface);
     free(state);
@@ -323,8 +337,8 @@ void closeState(embedDBState *state) {
 
 void closeStateIndexFile(embedDBState *state) {
     embedDBClose(state);
-    tearDownSDFile(state->indexFile);
-    tearDownSDFile(state->dataFile);
+    tearDownFile(state->indexFile);
+    tearDownFile(state->dataFile);
     free(state->buffer);
     free(state->fileInterface);
     free(state);
@@ -332,9 +346,9 @@ void closeStateIndexFile(embedDBState *state) {
 
 void closeStateWithVarFile(embedDBState *state) {
     embedDBClose(state);
-    tearDownSDFile(state->varFile);
-    tearDownSDFile(state->indexFile);
-    tearDownSDFile(state->dataFile);
+    tearDownFile(state->varFile);
+    tearDownFile(state->indexFile);
+    tearDownFile(state->dataFile);
     free(state->buffer);
     free(state->fileInterface);
     free(state);
