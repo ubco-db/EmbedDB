@@ -140,7 +140,7 @@ void setUpEmbedDB() {
     stateSEA->compareKey = int32Comparator;
     stateSEA->compareData = int32Comparator;
     stateSEA->pageSize = 512;
-    ` stateSEA->eraseSizeInPages = 4;
+    stateSEA->eraseSizeInPages = 4;
     stateSEA->numDataPages = 20000;
     stateSEA->numIndexPages = 1000;
     stateSEA->numSplinePoints = 120;
