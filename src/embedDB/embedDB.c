@@ -1291,10 +1291,10 @@ void embedDBInitIterator(embedDBState *state, embedDBIterator *it) {
     }
 #endif
 
-    // Determine which data page should be the first examined if there is a min key
-    if (it->minKey != NULL && SEARCH_METHOD == 2) {
+    /* Determine which data page should be the first examined if there is a min key and that we have spline points */
+    if (state->spl->count != 0 && it->minKey != NULL && SEARCH_METHOD == 2) {
         /* Spline search */
-        uint32_t location, lowbound, highbound;
+        uint32_t location, lowbound, highbound = 0;
         if (RADIX_BITS > 0) {
             radixsplineFind(state->rdix, it->minKey, state->compareKey, &location, &lowbound, &highbound);
         } else {
