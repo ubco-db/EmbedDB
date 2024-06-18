@@ -292,18 +292,20 @@ int runUnityTests() {
     return UNITY_END();
 }
 
-int main() {
-    return runUnityTests();
-}
-
 #ifdef ARDUINO
 
 void setup() {
     delay(2000);
     setupBoard();
-    main();
+    runUnityTests();
 }
 
 void loop() {}
+
+#else
+
+int main() {
+    return runUnityTests();
+}
 
 #endif
