@@ -54,6 +54,9 @@
 
 #if defined(MEMBOARD) && STORAGE_TYPE == 1
 
+#include "SDFileInterface.h"
+#define FILE_TYPE SD_FILE
+
 #include "dataflashFileInterface.h"
 #define FILE_TYPE DF_FILE_INFO
 #define fopen DF_OPEN
@@ -65,8 +68,6 @@
 
 #else
 
-#include "SDFileInterface.h"
-#define FILE_TYPE SD_FILE
 #define fopen sd_fopen
 #define fread sd_fread
 #define fclose sd_fclose
