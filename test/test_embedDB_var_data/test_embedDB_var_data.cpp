@@ -58,7 +58,7 @@
 #define setupFile setupSDFile
 #define tearDownFile tearDownSDFile
 #define DATA_FILE_PATH "dataFile.bin"
-#define INDEX_FILE_PATH "indexFile.bin"s
+#define INDEX_FILE_PATH "indexFile.bin"
 #define VAR_DATA_FILE_PATH "varFile.bin"
 #else
 #include "nativeFileInterface.h"
@@ -218,7 +218,8 @@ void test_get_when_all() {
         expectedVarData[8] = (char)((key / 100) % 10) + '0';
         uint64_t data = 0, expectedData = key % 100;
 
-        int result = embedDBGetVar(state, &key, &data, &varStream);
+        int8_t result = embedDBGetVar(state, &key, &data, &varStream);
+        TEST_ASSERT_EQUAL_INT8_MESSAGE(0, result, "embedDbGetVar was unable to return the requested record");
         TEST_ASSERT_EQUAL_CHAR_ARRAY_MESSAGE(&expectedData, &data, state->dataSize, "embedDBGetVar did not return the correct fixed data");
         TEST_ASSERT_NOT_NULL_MESSAGE(varStream, "embedDBGetVar did not return vardata");
         uint32_t length = embedDBVarDataStreamRead(state, varStream, buf, 20);
