@@ -76,6 +76,10 @@ uint32_t inserted = 0;
 uint32_t i = 0;
 uint32_t dataSizes[] = {4, 6, 8};
 
+void setUp(void) {}
+
+void tearDown(void) {}
+
 void test_init() {
     TEST_ASSERT_EQUAL_INT8_MESSAGE(0, embedDBInit(state, 0), "embedDBInit did not return 0");
     TEST_ASSERT_EQUAL_UINT32_MESSAGE(4, state->keySize, "Key size was changed during embedDBInit");
