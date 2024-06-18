@@ -46,17 +46,6 @@
 #include "embedDBUtility.h"
 #endif
 
-#if defined(ARDUINO)
-#include "SDFileInterface.h"
-#include "serial_c_iface.h"
-#else
-#include "nativeFileInterface.h"
-#endif
-
-#if defined(MEMBOARD)
-#include "dataflashFileInterface.h"
-#endif
-
 /**
  * 0 = SD Card
  * 1 = Dataflash
@@ -65,8 +54,38 @@
 
 #define SUCCESS 0
 
+#ifdef ARDUINO
+
+#if defined(MEMBOARD) && STORAGE_TYPE == 1
+
+#include "dataflashFileInterface.h"
+#define getDataflashInterface getSDInterface
+#define setupFile setupDataflashFile
+#define tearDownFile tearDownDataflashFile
+
+#else
+
+#include "SDFileInterface.h"
+#define getFileInterface getSDInterface
+#define setupFile setupSDFile
+#define tearDownFile tearDownSDFile
+
+#endif
+
+#define DATA_FILE_PATH "dataFile.bin"
+#define INDEX_FILE_PATH "indexFile.bin"
+#define VAR_DATA_FILE_PATH "varFile.bin"
+
+#else
+
+#include "nativeFileInterface.h"
+#define DATA_FILE_PATH "build/artifacts/dataFile.bin"
+#define INDEX_FILE_PATH "build/artifacts/indexFile.bin"
+#define VAR_DATA_FILE_PATH "build/artifacts/varFile.bin"
+
+#endif
+
 embedDBState* init_state();
-embedDBState* state;
 
 uint32_t embedDBExample() {
     uint32_t totalRecordsInserted = 0;
@@ -74,6 +93,7 @@ uint32_t embedDBExample() {
 
     printf("******************* Performing an example of EmbeDB with sequentially generated data **************\n");
     // init state, see function for details.
+    embedDBState* state;
     state = init_state();
     embedDBPrintInit(state);
 
@@ -289,31 +309,11 @@ embedDBState* init_state() {
     state->numVarPages = 75;
     state->eraseSizeInPages = 4;
 
-#if defined(ARDUINO)
-    // configure file interface
-    if (STORAGE_TYPE == 0) {
-        char dataPath[] = "dataFile.bin", indexPath[] = "indexFile.bin", varPath[] = "varFile.bin";
-        state->fileInterface = getSDInterface();
-        state->dataFile = setupSDFile(dataPath);
-        state->indexFile = setupSDFile(indexPath);
-        state->varFile = setupSDFile(varPath);
-    }
-
-#if defined(MEMBOARD)
-    if (STORAGE_TYPE == 1) {
-        state->fileInterface = getDataflashInterface();
-        state->dataFile = setupDataflashFile(0, state->numDataPages);
-        state->indexFile = setupDataflashFile(state->numDataPages, state->numIndexPages);
-        state->varFile = setupDataflashFile(state->numDataPages + state->numIndexPages, state->numVarPages);
-    }
-#endif
-#else
-    char dataPath[] = "build/artifacts/dataFile.bin", indexPath[] = "build/artifacts/indexFile.bin", varPath[] = "build/artifacts/varFile.bin";
+    char dataPath[] = DATA_FILE_PATH, indexPath[] = INDEX_FILE_PATH, varPath[] = VAR_DATA_FILE_PATH;
     state->fileInterface = getFileInterface();
     state->dataFile = setupFile(dataPath);
     state->indexFile = setupFile(indexPath);
     state->varFile = setupFile(varPath);
-#endif
 
     // enable parameters
     state->parameters = EMBEDDB_USE_BMAP | EMBEDDB_USE_INDEX | EMBEDDB_USE_VDATA | EMBEDDB_RESET_DATA;
@@ -333,6 +333,7 @@ embedDBState* init_state() {
     }
 
     embedDBResetStats(state);
+    return state;
 }
 
 #endif
