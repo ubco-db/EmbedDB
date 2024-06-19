@@ -73,7 +73,7 @@
 #define DATA_PATH_SEA "dataFileSEA.bin"
 #define INDEX_PATH_SEA "indexFileSEA.bin"
 #else
-#include "nativeFileInterface.h"
+#include "desktopFileInterface.h"
 #define FILE_TYPE FILE
 #define JOIN_FILE "data/expected_join_output.bin"
 #define DATA_PATH_UWA "build/artifacts/dataFileUWA.bin"

@@ -59,7 +59,7 @@
 #define tearDownFile tearDownSDFile
 #define DATA_FILE_PATH "dataFile.bin"
 #else
-#include "nativeFileInterface.h"
+#include "desktopFileInterface.h"
 #define DATA_FILE_PATH "build/artifacts/dataFile.bin"
 #endif
 

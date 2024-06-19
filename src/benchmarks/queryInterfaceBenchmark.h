@@ -73,7 +73,7 @@
 
 #else
 
-#include "nativeFileInterface.h"
+#include "desktopFileInterface.h"
 #define FILE_TYPE FILE
 #define DATA_FILE_PATH_UWA "build/artifacts/dataFileUWA.bin"
 #define INDEX_FILE_PATH_UWA "build/artifacts/indexFileUWA.bin"

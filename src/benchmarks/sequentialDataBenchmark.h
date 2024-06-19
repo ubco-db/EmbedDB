@@ -83,7 +83,7 @@
 
 #else
 
-#include "nativeFileInterface.h"
+#include "desktopFileInterface.h"
 #define FILE_TYPE FILE
 #define DATA_FILE_PATH "build/artifacts/dataFile.bin"
 #define INDEX_FILE_PATH "build/artifacts/indexFile.bin"

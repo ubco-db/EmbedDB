@@ -1,5 +1,5 @@
-#if !defined(NATIVE_FILE_INTERFACE)
-#define NATIVE_FILE_INTERFACE
+#if !defined(DESKTOP_FILE_INTERFACE)
+#define DESKTOP_FILE_INTERFACE
 
 #ifdef __cplusplus
 extern "C" {

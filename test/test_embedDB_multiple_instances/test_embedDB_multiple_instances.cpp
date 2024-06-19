@@ -65,7 +65,7 @@
 #define INDEX_FILE_PATH "indexFile%li.bin"
 #define VAR_DATA_FILE_PATH "varFile%li.bin"
 #else
-#include "nativeFileInterface.h"
+#include "desktopFileInterface.h"
 #define FILE_TYPE FILE
 #define DATA_FILE_PATH "build/artifacts/dataFile%li.bin"
 #define INDEX_FILE_PATH "build/artifacts/indexFile%li.bin"

@@ -60,7 +60,7 @@
 #define DATA_FILE_PATH "dataFile.bin"
 #define INDEX_FILE_PATH "indexFile.bin"
 #else
-#include "nativeFileInterface.h"
+#include "desktopFileInterface.h"
 #define DATA_FILE_PATH "build/artifacts/dataFile.bin"
 #define INDEX_FILE_PATH "build/artifacts/indexFile.bin"
 #endif

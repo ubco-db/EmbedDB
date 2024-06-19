@@ -98,7 +98,7 @@
 
 #else
 
-#include "nativeFileInterface.h"
+#include "desktopFileInterface.h"
 #define FILE_TYPE FILE
 #define DATA_FILE_PATH "build/artifacts/dataFile.bin"
 #define INDEX_FILE_PATH "build/artifacts/indexFile.bin"
@@ -842,18 +842,14 @@ void test_vardata() {
 
         /* tear down storage */
 #if STORAGE_TYPE == 0
-        tearDownSDFile(state->dataFile);
-        tearDownSDFile(state->indexFile);
-        tearDownSDFile(state->varFile);
+        tearDownFile(state->dataFile);
+        tearDownFile(state->indexFile);
+        tearDownFile(state->varFile);
 #elif defined(MEMBOARD) && STORAGE_TYPE == 1
         tearDownDataflashFile(state->dataFile);
         tearDownDataflashFile(state->indexFile);
         tearDownDataflashFile(state->varFile);
 #endif
-
-        tearDownFile(state->dataFile);
-        tearDownFile(state->indexFile);
-        tearDownFile(state->varFile);
 
         /* free memory */
         free(recordBuffer);
