@@ -48,7 +48,7 @@
  * 0 = SD Card
  * 1 = Dataflash
  */
-#define STORAGE_TYPE 1
+#define STORAGE_TYPE 0
 
 #ifdef ARDUINO
 
