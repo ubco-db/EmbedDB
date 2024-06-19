@@ -70,6 +70,9 @@
  */
 /******************************************************************************/
 
+#if defined(ARDUINO)
+#endif
+
 /**
  * @brief    Initialize a spline structure with given maximum size and error.
  * @param    spl        Spline structure
@@ -463,6 +466,9 @@ void *splinePointLocation(spline *spl, size_t pointIndex) {
  *  POSSIBILITY OF SUCH DAMAGE.
  */
 /******************************************************************************/
+
+#if defined(ARDUINO)
+#endif
 
 /**
  * @brief   Build the radix table
@@ -1863,7 +1869,7 @@ int8_t searchBuffer(embedDBState *state, void *buffer, void *key, void *data) {
  * @param	state	embedDB algorithm state structure
  * @param	key		Key for record
  * @param	data	Pre-allocated memory to copy data for record
- * @return	Return 0 if success. Non-zero value if error.
+ * @return	Return 0 if success. Returns -2 if requested key is less than the minimum stored key. Non-zero value if error.
  */
 int8_t embedDBGet(embedDBState *state, void *key, void *data) {
     void *outputBuffer = state->buffer;
@@ -1877,6 +1883,10 @@ int8_t embedDBGet(embedDBState *state, void *key, void *data) {
 
     uint64_t thisKey = 0;
     memcpy(&thisKey, key, state->keySize);
+
+    /* Check if requested key is less than min key */
+    if (thisKey < state->minKey)
+        return -2;
 
     void *buf = (int8_t *)state->buffer + state->pageSize;
     int16_t numReads = 0;
@@ -2083,10 +2093,10 @@ void embedDBInitIterator(embedDBState *state, embedDBIterator *it) {
     }
 #endif
 
-    // Determine which data page should be the first examined if there is a min key
-    if (it->minKey != NULL && SEARCH_METHOD == 2) {
+    /* Determine which data page should be the first examined if there is a min key and that we have spline points */
+    if (state->spl->count != 0 && it->minKey != NULL && SEARCH_METHOD == 2) {
         /* Spline search */
-        uint32_t location, lowbound, highbound;
+        uint32_t location, lowbound, highbound = 0;
         if (RADIX_BITS > 0) {
             radixsplineFind(state->rdix, it->minKey, state->compareKey, &location, &lowbound, &highbound);
         } else {
@@ -2774,6 +2784,9 @@ void embedDBClose(embedDBState *state) {
  */
 /******************************************************************************/
 
+#if defined(ARDUINO)
+#endif
+
 /**
  * @brief	Create an embedDBSchema from a list of column sizes including both key and data
  * @param	numCols			The total number of columns in table
@@ -2922,6 +2935,9 @@ void printSchema(embedDBSchema *schema) {
  *  POSSIBILITY OF SUCH DAMAGE.
  */
 /******************************************************************************/
+
+#if defined(ARDUINO)
+#endif
 
 /**
  * @return	Returns -1, 0, 1 as a comparator normally would
