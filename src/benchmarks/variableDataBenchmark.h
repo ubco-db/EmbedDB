@@ -49,6 +49,7 @@
 #define NUM_STEPS 10
 #define NUM_RUNS 1
 #define VALIDATE_VAR_DATA 0
+
 /**
  * 0 = SD Card
  * 1 = Dataflash
@@ -78,17 +79,8 @@
 #ifdef ARDUINO
 
 #if defined(MEMBOARD) && STORAGE_TYPE == 1
-
 #include "dataflashFileInterface.h"
-#define FILE_TYPE DF_FILE_INFO
-#define fopen DF_OPEN
-#define fread DF_READ
-#define fclose DF_CLOSE
-#define getDataflashInterface getSDInterface
-#define setupFile setupDataflashFile
-#define tearDownFile tearDownDataflashFile
-
-#else
+#endif
 
 #include "SDFileInterface.h"
 #define FILE_TYPE SD_FILE
@@ -98,8 +90,6 @@
 #define getFileInterface getSDInterface
 #define setupFile setupSDFile
 #define tearDownFile tearDownSDFile
-
-#endif
 
 #define clock millis
 #define DATA_FILE_PATH "dataFile.bin"
@@ -241,12 +231,23 @@ void test_vardata() {
         state->eraseSizeInPages = 4;
         state->numSplinePoints = 30;
 
+        state->parameters = EMBEDDB_USE_BMAP | EMBEDDB_USE_INDEX | EMBEDDB_USE_VDATA | EMBEDDB_RESET_DATA;
+
+#if STORAGE_TYPE == 0
         char dataPath[] = DATA_FILE_PATH, indexPath[] = INDEX_FILE_PATH, varPath[] = VAR_DATA_FILE_PATH;
         state->fileInterface = getFileInterface();
         state->dataFile = setupFile(dataPath);
         state->indexFile = setupFile(indexPath);
         state->varFile = setupFile(varPath);
-        state->parameters = EMBEDDB_USE_BMAP | EMBEDDB_USE_INDEX | EMBEDDB_USE_VDATA | EMBEDDB_RESET_DATA;
+#elif defined(MEMBOARD) && STORAGE_TYPE == 1
+        state->fileInterface = getDataflashInterface();
+        state->dataFile = setupDataflashFile(0, state->numDataPages);
+        state->indexFile = setupDataflashFile(state->numDataPages, state->numIndexPages);
+        state->varFile = setupDataflashFile(state->numDataPages + state->numIndexPages, state->numVarPages);
+#else
+        printf("Invalid storage configuration. Program terminating.");
+        exit(-1);
+#endif
 
         if (EMBEDDB_USING_BMAP(state->parameters))
             state->bitmapSize = 1;
@@ -836,12 +837,25 @@ void test_vardata() {
         // testIterator(state);
         // embedDBPrintStats(state);
 
-        // Free memory
+        /* close embedDB */
         embedDBClose(state);
+
+        /* tear down storage */
+#if STORAGE_TYPE == 0
+        tearDownSDFile(state->dataFile);
+        tearDownSDFile(state->indexFile);
+        tearDownSDFile(state->varFile);
+#elif defined(MEMBOARD) && STORAGE_TYPE == 1
+        tearDownDataflashFile(state->dataFile);
+        tearDownDataflashFile(state->indexFile);
+        tearDownDataflashFile(state->varFile);
+#endif
+
         tearDownFile(state->dataFile);
         tearDownFile(state->indexFile);
         tearDownFile(state->varFile);
 
+        /* free memory */
         free(recordBuffer);
         free(state->buffer);
         free(state->fileInterface);

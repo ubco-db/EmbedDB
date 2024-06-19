@@ -59,18 +59,13 @@
 #if defined(MEMBOARD) && STORAGE_TYPE == 1
 
 #include "dataflashFileInterface.h"
-#define getDataflashInterface getSDInterface
-#define setupFile setupDataflashFile
-#define tearDownFile tearDownDataflashFile
 
-#else
+#endif
 
 #include "SDFileInterface.h"
 #define getFileInterface getSDInterface
 #define setupFile setupSDFile
 #define tearDownFile tearDownSDFile
-
-#endif
 
 #define DATA_FILE_PATH "dataFile.bin"
 #define INDEX_FILE_PATH "indexFile.bin"
@@ -308,6 +303,10 @@ embedDBState* init_state() {
     state->numIndexPages = 48;
     state->numVarPages = 75;
     state->eraseSizeInPages = 4;
+
+    if (STORAGE_TYPE == 1) {
+        printf("Dataflash storage is not currently supported in this example. Proceeding using SD storage.\n");
+    }
 
     char dataPath[] = DATA_FILE_PATH, indexPath[] = INDEX_FILE_PATH, varPath[] = VAR_DATA_FILE_PATH;
     state->fileInterface = getFileInterface();

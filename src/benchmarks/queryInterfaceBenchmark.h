@@ -48,22 +48,13 @@
  * 0 = SD Card
  * 1 = Dataflash
  */
-#define STORAGE_TYPE 0
+#define STORAGE_TYPE 1
 
 #ifdef ARDUINO
 
 #if defined(MEMBOARD) && STORAGE_TYPE == 1
-
 #include "dataflashFileInterface.h"
-#define FILE_TYPE DF_FILE_INFO
-#define fopen DF_OPEN
-#define fread DF_READ
-#define fclose DF_CLOSE
-#define getDataflashInterface getSDInterface
-#define setupFile setupDataflashFile
-#define tearDownFile tearDownDataflashFile
-
-#else
+#endif
 
 #include "SDFileInterface.h"
 #define FILE_TYPE SD_FILE
@@ -73,8 +64,6 @@
 #define getFileInterface getSDInterface
 #define setupFile setupSDFile
 #define tearDownFile tearDownSDFile
-
-#endif
 
 #define clock millis
 #define DATA_FILE_PATH_UWA "dataFileUWA.bin"
@@ -144,6 +133,10 @@ int advancedQueryExample() {
     stateUWA->numDataPages = 20000;
     stateUWA->numIndexPages = 1000;
     stateUWA->numSplinePoints = 30;
+
+    if (STORAGE_TYPE == 1) {
+        printf("Dataflash is not currently supported. Defaulting to SD card interface.");
+    }
 
     /* Setup files */
     char dataPath[] = DATA_FILE_PATH_UWA, indexPath[] = INDEX_FILE_PATH_UWA;
