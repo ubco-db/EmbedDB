@@ -46,21 +46,6 @@
 #include "embedDBUtility.h"
 #endif
 
-#include "sdcard_c_iface.h"
-
-#if defined(MEGA)
-#include "SDFileInterface.h"
-#endif
-
-#if defined(DUE)
-#include "SDFileInterface.h"
-#endif
-
-#if defined(MEMBOARD)
-#include "SDFileInterface.h"
-#include "dataflashFileInterface.h"
-#endif
-
 /**
  * 0 = SD Card
  * 1 = Dataflash
@@ -69,20 +54,41 @@
 
 #define SUCCESS 0
 
+#ifdef ARDUINO
+
+#if defined(MEMBOARD) && STORAGE_TYPE == 1
+
+#include "dataflashFileInterface.h"
+
+#endif
+
+#include "SDFileInterface.h"
+#define getFileInterface getSDInterface
+#define setupFile setupSDFile
+#define tearDownFile tearDownSDFile
+
+#define DATA_FILE_PATH "dataFile.bin"
+#define INDEX_FILE_PATH "indexFile.bin"
+#define VAR_DATA_FILE_PATH "varFile.bin"
+
+#else
+
+#include "desktopFileInterface.h"
+#define DATA_FILE_PATH "build/artifacts/dataFile.bin"
+#define INDEX_FILE_PATH "build/artifacts/indexFile.bin"
+#define VAR_DATA_FILE_PATH "build/artifacts/varFile.bin"
+
+#endif
+
 embedDBState* init_state();
-embedDBState* state;
 
-/*
-    TODO: This file requires some of the other changes made to EmebedDB, so it does not completely work currently.
-    This will be fixed in a seperate PR when the other changes to the main EmbedDB file are made.
- */
-
-void embedDBExample() {
+uint32_t embedDBExample() {
     uint32_t totalRecordsInserted = 0;
     uint32_t totalRecordsToInsert = 10;
 
     printf("******************* Performing an example of EmbeDB with sequentially generated data **************\n");
     // init state, see function for details.
+    embedDBState* state;
     state = init_state();
     embedDBPrintInit(state);
 
@@ -154,7 +160,7 @@ void embedDBExample() {
 
     // while there are records to read.
     while (embedDBNext(state, &it, (void**)&itKey, (void**)&itData)) {
-        printf("Iterated key = %ld and data = %ld \n", (long)itKey, *(long*)itData);
+        printf("Iterated key = %d and data = %ld \n", itKey, *(long*)itData);
     }
 
     // flushing the 10 records from the fixed-length write buffer into non volitile storage
@@ -262,6 +268,7 @@ void embedDBExample() {
     embedDBCloseIterator(&varIt);
 
     printf("Example completed!\n");
+    return 0;
 }
 
 embedDBState* init_state() {
@@ -297,23 +304,15 @@ embedDBState* init_state() {
     state->numVarPages = 75;
     state->eraseSizeInPages = 4;
 
-    // configure file interface
-    if (STORAGE_TYPE == 0) {
-        char dataPath[] = "dataFile.bin", indexPath[] = "indexFile.bin", varPath[] = "varFile.bin";
-        state->fileInterface = getSDInterface();
-        state->dataFile = setupSDFile(dataPath);
-        state->indexFile = setupSDFile(indexPath);
-        state->varFile = setupSDFile(varPath);
+    if (STORAGE_TYPE == 1) {
+        printf("Dataflash storage is not currently supported in this example. Proceeding using SD storage.\n");
     }
 
-#if defined(MEMBOARD)
-    if (STORAGE_TYPE == 1) {
-        state->fileInterface = getDataflashInterface();
-        state->dataFile = setupDataflashFile(0, state->numDataPages);
-        state->indexFile = setupDataflashFile(state->numDataPages, state->numIndexPages);
-        state->varFile = setupDataflashFile(state->numDataPages + state->numIndexPages, state->numVarPages);
-    }
-#endif
+    char dataPath[] = DATA_FILE_PATH, indexPath[] = INDEX_FILE_PATH, varPath[] = VAR_DATA_FILE_PATH;
+    state->fileInterface = getFileInterface();
+    state->dataFile = setupFile(dataPath);
+    state->indexFile = setupFile(indexPath);
+    state->varFile = setupFile(varPath);
 
     // enable parameters
     state->parameters = EMBEDDB_USE_BMAP | EMBEDDB_USE_INDEX | EMBEDDB_USE_VDATA | EMBEDDB_RESET_DATA;
@@ -333,6 +332,7 @@ embedDBState* init_state() {
     }
 
     embedDBResetStats(state);
+    return state;
 }
 
 #endif

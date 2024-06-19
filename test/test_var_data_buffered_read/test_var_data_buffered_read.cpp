@@ -52,7 +52,21 @@
 #include "dueTestSetup.h"
 #endif
 
+#ifdef ARDUINO
 #include "SDFileInterface.h"
+#define getFileInterface getSDInterface
+#define setupFile setupSDFile
+#define tearDownFile tearDownSDFile
+#define DATA_FILE_PATH "dataFile.bin"
+#define INDEX_FILE_PATH "indexFile.bin"
+#define VAR_DATA_FILE_PATH "varFile.bin"
+#else
+#include "desktopFileInterface.h"
+#define DATA_FILE_PATH "build/artifacts/dataFile.bin"
+#define INDEX_FILE_PATH "build/artifacts/indexFile.bin"
+#define VAR_DATA_FILE_PATH "build/artifacts/varFile.bin"
+#endif
+
 #include "unity.h"
 
 int8_t insertRecords(uint32_t numberOfRecordsToInsert, uint32_t startingKey);
@@ -65,9 +79,9 @@ void setUp(void) {
 
 void tearDown() {
     embedDBClose(state);
-    tearDownSDFile(state->dataFile);
-    tearDownSDFile(state->indexFile);
-    tearDownSDFile(state->varFile);
+    tearDownFile(state->dataFile);
+    tearDownFile(state->indexFile);
+    tearDownFile(state->varFile);
     free(state->buffer);
     free(state->fileInterface);
     free(state);
@@ -177,7 +191,7 @@ void embedDBIterator_should_query_variable_lenth_data_for_fixed_length_records_l
 
     /* setup iterator to retrieve records */
     embedDBIterator it;
-    uint32_t *itKey;
+    uint32_t itKey = 0;
     uint32_t fixedLengthData[] = {0, 0, 0};
     uint32_t minKey = 0;
     uint32_t maxKey = 3;
@@ -402,27 +416,6 @@ void embedDBGet_should_fetch_records_with_that_have_variable_length_data() {
     TEST_ASSERT_EQUAL_UINT32_ARRAY_MESSAGE(expectedFixedLengthData, actualFixedLengthData, 3, "embedDBGet did not return the correct fixed length data for the record with key 15");
 }
 
-int runUnityTests() {
-    UNITY_BEGIN();
-    RUN_TEST(embedDBGetVar_should_retrieve_record_from_write_budder);
-    RUN_TEST(embedDBGetVar_should_query_from_buffer_after_page_write);
-    RUN_TEST(embedDBGetVar_should_return_variable_data_after_reading_records_and_inserting_more_records);
-    RUN_TEST(embedDBIterator_should_query_variable_lenth_data_for_fixed_length_records_located_in_the_write_buffer);
-    RUN_TEST(embedDBGetVar_should_fetch_records_in_write_buffer_after_flushing_data_to_storage);
-    RUN_TEST(embedDBGetVar_should_fetch_record_before_and_after_flush_to_storage);
-    RUN_TEST(embedDBGetVar_should_fetch_record_from_buffer_and_storage_with_no_variable_length_data);
-    RUN_TEST(embedDBGet_should_fetch_records_with_that_have_variable_length_data);
-    return UNITY_END();
-}
-
-void setup() {
-    delay(2000);
-    setupBoard();
-    runUnityTests();
-}
-
-void loop() {}
-
 int8_t insertRecords(uint32_t numberOfRecordsToInsert, uint32_t startingKey) {
     uint32_t fixedData[] = {0, 0, 0};
     char varData[] = "Testing 000...";
@@ -473,11 +466,11 @@ embedDBState *init_state() {
     state->eraseSizeInPages = 4;
 
     // configure file interface
-    char dataPath[] = "dataFile.bin", indexPath[] = "indexFile.bin", varPath[] = "varFile.bin";
-    state->fileInterface = getSDInterface();
-    state->dataFile = setupSDFile(dataPath);
-    state->indexFile = setupSDFile(indexPath);
-    state->varFile = setupSDFile(varPath);
+    char dataPath[] = DATA_FILE_PATH, indexPath[] = INDEX_FILE_PATH, varPath[] = VAR_DATA_FILE_PATH;
+    state->fileInterface = getFileInterface();
+    state->dataFile = setupFile(dataPath);
+    state->indexFile = setupFile(indexPath);
+    state->varFile = setupFile(varPath);
 
     // configure state
     state->parameters = EMBEDDB_USE_BMAP | EMBEDDB_USE_INDEX | EMBEDDB_USE_VDATA | EMBEDDB_RESET_DATA;  // Setup for data and bitmap comparison functions */
@@ -493,3 +486,34 @@ embedDBState *init_state() {
 
     return state;
 }
+
+int runUnityTests() {
+    UNITY_BEGIN();
+    RUN_TEST(embedDBGetVar_should_retrieve_record_from_write_budder);
+    RUN_TEST(embedDBGetVar_should_query_from_buffer_after_page_write);
+    RUN_TEST(embedDBGetVar_should_return_variable_data_after_reading_records_and_inserting_more_records);
+    RUN_TEST(embedDBIterator_should_query_variable_lenth_data_for_fixed_length_records_located_in_the_write_buffer);
+    RUN_TEST(embedDBGetVar_should_fetch_records_in_write_buffer_after_flushing_data_to_storage);
+    RUN_TEST(embedDBGetVar_should_fetch_record_before_and_after_flush_to_storage);
+    RUN_TEST(embedDBGetVar_should_fetch_record_from_buffer_and_storage_with_no_variable_length_data);
+    RUN_TEST(embedDBGet_should_fetch_records_with_that_have_variable_length_data);
+    return UNITY_END();
+}
+
+#ifdef ARDUINO
+
+void setup() {
+    delay(2000);
+    setupBoard();
+    runUnityTests();
+}
+
+void loop() {}
+
+#else
+
+int main() {
+    return runUnityTests();
+}
+
+#endif

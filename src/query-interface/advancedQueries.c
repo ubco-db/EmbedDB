@@ -37,7 +37,9 @@
 
 #include <string.h>
 
+#if defined(ARDUINO)
 #include "serial_c_iface.h"
+#endif
 
 /**
  * @return	Returns -1, 0, 1 as a comparator normally would

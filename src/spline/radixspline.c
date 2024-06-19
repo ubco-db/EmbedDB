@@ -45,7 +45,9 @@
 #include <stdlib.h>
 #include <string.h>
 
+#if defined(ARDUINO)
 #include "serial_c_iface.h"
+#endif
 
 /**
  * @brief   Build the radix table

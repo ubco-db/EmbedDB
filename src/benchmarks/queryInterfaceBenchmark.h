@@ -43,19 +43,43 @@
 #include "embedDB/embedDB.h"
 #include "embedDBUtility.h"
 #include "query-interface/advancedQueries.h"
-#include "sdcard_c_iface.h"
 
-#if defined(MEGA)
-#include "SDFileInterface.h"
-#endif
+/**
+ * 0 = SD Card
+ * 1 = Dataflash
+ */
+#define STORAGE_TYPE 0
 
-#if defined(DUE)
-#include "SDFileInterface.h"
-#endif
+#ifdef ARDUINO
 
-#if defined(MEMBOARD)
-#include "SDFileInterface.h"
+#if defined(MEMBOARD) && STORAGE_TYPE == 1
 #include "dataflashFileInterface.h"
+#endif
+
+#include "SDFileInterface.h"
+#define FILE_TYPE SD_FILE
+#define fopen sd_fopen
+#define fread sd_fread
+#define fclose sd_fclose
+#define getFileInterface getSDInterface
+#define setupFile setupSDFile
+#define tearDownFile tearDownSDFile
+
+#define clock millis
+#define DATA_FILE_PATH_UWA "dataFileUWA.bin"
+#define INDEX_FILE_PATH_UWA "indexFileUWA.bin"
+#define DATA_FILE_PATH_SEA "dataFileSEA.bin"
+#define INDEX_FILE_PATH_SEA "indexFileSEA.bin"
+
+#else
+
+#include "desktopFileInterface.h"
+#define FILE_TYPE FILE
+#define DATA_FILE_PATH_UWA "build/artifacts/dataFileUWA.bin"
+#define INDEX_FILE_PATH_UWA "build/artifacts/indexFileUWA.bin"
+#define DATA_FILE_PATH_SEA "build/artifacts/dataFileSEA.bin"
+#define INDEX_FILE_PATH_SEA "build/artifacts/indexFileSEA.bin"
+
 #endif
 
 uint32_t dayGroup(const void* record) {
@@ -109,10 +133,17 @@ int advancedQueryExample() {
     stateUWA->numDataPages = 20000;
     stateUWA->numIndexPages = 1000;
     stateUWA->numSplinePoints = 30;
-    char dataPath[] = "dataFile.bin", indexPath[] = "indexFile.bin";
-    stateUWA->fileInterface = getSDInterface();
-    stateUWA->dataFile = setupSDFile(dataPath);
-    stateUWA->indexFile = setupSDFile(indexPath);
+
+    if (STORAGE_TYPE == 1) {
+        printf("Dataflash is not currently supported. Defaulting to SD card interface.");
+    }
+
+    /* Setup files */
+    char dataPath[] = DATA_FILE_PATH_UWA, indexPath[] = INDEX_FILE_PATH_UWA;
+    stateUWA->fileInterface = getFileInterface();
+    stateUWA->dataFile = setupFile(dataPath);
+    stateUWA->indexFile = setupFile(indexPath);
+
     stateUWA->bufferSizeInBlocks = 4;
     stateUWA->buffer = malloc(stateUWA->bufferSizeInBlocks * stateUWA->pageSize);
     stateUWA->parameters = EMBEDDB_USE_BMAP | EMBEDDB_USE_INDEX | EMBEDDB_RESET_DATA;
@@ -271,10 +302,13 @@ int advancedQueryExample() {
     stateSEA->numDataPages = 20000;
     stateSEA->numIndexPages = 1000;
     stateSEA->numSplinePoints = 120;
-    char dataPath2[] = "dataFile2.bin", indexPath2[] = "indexFile2.bin";
-    stateSEA->fileInterface = getSDInterface();
-    stateSEA->dataFile = setupSDFile(dataPath2);
-    stateSEA->indexFile = setupSDFile(indexPath2);
+
+    /* Setup files for second version of EmbedDB */
+    char dataPath2[] = DATA_FILE_PATH_SEA, indexPath2[] = INDEX_FILE_PATH_SEA;
+    stateSEA->fileInterface = getFileInterface();
+    stateSEA->dataFile = setupFile(dataPath2);
+    stateSEA->indexFile = setupFile(indexPath2);
+
     stateSEA->bufferSizeInBlocks = 4;
     stateSEA->buffer = malloc(stateSEA->bufferSizeInBlocks * stateSEA->pageSize);
     stateSEA->parameters = EMBEDDB_USE_BMAP | EMBEDDB_USE_INDEX | EMBEDDB_RESET_DATA;
@@ -346,14 +380,14 @@ int advancedQueryExample() {
 
     // Close embedDB
     embedDBClose(stateUWA);
-    tearDownSDFile(stateUWA->dataFile);
-    tearDownSDFile(stateUWA->indexFile);
+    tearDownFile(stateUWA->dataFile);
+    tearDownFile(stateUWA->indexFile);
     free(stateUWA->fileInterface);
     free(stateUWA->buffer);
     free(stateUWA);
     embedDBClose(stateSEA);
-    tearDownSDFile(stateSEA->dataFile);
-    tearDownSDFile(stateSEA->indexFile);
+    tearDownFile(stateSEA->dataFile);
+    tearDownFile(stateSEA->indexFile);
     free(stateSEA->fileInterface);
     free(stateSEA->buffer);
     free(stateSEA);
@@ -362,7 +396,7 @@ int advancedQueryExample() {
 }
 
 void insertData(embedDBState* state, const char* filename) {
-    SD_FILE* fp = fopen(filename, "rb");
+    FILE_TYPE* fp = fopen(filename, "rb");
     char fileBuffer[512];
     int numRecords = 0;
     while (fread(fileBuffer, state->pageSize, 1, fp)) {

@@ -52,7 +52,21 @@
 #include "dueTestSetup.h"
 #endif
 
+#ifdef ARDUINO
 #include "SDFileInterface.h"
+#define getFileInterface getSDInterface
+#define setupFile setupSDFile
+#define tearDownFile tearDownSDFile
+#define DATA_FILE_PATH "dataFile.bin"
+#define INDEX_FILE_PATH "indexFile.bin"s
+#define VAR_DATA_FILE_PATH "varFile.bin"
+#else
+#include "desktopFileInterface.h"
+#define DATA_FILE_PATH "build/artifacts/dataFile.bin"
+#define INDEX_FILE_PATH "build/artifacts/indexFile.bin"
+#define VAR_DATA_FILE_PATH "build/artifacts/varFile.bin"
+#endif
+
 #include "unity.h"
 
 embedDBState *state;
@@ -67,10 +81,10 @@ void setupEmbedDB() {
     state->buffer = calloc(1, state->pageSize * state->bufferSizeInBlocks);
     TEST_ASSERT_NOT_NULL_MESSAGE(state->buffer, "Failed to allocate EmbedDB buffer.");
 
-    state->fileInterface = getSDInterface();
-    char dataPath[] = "dataFile.bin", varPath[] = "varFile.bin";
-    state->dataFile = setupSDFile(dataPath);
-    state->varFile = setupSDFile(varPath);
+    state->fileInterface = getFileInterface();
+    char dataPath[] = DATA_FILE_PATH, varPath[] = VAR_DATA_FILE_PATH;
+    state->dataFile = setupFile(dataPath);
+    state->varFile = setupFile(varPath);
 
     state->numDataPages = 65;
     state->numVarPages = 75;
@@ -92,10 +106,10 @@ void initalizeEmbedDBFromFile(void) {
     state->buffer = calloc(1, state->pageSize * state->bufferSizeInBlocks);
     TEST_ASSERT_NOT_NULL_MESSAGE(state->buffer, "Failed to allocate EmbedDB buffer.");
 
-    state->fileInterface = getSDInterface();
-    char dataPath[] = "dataFile.bin", varPath[] = "varFile.bin";
-    state->dataFile = setupSDFile(dataPath);
-    state->varFile = setupSDFile(varPath);
+    state->fileInterface = getFileInterface();
+    char dataPath[] = DATA_FILE_PATH, varPath[] = VAR_DATA_FILE_PATH;
+    state->dataFile = setupFile(dataPath);
+    state->varFile = setupFile(varPath);
 
     state->numDataPages = 65;
     state->numVarPages = 75;
@@ -114,8 +128,8 @@ void setUp() {
 void tearDown() {
     free(state->buffer);
     embedDBClose(state);
-    tearDownSDFile(state->dataFile);
-    tearDownSDFile(state->varFile);
+    tearDownFile(state->dataFile);
+    tearDownFile(state->varFile);
     free(state->fileInterface);
     free(state);
 }
@@ -278,6 +292,8 @@ int runUnityTests() {
     return UNITY_END();
 }
 
+#ifdef ARDUINO
+
 void setup() {
     delay(2000);
     setupBoard();
@@ -285,3 +301,11 @@ void setup() {
 }
 
 void loop() {}
+
+#else
+
+int main() {
+    return runUnityTests();
+}
+
+#endif

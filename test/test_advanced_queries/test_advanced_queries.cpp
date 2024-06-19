@@ -56,11 +56,34 @@
 #include "dueTestSetup.h"
 #endif
 
-#include "SDFileInterface.h"
 #include "unity.h"
 
+#ifdef ARDUINO
+#include "SDFileInterface.h"
+#define FILE_TYPE SD_FILE
+#define fopen sd_fopen
+#define fread sd_fread
+#define fclose sd_fclose
+#define getFileInterface getSDInterface
+#define setupFile setupSDFile
+#define tearDownFile tearDownSDFile
+#define JOIN_FILE "expected_join_output.bin"
+#define DATA_PATH_UWA "dataFileUWA.bin"
+#define INDEX_PATH_UWA "indexFileUWA.bin"
+#define DATA_PATH_SEA "dataFileSEA.bin"
+#define INDEX_PATH_SEA "indexFileSEA.bin"
+#else
+#include "desktopFileInterface.h"
+#define FILE_TYPE FILE
+#define JOIN_FILE "data/expected_join_output.bin"
+#define DATA_PATH_UWA "build/artifacts/dataFileUWA.bin"
+#define INDEX_PATH_UWA "build/artifacts/indexFileUWA.bin"
+#define DATA_PATH_SEA "build/artifacts/dataFileSEA.bin"
+#define INDEX_PATH_SEA "build/artifacts/indexFileSEA.bin"
+#endif
+
 typedef struct DataSource {
-    SD_FILE* fp;
+    FILE_TYPE* fp;
     int8_t* pageBuffer;
     int32_t pageRecord;
 } DataSource;
@@ -79,7 +102,7 @@ embedDBSchema* baseSchema;
 DataSource *uwaData, *seaData;
 
 void setUpEmbedDB() {
-    // Init UWA dataset
+    // Init state for UWA dataset
     stateUWA = (embedDBState*)calloc(1, sizeof(embedDBState));
     stateUWA->keySize = 4;
     stateUWA->dataSize = 12;
@@ -90,10 +113,13 @@ void setUpEmbedDB() {
     stateUWA->numDataPages = 20000;
     stateUWA->numIndexPages = 1000;
     stateUWA->numSplinePoints = 30;
-    char dataPath[] = "dataFile.bin", indexPath[] = "indexFile.bin";
-    stateUWA->fileInterface = getSDInterface();
-    stateUWA->dataFile = setupSDFile(dataPath);
-    stateUWA->indexFile = setupSDFile(indexPath);
+
+    /* Setup file IO for UWA data */
+    char dataPath[] = DATA_PATH_UWA, indexPath[] = INDEX_PATH_UWA;
+    stateUWA->fileInterface = getFileInterface();
+    stateUWA->dataFile = setupFile(dataPath);
+    stateUWA->indexFile = setupFile(indexPath);
+
     stateUWA->bufferSizeInBlocks = 4;
     stateUWA->buffer = malloc(stateUWA->bufferSizeInBlocks * stateUWA->pageSize);
     stateUWA->parameters = EMBEDDB_USE_BMAP | EMBEDDB_USE_INDEX | EMBEDDB_RESET_DATA;
@@ -102,10 +128,12 @@ void setUpEmbedDB() {
     stateUWA->updateBitmap = updateBitmapInt16;
     stateUWA->buildBitmapFromRange = buildBitmapInt16FromRange;
     embedDBInit(stateUWA, 1);
+
+    /* insert UWA data */
     const char uwaDatafileName[] = "data/uwa500K.bin";
     insertData(stateUWA, uwaDatafileName);
 
-    // Init SEA dataset
+    // Init state for SEA dataset
     stateSEA = (embedDBState*)calloc(1, sizeof(embedDBState));
     stateSEA->keySize = 4;
     stateSEA->dataSize = 12;
@@ -116,10 +144,13 @@ void setUpEmbedDB() {
     stateSEA->numDataPages = 20000;
     stateSEA->numIndexPages = 1000;
     stateSEA->numSplinePoints = 120;
-    char dataPath2[] = "dataFile2.bin", indexPath2[] = "indexFile2.bin";
-    stateSEA->fileInterface = getSDInterface();
-    stateSEA->dataFile = setupSDFile(dataPath2);
-    stateSEA->indexFile = setupSDFile(indexPath2);
+
+    /* Setup file IO for SEA data*/
+    char dataPath2[] = DATA_PATH_SEA, indexPath2[] = INDEX_PATH_SEA;
+    stateSEA->fileInterface = getFileInterface();
+    stateSEA->dataFile = setupFile(dataPath2);
+    stateSEA->indexFile = setupFile(indexPath2);
+
     stateSEA->bufferSizeInBlocks = 4;
     stateSEA->buffer = malloc(stateSEA->bufferSizeInBlocks * stateSEA->pageSize);
     stateSEA->parameters = EMBEDDB_USE_BMAP | EMBEDDB_USE_INDEX | EMBEDDB_RESET_DATA;
@@ -128,6 +159,8 @@ void setUpEmbedDB() {
     stateSEA->updateBitmap = updateBitmapInt16;
     stateSEA->buildBitmapFromRange = buildBitmapInt16FromRange;
     embedDBInit(stateSEA, 1);
+
+    /* insert SEA data */
     const char seaDatafileName[] = "data/sea100K.bin";
     insertData(stateSEA, seaDatafileName);
 
@@ -138,12 +171,12 @@ void setUpEmbedDB() {
 
     // Open data sources for comparison
     uwaData = (DataSource*)malloc(sizeof(DataSource));
-    uwaData->fp = sd_fopen("data/uwa500K.bin", "rb");
+    uwaData->fp = fopen("data/uwa500K.bin", "rb");
     uwaData->pageBuffer = (int8_t*)calloc(1, 512);
     uwaData->pageRecord = 0;
 
     seaData = (DataSource*)malloc(sizeof(DataSource));
-    seaData->fp = sd_fopen("data/sea100K.bin", "rb");
+    seaData->fp = fopen("data/sea100K.bin", "rb");
     seaData->pageBuffer = (int8_t*)calloc(1, 512);
     seaData->pageRecord = 0;
 }
@@ -334,17 +367,17 @@ void test_join() {
     int32_t recordsReturned = 0;
     int32_t* recordBuffer = (int32_t*)proj->recordBuffer;
 
-    SD_FILE* fp = sd_fopen("expected_join_output.bin", "rb");
+    FILE_TYPE* fp = fopen(JOIN_FILE, "rb");
 
     int32_t expectedRecord[3];
     while (exec(proj)) {
         recordsReturned++;
-        sd_fread(expectedRecord, sizeof(int32_t), 3, fp);
-        TEST_ASSERT_EQUAL_UINT32_MESSAGE(expectedRecord[0], recordBuffer[0], "First column is wrong");
+        fread(expectedRecord, sizeof(int32_t), 3, fp);
+        TEST_ASSERT_EQUAL_INT32_MESSAGE(expectedRecord[0], recordBuffer[0], "First column is wrong");
         TEST_ASSERT_EQUAL_INT32_MESSAGE(expectedRecord[1], recordBuffer[1], "Second column is wrong");
         TEST_ASSERT_EQUAL_INT32_MESSAGE(expectedRecord[2], recordBuffer[2], "Third column is wrong");
     }
-    sd_fclose(fp);
+    fclose(fp);
 
     proj->close(proj);
     free(scan1);
@@ -358,30 +391,30 @@ void test_join() {
 
 void tearDown(void) {
     embedDBClose(stateUWA);
-    tearDownSDFile(stateUWA->dataFile);
-    tearDownSDFile(stateUWA->indexFile);
+    tearDownFile(stateUWA->dataFile);
+    tearDownFile(stateUWA->indexFile);
     free(stateUWA->fileInterface);
     free(stateUWA->buffer);
     free(stateUWA);
 
     embedDBClose(stateSEA);
-    tearDownSDFile(stateSEA->dataFile);
-    tearDownSDFile(stateSEA->indexFile);
+    tearDownFile(stateSEA->dataFile);
+    tearDownFile(stateSEA->indexFile);
     free(stateSEA->fileInterface);
     free(stateSEA->buffer);
     free(stateSEA);
 
     embedDBFreeSchema(&baseSchema);
 
-    sd_fclose(uwaData->fp);
+    fclose(uwaData->fp);
     free(uwaData->pageBuffer);
     free(uwaData);
-    sd_fclose(seaData->fp);
+    fclose(seaData->fp);
     free(seaData->pageBuffer);
     free(seaData);
 }
 
-void runUnityTests(void) {
+int runUnityTests(void) {
     UNITY_BEGIN();
 
     RUN_TEST(test_projection);
@@ -389,21 +422,21 @@ void runUnityTests(void) {
     RUN_TEST(test_aggregate);
     RUN_TEST(test_join);
 
-    UNITY_END();
+    return UNITY_END();
 }
 
 void insertData(embedDBState* state, const char* filename) {
-    SD_FILE* fp = sd_fopen(filename, "rb");
+    FILE_TYPE* fp = fopen(filename, "rb");
     char fileBuffer[512];
     int numRecords = 0;
-    while (sd_fread(fileBuffer, state->pageSize, 1, fp)) {
+    while (fread(fileBuffer, state->pageSize, 1, fp)) {
         uint16_t count = EMBEDDB_GET_COUNT(fileBuffer);
         for (int i = 1; i <= count; i++) {
             embedDBPut(state, fileBuffer + i * state->recordSize, fileBuffer + i * state->recordSize + state->keySize);
             numRecords++;
         }
     }
-    sd_fclose(fp);
+    fclose(fp);
     embedDBFlush(state);
 }
 
@@ -411,7 +444,7 @@ void* nextRecord(DataSource* source) {
     uint16_t count = EMBEDDB_GET_COUNT(source->pageBuffer);
     if (count <= source->pageRecord) {
         // Read next page
-        if (!sd_fread(source->pageBuffer, 512, 1, source->fp)) {
+        if (!fread(source->pageBuffer, 512, 1, source->fp)) {
             return NULL;
         }
         source->pageRecord = 0;
@@ -460,6 +493,8 @@ void setUp() {
     setUpEmbedDB();
 }
 
+#ifdef ARDUINO
+
 void setup() {
     delay(2000);
     setupBoard();
@@ -467,3 +502,11 @@ void setup() {
 }
 
 void loop() {}
+
+#else
+
+int main() {
+    return runUnityTests();
+}
+
+#endif

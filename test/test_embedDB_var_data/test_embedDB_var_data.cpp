@@ -52,7 +52,21 @@
 #include "dueTestSetup.h"
 #endif
 
+#ifdef ARDUINO
 #include "SDFileInterface.h"
+#define getFileInterface getSDInterface
+#define setupFile setupSDFile
+#define tearDownFile tearDownSDFile
+#define DATA_FILE_PATH "dataFile.bin"
+#define INDEX_FILE_PATH "indexFile.bin"
+#define VAR_DATA_FILE_PATH "varFile.bin"
+#else
+#include "desktopFileInterface.h"
+#define DATA_FILE_PATH "build/artifacts/dataFile.bin"
+#define INDEX_FILE_PATH "build/artifacts/indexFile.bin"
+#define VAR_DATA_FILE_PATH "build/artifacts/varFile.bin"
+#endif
+
 #include "unity.h"
 
 embedDBState *state;
@@ -61,6 +75,10 @@ uint32_t inserted = 0;
 
 uint32_t i = 0;
 uint32_t dataSizes[] = {4, 6, 8};
+
+void setUp(void) {}
+
+void tearDown(void) {}
 
 void test_init() {
     TEST_ASSERT_EQUAL_INT8_MESSAGE(0, embedDBInit(state, 0), "embedDBInit did not return 0");
@@ -83,11 +101,11 @@ void initState(uint32_t dataSize) {
     state->numIndexPages = 48;
     state->numVarPages = 1000;
     state->eraseSizeInPages = 4;
-    char dataPath[] = "dataFile.bin", indexPath[] = "indexFile.bin", varPath[] = "varFile.bin";
-    state->fileInterface = getSDInterface();
-    state->dataFile = setupSDFile(dataPath);
-    state->indexFile = setupSDFile(indexPath);
-    state->varFile = setupSDFile(varPath);
+    char dataPath[] = DATA_FILE_PATH, indexPath[] = INDEX_FILE_PATH, varPath[] = VAR_DATA_FILE_PATH;
+    state->fileInterface = getFileInterface();
+    state->dataFile = setupFile(dataPath);
+    state->indexFile = setupFile(indexPath);
+    state->varFile = setupFile(varPath);
     state->parameters = EMBEDDB_USE_BMAP | EMBEDDB_USE_INDEX | EMBEDDB_USE_VDATA | EMBEDDB_RESET_DATA;
     state->bitmapSize = 1;
     state->inBitmap = inBitmapInt8;
@@ -100,9 +118,9 @@ void initState(uint32_t dataSize) {
 
 void resetState() {
     embedDBClose(state);
-    tearDownSDFile(state->dataFile);
-    tearDownSDFile(state->indexFile);
-    tearDownSDFile(state->varFile);
+    tearDownFile(state->dataFile);
+    tearDownFile(state->indexFile);
+    tearDownFile(state->varFile);
     free(state->buffer);
     free(state->fileInterface);
     free(state);
@@ -200,7 +218,8 @@ void test_get_when_all() {
         expectedVarData[8] = (char)((key / 100) % 10) + '0';
         uint64_t data = 0, expectedData = key % 100;
 
-        int result = embedDBGetVar(state, &key, &data, &varStream);
+        int8_t result = embedDBGetVar(state, &key, &data, &varStream);
+        TEST_ASSERT_EQUAL_INT8_MESSAGE(0, result, "embedDbGetVar was unable to return the requested record");
         TEST_ASSERT_EQUAL_CHAR_ARRAY_MESSAGE(&expectedData, &data, state->dataSize, "embedDBGetVar did not return the correct fixed data");
         TEST_ASSERT_NOT_NULL_MESSAGE(varStream, "embedDBGetVar did not return vardata");
         uint32_t length = embedDBVarDataStreamRead(state, varStream, buf, 20);
@@ -254,6 +273,8 @@ int runUnityTests() {
     return UNITY_END();
 }
 
+#ifdef ARDUINO
+
 void setup() {
     delay(2000);
     setupBoard();
@@ -261,3 +282,11 @@ void setup() {
 }
 
 void loop() {}
+
+#else
+
+int main() {
+    return runUnityTests();
+}
+
+#endif

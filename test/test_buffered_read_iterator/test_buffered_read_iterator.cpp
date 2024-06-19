@@ -56,7 +56,19 @@
 #include "dueTestSetup.h"
 #endif
 
+#ifdef ARDUINO
 #include "SDFileInterface.h"
+#define getFileInterface getSDInterface
+#define setupFile setupSDFile
+#define tearDownFile tearDownSDFile
+#define DATA_PATH "dataFile.bin"
+#define INDEX_PATH "indexFile.bin"
+#else
+#include "desktopFileInterface.h"
+#define DATA_PATH "build/artifacts/dataFile.bin"
+#define INDEX_PATH "build/artifacts/indexFile.bin"
+#endif
+
 #include "unity.h"
 
 int insertStaticRecord(embedDBState* state, uint32_t key, uint32_t data);
@@ -72,8 +84,9 @@ void setUp(void) {
 void tearDown(void) {
     free(state->buffer);
     embedDBClose(state);
-    tearDownSDFile(state->dataFile);
     free(state->fileInterface);
+    tearDownFile(state->dataFile);
+    tearDownFile(state->indexFile);
     free(state);
     state = NULL;
 }
@@ -108,7 +121,7 @@ void embedDBIterator_should_return_records_in_storage_and_in_write_buffer(void) 
 
     /* test if correct data values returned */
     uint32_t numRecordsReturned = 0;
-    while (embedDBNext(state, &it, (void**)&itKey, (void**)&itData)) {
+    while (embedDBNext(state, &it, &itKey, itData)) {
         uint32_t actualDataValue;
         memcpy(&actualDataValue, itData, sizeof(int));
         snprintf(message, 100, "embedDBIterator returned the wrong data value for key %li.", key);
@@ -155,7 +168,7 @@ void embedDBIterator_should_return_records_in_storage_and_in_write_buffer_with_f
     float actualDataValue = 0;
 
     /* test data and keys are returned correctly */
-    while (embedDBNext(state, &it, (void**)&actualKeyValue, (void**)&returnedDataValue)) {
+    while (embedDBNext(state, &it, &actualKeyValue, returnedDataValue)) {
         TEST_ASSERT_EQUAL_UINT32_MESSAGE(expectedKeyValue, actualKeyValue, "embedDBIterator returned an unexpected key value");
         snprintf(message, 100, "embedDBIterator did not return the correct data for key %li).", expectedKeyValue);
         memcpy(&actualDataValue, returnedDataValue, sizeof(float));
@@ -185,7 +198,7 @@ void embedDBIterator_should_return_keys_in_write_buffer_when_no_data_has_been_fl
 
     /* initialize iterator */
     embedDBIterator it;
-    uint32_t* actualKeyValue;
+    uint32_t actualKeyValue = 0;
     uint32_t minKey = 1000, maxKey = 1015;
     it.minKey = &minKey;
     it.maxKey = &maxKey;
@@ -197,13 +210,13 @@ void embedDBIterator_should_return_keys_in_write_buffer_when_no_data_has_been_fl
     key = 1000;
     data = 2048;
     uint32_t numberOfRecordsRetrieved = 0;
-    int8_t* dataBuffer = (int8_t*)malloc(state->dataSize);
+    uint32_t returnedDataBuffer[] = {0, 0, 0};
     uint32_t acutalDataValue = 0;
     char message[100];
 
-    while (embedDBNext(state, &it, &actualKeyValue, dataBuffer)) {
+    while (embedDBNext(state, &it, &actualKeyValue, returnedDataBuffer)) {
         TEST_ASSERT_EQUAL_UINT32_MESSAGE(key, actualKeyValue, "embedDBIterator returned an unexpected key value");
-        memcpy(&acutalDataValue, dataBuffer, sizeof(uint32_t));
+        memcpy(&acutalDataValue, returnedDataBuffer, sizeof(uint32_t));
         snprintf(message, 100, "embedDBIterator did not return the correct data for key %li).", key);
         TEST_ASSERT_EQUAL_UINT32_MESSAGE(data, acutalDataValue, message);
         data += 15;
@@ -216,7 +229,6 @@ void embedDBIterator_should_return_keys_in_write_buffer_when_no_data_has_been_fl
 
     /* tear down */
     embedDBCloseIterator(&it);
-    free(dataBuffer);
 }
 
 void embedDBIterator_should_filter_and_rechieve_records_by_data_value(void) {
@@ -248,7 +260,7 @@ void embedDBIterator_should_filter_and_rechieve_records_by_data_value(void) {
     char message[100];
 
     /* assert returned records have correct values */
-    while (embedDBNext(state, &it, (void**)&itKey, (void**)&itData)) {
+    while (embedDBNext(state, &it, &itKey, itData)) {
         TEST_ASSERT_EQUAL_UINT32_MESSAGE(expectedKeyValue, itKey, "embedDBIterator returned a key value which should have been filtered out");
         snprintf(message, 100, "embedDBIterator did not return the correct data for key %li).", expectedKeyValue);
         TEST_ASSERT_EQUAL_UINT32_MESSAGE(expectedDataValue, itData[0], message);
@@ -288,7 +300,7 @@ void embedDBIterator_should_not_flush_buffer_to_storage_to_iterate(void) {
     uint32_t key_comparison = 1;
     embedDBInitIterator(state, &it);
 
-    while (embedDBNext(state, &it, (void**)&itKey, (void**)&itData)) {
+    while (embedDBNext(state, &it, &itKey, itData)) {
         TEST_ASSERT_EQUAL(key_comparison, itKey);
         key_comparison += 1;
     }
@@ -309,14 +321,6 @@ int runUnityTests() {
     RUN_TEST(embedDBIterator_should_not_flush_buffer_to_storage_to_iterate);
     return UNITY_END();
 }
-
-void setup() {
-    delay(2000);
-    setupBoard();
-    runUnityTests();
-}
-
-void loop() {}
 
 /* function puts a static record into buffer without flushing. Creates and frees record allocation in the heap.*/
 int insertStaticRecord(embedDBState* state, uint32_t key, uint32_t data) {
@@ -379,10 +383,10 @@ embedDBState* init_state() {
     state->eraseSizeInPages = 4;
 
     // configure file interface
-    char dataPath[] = "dataFile.bin", indexPath[] = "indexFile.bin";
-    state->fileInterface = getSDInterface();
-    state->dataFile = setupSDFile(dataPath);
-    state->indexFile = setupSDFile(indexPath);
+    char dataPath[] = DATA_PATH, indexPath[] = INDEX_PATH;
+    state->fileInterface = getFileInterface();
+    state->dataFile = setupFile(dataPath);
+    state->indexFile = setupFile(indexPath);
 
     // configure state
     state->parameters = EMBEDDB_USE_BMAP | EMBEDDB_USE_INDEX | EMBEDDB_RESET_DATA;
@@ -399,3 +403,21 @@ embedDBState* init_state() {
 
     return state;
 }
+
+#ifdef ARDUINO
+
+void setup() {
+    delay(2000);
+    setupBoard();
+    runUnityTests();
+}
+
+void loop() {}
+
+#else
+
+int main() {
+    return runUnityTests();
+}
+
+#endif

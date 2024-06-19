@@ -45,24 +45,11 @@
 
 #include "embedDB/embedDB.h"
 #include "embedDBUtility.h"
-#include "sdcard_c_iface.h"
-
-#if defined(MEGA)
-#include "SDFileInterface.h"
-#endif
-
-#if defined(DUE)
-#include "SDFileInterface.h"
-#endif
-
-#if defined(MEMBOARD)
-#include "SDFileInterface.h"
-#include "dataflashFileInterface.h"
-#endif
 
 #define NUM_STEPS 10
 #define NUM_RUNS 1
 #define VALIDATE_VAR_DATA 0
+
 /**
  * 0 = SD Card
  * 1 = Dataflash
@@ -88,6 +75,36 @@
  * 1: Use sequentially generated data
  */
 #define SEQUENTIAL_DATA 1
+
+#ifdef ARDUINO
+
+#if defined(MEMBOARD) && STORAGE_TYPE == 1
+#include "dataflashFileInterface.h"
+#endif
+
+#include "SDFileInterface.h"
+#define FILE_TYPE SD_FILE
+#define fopen sd_fopen
+#define fread sd_fread
+#define fclose sd_fclose
+#define getFileInterface getSDInterface
+#define setupFile setupSDFile
+#define tearDownFile tearDownSDFile
+
+#define clock millis
+#define DATA_FILE_PATH "dataFile.bin"
+#define INDEX_FILE_PATH "indexFile.bin"
+#define VAR_DATA_FILE_PATH "varFile.bin"
+
+#else
+
+#include "desktopFileInterface.h"
+#define FILE_TYPE FILE
+#define DATA_FILE_PATH "build/artifacts/dataFile.bin"
+#define INDEX_FILE_PATH "build/artifacts/indexFile.bin"
+#define VAR_DATA_FILE_PATH "build/artifacts/varFile.bin"
+
+#endif
 
 /* LinkedList for tracking data */
 typedef struct Node {
@@ -127,7 +144,7 @@ void test_vardata() {
     uint32_t rhits[NUM_STEPS][NUM_RUNS];
 
     // Files for non-sequentioal data
-    SD_FILE *infile = NULL, *infileRandom = NULL;
+    FILE_TYPE *infile = NULL, *infileRandom = NULL;
     uint32_t minRange, maxRange;
 
     if (!SEQUENTIAL_DATA) {
@@ -214,23 +231,23 @@ void test_vardata() {
         state->eraseSizeInPages = 4;
         state->numSplinePoints = 30;
 
-        if (STORAGE_TYPE == 0) {
-            char dataPath[] = "dataFile.bin", indexPath[] = "indexFile.bin", varPath[] = "varFile.bin";
-            state->fileInterface = getSDInterface();
-            state->dataFile = setupSDFile(dataPath);
-            state->indexFile = setupSDFile(indexPath);
-            state->varFile = setupSDFile(varPath);
-        }
-
-#if defined(MEMBOARD)
-        if (STORAGE_TYPE == 1) {
-            state->fileInterface = getDataflashInterface();
-            state->dataFile = setupDataflashFile(0, state->numDataPages);
-            state->indexFile = setupDataflashFile(state->numDataPages, state->numIndexPages);
-            state->varFile = setupDataflashFile(state->numDataPages + state->numIndexPages, state->numVarPages);
-        }
-#endif
         state->parameters = EMBEDDB_USE_BMAP | EMBEDDB_USE_INDEX | EMBEDDB_USE_VDATA | EMBEDDB_RESET_DATA;
+
+#if STORAGE_TYPE == 0
+        char dataPath[] = DATA_FILE_PATH, indexPath[] = INDEX_FILE_PATH, varPath[] = VAR_DATA_FILE_PATH;
+        state->fileInterface = getFileInterface();
+        state->dataFile = setupFile(dataPath);
+        state->indexFile = setupFile(indexPath);
+        state->varFile = setupFile(varPath);
+#elif defined(MEMBOARD) && STORAGE_TYPE == 1
+        state->fileInterface = getDataflashInterface();
+        state->dataFile = setupDataflashFile(0, state->numDataPages);
+        state->indexFile = setupDataflashFile(state->numDataPages, state->numIndexPages);
+        state->varFile = setupDataflashFile(state->numDataPages + state->numIndexPages, state->numVarPages);
+#else
+        printf("Invalid storage configuration. Program terminating.");
+        exit(-1);
+#endif
 
         if (EMBEDDB_USING_BMAP(state->parameters))
             state->bitmapSize = 1;
@@ -274,7 +291,7 @@ void test_vardata() {
 
         printf("\n\nINSERT TEST:\n");
         /* Insert records into structure */
-        uint32_t start = millis();
+        uint32_t start = clock();
         embedDBResetStats(state);
 
         int32_t i;
@@ -333,7 +350,7 @@ void test_vardata() {
                     // printf("Num: %lu KEY: %lu\n", i, i);
                     l = i / stepSize - 1;
                     if (l < NUM_STEPS && l >= 0) {
-                        times[l][r] = millis() - start;
+                        times[l][r] = clock() - start;
                         ;
                         reads[l][r] = state->numReads;
                         writes[l][r] = state->numWrites;
@@ -424,7 +441,7 @@ void test_vardata() {
                         printf("Num: %lu KEY: %lu\n", i, *((int32_t *)buf));
                         l = i / stepSize - 1;
                         if (l < NUM_STEPS && l >= 0) {
-                            times[l][r] = millis() - start;
+                            times[l][r] = clock() - start;
                             ;
                             reads[l][r] = state->numReads;
                             writes[l][r] = state->numWrites;
@@ -447,7 +464,7 @@ void test_vardata() {
 
     doneread:
         embedDBFlush(state);
-        uint32_t end = millis();
+        uint32_t end = clock();
 
         l = NUM_STEPS - 1;
         times[l][r] = end - start;
@@ -466,7 +483,7 @@ void test_vardata() {
         printf("\n\nQUERY TEST:\n");
         /* Verify that all values can be found and test query performance */
 
-        start = millis();
+        start = clock();
 
         uint32_t varDataFound = 0, fixedFound = 0, deleted = 0, notFound = 0;
 
@@ -531,7 +548,7 @@ void test_vardata() {
                     if (i % stepSize == 0) {
                         l = i / stepSize - 1;
                         if (l < NUM_STEPS && l >= 0) {
-                            rtimes[l][r] = millis() - start;
+                            rtimes[l][r] = clock() - start;
                             rreads[l][r] = state->numReads;
                             rhits[l][r] = state->bufferHits;
                         }
@@ -673,7 +690,7 @@ void test_vardata() {
                             l = i / stepSize - 1;
                             printf("Num: %lu KEY: %lu\n", i, *key);
                             if (l < NUM_STEPS && l >= 0) {
-                                rtimes[l][r] = millis() - start;
+                                rtimes[l][r] = clock() - start;
                                 rreads[l][r] = state->numReads;
                                 rhits[l][r] = state->bufferHits;
                             }
@@ -744,7 +761,7 @@ void test_vardata() {
                         l = i / queryStepSize - 1;
                         printf("Num: %lu KEY: %lu\n", i, key);
                         if (l < NUM_STEPS && l >= 0) {
-                            rtimes[l][r] = millis() - start;
+                            rtimes[l][r] = clock() - start;
                             rreads[l][r] = state->numReads;
                             rhits[l][r] = state->bufferHits;
                         }
@@ -800,7 +817,7 @@ void test_vardata() {
             }
         }
 
-        end = millis();
+        end = clock();
         l = NUM_STEPS - 1;
         rtimes[l][r] = end - start;
         rreads[l][r] = state->numReads;
@@ -820,22 +837,21 @@ void test_vardata() {
         // testIterator(state);
         // embedDBPrintStats(state);
 
-        // Free memory
+        /* close embedDB */
         embedDBClose(state);
-        if (STORAGE_TYPE == 0) {
-            tearDownSDFile(state->dataFile);
-            tearDownSDFile(state->indexFile);
-            tearDownSDFile(state->varFile);
-        }
 
-#if defined(MEMBOARD)
-        if (STORAGE_TYPE == 1) {
-            tearDownDataflashFile(state->dataFile);
-            tearDownDataflashFile(state->indexFile);
-            tearDownDataflashFile(state->varFile);
-        }
+        /* tear down storage */
+#if STORAGE_TYPE == 0
+        tearDownFile(state->dataFile);
+        tearDownFile(state->indexFile);
+        tearDownFile(state->varFile);
+#elif defined(MEMBOARD) && STORAGE_TYPE == 1
+        tearDownDataflashFile(state->dataFile);
+        tearDownDataflashFile(state->indexFile);
+        tearDownDataflashFile(state->varFile);
 #endif
 
+        /* free memory */
         free(recordBuffer);
         free(state->buffer);
         free(state->fileInterface);
@@ -989,7 +1005,7 @@ void writeDataToFile(embedDBState *state, embedDBVarDataStream *data, char *file
         return;
     }
 
-    SD_FILE *file = fopen(filename, "w+b");
+    FILE_TYPE *file = fopen(filename, "w+b");
     if (file == NULL) {
         printf("Failed to open the file\n");
         return;

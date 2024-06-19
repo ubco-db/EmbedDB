@@ -55,7 +55,17 @@
 #include "dueTestSetup.h"
 #endif
 
+#ifdef ARDUINO
 #include "SDFileInterface.h"
+#define getFileInterface getSDInterface
+#define setupFile setupSDFile
+#define tearDownFile tearDownSDFile
+#define DATA_PATH "dataFile.bin"
+#else
+#include "desktopFileInterface.h"
+#define DATA_PATH "build/artifacts/dataFile.bin"
+#endif
+
 #include "unity.h"
 
 embedDBState *state;
@@ -73,9 +83,12 @@ void setupEmbedDB() {
     state->numDataPages = 1000;
     state->parameters = EMBEDDB_RESET_DATA;
     state->eraseSizeInPages = 4;
-    state->fileInterface = getSDInterface();
-    char dataPath[] = "dataFile.bin";
-    state->dataFile = setupSDFile(dataPath);
+
+    /* setup data file for EmbedDB */
+    state->fileInterface = getFileInterface();
+    char dataPath[] = DATA_PATH;
+    state->dataFile = setupFile(dataPath);
+
     state->compareKey = int32Comparator;
     state->compareData = int32Comparator;
     int8_t result = embedDBInit(state, 1);
@@ -89,7 +102,7 @@ void setUp(void) {
 void tearDown(void) {
     free(state->buffer);
     embedDBClose(state);
-    tearDownSDFile(state->dataFile);
+    tearDownFile(state->dataFile);
     free(state->fileInterface);
     free(state);
 }
@@ -237,6 +250,8 @@ int runUnityTests(void) {
     return UNITY_END();
 }
 
+#ifdef ARDUINO
+
 void setup() {
     delay(2000);
     setupBoard();
@@ -244,3 +259,11 @@ void setup() {
 }
 
 void loop() {}
+
+#else
+
+int main() {
+    return runUnityTests();
+}
+
+#endif

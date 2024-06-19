@@ -42,20 +42,6 @@
 
 #include "embedDB/embedDB.h"
 #include "embedDBUtility.h"
-#include "sdcard_c_iface.h"
-
-#if defined(MEGA)
-#include "SDFileInterface.h"
-#endif
-
-#if defined(DUE)
-#include "SDFileInterface.h"
-#endif
-
-#if defined(MEMBOARD)
-#include "SDFileInterface.h"
-#include "dataflashFileInterface.h"
-#endif
 
 /*
  * 1: Query each record from original data set.
@@ -75,6 +61,34 @@
  * 1 = Dataflash
  */
 #define STORAGE_TYPE 0
+
+#ifdef ARDUINO
+
+#if defined(MEMBOARD) && STORAGE_TYPE == 1
+#include "dataflashFileInterface.h"
+#endif
+
+#include "SDFileInterface.h"
+#define FILE_TYPE SD_FILE
+#define fopen sd_fopen
+#define fread sd_fread
+#define fclose sd_fclose
+#define getFileInterface getSDInterface
+#define setupFile setupSDFile
+#define tearDownFile tearDownSDFile
+
+#define clock millis
+#define DATA_FILE_PATH "dataFile.bin"
+#define INDEX_FILE_PATH "indexFile.bin"
+
+#else
+
+#include "desktopFileInterface.h"
+#define FILE_TYPE FILE
+#define DATA_FILE_PATH "build/artifacts/dataFile.bin"
+#define INDEX_FILE_PATH "build/artifacts/indexFile.bin"
+
+#endif
 
 /**
  * Runs all tests and collects benchmarks
@@ -97,7 +111,7 @@ void runalltests_embedDB() {
     uint32_t rtimes[numSteps][numRuns];
     uint32_t rreads[numSteps][numRuns];
     uint32_t rhits[numSteps][numRuns];
-    SD_FILE *infile, *infileRandom;
+    FILE_TYPE *infile, *infileRandom;
     uint32_t minRange, maxRange;
     char infileBuffer[512];
 
@@ -197,21 +211,19 @@ void runalltests_embedDB() {
         state->numIndexPages = 1000;
         state->eraseSizeInPages = 4;
 
-        if (STORAGE_TYPE == 0) {
-            char dataPath[] = "dataFile.bin", indexPath[] = "indexFile.bin", varPath[] = "varFile.bin";
-            state->fileInterface = getSDInterface();
-            state->dataFile = setupSDFile(dataPath);
-            state->indexFile = setupSDFile(indexPath);
-            state->varFile = setupSDFile(varPath);
-        }
-
-#if defined(MEMBOARD)
-        if (STORAGE_TYPE == 1) {
-            state->fileInterface = getDataflashInterface();
-            state->dataFile = setupDataflashFile(0, state->numDataPages);
-            state->indexFile = setupDataflashFile(state->numDataPages, state->numIndexPages);
-            state->varFile = setupDataflashFile(state->numDataPages + state->numIndexPages, state->numVarPages);
-        }
+#if STORAGE_TYPE == 0
+        char dataPath[] = DATA_FILE_PATH, indexPath[] = INDEX_FILE_PATH;
+        state->fileInterface = getFileInterface();
+        state->dataFile = setupFile(dataPath);
+        state->indexFile = setupFile(indexPath);
+#elif defined(MEMBOARD) && STORAGE_TYPE == 1
+        state->fileInterface = getDataflashInterface();
+        state->dataFile = setupDataflashFile(0, state->numDataPages);
+        state->indexFile = setupDataflashFile(state->numDataPages, state->numIndexPages);
+        state->varFile = setupDataflashFile(state->numDataPages + state->numIndexPages, state->numVarPages);
+#else
+        printf("Invalid storage configuration. Exiting the program.");
+        exit(-1);
 #endif
 
         state->parameters = EMBEDDB_USE_BMAP | EMBEDDB_USE_INDEX | EMBEDDB_RESET_DATA;
@@ -248,13 +260,13 @@ void runalltests_embedDB() {
         }
 
         /* Erase whole chip (so do not need to erase before write) */
-        uint32_t start = millis();
+        uint32_t start = clock();
         // dferase_chip();
-        printf("Chip erase time: %lu ms\n", millis() - start);
+        printf("Chip erase time: %lu ms\n", clock() - start);
 
         printf("\n\nINSERT TEST:\n");
         /* Insert records into structure */
-        start = millis();
+        start = clock();
 
         if (SEQUENTIAL_DATA) {
             for (i = 0; i < numRecords; i++) {
@@ -268,7 +280,7 @@ void runalltests_embedDB() {
                     // printf("Num: %lu KEY: %lu\n", i, i);
                     l = i / stepSize - 1;
                     if (l < numSteps && l >= 0) {
-                        times[l][r] = millis() - start;
+                        times[l][r] = clock() - start;
                         reads[l][r] = state->numReads;
                         writes[l][r] = state->numWrites;
                         overwrites[l][r] = 0;
@@ -303,7 +315,7 @@ void runalltests_embedDB() {
                         printf("Num: %lu KEY: %lu\n", i, *((int32_t *)buf));
                         l = i / stepSize - 1;
                         if (l < numSteps && l >= 0) {
-                            times[l][r] = millis() - start;
+                            times[l][r] = clock() - start;
                             reads[l][r] = state->numReads;
                             writes[l][r] = state->numWrites;
                             overwrites[l][r] = 0;
@@ -325,7 +337,7 @@ void runalltests_embedDB() {
     doneread:
         embedDBFlush(state);
 
-        uint32_t end = millis();
+        uint32_t end = clock();
 
         l = numSteps - 1;
         times[l][r] = end - start;
@@ -342,7 +354,7 @@ void runalltests_embedDB() {
 
         printf("\n\nQUERY TEST:\n");
         /* Verify that all values can be found and test query performance */
-        start = millis();
+        start = clock();
 
         if (SEQUENTIAL_DATA) {
             if (QUERY_TYPE == 1) {
@@ -361,7 +373,7 @@ void runalltests_embedDB() {
                     if (i % stepSize == 0) {
                         l = i / stepSize - 1;
                         if (l < numSteps && l >= 0) {
-                            rtimes[l][r] = millis() - start;
+                            rtimes[l][r] = clock() - start;
                             rreads[l][r] = state->numReads;
                             rhits[l][r] = state->bufferHits;
                         }
@@ -379,7 +391,7 @@ void runalltests_embedDB() {
                 it.maxData = &v;
                 int32_t rec, reads;
 
-                start = millis();
+                start = clock();
                 embedDBInitIterator(state, &it);
                 rec = 0;
                 reads = state->numReads;
@@ -443,7 +455,7 @@ void runalltests_embedDB() {
                             l = i / stepSize - 1;
                             printf("Num: %lu KEY: %lu\n", i, *key);
                             if (l < numSteps && l >= 0) {
-                                rtimes[l][r] = millis() - start;
+                                rtimes[l][r] = clock() - start;
                                 rreads[l][r] = state->numReads;
                                 rhits[l][r] = state->bufferHits;
                             }
@@ -476,7 +488,7 @@ void runalltests_embedDB() {
                         l = i / stepSize - 1;
                         printf("Num: %lu KEY: %lu\n", i, key);
                         if (l < numSteps && l >= 0) {
-                            rtimes[l][r] = millis() - start;
+                            rtimes[l][r] = clock() - start;
                             rreads[l][r] = state->numReads;
                             rhits[l][r] = state->bufferHits;
                         }
@@ -515,7 +527,7 @@ void runalltests_embedDB() {
             }
         }
 
-        end = millis();
+        end = clock();
         l = numSteps - 1;
         rtimes[l][r] = end - start;
         rreads[l][r] = state->numReads;
@@ -533,15 +545,14 @@ void runalltests_embedDB() {
         free(state->buffer);
         embedDBClose(state);
         free(state->fileInterface);
-        if (STORAGE_TYPE == 0) {
-            tearDownSDFile(state->dataFile);
-            tearDownSDFile(state->indexFile);
-        }
-#if defined(MEMBOARD)
-        if (STORAGE_TYPE == 1) {
-            tearDownDataflashFile(state->dataFile);
-            tearDownDataflashFile(state->indexFile);
-        }
+
+        /* Tear down files */
+#if STORAGE_TYPE == 0
+        tearDownFile(state->dataFile);
+        tearDownFile(state->indexFile);
+#elif defined(MEMBOARD) && STORAGE_TYPE == 1
+        tearDownDataflashFile(state->dataFile);
+        tearDownDataflashFile(state->indexFile);
 #endif
         free(state);
     }
