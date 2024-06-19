@@ -4,3 +4,6 @@
 [submodule "lib/Dataflash"]
 	path = lib/Dataflash
 	url = https://github.com/ubco-db/Dataflash.git
+[submodule "lib/Unity"]
+	path = lib/Unity
+	url = https://github.com/ThrowTheSwitch/Unity.git
