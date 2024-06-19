@@ -20,12 +20,13 @@ endif
 .PHONY: clean
 .PHONY: test
 
-PATHU = Unity/src/
+PATHU = lib/Unity/src/
 PATHS = src/
-PATHE = examples/
 PATH_EMBEDDB = src/embedDB/
 PATHSPLINE = src/spline/
 PATH_QUERY = src/query-interface/
+PATH_UTILITY = lib/EmbedDB-Utility/
+PATH_FILE_INTERFACE = lib/Desktop-File-Interface/
 
 PATHT = test/
 PATHB = build/
@@ -36,19 +37,21 @@ PATHA = build/artifacts/
 
 BUILD_PATHS = $(PATHB) $(PATHD) $(PATHO) $(PATHR) $(PATHA)
 
-EMBEDDB_OBJECTS = $(PATHO)embedDB.o $(PATHO)spline.o $(PATHO)radixspline.o $(PATHO)utilityFunctions.o 
+EMBEDDB_OBJECTS = $(PATHO)embedDB.o $(PATHO)spline.o $(PATHO)radixspline.o $(PATHO)embedDBUtility.o $(PATHO)desktopFileInterface.o 
 
 QUERY_OBJECTS = $(PATHO)schema.o $(PATHO)advancedQueries.o
 
 TEST_FLAGS = -I. -I $(PATHU) -I $(PATHS) -D TEST
 
-EXAMPLE_FLAGS = -I. -I$(PATHS) -I$(PATHE) -D PRINT_ERRORS
+EXAMPLE_FLAGS = -I. -I$(PATHS) -I$(PATH_UTILITY) -I$(PATH_FILE_INTERFACE) -D PRINT_ERRORS
 
 CFLAGS = $(if $(filter test,$(MAKECMDGOALS)),$(TEST_FLAGS),$(EXAMPLE_FLAGS))
 
 SRCT = $(wildcard $(PATHT)*.c)
 
 EMBED_VARIABLE_EXAMPLE = $(PATHO)embedDBVariableDataExample.o
+EMBEDDB_SEQUENTIAL_BENCHMARK = $(PATHO)sequentialDataBenchmark.o
+EMBEDDB_DESKTOP = $(PATHO)desktopMain.o
 EMBEDDB_EXAMPLE = $(PATHO)embedDBExample.o
 ADVANCED_QUERY = $(PATHO)advancedQueryInterfaceExample.o
 
@@ -80,6 +83,22 @@ queryExample: $(BUILD_PATHS) $(PATHB)advancedQueryInterfaceExample.$(TARGET_EXTE
 $(PATHB)advancedQueryInterfaceExample.$(TARGET_EXTENSION): $(EMBEDDB_OBJECTS) $(QUERY_OBJECTS) $(ADVANCED_QUERY)
 	$(LINK) -o $@ $^ $(MATH)
 
+sequentialDataBenchmark: $(BUILD_PATHS) $(PATHB)sequentialDataBenchmark.$(TARGET_EXTENSION)
+	@echo "Running Sequential Data Benchmark"
+	-./$(PATHB)sequentialDataBenchmark.$(TARGET_EXTENSION)
+	@echo "Finished running EmbedDB example file"
+
+$(PATHB)sequentialDataBenchmark.$(TARGET_EXTENSION): $(EMBEDDB_OBJECTS) $(EMBEDDB_SEQUENTIAL_BENCHMARK)
+	$(LINK) -o $@ $^ $(MATH)
+
+desktop: $(BUILD_PATHS) $(PATHB)desktopMain.$(TARGET_EXTENSION)
+	@echo "Running Desktop File"
+	-./$(PATHB)desktopMain.$(TARGET_EXTENSION)
+	@echo "Finished running EmbedDB example file"
+
+$(PATHB)desktopMain.$(TARGET_EXTENSION): $(EMBEDDB_OBJECTS) $(EMBEDDB_DESKTOP)
+	$(LINK) -o $@ $^ $(MATH)
+
 test: $(BUILD_PATHS) $(RESULTS)
 	pip install -r requirements.txt -q
 	$(PYTHON) ./scripts/stylize_as_junit.py
@@ -87,19 +106,25 @@ test: $(BUILD_PATHS) $(RESULTS)
 $(PATHR)%.testpass: $(PATHB)%.$(TARGET_EXTENSION)
 	-./$< > $@ 2>&1
 
-$(PATHB)Test%.$(TARGET_EXTENSION): $(PATHO)Test%.o $(EMBEDDB_OBJECTS) $(QUERY_OBJECTS) $(PATHO)unity.o #$(PATHD)Test%.d
+$(PATHB)test%.$(TARGET_EXTENSION): $(PATHO)test%.o $(EMBEDDB_OBJECTS) $(QUERY_OBJECTS) $(PATHO)unity.o #$(PATHD)Test%.d
 	$(LINK) -o $@ $^ $(MATH)
 
 $(PATHO)%.o:: $(PATHT)%.c
 	$(COMPILE) $(CFLAGS) $< -o $@
 
-$(PATHO)%.o:: $(PATHE)%.c
+$(PATHO)%.o:: $(PATHS)%.c
 	$(COMPILE) $(CFLAGS) $< -o $@
 
 $(PATHO)%.o:: $(PATHSPLINE)%.c
 	$(COMPILE) $(CFLAGS) $< -o $@
 
 $(PATHO)%.o:: $(PATH_EMBEDDB)%.c
+	$(COMPILE) $(CFLAGS) $< -o $@
+
+$(PATHO)%.o:: $(PATH_UTILITY)%.c
+	$(COMPILE) $(CFLAGS) $< -o $@
+
+$(PATHO)%.o:: $(PATH_FILE_INTERFACE)%.c
 	$(COMPILE) $(CFLAGS) $< -o $@
 
 $(PATHO)%.o:: $(PATH_QUERY)%.c
