@@ -72,13 +72,14 @@ test: $(BUILD_PATHS) $(RESULTS)
 	pip install -r requirements.txt -q
 	$(PYTHON) ./scripts/stylize_as_junit.py
 
-$(PATHR)%.testpass::
-	@echo $@
+# $(PATHR)%.testpass::
+# 	@echo $@
 
-# $(PATHR)%.testpass: $(PATHB)%.$(TARGET_EXTENSION)
-# 	-./$< > $@ 2>&1
+$(PATHR)%.testpass: $(PATHB)%.$(TARGET_EXTENSION)
+	-./$< > $@ 2>&1
 
 $(PATHB)test%.$(TARGET_EXTENSION): $(PATHO)test%.o $(EMBEDDB_OBJECTS) $(QUERY_OBJECTS) $(PATHO)unity.o #$(PATHD)Test%.d
+	$(MKDIR) $(subst $(TARGET_EXTENSION),,$@)
 	$(LINK) -o $@ $^ $(MATH)
 
 $(PATHO)%.o:: $(PATHT)%.cpp
