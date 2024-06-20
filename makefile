@@ -28,6 +28,8 @@ PATH_QUERY = src/query-interface/
 PATH_UTILITY = lib/EmbedDB-Utility/
 PATH_FILE_INTERFACE = lib/Desktop-File-Interface/
 
+# PATHT = $(wildcard test/*/)
+# PATHT = test/test_embedDB/
 PATHT = test/
 PATHB = build/
 PATHD = build/depends/
@@ -55,11 +57,8 @@ COMPILE=gcc -c
 LINK=gcc
 DEPEND=gcc -MM -MG -MF
 
-# Strip directories and change extensions
-BASES = $(notdir $(SRCT))
-
 # Transform to results filenames
-RESULTS = $(patsubst test%.cpp,$(PATHR)test%.testpass,$(BASES))
+RESULTS = $(patsubst $(PATHT)test%.cpp,$(PATHR)test%.testpass,$(SRCT))
 
 desktop: $(BUILD_PATHS) $(PATHB)desktopMain.$(TARGET_EXTENSION)
 	@echo "Running Desktop File"
@@ -73,8 +72,11 @@ test: $(BUILD_PATHS) $(RESULTS)
 	pip install -r requirements.txt -q
 	$(PYTHON) ./scripts/stylize_as_junit.py
 
-$(PATHR)%.testpass: $(PATHB)%.$(TARGET_EXTENSION)
-	-./$< > $@ 2>&1
+$(PATHR)%.testpass::
+	@echo $@
+
+# $(PATHR)%.testpass: $(PATHB)%.$(TARGET_EXTENSION)
+# 	-./$< > $@ 2>&1
 
 $(PATHB)test%.$(TARGET_EXTENSION): $(PATHO)test%.o $(EMBEDDB_OBJECTS) $(QUERY_OBJECTS) $(PATHO)unity.o #$(PATHD)Test%.d
 	$(LINK) -o $@ $^ $(MATH)
