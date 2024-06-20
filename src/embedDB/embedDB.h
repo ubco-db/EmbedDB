@@ -76,7 +76,7 @@ typedef uint16_t count_t;
 
 #define EMBEDDB_NO_VAR_DATA UINT32_MAX
 
-#ifndef ARDUINO
+#if !defined(ARDUINO) || defined(DIST)
 #define max(a, b) ((a) > (b) ? (a) : (b))
 #define min(a, b) ((a) < (b) ? (a) : (b))
 #endif
