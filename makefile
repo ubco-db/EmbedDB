@@ -41,62 +41,32 @@ EMBEDDB_OBJECTS = $(PATHO)embedDB.o $(PATHO)spline.o $(PATHO)radixspline.o $(PAT
 
 QUERY_OBJECTS = $(PATHO)schema.o $(PATHO)advancedQueries.o
 
-TEST_FLAGS = -I. -I $(PATHU) -I $(PATHS) -D TEST
+TEST_FLAGS = -I. -I $(PATHU) -I $(PATHS) -I$(PATH_UTILITY) -I$(PATH_FILE_INTERFACE) -D TEST
 
 EXAMPLE_FLAGS = -I. -I$(PATHS) -I$(PATH_UTILITY) -I$(PATH_FILE_INTERFACE) -D PRINT_ERRORS
 
-CFLAGS = $(if $(filter test,$(MAKECMDGOALS)),$(TEST_FLAGS),$(EXAMPLE_FLAGS))
+override CFLAGS += $(if $(filter test,$(MAKECMDGOALS)),$(TEST_FLAGS),$(EXAMPLE_FLAGS))
 
-SRCT = $(wildcard $(PATHT)*.c)
+SRCT = $(wildcard $(PATHT)*/*.cpp)
 
-EMBED_VARIABLE_EXAMPLE = $(PATHO)embedDBVariableDataExample.o
-EMBEDDB_SEQUENTIAL_BENCHMARK = $(PATHO)sequentialDataBenchmark.o
 EMBEDDB_DESKTOP = $(PATHO)desktopMain.o
-EMBEDDB_EXAMPLE = $(PATHO)embedDBExample.o
-ADVANCED_QUERY = $(PATHO)advancedQueryInterfaceExample.o
 
 COMPILE=gcc -c
 LINK=gcc
 DEPEND=gcc -MM -MG -MF
 
-RESULTS = $(patsubst $(PATHT)test%.c,$(PATHR)test%.testpass,$(SRCT))
+# Strip directories and change extensions
+BASES = $(notdir $(SRCT))
 
-embedDBVariableExample: $(BUILD_PATHS) $(PATHB)embedDBVariableDataExample.$(TARGET_EXTENSION)
-	@echo "Running EmbedDB variable data example"
-	-./$(PATHB)embedDBVariableDataExample.$(TARGET_EXTENSION)
-	@echo "Finished running EmbedDB variable data example"
-
-$(PATHB)embedDBVariableDataExample.$(TARGET_EXTENSION): $(EMBEDDB_OBJECTS) $(EMBED_VARIABLE_EXAMPLE)
-	$(LINK) -o $@ $^ $(MATH)
-
-embedDBExample: $(BUILD_PATHS) $(PATHB)embedDBExample.$(TARGET_EXTENSION)
-	@echo "Running EmbedDB Example"
-	-./$(PATHB)embedDBExample.$(TARGET_EXTENSION)
-	@echo "Finished running EmbedDB example file"
-
-$(PATHB)embedDBExample.$(TARGET_EXTENSION): $(EMBEDDB_OBJECTS) $(EMBEDDB_EXAMPLE)
-	$(LINK) -o $@ $^ $(MATH)
-
-queryExample: $(BUILD_PATHS) $(PATHB)advancedQueryInterfaceExample.$(TARGET_EXTENSION)
-	-./$(PATHB)advancedQueryInterfaceExample.$(TARGET_EXTENSION)
-
-$(PATHB)advancedQueryInterfaceExample.$(TARGET_EXTENSION): $(EMBEDDB_OBJECTS) $(QUERY_OBJECTS) $(ADVANCED_QUERY)
-	$(LINK) -o $@ $^ $(MATH)
-
-sequentialDataBenchmark: $(BUILD_PATHS) $(PATHB)sequentialDataBenchmark.$(TARGET_EXTENSION)
-	@echo "Running Sequential Data Benchmark"
-	-./$(PATHB)sequentialDataBenchmark.$(TARGET_EXTENSION)
-	@echo "Finished running EmbedDB example file"
-
-$(PATHB)sequentialDataBenchmark.$(TARGET_EXTENSION): $(EMBEDDB_OBJECTS) $(EMBEDDB_SEQUENTIAL_BENCHMARK)
-	$(LINK) -o $@ $^ $(MATH)
+# Transform to results filenames
+RESULTS = $(patsubst test%.cpp,$(PATHR)test%.testpass,$(BASES))
 
 desktop: $(BUILD_PATHS) $(PATHB)desktopMain.$(TARGET_EXTENSION)
 	@echo "Running Desktop File"
 	-./$(PATHB)desktopMain.$(TARGET_EXTENSION)
 	@echo "Finished running EmbedDB example file"
 
-$(PATHB)desktopMain.$(TARGET_EXTENSION): $(EMBEDDB_OBJECTS) $(EMBEDDB_DESKTOP)
+$(PATHB)desktopMain.$(TARGET_EXTENSION): $(EMBEDDB_OBJECTS) $(QUERY_OBJECTS) $(EMBEDDB_DESKTOP)
 	$(LINK) -o $@ $^ $(MATH)
 
 test: $(BUILD_PATHS) $(RESULTS)
@@ -109,7 +79,7 @@ $(PATHR)%.testpass: $(PATHB)%.$(TARGET_EXTENSION)
 $(PATHB)test%.$(TARGET_EXTENSION): $(PATHO)test%.o $(EMBEDDB_OBJECTS) $(QUERY_OBJECTS) $(PATHO)unity.o #$(PATHD)Test%.d
 	$(LINK) -o $@ $^ $(MATH)
 
-$(PATHO)%.o:: $(PATHT)%.c
+$(PATHO)%.o:: $(PATHT)%.cpp
 	$(COMPILE) $(CFLAGS) $< -o $@
 
 $(PATHO)%.o:: $(PATHS)%.c
