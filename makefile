@@ -1,6 +1,6 @@
 ifeq ($(OS),Windows_NT)
   ifeq ($(shell uname -s),) # not in a bash-like shell
-	CLEANUP = del /F /Q
+	CLEANUP = rmdir /S /Q
 	MKDIR = mkdir
   else # in a bash-like shell, like msys
 	CLEANUP = rm -r -f
