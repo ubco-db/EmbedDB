@@ -20,7 +20,7 @@ endif
 .PHONY: clean
 .PHONY: test
 
-PATHU = lib/Unity/src/
+PATHU = lib/Unity-Desktop/src/
 PATHS = src/
 PATH_EMBEDDB = src/embedDB/
 PATHSPLINE = src/spline/
