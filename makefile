@@ -28,8 +28,6 @@ PATH_QUERY = src/query-interface/
 PATH_UTILITY = lib/EmbedDB-Utility/
 PATH_FILE_INTERFACE = lib/Desktop-File-Interface/
 
-# PATHT = $(wildcard test/*/)
-# PATHT = test/test_embedDB/
 PATHT = test/
 PATHB = build/
 PATHD = build/depends/
@@ -73,17 +71,20 @@ test: $(BUILD_PATHS) $(RESULTS)
 	$(PYTHON) ./scripts/stylize_as_junit.py
 
 $(PATHR)%.testpass: $(PATHB)%.$(TARGET_EXTENSION)
+	$(MKDIR) $(@D)
 	-./$< > $@ 2>&1
 
 $(PATHB)test%.$(TARGET_EXTENSION): $(PATHO)test%.o $(EMBEDDB_OBJECTS) $(QUERY_OBJECTS) $(PATHO)unity.o #$(PATHD)Test%.d
-	$(LINK) -o $(PATHB)$(@F).$(TARGET_EXTENSION) $^ $(MATH)
+	$(MKDIR) $(@D)
+	$(LINK) -o $@ $^ $(MATH)
 
 $(PATHO)%.o:: $(PATHT)%.cpp
-	$(COMPILE) $(CFLAGS) $< -o $(PATHO)$(@F).o
+	$(MKDIR) $(@D)
+	$(COMPILE) $(CFLAGS) $< -o $@
 
 $(PATHO)%.o:: $(PATHS)%.c
 	$(COMPILE) $(CFLAGS) $< -o $@
-
+	
 $(PATHO)%.o:: $(PATHSPLINE)%.c
 	$(COMPILE) $(CFLAGS) $< -o $@
 
