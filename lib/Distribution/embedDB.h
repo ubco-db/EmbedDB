@@ -401,8 +401,10 @@ typedef uint16_t count_t;
 
 #define EMBEDDB_NO_VAR_DATA UINT32_MAX
 
+#if !defined(ARDUINO) || defined(DIST)
 #define max(a, b) ((a) > (b) ? (a) : (b))
 #define min(a, b) ((a) < (b) ? (a) : (b))
+#endif
 
 #define EMBEDDB_GET_COUNT(x) *((count_t *)((int8_t *)x + EMBEDDB_COUNT_OFFSET))
 #define EMBEDDB_INC_COUNT(x) *((count_t *)((int8_t *)x + EMBEDDB_COUNT_OFFSET)) = *((count_t *)((int8_t *)x + EMBEDDB_COUNT_OFFSET)) + 1
