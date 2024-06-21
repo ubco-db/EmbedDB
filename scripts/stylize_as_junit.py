@@ -150,7 +150,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="""Takes as input the collection of *.testpass and *.testfail result
         files, and converts them to a JUnit formatted XML.""")
     parser.add_argument('targets_dir', metavar='result_file_directory',
-                        type=str, nargs='?', default='build/results',
+                        type=str, nargs='?', default='build/results/',
                         help="""The location of your results files.
                         Defaults to current directory if not specified.""")
     parser.add_argument('root_path', nargs='?',
@@ -164,7 +164,7 @@ if __name__ == '__main__':
     if args.targets_dir[-1] != '/':
         args.targets_dir += '/'
     targets = list(map(lambda x: x.replace('\\', '/'),
-                   glob(args.targets_dir + '*.test*')))
+                   glob(args.targets_dir + 'test*/*.test*')))
     if len(targets) == 0:
         raise Exception(
             "No *.testpass or *.testfail files found in '%s'" % args.targets_dir)

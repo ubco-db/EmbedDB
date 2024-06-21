@@ -122,9 +122,9 @@ $(PATHA):
 	$(MKDIR) $(PATHA)
 
 clean:
-	$(CLEANUP) $(PATHO)*.o
-	$(CLEANUP) $(PATHB)*.$(TARGET_EXTENSION)
-	$(CLEANUP) $(PATHR)*.testpass
+	$(CLEANUP) $(PATHO)*/*.o
+	$(CLEANUP) $(PATHB)*/*.$(TARGET_EXTENSION)
+	$(CLEANUP) $(PATHR)*/*.testpass
 	$(CLEANUP) $(PATHA)*.png
 	$(CLEANUP) $(PATHA)*.bin
 	$(CLEANUP) $(PATHR)*.xml
