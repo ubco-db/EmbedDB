@@ -3,7 +3,7 @@ ifeq ($(OS),Windows_NT)
 	CLEANUP = del /F /Q
 	MKDIR = mkdir
   else # in a bash-like shell, like msys
-	CLEANUP = rm -f
+	CLEANUP = rm -r -f
 	MKDIR = mkdir -p
   endif
   	MATH=
@@ -11,7 +11,7 @@ ifeq ($(OS),Windows_NT)
 	TARGET_EXTENSION=exe
 else
 	MATH = -lm
-	CLEANUP = rm -f
+	CLEANUP = rm -r -f
 	MKDIR = mkdir -p
 	TARGET_EXTENSION=out
 	PYTHON=python3
@@ -122,12 +122,7 @@ $(PATHA):
 	$(MKDIR) $(PATHA)
 
 clean:
-	$(CLEANUP) $(PATHO)*/*.o
-	$(CLEANUP) $(PATHB)*/*.$(TARGET_EXTENSION)
-	$(CLEANUP) $(PATHR)*/*.testpass
-	$(CLEANUP) $(PATHA)*.png
-	$(CLEANUP) $(PATHA)*.bin
-	$(CLEANUP) $(PATHR)*.xml
+	$(CLEANUP) $(PATHB)
 
 .PRECIOUS: $(PATHB)Test%.$(TARGET_EXTENSION)
 .PRECIOUS: $(PATHD)%.d
