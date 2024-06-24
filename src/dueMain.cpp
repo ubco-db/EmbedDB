@@ -57,7 +57,9 @@ static ArduinoOutStream cout(Serial);
  * 3 is for the example program
  *
  */
+#ifndef WHICH_PROGRAM
 #define WHICH_PROGRAM 0
+#endif
 
 #if WHICH_PROGRAM == 0
 #include "embedDBExample.h"
@@ -100,13 +102,13 @@ void setup() {
 
     init_sdcard((void *)&sd);
 #if WHICH_PROGRAM == 0
-    runalltests_embedDB();
-#elif WHICH_PROGRAM == 1
-    test_vardata();
-#elif WHICH_PROGRAM == 2
-    advancedQueryExample();
-#elif WHICH_PROGRAM == 3
     embedDBExample();
+#elif WHICH_PROGRAM == 1
+    runalltests_embedDB();
+#elif WHICH_PROGRAM == 2
+    test_vardata();
+#elif WHICH_PROGRAM == 3
+    advancedQueryExample();
 #endif
 }
 

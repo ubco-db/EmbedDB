@@ -59,9 +59,9 @@ DEPEND=gcc -MM -MG -MF
 RESULTS = $(patsubst $(PATHT)test%.cpp,$(PATHR)test%.testpass,$(SRCT))
 
 build: $(BUILD_PATHS) $(PATHB)desktopMain.$(TARGET_EXTENSION)
-	@echo "Running Desktop File"
+	@echo "Running EmbedDB Desktop Build File"
 	-./$(PATHB)desktopMain.$(TARGET_EXTENSION)
-	@echo "Finished running EmbedDB example file"
+	@echo "Finished EmbedDB Desktop Build"
 
 $(PATHB)desktopMain.$(TARGET_EXTENSION): $(EMBEDDB_OBJECTS) $(QUERY_OBJECTS) $(EMBEDDB_DESKTOP)
 	$(LINK) -o $@ $^ $(MATH)

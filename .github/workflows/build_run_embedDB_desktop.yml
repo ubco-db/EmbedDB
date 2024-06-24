@@ -92,5 +92,23 @@ jobs:
 
       steps:
           - uses: actions/checkout@v3
-          - name: Build and Run
-            run: make build
+          
+          - name: Run EmbedDB Example
+            run: | 
+              make clean
+              make build
+
+          - name: Run EmbedDB Sequential Data Benchmark
+            run: |
+              make clean
+              make build CFLAGS="-DWHICH_PROGRAM=1"
+
+          - name: Run EmbedDB Variable Data Benchmark
+            run: |
+              make clean
+              make build CFLAGS="-DWHICH_PROGRAM=2"
+
+          - name: Run EmbedDB Query Interface Benchmark
+            run: |
+              make clean
+              make build CFLAGS="-DWHICH_PROGRAM=3"
