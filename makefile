@@ -38,7 +38,8 @@ PATHA = build/artifacts/
 
 BUILD_PATHS = $(PATHB) $(PATHD) $(PATHO) $(PATHR) $(PATHA)
 
-EMBEDDB_OBJECTS = $(PATHO)embedDB.o $(PATHO)spline.o $(PATHO)radixspline.o $(PATHO)embedDBUtility.o $(PATHO)desktopFileInterface.o 
+EMBEDDB_OBJECTS = $(PATHO)embedDB.o $(PATHO)spline.o $(PATHO)radixspline.o $(PATHO)embedDBUtility.o
+EMBEDDB_FILE_INTERFACE = $(PATHO)desktopFileInterface.o
 
 QUERY_OBJECTS = $(PATHO)schema.o $(PATHO)advancedQueries.o
 
@@ -64,7 +65,15 @@ build: $(BUILD_PATHS) $(PATHB)desktopMain.$(TARGET_EXTENSION)
 	-./$(PATHB)desktopMain.$(TARGET_EXTENSION)
 	@echo "Finished EmbedDB Desktop Build"
 
-$(PATHB)desktopMain.$(TARGET_EXTENSION): $(EMBEDDB_OBJECTS) $(QUERY_OBJECTS) $(EMBEDDB_DESKTOP)
+$(PATHB)desktopMain.$(TARGET_EXTENSION): $(EMBEDDB_OBJECTS) $(QUERY_OBJECTS) $(EMBEDDB_DESKTOP) $(EMBEDDB_FILE_INTERFACE)
+	$(LINK) -o $@ $^ $(MATH)
+
+dist: $(BUILD_PATHS) $(PATHB)distributionMain.$(TARGET_EXTENSION)
+	@echo "Running EmbedDB Distribution Desktop Build File"
+	-./$(PATHB)distributionMain.$(TARGET_EXTENSION)
+	@echo "Finished EmbedDB Distribution Desktop Build"
+
+$(PATHB)distributionMain.$(TARGET_EXTENSION): $(PATHO)distribution.o $(EMBEDDB_DESKTOP) $(EMBEDDB_FILE_INTERFACE)
 	$(LINK) -o $@ $^ $(MATH)
 
 test: $(BUILD_PATHS) $(RESULTS)
@@ -75,12 +84,15 @@ $(PATHR)%.testpass: $(PATHB)%.$(TARGET_EXTENSION)
 	$(MKDIR) $(@D)
 	-./$< > $@ 2>&1
 
-$(PATHB)test%.$(TARGET_EXTENSION): $(PATHO)test%.o $(EMBEDDB_OBJECTS) $(QUERY_OBJECTS) $(PATHO)unity.o #$(PATHD)Test%.d
+$(PATHB)test%.$(TARGET_EXTENSION): $(PATHO)test%.o $(EMBEDDB_OBJECTS) $(QUERY_OBJECTS) $(EMBEDDB_FILE_INTERFACE) $(PATHO)unity.o #$(PATHD)Test%.d
 	$(MKDIR) $(@D)
 	$(LINK) -o $@ $^ $(MATH)
 
 $(PATHO)%.o:: $(PATHT)%.cpp
 	$(MKDIR) $(@D)
+	$(COMPILE) $(CFLAGS) $< -o $@
+
+$(PATHO)distribution.o:: $(PATH_DISTRIBUTION)embedDB.c
 	$(COMPILE) $(CFLAGS) $< -o $@
 
 $(PATHO)%.o:: $(PATHS)%.c
