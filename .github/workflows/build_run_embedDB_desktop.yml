@@ -5,6 +5,7 @@ on:
 
 jobs:
     build_platformIO:
+        name: Build and Run EmbeDB Using PlatformIO
         runs-on: ${{ matrix.os }}
         strategy:
             matrix:
@@ -32,20 +33,20 @@ jobs:
 
             - name: Run EmbedDB Example
               run: |
-                    $EXPORT_COMMAND PLATFORMIO_BUILD_FLAGS="-DWHICH_PROGRAM=0 -lm"
+                    ${{ env.EXPORT_COMMAND }} PLATFORMIO_BUILD_FLAGS="-DWHICH_PROGRAM=0 -lm"
                     pio run -e desktop -t exec
 
             - name: Run EmbedDB Sequential Data Benchmark
               run: |
-                    $EXPORT_COMMAND  PLATFORMIO_BUILD_FLAGS="-DWHICH_PROGRAM=1 -lm"
+                    ${{ env.EXPORT_COMMAND }} PLATFORMIO_BUILD_FLAGS="-DWHICH_PROGRAM=1 -lm"
                     pio run -e desktop -t exec
             
             - name: Run EmbedDB Variable Data Benchmark
               run: |
-                    $EXPORT_COMMAND  PLATFORMIO_BUILD_FLAGS="-DWHICH_PROGRAM=2 -lm"
+                    ${{ env.EXPORT_COMMAND }} PLATFORMIO_BUILD_FLAGS="-DWHICH_PROGRAM=2 -lm"
                     pio run -e desktop -t exec
                 
             - name: Run EmbedDB Query Interface Benchmark
               run: |
-                    $EXPORT_COMMAND  PLATFORMIO_BUILD_FLAGS="-DWHICH_PROGRAM=3 -lm"
+                    ${{ env.EXPORT_COMMAND }} PLATFORMIO_BUILD_FLAGS="-DWHICH_PROGRAM=3 -lm"
                     pio run -e desktop -t exec
