@@ -18,7 +18,20 @@ jobs:
               run: |
                 python -m pip install --upgrade pip
                 python -m pip install platformio
-            - name: Run PlatformIO
+            - name: Run EmbedDB Example
               run: |
-                pio run -e desktop -t exec
+                    export PLATFORMIO_BUILD_FLAGS="-DWHICH_PROGRAM=0 -lm"
+                    pio run -e desktop -t exec
+            - name: Run EmbedDB Sequential Data Benchmark
+              run: |
+                    export PLATFORMIO_BUILD_FLAGS="-DWHICH_PROGRAM=1 -lm"
+                    pio run -e desktop -t exec
+            - name: Run EmbedDB Variable Data Benchmark
+              run: |
+                    export PLATFORMIO_BUILD_FLAGS="-DWHICH_PROGRAM=2 -lm"
+                    pio run -e desktop -t exec
+            - name: Run EmbedDB Query Interface Benchmark
+              run: |
+                    export PLATFORMIO_BUILD_FLAGS="-DWHICH_PROGRAM=3 -lm"
+                    pio run -e desktop -t exec
     
