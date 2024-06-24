@@ -75,10 +75,22 @@ jobs:
               run: pio test -e desktop --junit-output-path "results.xml"
 
             - name: Publish Unit Test Results
-              if: always()
+              if: matrix.os == 'ubuntu-latest'
               uses: EnricoMi/publish-unit-test-result-action/composite@v2
               with:
                 github_token: ${{ github.token }}
                 files: results.xml
-                check_name: PlatformIO Unit Test Results
-        
+                check_name: PlatformIO Ubuntu Unit Test Results
+
+    build_make:
+      name: Build and Run EmbedDB using Makefile
+
+      runs-on: ${{ matrix.os }}
+      strategy:
+          matrix:
+              os: [ubuntu-latest, windows-latest]
+
+      steps:
+          - uses: actions/checkout@v3
+          - name: Build and Run
+            run: make desktop
