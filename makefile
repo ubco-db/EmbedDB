@@ -27,6 +27,7 @@ PATHSPLINE = src/spline/
 PATH_QUERY = src/query-interface/
 PATH_UTILITY = lib/EmbedDB-Utility/
 PATH_FILE_INTERFACE = lib/Desktop-File-Interface/
+PATH_DISTRIBUTION = lib/Distribution/
 
 PATHT = test/
 PATHB = build/
@@ -43,7 +44,7 @@ QUERY_OBJECTS = $(PATHO)schema.o $(PATHO)advancedQueries.o
 
 TEST_FLAGS = -I. -I $(PATHU) -I $(PATHS) -I$(PATH_UTILITY) -I$(PATH_FILE_INTERFACE) -D TEST
 
-EXAMPLE_FLAGS = -I. -I$(PATHS) -I$(PATH_UTILITY) -I$(PATH_FILE_INTERFACE) -D PRINT_ERRORS
+EXAMPLE_FLAGS = -I. -I$(PATHS) -I$(PATH_UTILITY) -I$(PATH_FILE_INTERFACE) -I$(PATH_DISTRIBUTION) -D PRINT_ERRORS
 
 override CFLAGS += $(if $(filter test,$(MAKECMDGOALS)),$(TEST_FLAGS),$(EXAMPLE_FLAGS))
 
@@ -90,6 +91,9 @@ $(PATHO)%.o:: $(PATHSPLINE)%.c
 
 $(PATHO)%.o:: $(PATH_EMBEDDB)%.c
 	$(COMPILE) $(CFLAGS) $< -o $@
+
+$(PATHO)%.o:: $(PATH_DISTRIBUTION)%.c
+	$(COMPILE) -I$(PATH_UTILITY) -I$(PATH_FILE_INTERFACE) -DPRINT_ERRORS -I$(PATH_DISTRIBUTION) $< -o $@
 
 $(PATHO)%.o:: $(PATH_UTILITY)%.c
 	$(COMPILE) $(CFLAGS) $< -o $@
