@@ -5,7 +5,7 @@ on:
 
 jobs:
     build_platformIO:
-        name: Build and Run EmbeDB Using PlatformIO
+        name: Build and Run EmbedDB Using PlatformIO
         runs-on: ${{ matrix.os }}
         strategy:
             matrix:
@@ -33,20 +33,44 @@ jobs:
 
             - name: Run EmbedDB Example
               run: |
+                    pio run -e desktop -t fullclean
                     ${{ env.EXPORT_COMMAND }} PLATFORMIO_BUILD_FLAGS="-DWHICH_PROGRAM=0 -lm"
                     pio run -e desktop -t exec
 
             - name: Run EmbedDB Sequential Data Benchmark
               run: |
+                    pio run -e desktop -t fullclean
                     ${{ env.EXPORT_COMMAND }} PLATFORMIO_BUILD_FLAGS="-DWHICH_PROGRAM=1 -lm"
                     pio run -e desktop -t exec
             
             - name: Run EmbedDB Variable Data Benchmark
               run: |
+                    pio run -e desktop -t fullclean
                     ${{ env.EXPORT_COMMAND }} PLATFORMIO_BUILD_FLAGS="-DWHICH_PROGRAM=2 -lm"
                     pio run -e desktop -t exec
                 
             - name: Run EmbedDB Query Interface Benchmark
               run: |
+                    pio run -e desktop -t fullclean
                     ${{ env.EXPORT_COMMAND }} PLATFORMIO_BUILD_FLAGS="-DWHICH_PROGRAM=3 -lm"
                     pio run -e desktop -t exec
+        
+    test_platformIO:
+        name: Test EmbedDB using PlatformIO
+        needs: build_platformIO
+        runs-on: ${{ matrix.os }}
+        strategy:
+            matrix:
+                os: [ubuntu-latest, windows-latest]
+        
+        steps:
+            - uses: actions/checkout@v3
+            - name: Set up Python
+              uses: actions/setup-python@v4
+            - name: Install PlatformIO
+              run: |
+                python -m pip install --upgrade pip
+                python -m pip install platformio
+            - name: Run Tests
+              run: pio test -e desktop -vv
+        
