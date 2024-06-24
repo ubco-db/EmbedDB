@@ -40,7 +40,7 @@
 #include <string.h>
 #include <time.h>
 
-#include "../embedDB/embedDB.h"
+#include "embedDB/embedDB.h"
 #include "embedDBUtility.h"
 
 /*
