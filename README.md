@@ -62,7 +62,7 @@ Core source files needed: [embedDB.h](distribution/embedDB.h), [embedDB.c](distr
 
 ### Running Our Code
 
-To run our project on your machine, follow the [setup](docs/setup.md) instructions.
+To run our project on your machine, follow the [setup](docs/setup.md) instructions for embedded platforms or see the [desktop](docs/desktop.md) for running on Windows and Linux.
 
 If you want to run the distribution version of the project, please look at the [distribution](docs/distribution.md) instructions.
 
@@ -76,6 +76,8 @@ Examples:
 ## Documentation
 
 - [Setup & Usage](docs/usageInfo.md)
+- [Desktop Usage](docs/desktop.md)
+- [Distribution Version](docs/distribution.md)
 - [Simple Query Interface](docs/advancedQueries.md)
 - [Configuring a File Interface](docs/fileInterface.md)
 - [Performance Benchmarks](benchmarks/README.md)
