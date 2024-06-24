@@ -72,5 +72,13 @@ jobs:
                 python -m pip install --upgrade pip
                 python -m pip install platformio
             - name: Run Tests
-              run: pio test -e desktop -vv
+              run: pio test -e desktop -vv --json-output-path "results.json"
+
+            - name: Publish Unit Test Results
+              if: always()
+              uses: EnricoMi/publish-unit-test-result-action/composite@v2
+              with:
+                github_token: ${{ github.token }}
+                files: results.json
+                check_name: PlatformIO Unit Test Results
         
