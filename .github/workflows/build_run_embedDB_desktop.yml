@@ -12,26 +12,40 @@ jobs:
         
         steps:
             - uses: actions/checkout@v3
+
+            - name: Set environment variable
+              run: |
+                if [[ "$RUNNER_OS" == "Windows" ]]; then
+                    echo "EXPORT_COMMAND=set" >> $GITHUB_ENV
+                else
+                    echo "EXPORT_COMMAND=export" >> $GITHUB_ENV
+                fi
+              shell: bash
+
             - name: Set up Python
               uses: actions/setup-python@v4
+            
             - name: Install PlatformIO
               run: |
                 python -m pip install --upgrade pip
                 python -m pip install platformio
+
             - name: Run EmbedDB Example
               run: |
-                    export PLATFORMIO_BUILD_FLAGS="-DWHICH_PROGRAM=0 -lm"
+                    $EXPORT_COMMAND PLATFORMIO_BUILD_FLAGS="-DWHICH_PROGRAM=0 -lm"
                     pio run -e desktop -t exec
+
             - name: Run EmbedDB Sequential Data Benchmark
               run: |
-                    export PLATFORMIO_BUILD_FLAGS="-DWHICH_PROGRAM=1 -lm"
+                    $EXPORT_COMMAND  PLATFORMIO_BUILD_FLAGS="-DWHICH_PROGRAM=1 -lm"
                     pio run -e desktop -t exec
+            
             - name: Run EmbedDB Variable Data Benchmark
               run: |
-                    export PLATFORMIO_BUILD_FLAGS="-DWHICH_PROGRAM=2 -lm"
+                    $EXPORT_COMMAND  PLATFORMIO_BUILD_FLAGS="-DWHICH_PROGRAM=2 -lm"
                     pio run -e desktop -t exec
+                
             - name: Run EmbedDB Query Interface Benchmark
               run: |
-                    export PLATFORMIO_BUILD_FLAGS="-DWHICH_PROGRAM=3 -lm"
+                    $EXPORT_COMMAND  PLATFORMIO_BUILD_FLAGS="-DWHICH_PROGRAM=3 -lm"
                     pio run -e desktop -t exec
-    
