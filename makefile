@@ -58,7 +58,7 @@ DEPEND=gcc -MM -MG -MF
 # Transform to results filenames
 RESULTS = $(patsubst $(PATHT)test%.cpp,$(PATHR)test%.testpass,$(SRCT))
 
-desktop: $(BUILD_PATHS) $(PATHB)desktopMain.$(TARGET_EXTENSION)
+build: $(BUILD_PATHS) $(PATHB)desktopMain.$(TARGET_EXTENSION)
 	@echo "Running Desktop File"
 	-./$(PATHB)desktopMain.$(TARGET_EXTENSION)
 	@echo "Finished running EmbedDB example file"
