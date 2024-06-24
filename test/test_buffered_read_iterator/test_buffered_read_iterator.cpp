@@ -35,8 +35,6 @@
 #include <math.h>
 #include <string.h>
 
-#include <iostream>
-
 #ifdef DIST
 #include "embedDB.h"
 #else
