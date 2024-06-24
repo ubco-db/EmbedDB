@@ -182,6 +182,7 @@ void setUpEmbedDB() {
 }
 
 void test_projection() {
+    TEST_ASSERT_EQUAL_INT(0, 1);
     embedDBIterator it;
     it.minKey = NULL;
     it.maxKey = NULL;
