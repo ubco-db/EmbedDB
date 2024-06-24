@@ -83,32 +83,58 @@ jobs:
                 check_name: PlatformIO Ubuntu Unit Test Results
 
     build_make:
-      name: Build and Run EmbedDB using Makefile
+        name: Build and Run EmbedDB using Makefile
 
-      runs-on: ${{ matrix.os }}
-      strategy:
-          matrix:
-              os: [ubuntu-latest, windows-latest]
+        runs-on: ${{ matrix.os }}
+        strategy:
+            matrix:
+                os: [ubuntu-latest, windows-latest]
 
-      steps:
+        steps:
+            - uses: actions/checkout@v3
+
+            - name: Run EmbedDB Example
+              run: | 
+                make clean
+                make build
+
+            - name: Run EmbedDB Sequential Data Benchmark
+              run: |
+                make clean
+                make build CFLAGS="-DWHICH_PROGRAM=1"
+
+            - name: Run EmbedDB Variable Data Benchmark
+              run: |
+                make clean
+                make build CFLAGS="-DWHICH_PROGRAM=2"
+
+            - name: Run EmbedDB Query Interface Benchmark
+              run: |
+                make clean
+                make build CFLAGS="-DWHICH_PROGRAM=3"
+
+    test_make:
+        name: Test EmbedDB using Makefile
+        needs: build_make
+
+        runs-on: ${{ matrix.os }}
+        strategy:
+            matrix:
+                os: [ubuntu-latest, windows-latest]
+            
+        steps:
           - uses: actions/checkout@v3
-          
-          - name: Run EmbedDB Example
-            run: | 
-              make clean
-              make build
-
-          - name: Run EmbedDB Sequential Data Benchmark
-            run: |
-              make clean
-              make build CFLAGS="-DWHICH_PROGRAM=1"
-
-          - name: Run EmbedDB Variable Data Benchmark
-            run: |
-              make clean
-              make build CFLAGS="-DWHICH_PROGRAM=2"
-
-          - name: Run EmbedDB Query Interface Benchmark
-            run: |
-              make clean
-              make build CFLAGS="-DWHICH_PROGRAM=3"
+        
+          - name: Get Submodules
+            run: git submodule update --init --recursive
+        
+          - name: Build and Run Unit Tests
+            run: make test
+        
+          - name: Publish Unit Test Results
+            if: matrix.os == 'ubuntu-latest'
+            uses: EnricoMi/publish-unit-test-result-action/composite@v2
+            with:
+              github_token: ${{ github.token }}
+              files: ./build/results/*.xml
+              check_name: Makefile Ubuntu Unit Test Results
