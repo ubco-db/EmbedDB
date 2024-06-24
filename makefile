@@ -40,18 +40,19 @@ BUILD_PATHS = $(PATHB) $(PATHD) $(PATHO) $(PATHR) $(PATHA)
 
 EMBEDDB_OBJECTS = $(PATHO)embedDB.o $(PATHO)spline.o $(PATHO)radixspline.o $(PATHO)embedDBUtility.o
 EMBEDDB_FILE_INTERFACE = $(PATHO)desktopFileInterface.o
-
 QUERY_OBJECTS = $(PATHO)schema.o $(PATHO)advancedQueries.o
+EMBEDDB_DESKTOP = $(PATHO)desktopMain.o
+DISTRIBUTION_OBJECTS = $(PATHO)distribution.o
 
-TEST_FLAGS = -I. -I $(PATHU) -I $(PATHS) -I$(PATH_UTILITY) -I$(PATH_FILE_INTERFACE) -D TEST
+TEST_FLAGS = -I. -I$(PATHU) -I $(PATHS) -I$(PATH_UTILITY) -I$(PATH_FILE_INTERFACE) -D TEST
+EXAMPLE_FLAGS = -I. -I$(PATHS) -I$(PATH_UTILITY) -I$(PATH_FILE_INTERFACE) -I$(PATH_DISTRIBUTION) -DPRINT_ERRORS
+TEST_DIST_FLAGS = -I. -I$(PATHU) -I$(PATH_FILE_INTERFACE) -I$(PATH_DISTRIBUTION) -DPRINT_ERRORS
 
-EXAMPLE_FLAGS = -I. -I$(PATHS) -I$(PATH_UTILITY) -I$(PATH_FILE_INTERFACE) -I$(PATH_DISTRIBUTION) -D PRINT_ERRORS
-
-override CFLAGS += $(if $(filter test,$(MAKECMDGOALS)),$(TEST_FLAGS),$(EXAMPLE_FLAGS))
+override CFLAGS += $(if $(filter test-dist,$(MAKECMDGOALS)), $(TEST_DIST_FLAGS), $(if $(filter test,$(MAKECMDGOALS)),$(TEST_FLAGS),$(EXAMPLE_FLAGS)) )
 
 SRCT = $(wildcard $(PATHT)*/*.cpp)
 
-EMBEDDB_DESKTOP = $(PATHO)desktopMain.o
+
 
 COMPILE=gcc -c
 LINK=gcc
@@ -73,18 +74,20 @@ dist: $(BUILD_PATHS) $(PATHB)distributionMain.$(TARGET_EXTENSION)
 	-./$(PATHB)distributionMain.$(TARGET_EXTENSION)
 	@echo "Finished EmbedDB Distribution Desktop Build"
 
-$(PATHB)distributionMain.$(TARGET_EXTENSION): $(PATHO)distribution.o $(EMBEDDB_DESKTOP) $(EMBEDDB_FILE_INTERFACE)
+$(PATHB)distributionMain.$(TARGET_EXTENSION): $(DISTRIBUTION_OBJECTS) $(EMBEDDB_DESKTOP) $(EMBEDDB_FILE_INTERFACE)
 	$(LINK) -o $@ $^ $(MATH)
 
 test: $(BUILD_PATHS) $(RESULTS)
 	pip install -r requirements.txt -q
 	$(PYTHON) ./scripts/stylize_as_junit.py
 
+test-dist: $(BUILD_PATHS) $(RESULTS)
+
 $(PATHR)%.testpass: $(PATHB)%.$(TARGET_EXTENSION)
 	$(MKDIR) $(@D)
 	-./$< > $@ 2>&1
 
-$(PATHB)test%.$(TARGET_EXTENSION): $(PATHO)test%.o $(EMBEDDB_OBJECTS) $(QUERY_OBJECTS) $(EMBEDDB_FILE_INTERFACE) $(PATHO)unity.o #$(PATHD)Test%.d
+$(PATHB)test%.$(TARGET_EXTENSION): $(PATHO)test%.o $(if $(filter test-dist,$(MAKECMDGOALS)), $(DISTRIBUTION_OBJECTS), $(EMBEDDB_OBJECTS) $(QUERY_OBJECTS)) $(EMBEDDB_FILE_INTERFACE) $(PATHO)unity.o #$(PATHD)Test%.d
 	$(MKDIR) $(@D)
 	$(LINK) -o $@ $^ $(MATH)
 
