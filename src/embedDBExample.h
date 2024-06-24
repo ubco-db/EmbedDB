@@ -83,7 +83,6 @@
 embedDBState* init_state();
 
 uint32_t embedDBExample() {
-    exit(-1);
     uint32_t totalRecordsInserted = 0;
     uint32_t totalRecordsToInsert = 10;
 
