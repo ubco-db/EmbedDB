@@ -5,7 +5,9 @@
  * 3 is for the example program
  *
  */
+#ifndef WHICH_PROGRAM
 #define WHICH_PROGRAM 3
+#endif
 
 #if WHICH_PROGRAM == 0
 #include "benchmarks/sequentialDataBenchmark.h"
