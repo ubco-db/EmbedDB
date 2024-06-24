@@ -1,0 +1,24 @@
+name: Build Run and Test EmbedDB Desktop
+
+on:
+    push:
+
+jobs:
+    build_platformIO:
+        runs-on: ${{ matrix.os }}
+        strategy:
+            matrix:
+                os: [ubuntu-latest, windows-latest]
+        
+        steps:
+            - uses: actions/checkout@v3
+            - name: Set up Python
+              uses: actions/setup-python@v4
+            - name: Install PlatformIO
+              run: |
+                python -m pip install --upgrade pip
+                python -m pip install platformio
+            - name: Run PlatformIO
+              run: |
+                pio run -e desktop -t exec
+    
