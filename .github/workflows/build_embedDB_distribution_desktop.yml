@@ -2,7 +2,7 @@ name: Build Run and Test EmbedDB Distribution Desktop
 
 on:
     push:
-    #   branches: ["update-distribution"]
+        branches: ["update-distribution"]
 
 jobs:
     build_platformIO:
