@@ -1,6 +1,8 @@
 # Project Setup
 
-Our project uses the [PlatformIO](platformio.org) extension for Visualt Studio Code to compile and run code on embedded devices.
+Our project uses the [PlatformIO](platformio.org) extension for Visualt Studio Code to compile and run code on embedded devices. This project can also be run on both Windows and Linux by following the [desktop setup](desktop.md) instructions.
+
+For information about running the distribution version of the code, see the [distribution](distribution.md) documentation.
 
 ## Requirements
 
@@ -15,10 +17,10 @@ The project includes files for interacting with an SD card on Arduino boards, an
 
 ## Running our Example File
 
-Once your board is configured with a main file, you can run the included [example file](../src/embedDBExample.h) by calling the `embedDBExample()` function from your main file. This file configures an instance of EmbedDB, and performs some basic functions with the database. To run the main file and example, please select the board you want to run in the PlatformIO extension, and under the *General* tab, choose the *Upload and Monitor* option. This will compile the code, upload it to your board, and monitor the serial connection for printed output.
+Once your board is configured with a main file, you can run the included [example file](../src/embedDBExample.h) by calling the `embedDBExample()` function from your main file. This file configures an instance of EmbedDB, and performs some basic functions with the database. To run the main file and example, please select the PlatformIO tab in the sidebar. Then, select the board you want to run the code on under the project tasks menu. For the Arduino Due, you would select *due > General > Upload and Monitor*. This will compile the code, upload it to your board, and monitor the serial connection for output during the runtime.
 
 ## Running the Unit Tests
 
 In order to run the unit tests for this project on a different board, you will need to implement a custom test setup file. Please see the [due](lib\Due\dueTestSetup.cpp) test setup file for an example.
 
-Once you have a custom setup file, you can run the unit tests through the *Advanced* tab under the board you configured.
+Once you have a custom setup file, you can run the unit tests through the *Advanced* tab under the board you configured. For example, to run unit tests on the Arduino Due, select *due > Advanced > Test*. 
