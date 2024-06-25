@@ -46,13 +46,11 @@ DISTRIBUTION_OBJECTS = $(PATHO)distribution.o
 
 TEST_FLAGS = -I. -I$(PATHU) -I $(PATHS) -I$(PATH_UTILITY) -I$(PATH_FILE_INTERFACE) -D TEST
 EXAMPLE_FLAGS = -I. -I$(PATHS) -I$(PATH_UTILITY) -I$(PATH_FILE_INTERFACE) -I$(PATH_DISTRIBUTION) -DPRINT_ERRORS
-TEST_DIST_FLAGS = -I. -I$(PATHU) -I$(PATH_FILE_INTERFACE) -I$(PATH_DISTRIBUTION) -DPRINT_ERRORS
+TEST_DIST_FLAGS = -I. -I$(PATHU) -I$(PATH_FILE_INTERFACE) -I$(PATH_DISTRIBUTION) -DDIST -D TEST
 
 override CFLAGS += $(if $(filter test-dist,$(MAKECMDGOALS)), $(TEST_DIST_FLAGS), $(if $(filter test,$(MAKECMDGOALS)),$(TEST_FLAGS),$(EXAMPLE_FLAGS)) )
 
 SRCT = $(wildcard $(PATHT)*/*.cpp)
-
-
 
 COMPILE=gcc -c
 LINK=gcc
@@ -82,12 +80,14 @@ test: $(BUILD_PATHS) $(RESULTS)
 	$(PYTHON) ./scripts/stylize_as_junit.py
 
 test-dist: $(BUILD_PATHS) $(RESULTS)
+	pip install -r requirements.txt -q
+	$(PYTHON) ./scripts/stylize_as_junit.py
 
 $(PATHR)%.testpass: $(PATHB)%.$(TARGET_EXTENSION)
 	$(MKDIR) $(@D)
 	-./$< > $@ 2>&1
 
-$(PATHB)test%.$(TARGET_EXTENSION): $(PATHO)test%.o $(if $(filter test-dist,$(MAKECMDGOALS)), $(DISTRIBUTION_OBJECTS), $(EMBEDDB_OBJECTS) $(QUERY_OBJECTS)) $(EMBEDDB_FILE_INTERFACE) $(PATHO)unity.o #$(PATHD)Test%.d
+$(PATHB)test%.$(TARGET_EXTENSION): $(PATHO)test%.o $(if $(filter test-dist,$(MAKECMDGOALS)), $(DISTRIBUTION_OBJECTS), $(EMBEDDB_OBJECTS) $(QUERY_OBJECTS)) $(EMBEDDB_FILE_INTERFACE) $(PATHO)unity.o
 	$(MKDIR) $(@D)
 	$(LINK) -o $@ $^ $(MATH)
 
@@ -95,20 +95,17 @@ $(PATHO)%.o:: $(PATHT)%.cpp
 	$(MKDIR) $(@D)
 	$(COMPILE) $(CFLAGS) $< -o $@
 
-$(PATHO)distribution.o:: $(PATH_DISTRIBUTION)embedDB.c
-	$(COMPILE) $(CFLAGS) $< -o $@
+$(PATHO)distribution.o: $(PATH_DISTRIBUTION)embedDB.c
+	$(COMPILE) -I$(PATH_UTILITY) -I$(PATH_FILE_INTERFACE) -DPRINT_ERRORS -I$(PATH_DISTRIBUTION) $< -o $@
 
 $(PATHO)%.o:: $(PATHS)%.c
 	$(COMPILE) $(CFLAGS) $< -o $@
-	
+
 $(PATHO)%.o:: $(PATHSPLINE)%.c
 	$(COMPILE) $(CFLAGS) $< -o $@
 
 $(PATHO)%.o:: $(PATH_EMBEDDB)%.c
 	$(COMPILE) $(CFLAGS) $< -o $@
-
-$(PATHO)%.o:: $(PATH_DISTRIBUTION)%.c
-	$(COMPILE) -I$(PATH_UTILITY) -I$(PATH_FILE_INTERFACE) -DPRINT_ERRORS -I$(PATH_DISTRIBUTION) $< -o $@
 
 $(PATHO)%.o:: $(PATH_UTILITY)%.c
 	$(COMPILE) $(CFLAGS) $< -o $@
