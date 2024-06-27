@@ -34,6 +34,10 @@ int8_t FILE_WRITE(void *buffer, uint32_t pageNum, uint32_t pageSize, void *file)
     return fwrite(buffer, pageSize, 1, fileInfo->file);
 }
 
+int8_t FILE_ERASE(uint32_t startPage, uint32_t endPage, void *file) {
+    return 1;
+}
+
 int8_t FILE_CLOSE(void *file) {
     FILE_INFO *fileInfo = (FILE_INFO *)file;
     fclose(fileInfo->file);
@@ -69,6 +73,7 @@ embedDBFileInterface *getFileInterface() {
     fileInterface->close = FILE_CLOSE;
     fileInterface->read = FILE_READ;
     fileInterface->write = FILE_WRITE;
+    fileInterface->erase = FILE_ERASE;
     fileInterface->open = FILE_OPEN;
     fileInterface->flush = FILE_FLUSH;
     return fileInterface;
