@@ -282,7 +282,6 @@ int8_t embedDBInit(embedDBState *state, size_t indexMaxError) {
 int8_t embedDBInitData(embedDBState *state) {
     state->nextDataPageId = 0;
     state->avgKeyDiff = 1;
-    state->nextDataPageId = 0;
     state->numAvailDataPages = state->numDataPages;
     state->minDataPageId = 0;
 
@@ -322,10 +321,10 @@ int8_t embedDBInitDataFromFile(embedDBState *state) {
 
     bool haveWrappedInMemory = false;
     int count = 0;
-    void *buffer = (int8_t *)state->buffer + state->pageSize;
+    void *buffer = (int8_t *)state->buffer + (state->pageSize * EMBEDDB_DATA_READ_BUFFER);
     while (moreToRead && count < state->numDataPages) {
         memcpy(&logicalPageId, buffer, sizeof(id_t));
-        if (count == 0 || logicalPageId == maxLogicalPageId + 1) {
+        if ((count == 0 || logicalPageId == maxLogicalPageId + 1) && (logicalPageId % state->numDataPages == count)) {
             maxLogicalPageId = logicalPageId;
             physicalPageId++;
             updateMaxiumError(state, buffer);
