@@ -322,10 +322,10 @@ int8_t embedDBInitDataFromFile(embedDBState *state) {
 
     bool haveWrappedInMemory = false;
     int count = 0;
-    void *buffer = (int8_t *)state->buffer + state->pageSize;
+    void *buffer = (int8_t *)state->buffer + state->pageSize * EMBEDDB_DATA_READ_BUFFER;
     while (moreToRead && count < state->numDataPages) {
         memcpy(&logicalPageId, buffer, sizeof(id_t));
-        if (count == 0 || logicalPageId == maxLogicalPageId + 1) {
+        if (logicalPageId == maxLogicalPageId + 1) {
             maxLogicalPageId = logicalPageId;
             physicalPageId++;
             updateMaxiumError(state, buffer);
