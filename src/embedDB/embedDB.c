@@ -180,8 +180,22 @@ int8_t embedDBInit(embedDBState *state, size_t indexMaxError) {
         return -1;
     }
 
+    /* check the number of allocated pages is a multiple of the erase size */
+    if (state->numDataPages % state->eraseSizeInPages != 0) {
+#ifdef PRINT_ERRORS
+        printf("ERROR: The number of allocated data pages must be divisible by the erase size in pages.\n");
+#endif
+        return -1;
+    }
+
     state->recordSize = state->keySize + state->dataSize;
     if (EMBEDDB_USING_VDATA(state->parameters)) {
+        if (state->numVarPages % state->eraseSizeInPages != 0) {
+#ifdef PRINT_ERRORS
+            printf("ERROR: The number of allocated variable data pages must be divisible by the erase size in pages.\n");
+#endif
+            return -1;
+        }
         state->recordSize += 4;
     }
 
@@ -191,8 +205,15 @@ int8_t embedDBInit(embedDBState *state, size_t indexMaxError) {
 
     /* Header size depends on bitmap size: 6 + X bytes: 4 byte id, 2 for record count, X for bitmap. */
     state->headerSize = 6;
-    if (EMBEDDB_USING_INDEX(state->parameters))
+    if (EMBEDDB_USING_INDEX(state->parameters)) {
+        if (state->numIndexPages % state->eraseSizeInPages != 0) {
+#ifdef PRINT_ERRORS
+            printf("ERROR: The number of allocated index pages must be divisible by the erase size in pages.\n");
+#endif
+            return -1;
+        }
         state->headerSize += state->bitmapSize;
+    }
 
     if (EMBEDDB_USING_MAX_MIN(state->parameters))
         state->headerSize += state->keySize * 2 + state->dataSize * 2;
