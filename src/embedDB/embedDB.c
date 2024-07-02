@@ -354,7 +354,7 @@ int8_t embedDBInitDataFromFile(embedDBState *state) {
         moreToRead = !(readPage(state, physicalPageId));
 
         /* there should have been more to read becuase the file should not be empty at this point if it was not empty at the previous block */
-        if (moreToRead) {
+        if (!moreToRead) {
             return -1;
         }
 
