@@ -58,7 +58,7 @@
 #define setupFile setupSDFile
 #define tearDownFile tearDownSDFile
 #define DATA_FILE_PATH "dataFile.bin"
-#define INDEX_FILE_PATH "indexFile.bin"s
+#define INDEX_FILE_PATH "indexFile.bin"
 #define VAR_DATA_FILE_PATH "varFile.bin"
 #else
 #include "desktopFileInterface.h"
@@ -86,8 +86,8 @@ void setupEmbedDB() {
     state->dataFile = setupFile(dataPath);
     state->varFile = setupFile(varPath);
 
-    state->numDataPages = 65;
-    state->numVarPages = 75;
+    state->numDataPages = 64;
+    state->numVarPages = 76;
     state->eraseSizeInPages = 4;
     state->parameters = EMBEDDB_USE_VDATA | EMBEDDB_RESET_DATA;
     state->compareKey = int32Comparator;
@@ -111,8 +111,8 @@ void initalizeEmbedDBFromFile(void) {
     state->dataFile = setupFile(dataPath);
     state->varFile = setupFile(varPath);
 
-    state->numDataPages = 65;
-    state->numVarPages = 75;
+    state->numDataPages = 64;
+    state->numVarPages = 76;
     state->eraseSizeInPages = 4;
     state->parameters = EMBEDDB_USE_VDATA;
     state->compareKey = int32Comparator;
@@ -121,15 +121,18 @@ void initalizeEmbedDBFromFile(void) {
     TEST_ASSERT_EQUAL_INT8_MESSAGE(0, result, "EmbedDB did not initialize correctly.");
 }
 
+void tearDownEmbedDB() {
+    embedDBClose(state);
+    tearDownFile(state->dataFile);
+    tearDownFile(state->varFile);
+}
+
 void setUp() {
     setupEmbedDB();
 }
 
 void tearDown() {
     free(state->buffer);
-    embedDBClose(state);
-    tearDownFile(state->dataFile);
-    tearDownFile(state->varFile);
     free(state->fileInterface);
     free(state);
 }
@@ -158,50 +161,59 @@ void embedDB_variable_data_page_numbers_are_correct() {
         memcpy(&pageNumber, buffer, sizeof(id_t));
         TEST_ASSERT_EQUAL_UINT32_MESSAGE(i, pageNumber, "EmbedDB variable data did not have the correct page number.");
     }
+    tearDownEmbedDB();
 }
 
 void embedDB_variable_data_reloads_with_no_data_correctly() {
+    tearDownEmbedDB();
     tearDown();
     initalizeEmbedDBFromFile();
     TEST_ASSERT_EQUAL_INT8_MESSAGE(8, state->variableDataHeaderSize, "EmbedDB variableDataHeaderSize did not have the correct value after initializing variable data from a file with no records.");
     TEST_ASSERT_EQUAL_UINT32_MESSAGE(8, state->currentVarLoc, "EmbedDB currentVarLoc did not have the correct value after initializing variable data from a file with no records.");
     uint64_t expectedMinVarRecordId = 0;
     TEST_ASSERT_EQUAL_MEMORY_MESSAGE(&expectedMinVarRecordId, &state->minVarRecordId, sizeof(uint64_t), "EmbedDB minVarRecordId did not have the correct value after initializing variable data from a file with no records.");
-    TEST_ASSERT_EQUAL_UINT32_MESSAGE(75, state->numAvailVarPages, "EmbedDB numAvailVarPages did not have the correct value after initializing variable data from a file with no records.");
+    TEST_ASSERT_EQUAL_UINT32_MESSAGE(76, state->numAvailVarPages, "EmbedDB numAvailVarPages did not have the correct value after initializing variable data from a file with no records.");
     TEST_ASSERT_EQUAL_UINT32_MESSAGE(0, state->nextVarPageId, "EmbedDB nextVarPageId did not have the correct value after initializing variable data from a file with no records.");
+    tearDownEmbedDB();
 }
 
 void embedDB_variable_data_reloads_with_one_page_of_data_correctly() {
     insertRecords(30, 100, 10);
+    tearDownEmbedDB();
     tearDown();
     initalizeEmbedDBFromFile();
     TEST_ASSERT_EQUAL_UINT32_MESSAGE(520, state->currentVarLoc, "EmbedDB currentVarLoc did not have the correct value after initializing variable data from a file with one page of records.");
     uint64_t expectedMinVarRecordId = 0;
     TEST_ASSERT_EQUAL_MEMORY_MESSAGE(&expectedMinVarRecordId, &state->minVarRecordId, sizeof(uint64_t), "EmbedDB minVarRecordId did not have the correct value after initializing variable data from a file with one page of records.");
-    TEST_ASSERT_EQUAL_UINT32_MESSAGE(74, state->numAvailVarPages, "EmbedDB numAvailVarPages did not have the correct value after initializing variable data from a file with one page of records.");
+    TEST_ASSERT_EQUAL_UINT32_MESSAGE(75, state->numAvailVarPages, "EmbedDB numAvailVarPages did not have the correct value after initializing variable data from a file with one page of records.");
     TEST_ASSERT_EQUAL_UINT32_MESSAGE(1, state->nextVarPageId, "EmbedDB nextVarPageId did not have the correct value after initializing variable data from a file with one page of records.");
+    tearDownEmbedDB();
 }
 
 void embedDB_variable_data_reloads_with_sixteen_pages_of_data_correctly() {
     insertRecords(337, 1648, 10);
+    tearDownEmbedDB();
     tearDown();
     initalizeEmbedDBFromFile();
     TEST_ASSERT_EQUAL_UINT32_MESSAGE(8200, state->currentVarLoc, "EmbedDB currentVarLoc did not have the correct value after initializing variable data from a file with one page of records.");
     uint64_t expectedMinVarRecordId = 0;
     TEST_ASSERT_EQUAL_MEMORY_MESSAGE(&expectedMinVarRecordId, &state->minVarRecordId, sizeof(uint64_t), "EmbedDB minVarRecordId did not have the correct value after initializing variable data from a file with one page of records.");
-    TEST_ASSERT_EQUAL_UINT32_MESSAGE(59, state->numAvailVarPages, "EmbedDB numAvailVarPages did not have the correct value after initializing variable data from a file with one page of records.");
+    TEST_ASSERT_EQUAL_UINT32_MESSAGE(60, state->numAvailVarPages, "EmbedDB numAvailVarPages did not have the correct value after initializing variable data from a file with one page of records.");
     TEST_ASSERT_EQUAL_UINT32_MESSAGE(16, state->nextVarPageId, "EmbedDB nextVarPageId did not have the correct value after initializing variable data from a file with one page of records.");
+    tearDownEmbedDB();
 }
 
-void embedDB_variable_data_reloads_with_one_hundred_six_pages_of_data_correctly() {
+void embedDB_variable_data_reloads_with_fifty_three_pages_of_data_correctly() {
     insertRecords(2227, 100, 10);
+    tearDownEmbedDB();
     tearDown();
     initalizeEmbedDBFromFile();
-    TEST_ASSERT_EQUAL_UINT32_MESSAGE(15880, state->currentVarLoc, "EmbedDB currentVarLoc did not have the correct value after initializing variable data from a file with one page of records.");
-    uint64_t expectedMinVarRecordId = 773;
-    TEST_ASSERT_EQUAL_MEMORY_MESSAGE(&expectedMinVarRecordId, &state->minVarRecordId, sizeof(uint64_t), "EmbedDB minVarRecordId did not have the correct value after initializing variable data from a file with one page of records.");
-    TEST_ASSERT_EQUAL_UINT32_MESSAGE(0, state->numAvailVarPages, "EmbedDB numAvailVarPages did not have the correct value after initializing variable data from a file with one page of records.");
-    TEST_ASSERT_EQUAL_UINT32_MESSAGE(106, state->nextVarPageId, "EmbedDB nextVarPageId did not have the correct value after initializing variable data from a file with one page of records.");
+    TEST_ASSERT_EQUAL_UINT32_MESSAGE(15368, state->currentVarLoc, "EmbedDB currentVarLoc did not have the correct value after initializing variable data from a file with 106 pages of records.");
+    uint64_t expectedMinVarRecordId = 761;
+    TEST_ASSERT_EQUAL_UINT64_MESSAGE(expectedMinVarRecordId, state->minVarRecordId, "EmbedDB minVarRecordId did not have the correct value after initializing variable data from a file with 106 pages of records.");
+    TEST_ASSERT_EQUAL_UINT32_MESSAGE(0, state->numAvailVarPages, "EmbedDB numAvailVarPages did not have the correct value after initializing variable data from a file with 106 pages of records.");
+    TEST_ASSERT_EQUAL_UINT32_MESSAGE(106, state->nextVarPageId, "EmbedDB nextVarPageId did not have the correct value after initializing variable data from a file with 106 pages of records.");
+    tearDownEmbedDB();
 }
 
 void embedDB_variable_data_reloads_and_queries_with_thirty_one_pages_of_data_correctly() {
@@ -209,6 +221,7 @@ void embedDB_variable_data_reloads_and_queries_with_thirty_one_pages_of_data_cor
     int32_t data = 10;
     insertRecords(651, key, data);
     embedDBFlush(state);
+    tearDownEmbedDB();
     tearDown();
     initalizeEmbedDBFromFile();
     int32_t recordData = 0;
@@ -236,6 +249,7 @@ void embedDB_variable_data_reloads_and_queries_with_thirty_one_pages_of_data_cor
         data++;
         free(stream);
     }
+    tearDownEmbedDB();
 }
 
 void embedDB_variable_data_reloads_and_queries_with_two_hundred_forty_seven_pages_of_data_correctly() {
@@ -243,6 +257,7 @@ void embedDB_variable_data_reloads_and_queries_with_two_hundred_forty_seven_page
     int32_t data = 13467895;
     insertRecords(5187, key, data);
     embedDBFlush(state);
+    tearDownEmbedDB();
     tearDown();
     initalizeEmbedDBFromFile();
     int32_t recordData = 0;
@@ -250,12 +265,12 @@ void embedDB_variable_data_reloads_and_queries_with_two_hundred_forty_seven_page
     char variableDataBuffer[13];
     char message[120];
     embedDBVarDataStream *stream = NULL;
-    key = 9277;
-    data = 13470374;
+    key = 9319;
+    data = 13470416;
     /* Records inserted before reload */
-    for (int i = 0; i < 2708; i++) {
+    for (int i = 0; i < 2667; i++) {
         int8_t getResult = embedDBGetVar(state, &key, &recordData, &stream);
-        if (i > 1163) {
+        if (i > 1091) {
             snprintf(message, 120, "EmbedDB get encountered an error fetching the data for key %li.", key);
             TEST_ASSERT_EQUAL_INT8_MESSAGE(0, getResult, message);
             snprintf(message, 120, "EmbedDB get did not return correct data for a record inserted before reloading (key %li).", key);
@@ -278,6 +293,7 @@ void embedDB_variable_data_reloads_and_queries_with_two_hundred_forty_seven_page
         key++;
         data++;
     }
+    tearDownEmbedDB();
 }
 
 int runUnityTests() {
@@ -286,7 +302,7 @@ int runUnityTests() {
     RUN_TEST(embedDB_variable_data_reloads_with_no_data_correctly);
     RUN_TEST(embedDB_variable_data_reloads_with_one_page_of_data_correctly);
     RUN_TEST(embedDB_variable_data_reloads_with_sixteen_pages_of_data_correctly);
-    RUN_TEST(embedDB_variable_data_reloads_with_one_hundred_six_pages_of_data_correctly);
+    RUN_TEST(embedDB_variable_data_reloads_with_fifty_three_pages_of_data_correctly);
     RUN_TEST(embedDB_variable_data_reloads_and_queries_with_thirty_one_pages_of_data_correctly);
     RUN_TEST(embedDB_variable_data_reloads_and_queries_with_two_hundred_forty_seven_pages_of_data_correctly);
     return UNITY_END();
