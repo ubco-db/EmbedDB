@@ -343,6 +343,9 @@ int8_t embedDBInitDataFromFile(embedDBState *state) {
     /* default case is we start at beginning of data file*/
     id_t physicalPageIDOfSmallestData = 0;
     count_t blockSize = state->eraseSizeInPages;
+    if (!moreToRead && count == 0) {
+        return 0;
+    }
 
     /* check if data exists at this location */
     if (moreToRead && count < state->numDataPages) {
