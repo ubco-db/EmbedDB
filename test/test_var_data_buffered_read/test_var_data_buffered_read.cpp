@@ -460,7 +460,7 @@ embedDBState *init_state() {
     TEST_ASSERT_NOT_NULL_MESSAGE(state->buffer, "Failed to allocate EmbedDB buffer.");
 
     // address level parameters
-    state->numDataPages = 30;
+    state->numDataPages = 32;
     state->numIndexPages = 8;
     state->numVarPages = 12;
     state->eraseSizeInPages = 4;

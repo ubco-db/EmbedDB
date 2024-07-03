@@ -84,6 +84,10 @@ int8_t DF_WRITE(void *buffer, uint32_t pageNum, uint32_t pageSize, void *file) {
     }
 }
 
+int8_t DF_ERASE(uint32_t startPage, uint32_t endPage, void *file) {
+    return 1;
+}
+
 int8_t DF_CLOSE(void *file) {
     return 1;
 }
@@ -101,6 +105,7 @@ embedDBFileInterface *getDataflashInterface() {
     fileInterface->close = DF_CLOSE;
     fileInterface->read = DF_READ;
     fileInterface->write = DF_WRITE;
+    fileInterface->erase = DF_ERASE;
     fileInterface->open = DF_OPEN;
     fileInterface->flush = DF_FLUSH;
     return fileInterface;
