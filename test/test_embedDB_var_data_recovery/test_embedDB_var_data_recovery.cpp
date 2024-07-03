@@ -68,6 +68,7 @@
 #endif
 
 #include "unity.h"
+#define UNITY_SUPPORT_64
 
 embedDBState *state;
 
