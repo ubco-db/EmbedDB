@@ -319,6 +319,35 @@ void embedDB_recovery_algorithm_wraps_when_skipping_to_next_block() {
     TEST_ASSERT_EQUAL_UINT32_MESSAGE(4, state->numAvailDataPages, "EmbedDB numAvailDataPages is not correctly initialized.");
 }
 
+void embedDB_recovery_algorithm_functions_correctly_when_have_wrapped_but_at_the_end_of_storage() {
+    insertRecordsLinearly(0, 0, 7728);
+    embedDBFlush(state);
+    tearDown();
+    initalizeEmbedDBFromFile();
+    uint32_t expectedMinKey = 3865;
+    TEST_ASSERT_EQUAL_UINT32_MESSAGE(expectedMinKey, state->minKey, "EmbedDB minkey is not correctly identified after reload from data file.");
+    TEST_ASSERT_EQUAL_UINT32_MESSAGE(184, state->nextDataPageId, "EmbedDB nextDataPageId is not correctly identified after reload from data file.");
+    TEST_ASSERT_EQUAL_UINT32_MESSAGE(92, state->minDataPageId, "EmbedDB minDataPageId was not correctly identified.");
+    TEST_ASSERT_EQUAL_UINT32_MESSAGE(0, state->numAvailDataPages, "EmbedDB numAvailDataPages is not correctly initialized.");
+
+    /* Check that we can still insert records properly */
+    int32_t key = 10001;
+    int64_t actualData = 0;
+    int64_t expectedData = 123457;
+    insertRecordsLinearly(10000, 123456, 42);
+    embedDBFlush(state);
+
+    /* Check that database incremented correctly and we can fetch data */
+    expectedMinKey = 4033;
+    TEST_ASSERT_EQUAL_UINT32_MESSAGE(expectedMinKey, state->minKey, "EmbedDB minkey is not correctly identified after reload from data file.");
+    TEST_ASSERT_EQUAL_UINT32_MESSAGE(185, state->nextDataPageId, "EmbedDB nextDataPageId is not correctly identified after reload from data file.");
+    TEST_ASSERT_EQUAL_UINT32_MESSAGE(96, state->minDataPageId, "EmbedDB minDataPageId was not correctly identified.");
+    TEST_ASSERT_EQUAL_UINT32_MESSAGE(3, state->numAvailDataPages, "EmbedDB numAvailDataPages is not correctly initialized.");
+    int8_t result = embedDBGet(state, &key, &actualData);
+    TEST_ASSERT_EQUAL_INT8_MESSAGE(0, result, "embedDBGet did not return the data for a key inserted after recovery.");
+    TEST_ASSERT_EQUAL_MEMORY_MESSAGE(&expectedData, &actualData, sizeof(int64_t), "embedDBGet did not return the correct data for a key inserted after recovery.");
+}
+
 int runUnityTests() {
     UNITY_BEGIN();
     RUN_TEST(embedDB_parameters_initializes_from_data_file_with_twenty_seven_pages_correctly);
@@ -331,6 +360,7 @@ int runUnityTests() {
     RUN_TEST(embedDB_queries_correctly_with_non_liner_data_after_reload);
     RUN_TEST(embedDB_parameters_initializes_correctly_from_data_file_with_no_data);
     RUN_TEST(embedDB_recovery_algorithm_wraps_when_skipping_to_next_block);
+    RUN_TEST(embedDB_recovery_algorithm_functions_correctly_when_have_wrapped_but_at_the_end_of_storage);
     return UNITY_END();
 }
 

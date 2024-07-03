@@ -410,9 +410,13 @@ int8_t embedDBInitDataFromFile(embedDBState *state) {
     }
 
     /* Put largest key back into the buffer */
-    readPage(state, state->nextDataPageId - 1);
+    readPage(state, (state->nextDataPageId - 1) % state->numDataPages);
 
     updateAverageKeyDifference(state, buffer);
+    /* Strange edge case that we probably need to think more about */
+    if (state->avgKeyDiff == 0)
+        state->avgKeyDiff = 1;
+
     if (SEARCH_METHOD == 2) {
         embedDBInitSplineFromFile(state);
     }
