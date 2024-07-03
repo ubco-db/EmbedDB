@@ -308,14 +308,14 @@ void embedDB_queries_correctly_with_non_liner_data_after_reload() {
 }
 
 void embedDB_recovery_algorithm_wraps_when_skipping_to_next_block() {
-    insertRecordsLinearly(0, 0, 7644);
+    insertRecordsLinearly(0, 0, 7560);
     embedDBFlush(state);
     tearDown();
     initalizeEmbedDBFromFile();
-    uint32_t expectedMinKey = 4032;
+    uint32_t expectedMinKey = 3865;
     TEST_ASSERT_EQUAL_UINT32_MESSAGE(expectedMinKey, state->minKey, "EmbedDB minkey is not correctly identified after reload from data file.");
-    TEST_ASSERT_EQUAL_UINT32_MESSAGE(184, state->nextDataPageId, "EmbedDB nextDataPageId is not correctly identified after reload from data file.");
-    TEST_ASSERT_EQUAL_UINT32_MESSAGE(96, state->minDataPageId, "EmbedDB minDataPageId was not correctly identified.");
+    TEST_ASSERT_EQUAL_UINT32_MESSAGE(180, state->nextDataPageId, "EmbedDB nextDataPageId is not correctly identified after reload from data file.");
+    TEST_ASSERT_EQUAL_UINT32_MESSAGE(92, state->minDataPageId, "EmbedDB minDataPageId was not correctly identified.");
     TEST_ASSERT_EQUAL_UINT32_MESSAGE(4, state->numAvailDataPages, "EmbedDB numAvailDataPages is not correctly initialized.");
 }
 
