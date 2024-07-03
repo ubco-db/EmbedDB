@@ -69,6 +69,10 @@ int8_t FILE_WRITE(void *buffer, uint32_t pageNum, uint32_t pageSize, void *file)
     return sd_fwrite(buffer, pageSize, 1, fileInfo->sdFile) == pageSize;
 }
 
+int8_t FILE_ERASE(uint32_t startPage, uint32_t endPage, void *file) {
+    return 1;
+}
+
 int8_t FILE_CLOSE(void *file) {
     SD_FILE_INFO *fileInfo = (SD_FILE_INFO *)file;
     sd_fclose(fileInfo->sdFile);
@@ -104,6 +108,7 @@ embedDBFileInterface *getSDInterface() {
     fileInterface->close = FILE_CLOSE;
     fileInterface->read = FILE_READ;
     fileInterface->write = FILE_WRITE;
+    fileInterface->erase = FILE_ERASE;
     fileInterface->open = FILE_OPEN;
     fileInterface->flush = FILE_FLUSH;
     return fileInterface;
