@@ -374,7 +374,7 @@ int8_t embedDBInitDataFromFile(embedDBState *state) {
         id_t pagesToBlockBoundary = blockSize - (count % blockSize);
 
         /* go to the next block boundary */
-        physicalPageId += pagesToBlockBoundary;
+        physicalPageId = (physicalPageId + pagesToBlockBoundary) % state->numDataPages;
         moreToRead = !(readPage(state, physicalPageId));
 
         /* there should have been more to read becuase the file should not be empty at this point if it was not empty at the previous block */
