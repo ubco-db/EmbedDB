@@ -99,10 +99,6 @@ typedef uint16_t count_t;
 #define EMBEDDB_INDEX_READ_BUFFER 3
 #define EMBEDDB_VAR_WRITE_BUFFER(x) ((x & EMBEDDB_USE_INDEX) ? 4 : 2)
 #define EMBEDDB_VAR_READ_BUFFER(x) ((x & EMBEDDB_USE_INDEX) ? 5 : 3)
-#define EMBEDDB_RECORD_CONSISTENCY_WRITE_BUFFER(x) ((x & EMBEDDB_USE_INDEX & EMBEDDB_USE_VDATA) ? 6 : (x & (EMBEDDB_USE_INDEX || EMBEDDB_USE_VDATA)) ? \
-                                                                                                                                                     : 4 : 2)
-#define EMBEDDB_RECORD_CONSISTENCY_READ_BUFFER(x) ((x & EMBEDDB_USE_INDEX & EMBEDDB_USE_VDATA) ? 7 : (x & (EMBEDDB_USE_INDEX || EMBEDDB_USE_VDATA)) ? \
-                                                                                                                                                    : 5 : 3)
 
 #define EMBEDDB_FILE_MODE_W_PLUS_B 0  // Open file as read/write, creates file if doesn't exist, overwrites if it does. aka "w+b"
 #define EMBEDDB_FILE_MODE_R_PLUS_B 1  // Open file as read/write, file must exist, keeps data if it does. aka "r+b"
