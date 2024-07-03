@@ -118,7 +118,7 @@ void initalizeEmbedDBFromFile(void) {
     state->compareKey = int32Comparator;
     state->compareData = int32Comparator;
     int8_t result = embedDBInit(state, 1);
-    TEST_ASSERT_EQUAL_INT8_MESSAGE(0, result, "EmbedDB did not initialize correctly.");
+    TEST_ASSERT_EQUAL_INT8_MESSAGE(0, result, "Second EmbedDB did not initialize correctly.");
 }
 
 void tearDownEmbedDB() {
@@ -265,12 +265,12 @@ void embedDB_variable_data_reloads_and_queries_with_two_hundred_forty_seven_page
     char variableDataBuffer[13];
     char message[120];
     embedDBVarDataStream *stream = NULL;
-    key = 9319;
-    data = 13470416;
+    key = 9487;
+    data = 13470584;
     /* Records inserted before reload */
-    for (int i = 0; i < 2667; i++) {
+    for (int i = 0; i < 2499; i++) {
         int8_t getResult = embedDBGetVar(state, &key, &recordData, &stream);
-        if (i > 1091) {
+        if (i > 923) {
             snprintf(message, 120, "EmbedDB get encountered an error fetching the data for key %li.", key);
             TEST_ASSERT_EQUAL_INT8_MESSAGE(0, getResult, message);
             snprintf(message, 120, "EmbedDB get did not return correct data for a record inserted before reloading (key %li).", key);
