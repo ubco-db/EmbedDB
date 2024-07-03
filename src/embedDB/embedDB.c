@@ -180,8 +180,22 @@ int8_t embedDBInit(embedDBState *state, size_t indexMaxError) {
         return -1;
     }
 
+    /* check the number of allocated pages is a multiple of the erase size */
+    if (state->numDataPages % state->eraseSizeInPages != 0) {
+#ifdef PRINT_ERRORS
+        printf("ERROR: The number of allocated data pages must be divisible by the erase size in pages.\n");
+#endif
+        return -1;
+    }
+
     state->recordSize = state->keySize + state->dataSize;
     if (EMBEDDB_USING_VDATA(state->parameters)) {
+        if (state->numVarPages % state->eraseSizeInPages != 0) {
+#ifdef PRINT_ERRORS
+            printf("ERROR: The number of allocated variable data pages must be divisible by the erase size in pages.\n");
+#endif
+            return -1;
+        }
         state->recordSize += 4;
     }
 
@@ -191,8 +205,15 @@ int8_t embedDBInit(embedDBState *state, size_t indexMaxError) {
 
     /* Header size depends on bitmap size: 6 + X bytes: 4 byte id, 2 for record count, X for bitmap. */
     state->headerSize = 6;
-    if (EMBEDDB_USING_INDEX(state->parameters))
+    if (EMBEDDB_USING_INDEX(state->parameters)) {
+        if (state->numIndexPages % state->eraseSizeInPages != 0) {
+#ifdef PRINT_ERRORS
+            printf("ERROR: The number of allocated index pages must be divisible by the erase size in pages.\n");
+#endif
+            return -1;
+        }
         state->headerSize += state->bitmapSize;
+    }
 
     if (EMBEDDB_USING_MAX_MIN(state->parameters))
         state->headerSize += state->keySize * 2 + state->dataSize * 2;
@@ -322,30 +343,59 @@ int8_t embedDBInitDataFromFile(embedDBState *state) {
 
     bool haveWrappedInMemory = false;
     int count = 0;
-    void *buffer = (int8_t *)state->buffer + state->pageSize;
+    void *buffer = (int8_t *)state->buffer + state->pageSize * EMBEDDB_DATA_READ_BUFFER;
+    bool validData = false;
     while (moreToRead && count < state->numDataPages) {
         memcpy(&logicalPageId, buffer, sizeof(id_t));
-        if (count == 0 || logicalPageId == maxLogicalPageId + 1) {
+        validData = logicalPageId % state->numDataPages == count;
+        if (validData && (count == 0 || logicalPageId == maxLogicalPageId + 1)) {
             maxLogicalPageId = logicalPageId;
             physicalPageId++;
             updateMaxiumError(state, buffer);
             moreToRead = !(readPage(state, physicalPageId));
             count++;
         } else {
-            haveWrappedInMemory = logicalPageId == (maxLogicalPageId - state->numDataPages + 1);
             break;
         }
     }
 
-    if (count == 0)
+    /* now we need to find where the page with the smallest key that is still valid */
+
+    /* default case is we start at beginning of data file*/
+    id_t physicalPageIDOfSmallestData = 0;
+    count_t blockSize = state->eraseSizeInPages;
+    if (!moreToRead && count == 0) {
         return 0;
+    }
+
+    /* check if data exists at this location */
+    if (moreToRead && count < state->numDataPages) {
+        /* find where the next block boundary is */
+        id_t pagesToBlockBoundary = blockSize - (count % blockSize);
+
+        /* go to the next block boundary */
+        physicalPageId = (physicalPageId + pagesToBlockBoundary) % state->numDataPages;
+        moreToRead = !(readPage(state, physicalPageId));
+
+        /* there should have been more to read becuase the file should not be empty at this point if it was not empty at the previous block */
+        if (!moreToRead) {
+            return -1;
+        }
+
+        /* check if data is valid or if it is junk */
+        memcpy(&logicalPageId, buffer, sizeof(id_t));
+        validData = logicalPageId % state->numDataPages == physicalPageId;
+
+        /* this means we have wrapped and our start is actually here */
+        if (validData) {
+            physicalPageIDOfSmallestData = physicalPageId;
+        } else if (count == 0) {
+            /* if the data was not valid and our count of pages visited is 0 there was no data to begin with so EmbedDB was empty and a fresh init was all that was needed*/
+            return 0;
+        }
+    }
 
     state->nextDataPageId = maxLogicalPageId + 1;
-    state->minDataPageId = 0;
-    id_t physicalPageIDOfSmallestData = 0;
-    if (haveWrappedInMemory) {
-        physicalPageIDOfSmallestData = logicalPageId % state->numDataPages;
-    }
     readPage(state, physicalPageIDOfSmallestData);
     memcpy(&(state->minDataPageId), buffer, sizeof(id_t));
     state->numAvailDataPages = state->numDataPages + state->minDataPageId - maxLogicalPageId - 1;
@@ -360,9 +410,13 @@ int8_t embedDBInitDataFromFile(embedDBState *state) {
     }
 
     /* Put largest key back into the buffer */
-    readPage(state, state->nextDataPageId - 1);
+    readPage(state, (state->nextDataPageId - 1) % state->numDataPages);
 
     updateAverageKeyDifference(state, buffer);
+    /* Strange edge case that we probably need to think more about */
+    if (state->avgKeyDiff == 0)
+        state->avgKeyDiff = 1;
+
     if (SEARCH_METHOD == 2) {
         embedDBInitSplineFromFile(state);
     }
