@@ -2464,14 +2464,26 @@ id_t writePage(embedDBState *state, void *buffer) {
 
     /* Always writes to next page number. Returned to user. */
     id_t pageNum = state->nextDataPageId++;
+    id_t physicalPageNum = pageNum % state->numDataPages;
 
     /* Setup page number in header */
     memcpy(buffer, &(pageNum), sizeof(id_t));
 
     if (state->numAvailDataPages <= 0) {
-        // Erase pages to make space for new data
+        /* Erase pages to make space for new data */
+        int8_t eraseResult = state->fileInterface->erase(physicalPageNum, physicalPageNum + state->eraseSizeInPages, state->dataFile);
+        if (eraseResult != 1) {
+#ifdef PRINT_ERRORS
+            printf("Failed to erase data page: %i (%i)\n", pageNum, physicalPageNum);
+#endif
+            return -1;
+        }
+
+        /* Flag the pages as usable to EmbedDB */
         state->numAvailDataPages += state->eraseSizeInPages;
         state->minDataPageId += state->eraseSizeInPages;
+
+        /* remove any spline points related to these pages */
         if (state->cleanSpline)
             cleanSpline(state, &state->minKey);
         // Estimate the smallest key now. Could determine exactly by reading this page
@@ -2479,10 +2491,10 @@ id_t writePage(embedDBState *state, void *buffer) {
     }
 
     /* Seek to page location in file */
-    int32_t val = state->fileInterface->write(buffer, pageNum % state->numDataPages, state->pageSize, state->dataFile);
+    int32_t val = state->fileInterface->write(buffer, physicalPageNum, state->pageSize, state->dataFile);
     if (val == 0) {
 #ifdef PRINT_ERRORS
-        printf("Failed to write data page: %i (%i)\n", pageNum, pageNum % state->numDataPages);
+        printf("Failed to write data page: %i (%i)\n", pageNum, physicalPageNum);
 #endif
         return -1;
     }
@@ -2530,21 +2542,29 @@ id_t writeIndexPage(embedDBState *state, void *buffer) {
 
     /* Always writes to next page number. Returned to user. */
     id_t pageNum = state->nextIdxPageId++;
+    id_t physicalPageNumber = pageNum % state->numIndexPages;
 
     /* Setup page number in header */
     memcpy(buffer, &(pageNum), sizeof(id_t));
 
     if (state->numAvailIndexPages <= 0) {
         // Erase index pages to make room for new page
+        int8_t eraseResult = state->fileInterface->erase(physicalPageNumber, physicalPageNumber + state->eraseSizeInPages, state->indexFile);
+        if (eraseResult != 1) {
+#ifdef PRINT_ERRORS
+            printf("Failed to erase data page: %i (%i)\n", pageNum, physicalPageNumber);
+#endif
+            return -1;
+        }
         state->numAvailIndexPages += state->eraseSizeInPages;
         state->minIndexPageId += state->eraseSizeInPages;
     }
 
     /* Seek to page location in file */
-    int32_t val = state->fileInterface->write(buffer, pageNum % state->numIndexPages, state->pageSize, state->indexFile);
+    int32_t val = state->fileInterface->write(buffer, physicalPageNumber, state->pageSize, state->indexFile);
     if (val == 0) {
 #ifdef PRINT_ERRORS
-        printf("Failed to write index page: %i (%i)\n", pageNum, pageNum % state->numIndexPages);
+        printf("Failed to write index page: %i (%i)\n", pageNum, physicalPageNumber);
 #endif
         return -1;
     }
@@ -2571,6 +2591,13 @@ id_t writeVariablePage(embedDBState *state, void *buffer) {
 
     // Erase data if needed
     if (state->numAvailVarPages <= 0) {
+        int8_t eraseResult = state->fileInterface->erase(physicalPageId, physicalPageId + state->eraseSizeInPages, state->varFile);
+        if (eraseResult != 1) {
+#ifdef PRINT_ERRORS
+            printf("Failed to erase data page: %i (%i)\n", state->nextVarPageId, physicalPageId);
+#endif
+            return -1;
+        }
         state->numAvailVarPages += state->eraseSizeInPages;
         // Last page that is deleted
         id_t pageNum = (physicalPageId + state->eraseSizeInPages - 1) % state->numVarPages;
