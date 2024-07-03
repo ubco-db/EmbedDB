@@ -73,6 +73,7 @@ int8_t embedDBInitIndex(embedDBState *state);
 int8_t embedDBInitIndexFromFile(embedDBState *state);
 int8_t embedDBInitVarData(embedDBState *state);
 int8_t embedDBInitVarDataFromFile(embedDBState *state);
+int8_t writeRecordLevelConsistencyPage(embedDBState *state, void *buffer);
 void updateAverageKeyDifference(embedDBState *state, void *buffer);
 void embedDBInitSplineFromFile(embedDBState *state);
 int32_t getMaxError(embedDBState *state, void *buffer);
@@ -866,6 +867,11 @@ int8_t embedDBPut(embedDBState *state, void *key, void *data) {
         /* Update bitmap */
         char *bm = (char *)EMBEDDB_GET_BITMAP(state->buffer);
         state->updateBitmap(data, bm);
+    }
+
+    /* If using record level consistency, we need to immediately write the updated page to storage */
+    if (EMBEDB_USING_RECORD_LEVEL_CONSISTENCY(state->parameters)) {
+        writeRecordLevelConsistencyPage(state, state->buffer);
     }
 
     return 0;
@@ -1755,6 +1761,10 @@ id_t writePage(embedDBState *state, void *buffer) {
     state->numWrites++;
 
     return pageNum;
+}
+
+int8_t writeRecordLevelConsistencyPage(embedDBState *state, void *buffer) {
+    return 0;
 }
 
 /**
