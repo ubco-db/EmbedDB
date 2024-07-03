@@ -485,6 +485,15 @@ typedef struct {
     int8_t (*write)(void *buffer, uint32_t pageNum, uint32_t pageSize, void *file);
 
     /**
+     * @brief	Erases a span of paes from file
+     * @param	startPage   The first page to earse
+     * @param	pageSize	The page to erase up to (exclusive)
+     * @param	file		The file data that was stored in embedDBState->dataFile etc
+     * @return	1 for success and 0 for failure
+     */
+    int8_t (*erase)(id_t startPage, id_t endPage, void *file);
+
+    /**
      * @brief	Closes the file
      * @return	1 for success and 0 for failure
      */
