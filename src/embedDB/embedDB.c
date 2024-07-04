@@ -189,7 +189,7 @@ int8_t embedDBInit(embedDBState *state, size_t indexMaxError) {
         return -1;
     }
 
-    if (state->numDataPages < EMBEDB_USING_RECORD_LEVEL_CONSISTENCY(state->parameters) ? 4 : 2 * state->eraseSizeInPages) {
+    if (state->numDataPages < (EMBEDB_USING_RECORD_LEVEL_CONSISTENCY(state->parameters) ? 4 : 2) * state->eraseSizeInPages) {
 #ifdef PRINT_ERRORS
         printf("ERROR: The minimum number of data pages is twice the eraseSizeInPages or 4 times the eraseSizeInPages if using record-level consistency.\n");
 #endif
@@ -323,8 +323,9 @@ int8_t embedDBInitData(embedDBState *state) {
     }
 
     if (EMBEDB_USING_RECORD_LEVEL_CONSISTENCY(state->parameters)) {
-        state->numAvailDataPages -= state->eraseSizeInPages * 2;
-        state->nextRLCPhysicalPageLocation, state->rlcPhysicalStartingPage = state->eraseSizeInPages;
+        state->numAvailDataPages -= (state->eraseSizeInPages * 2);
+        state->nextRLCPhysicalPageLocation = state->eraseSizeInPages;
+        state->rlcPhysicalStartingPage = state->eraseSizeInPages;
     }
 
     /* Setup data file. */
@@ -1794,33 +1795,42 @@ int8_t writeTemporaryPage(embedDBState *state, void *buffer) {
         return -1;
     }
 
-    /* TODO: Page number not currently in the buffer as it is put there in write page. Will have to move when that is put in place. */
-    uint32_t pageNum = state->nextRLCPhysicalPageLocation++;
-    int8_t writeSuccess = state->fileInterface->write(buffer, pageNum, state->pageSize, state->dataFile);
-    if (!writeSuccess) {
-#ifdef PRINT_ERRORS
-        printf("Failed to write temporary page for record-level-consistency: Logical Page Number %i - Physical Page (%i)\n", state->nextDataPageId, pageNum);
-#endif
-        return -1;
-    }
+    /* Setup page number in header */
+    /* TODO: Maybe talk to Ramon about optimizing this */
+    memcpy(buffer, &(state->nextDataPageId), sizeof(id_t));
 
     /* Wrap if needed */
     state->nextRLCPhysicalPageLocation %= state->numDataPages;
 
     /* If the nextPhysicalPage wrapped, we need to add the numDataPages to it to properly compare the page numbers below */
-    uint32_t nextPage = state->nextRLCPhysicalPageLocation + state->nextRLCPhysicalPageLocation < state->rlcPhysicalStartingPage ? state->numDataPages : 0;
+    uint32_t nextPage = state->nextRLCPhysicalPageLocation + (state->nextRLCPhysicalPageLocation < state->rlcPhysicalStartingPage ? state->numDataPages : 0);
 
-    /* if the nextRLC physical page number would be outside the block, we wrap */
+    /* if the nextRLC physical page number would be outside the block, we wrap to the start of our record-level consistency blocks */
     if (nextPage - state->rlcPhysicalStartingPage >= state->eraseSizeInPages * 2) {
         state->nextRLCPhysicalPageLocation = state->rlcPhysicalStartingPage;
     }
 
     /* If in pageNum is second page in block, we erase the other record-level consistency block */
-    if (state->nextRLCPhysicalPageLocation) {
-        /* code */
+    if (state->nextRLCPhysicalPageLocation % state->eraseSizeInPages == 1) {
+        uint32_t eraseStartingPage = (state->nextRLCPhysicalPageLocation + state->eraseSizeInPages - 1) % state->numDataPages;
+        uint32_t eraseEndingPage = eraseStartingPage + state->eraseSizeInPages;
+        int8_t eraseSuccess = state->fileInterface->erase(eraseStartingPage, eraseEndingPage, state->dataFile);
+        if (!eraseSuccess) {
+#ifdef PRINT_ERRORS
+            printf("Failed to erase block starting at physical page %i in the data file.", state->nextRLCPhysicalPageLocation);
+            return -1;
+#endif
+        }
     }
 
     /* Write temporary page to storage */
+    int8_t writeSuccess = state->fileInterface->write(buffer, state->nextRLCPhysicalPageLocation++, state->pageSize, state->dataFile);
+    if (!writeSuccess) {
+#ifdef PRINT_ERRORS
+        printf("Failed to write temporary page for record-level-consistency: Logical Page Number %i - Physical Page (%i)\n", state->nextDataPageId, state->nextRLCPhysicalPageLocation - 1);
+#endif
+        return -1;
+    }
 
     return 0;
 }

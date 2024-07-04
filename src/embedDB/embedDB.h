@@ -442,7 +442,7 @@ id_t writeVariablePage(embedDBState *state, void *buffer);
  * @param	pageNum	Page number to read
  * @return  Returns 0 for success and -1 if error.
  */
-id_t writeTemporaryPage(embedDBState *state, void *buffer);
+int8_t writeTemporaryPage(embedDBState *state, void *buffer);
 
 /**
  * @brief	Prints statistics.
