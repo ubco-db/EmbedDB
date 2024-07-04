@@ -73,6 +73,7 @@ int8_t embedDBInitIndex(embedDBState *state);
 int8_t embedDBInitIndexFromFile(embedDBState *state);
 int8_t embedDBInitVarData(embedDBState *state);
 int8_t embedDBInitVarDataFromFile(embedDBState *state);
+int8_t shiftRecordLevelConsistencyBlocks(embedDBState *state);
 void updateAverageKeyDifference(embedDBState *state, void *buffer);
 void embedDBInitSplineFromFile(embedDBState *state);
 int32_t getMaxError(embedDBState *state, void *buffer);
@@ -787,6 +788,7 @@ int8_t embedDBPut(embedDBState *state, void *key, void *data) {
     }
 
     /* Write current page if full */
+    bool wrotePage = false;
     if (count >= state->maxRecordsPerPage) {
         // As the first buffer is the data write buffer, no manipulation is required
         id_t pageNum = writePage(state, state->buffer);
@@ -821,6 +823,7 @@ int8_t embedDBPut(embedDBState *state, void *key, void *data) {
 
         count = 0;
         initBufferPage(state, 0);
+        wrotePage = true;
     }
 
     /* Copy record onto page */
@@ -883,9 +886,17 @@ int8_t embedDBPut(embedDBState *state, void *key, void *data) {
     /* If using record level consistency, we need to immediately write the updated page to storage */
     if (EMBEDB_USING_RECORD_LEVEL_CONSISTENCY(state->parameters)) {
         /* Need to move record level consistency pointers if on a block boundary */
-        writeTemporaryPage(state, state->buffer);
+        if (wrotePage && state->nextDataPageId % state->eraseSizeInPages == 0) {
+            /* move record-level consistency blocks */
+            shiftRecordLevelConsistencyBlocks(state);
+        }
+        return writeTemporaryPage(state, state->buffer);
     }
 
+    return 0;
+}
+
+int8_t shiftRecordLevelConsistencyBlocks(embedDBState *state) {
     return 0;
 }
 
@@ -1776,6 +1787,41 @@ id_t writePage(embedDBState *state, void *buffer) {
 }
 
 int8_t writeTemporaryPage(embedDBState *state, void *buffer) {
+    if (state->dataFile == NULL) {
+#ifdef PRINT_ERRORS
+        printf("The dataFile in embedDBState was null.");
+#endif
+        return -1;
+    }
+
+    /* TODO: Page number not currently in the buffer as it is put there in write page. Will have to move when that is put in place. */
+    uint32_t pageNum = state->nextRLCPhysicalPageLocation++;
+    int8_t writeSuccess = state->fileInterface->write(buffer, pageNum, state->pageSize, state->dataFile);
+    if (!writeSuccess) {
+#ifdef PRINT_ERRORS
+        printf("Failed to write temporary page for record-level-consistency: Logical Page Number %i - Physical Page (%i)\n", state->nextDataPageId, pageNum);
+#endif
+        return -1;
+    }
+
+    /* Wrap if needed */
+    state->nextRLCPhysicalPageLocation %= state->numDataPages;
+
+    /* If the nextPhysicalPage wrapped, we need to add the numDataPages to it to properly compare the page numbers below */
+    uint32_t nextPage = state->nextRLCPhysicalPageLocation + state->nextRLCPhysicalPageLocation < state->rlcPhysicalStartingPage ? state->numDataPages : 0;
+
+    /* if the nextRLC physical page number would be outside the block, we wrap */
+    if (nextPage - state->rlcPhysicalStartingPage >= state->eraseSizeInPages * 2) {
+        state->nextRLCPhysicalPageLocation = state->rlcPhysicalStartingPage;
+    }
+
+    /* If in pageNum is second page in block, we erase the other record-level consistency block */
+    if (state->nextRLCPhysicalPageLocation) {
+        /* code */
+    }
+
+    /* Write temporary page to storage */
+
     return 0;
 }
 
