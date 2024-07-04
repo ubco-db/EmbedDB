@@ -445,6 +445,14 @@ id_t writeVariablePage(embedDBState *state, void *buffer);
 int8_t writeTemporaryPage(embedDBState *state, void *buffer);
 
 /**
+ * @brief   Erases pages in the dataFile based on the starting and ending pages.
+ * @param	startingPage    physical page number of first page to erase (inclusive)
+ * @param	endingPage	    physical page number of first page to erase (exclusive)
+ * @return  Returns 0 for success and -1 if error.
+ */
+int8_t eraseDataPages(embedDBState *state, uint32_t startingPage, uint32_t endingPage);
+
+/**
  * @brief	Prints statistics.
  * @param	state	embedDB state structure
  */

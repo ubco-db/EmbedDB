@@ -74,6 +74,7 @@ int8_t embedDBInitIndexFromFile(embedDBState *state);
 int8_t embedDBInitVarData(embedDBState *state);
 int8_t embedDBInitVarDataFromFile(embedDBState *state);
 int8_t shiftRecordLevelConsistencyBlocks(embedDBState *state);
+void updateMinKeyEstimate(embedDBState *state);
 void updateAverageKeyDifference(embedDBState *state, void *buffer);
 void embedDBInitSplineFromFile(embedDBState *state);
 int32_t getMaxError(embedDBState *state, void *buffer);
@@ -898,6 +899,33 @@ int8_t embedDBPut(embedDBState *state, void *key, void *data) {
 }
 
 int8_t shiftRecordLevelConsistencyBlocks(embedDBState *state) {
+    /* erase the record-level consistency blocks */
+
+    /* TODO: Likely an optimisation here where we don't always need to erase the second block, but that will make this algorithm more complicated and the savings could be minimal */
+    uint32_t numRecordLevelConsistencyPages = state->eraseSizeInPages * 2;
+    uint32_t eraseStartingPage = state->rlcPhysicalStartingPage;
+
+    /* if we have wraped, we need to erase an additional block as the block we are shifting into is not empty */
+    bool haveWrapped = (state->minDataPageId % state->numDataPages) == ((state->rlcPhysicalStartingPage + numRecordLevelConsistencyPages) % state->numDataPages);
+    uint32_t numBlocksToErase = haveWrapped ? 2 : 3;
+
+    /* erase pages */
+    uint32_t eraseEndingPage = (eraseStartingPage + state->eraseSizeInPages * numBlocksToErase) % state->numDataPages;
+    int8_t eraseSuccess = state->fileInterface->erase(eraseStartingPage, eraseEndingPage, state->dataFile);
+    if (!eraseSuccess) {
+#ifdef PRINT_ERRORS
+        printf("Keys must be strictly ascending order. Insert Failed.\n");
+#endif
+        return -1;
+    }
+
+    /* shift record-level consistency blocks */
+    state->rlcPhysicalStartingPage = (state->rlcPhysicalStartingPage + state->eraseSizeInPages) % state->numDataPages;
+    state->nextRLCPhysicalPageLocation = state->rlcPhysicalStartingPage;
+
+    /* shift min data page if needed */
+
+    updateMinKeyEstimate(state);
     return 0;
 }
 
@@ -1752,24 +1780,9 @@ id_t writePage(embedDBState *state, void *buffer) {
     memcpy(buffer, &(pageNum), sizeof(id_t));
 
     if (state->numAvailDataPages <= 0) {
-        /* Erase pages to make space for new data */
-        int8_t eraseResult = state->fileInterface->erase(physicalPageNum, physicalPageNum + state->eraseSizeInPages, state->dataFile);
-        if (eraseResult != 1) {
-#ifdef PRINT_ERRORS
-            printf("Failed to erase data page: %i (%i)\n", pageNum, physicalPageNum);
-#endif
-            return -1;
-        }
-
-        /* Flag the pages as usable to EmbedDB */
-        state->numAvailDataPages += state->eraseSizeInPages;
-        state->minDataPageId += state->eraseSizeInPages;
-
-        /* remove any spline points related to these pages */
-        if (state->cleanSpline)
-            cleanSpline(state, &state->minKey);
-        // Estimate the smallest key now. Could determine exactly by reading this page
-        state->minKey += state->eraseSizeInPages * state->maxRecordsPerPage * state->avgKeyDiff;
+        int8_t eraseResult = eraseDataPages(state, physicalPageNum, physicalPageNum + state->eraseSizeInPages);
+        if (eraseResult == -1)
+            return eraseResult;
     }
 
     /* Seek to page location in file */
@@ -1785,6 +1798,31 @@ id_t writePage(embedDBState *state, void *buffer) {
     state->numWrites++;
 
     return pageNum;
+}
+
+int8_t eraseDataPages(embedDBState *state, uint32_t startingPage, uint32_t endingPage) {
+    /* Erase pages to make space for new data */
+    int8_t eraseResult = state->fileInterface->erase(startingPage, endingPage, state->dataFile);
+    if (eraseResult != 1) {
+#ifdef PRINT_ERRORS
+        printf("Failed to erase data pages from physical page %i to %i\n", startingPage, endingPage);
+#endif
+        return -1;
+    }
+
+    /* Flag the pages as usable to EmbedDB */
+    state->numAvailDataPages += state->eraseSizeInPages;
+    state->minDataPageId += state->eraseSizeInPages;
+
+    /* remove any spline points related to these pages */
+    if (state->cleanSpline)
+        cleanSpline(state, &state->minKey);
+    // Estimate the smallest key now. Could determine exactly by reading this page
+    updateMinKeyEstimate(state);
+}
+
+void updateMinKeyEstimate(embedDBState *state) {
+    state->minKey += state->eraseSizeInPages * state->maxRecordsPerPage * state->avgKeyDiff;
 }
 
 int8_t writeTemporaryPage(embedDBState *state, void *buffer) {
