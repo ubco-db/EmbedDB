@@ -437,6 +437,14 @@ id_t writeIndexPage(embedDBState *state, void *buffer);
 id_t writeVariablePage(embedDBState *state, void *buffer);
 
 /**
+ * @brief   Writes a temporary page when using record-levek-consistency to storage.
+ * @param	state	embedDB algorithm state structure
+ * @param	pageNum	Page number to read
+ * @return  Returns 0 for success and -1 if error.
+ */
+id_t writeTemporaryPage(embedDBState *state, void *buffer);
+
+/**
  * @brief	Prints statistics.
  * @param	state	embedDB state structure
  */

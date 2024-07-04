@@ -73,7 +73,6 @@ int8_t embedDBInitIndex(embedDBState *state);
 int8_t embedDBInitIndexFromFile(embedDBState *state);
 int8_t embedDBInitVarData(embedDBState *state);
 int8_t embedDBInitVarDataFromFile(embedDBState *state);
-int8_t writeRecordLevelConsistencyPage(embedDBState *state, void *buffer);
 void updateAverageKeyDifference(embedDBState *state, void *buffer);
 void embedDBInitSplineFromFile(embedDBState *state);
 int32_t getMaxError(embedDBState *state, void *buffer);
@@ -185,6 +184,13 @@ int8_t embedDBInit(embedDBState *state, size_t indexMaxError) {
     if (state->numDataPages % state->eraseSizeInPages != 0) {
 #ifdef PRINT_ERRORS
         printf("ERROR: The number of allocated data pages must be divisible by the erase size in pages.\n");
+#endif
+        return -1;
+    }
+
+    if (state->numDataPages < EMBEDB_USING_RECORD_LEVEL_CONSISTENCY(state->parameters) ? 4 : 2 * state->eraseSizeInPages) {
+#ifdef PRINT_ERRORS
+        printf("ERROR: The minimum number of data pages is twice the eraseSizeInPages or 4 times the eraseSizeInPages if using record-level consistency.\n");
 #endif
         return -1;
     }
@@ -313,6 +319,11 @@ int8_t embedDBInitData(embedDBState *state) {
         printf("ERROR: No data file provided!\n");
 #endif
         return -1;
+    }
+
+    if (EMBEDB_USING_RECORD_LEVEL_CONSISTENCY(state->parameters)) {
+        state->numAvailDataPages -= state->eraseSizeInPages * 2;
+        state->nextRLCPhysicalPageLocation, state->rlcPhysicalStartingPage = state->eraseSizeInPages;
     }
 
     /* Setup data file. */
@@ -871,7 +882,8 @@ int8_t embedDBPut(embedDBState *state, void *key, void *data) {
 
     /* If using record level consistency, we need to immediately write the updated page to storage */
     if (EMBEDB_USING_RECORD_LEVEL_CONSISTENCY(state->parameters)) {
-        writeRecordLevelConsistencyPage(state, state->buffer);
+        /* Need to move record level consistency pointers if on a block boundary */
+        writeTemporaryPage(state, state->buffer);
     }
 
     return 0;
@@ -1763,7 +1775,7 @@ id_t writePage(embedDBState *state, void *buffer) {
     return pageNum;
 }
 
-int8_t writeRecordLevelConsistencyPage(embedDBState *state, void *buffer) {
+int8_t writeTemporaryPage(embedDBState *state, void *buffer) {
     return 0;
 }
 
