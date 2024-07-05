@@ -112,10 +112,17 @@ void writeTemporaryPage_places_pages_in_correct_location() {
     // TEST_ASSERT_EQUAL_UINT32_MESSAGE(7, state->nextRLCPhysicalPageLocation, "embedDBInit did not initialize with the correct record-level consistency next physical page location.");
 }
 
+void record_level_consistency_blocks_should_move_when_write_block_is_full() {
+    /* insert four pages of records to check that the record-level consitency block moves at the right time */
+    insertRecords(1000, 384617, 168);
+    /* should still be in initial location */
+}
+
 int runUnityTests() {
     UNITY_BEGIN();
     RUN_TEST(embedDBInit_should_initialize_with_correct_values_for_record_level_consistency);
     RUN_TEST(writeTemporaryPage_places_pages_in_correct_location);
+    RUN_TEST(record_level_consistency_blocks_should_move_when_write_block_is_full);
     return UNITY_END();
 }
 
