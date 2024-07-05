@@ -67,6 +67,7 @@ typedef uint16_t count_t;
 #define EMBEDDB_USING_BMAP(x) ((x & EMBEDDB_USE_BMAP) > 0 ? 1 : 0)
 #define EMBEDDB_USING_VDATA(x) ((x & EMBEDDB_USE_VDATA) > 0 ? 1 : 0)
 #define EMBEDDB_RESETING_DATA(x) ((x & EMBEDDB_RESET_DATA) > 0 ? 1 : 0)
+#define EMBEDB_USING_RECORD_LEVEL_CONSISTENCY(x) ((x & EMBEDDB_RECORD_LEVEL_CONSISTENCY) > 0 ? 1 : 0)
 
 /* Offsets with header */
 #define EMBEDDB_COUNT_OFFSET 4
@@ -208,6 +209,8 @@ typedef struct {
     id_t nextDataPageId;                                                  /* Next logical page id. Page id is an incrementing value and may not always be same as physical page id. */
     id_t nextIdxPageId;                                                   /* Next logical page id for index. Page id is an incrementing value and may not always be same as physical page id. */
     id_t nextVarPageId;                                                   /* Page number of next var page to be written */
+    uint32_t nextRLCPhysicalPageLocation;                                 /* Physical page number for the location for the next record-level-consistency page */
+    uint32_t rlcPhysicalStartingPage;                                     /* Physical page number for the starting page of the record-level consistnecy pages */
     id_t currentVarLoc;                                                   /* Current variable address offset to write at (bytes from beginning of file) */
     void *buffer;                                                         /* Pre-allocated memory buffer for use by algorithm */
     spline *spl;                                                          /* Spline model */
@@ -432,6 +435,22 @@ id_t writeIndexPage(embedDBState *state, void *buffer);
  * @return	Return page number if success, -1 if error.
  */
 id_t writeVariablePage(embedDBState *state, void *buffer);
+
+/**
+ * @brief   Writes a temporary page when using record-levek-consistency to storage.
+ * @param	state	embedDB algorithm state structure
+ * @param	pageNum	Page number to read
+ * @return  Returns 0 for success and -1 if error.
+ */
+int8_t writeTemporaryPage(embedDBState *state, void *buffer);
+
+/**
+ * @brief   Erases pages in the dataFile based on the starting and ending pages.
+ * @param	startingPage    physical page number of first page to erase (inclusive)
+ * @param	endingPage	    physical page number of first page to erase (exclusive)
+ * @return  Returns 0 for success and -1 if error.
+ */
+int8_t eraseDataPages(embedDBState *state, uint32_t startingPage, uint32_t endingPage);
 
 /**
  * @brief	Prints statistics.

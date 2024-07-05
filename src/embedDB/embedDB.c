@@ -73,6 +73,8 @@ int8_t embedDBInitIndex(embedDBState *state);
 int8_t embedDBInitIndexFromFile(embedDBState *state);
 int8_t embedDBInitVarData(embedDBState *state);
 int8_t embedDBInitVarDataFromFile(embedDBState *state);
+int8_t shiftRecordLevelConsistencyBlocks(embedDBState *state);
+void updateMinKeyEstimate(embedDBState *state);
 void updateAverageKeyDifference(embedDBState *state, void *buffer);
 void embedDBInitSplineFromFile(embedDBState *state);
 int32_t getMaxError(embedDBState *state, void *buffer);
@@ -180,8 +182,29 @@ int8_t embedDBInit(embedDBState *state, size_t indexMaxError) {
         return -1;
     }
 
+    /* check the number of allocated pages is a multiple of the erase size */
+    if (state->numDataPages % state->eraseSizeInPages != 0) {
+#ifdef PRINT_ERRORS
+        printf("ERROR: The number of allocated data pages must be divisible by the erase size in pages.\n");
+#endif
+        return -1;
+    }
+
+    if (state->numDataPages < (EMBEDB_USING_RECORD_LEVEL_CONSISTENCY(state->parameters) ? 4 : 2) * state->eraseSizeInPages) {
+#ifdef PRINT_ERRORS
+        printf("ERROR: The minimum number of data pages is twice the eraseSizeInPages or 4 times the eraseSizeInPages if using record-level consistency.\n");
+#endif
+        return -1;
+    }
+
     state->recordSize = state->keySize + state->dataSize;
     if (EMBEDDB_USING_VDATA(state->parameters)) {
+        if (state->numVarPages % state->eraseSizeInPages != 0) {
+#ifdef PRINT_ERRORS
+            printf("ERROR: The number of allocated variable data pages must be divisible by the erase size in pages.\n");
+#endif
+            return -1;
+        }
         state->recordSize += 4;
     }
 
@@ -191,8 +214,15 @@ int8_t embedDBInit(embedDBState *state, size_t indexMaxError) {
 
     /* Header size depends on bitmap size: 6 + X bytes: 4 byte id, 2 for record count, X for bitmap. */
     state->headerSize = 6;
-    if (EMBEDDB_USING_INDEX(state->parameters))
+    if (EMBEDDB_USING_INDEX(state->parameters)) {
+        if (state->numIndexPages % state->eraseSizeInPages != 0) {
+#ifdef PRINT_ERRORS
+            printf("ERROR: The number of allocated index pages must be divisible by the erase size in pages.\n");
+#endif
+            return -1;
+        }
         state->headerSize += state->bitmapSize;
+    }
 
     if (EMBEDDB_USING_MAX_MIN(state->parameters))
         state->headerSize += state->keySize * 2 + state->dataSize * 2;
@@ -293,6 +323,12 @@ int8_t embedDBInitData(embedDBState *state) {
         return -1;
     }
 
+    if (EMBEDB_USING_RECORD_LEVEL_CONSISTENCY(state->parameters)) {
+        state->numAvailDataPages -= (state->eraseSizeInPages * 2);
+        state->nextRLCPhysicalPageLocation = state->eraseSizeInPages;
+        state->rlcPhysicalStartingPage = state->eraseSizeInPages;
+    }
+
     /* Setup data file. */
     if (!EMBEDDB_RESETING_DATA(state->parameters)) {
         int8_t openStatus = state->fileInterface->open(state->dataFile, EMBEDDB_FILE_MODE_R_PLUS_B);
@@ -322,30 +358,59 @@ int8_t embedDBInitDataFromFile(embedDBState *state) {
 
     bool haveWrappedInMemory = false;
     int count = 0;
-    void *buffer = (int8_t *)state->buffer + state->pageSize;
+    void *buffer = (int8_t *)state->buffer + state->pageSize * EMBEDDB_DATA_READ_BUFFER;
+    bool validData = false;
     while (moreToRead && count < state->numDataPages) {
         memcpy(&logicalPageId, buffer, sizeof(id_t));
-        if (count == 0 || logicalPageId == maxLogicalPageId + 1) {
+        validData = logicalPageId % state->numDataPages == count;
+        if (validData && (count == 0 || logicalPageId == maxLogicalPageId + 1)) {
             maxLogicalPageId = logicalPageId;
             physicalPageId++;
             updateMaxiumError(state, buffer);
             moreToRead = !(readPage(state, physicalPageId));
             count++;
         } else {
-            haveWrappedInMemory = logicalPageId == (maxLogicalPageId - state->numDataPages + 1);
             break;
         }
     }
 
-    if (count == 0)
+    /* now we need to find where the page with the smallest key that is still valid */
+
+    /* default case is we start at beginning of data file*/
+    id_t physicalPageIDOfSmallestData = 0;
+    count_t blockSize = state->eraseSizeInPages;
+    if (!moreToRead && count == 0) {
         return 0;
+    }
+
+    /* check if data exists at this location */
+    if (moreToRead && count < state->numDataPages) {
+        /* find where the next block boundary is */
+        id_t pagesToBlockBoundary = blockSize - (count % blockSize);
+
+        /* go to the next block boundary */
+        physicalPageId = (physicalPageId + pagesToBlockBoundary) % state->numDataPages;
+        moreToRead = !(readPage(state, physicalPageId));
+
+        /* there should have been more to read becuase the file should not be empty at this point if it was not empty at the previous block */
+        if (!moreToRead) {
+            return -1;
+        }
+
+        /* check if data is valid or if it is junk */
+        memcpy(&logicalPageId, buffer, sizeof(id_t));
+        validData = logicalPageId % state->numDataPages == physicalPageId;
+
+        /* this means we have wrapped and our start is actually here */
+        if (validData) {
+            physicalPageIDOfSmallestData = physicalPageId;
+        } else if (count == 0) {
+            /* if the data was not valid and our count of pages visited is 0 there was no data to begin with so EmbedDB was empty and a fresh init was all that was needed*/
+            return 0;
+        }
+    }
 
     state->nextDataPageId = maxLogicalPageId + 1;
-    state->minDataPageId = 0;
-    id_t physicalPageIDOfSmallestData = 0;
-    if (haveWrappedInMemory) {
-        physicalPageIDOfSmallestData = logicalPageId % state->numDataPages;
-    }
     readPage(state, physicalPageIDOfSmallestData);
     memcpy(&(state->minDataPageId), buffer, sizeof(id_t));
     state->numAvailDataPages = state->numDataPages + state->minDataPageId - maxLogicalPageId - 1;
@@ -360,9 +425,13 @@ int8_t embedDBInitDataFromFile(embedDBState *state) {
     }
 
     /* Put largest key back into the buffer */
-    readPage(state, state->nextDataPageId - 1);
+    readPage(state, (state->nextDataPageId - 1) % state->numDataPages);
 
     updateAverageKeyDifference(state, buffer);
+    /* Strange edge case that we probably need to think more about */
+    if (state->avgKeyDiff == 0)
+        state->avgKeyDiff = 1;
+
     if (SEARCH_METHOD == 2) {
         embedDBInitSplineFromFile(state);
     }
@@ -721,6 +790,7 @@ int8_t embedDBPut(embedDBState *state, void *key, void *data) {
     }
 
     /* Write current page if full */
+    bool wrotePage = false;
     if (count >= state->maxRecordsPerPage) {
         // As the first buffer is the data write buffer, no manipulation is required
         id_t pageNum = writePage(state, state->buffer);
@@ -755,6 +825,7 @@ int8_t embedDBPut(embedDBState *state, void *key, void *data) {
 
         count = 0;
         initBufferPage(state, 0);
+        wrotePage = true;
     }
 
     /* Copy record onto page */
@@ -814,6 +885,47 @@ int8_t embedDBPut(embedDBState *state, void *key, void *data) {
         state->updateBitmap(data, bm);
     }
 
+    /* If using record level consistency, we need to immediately write the updated page to storage */
+    if (EMBEDB_USING_RECORD_LEVEL_CONSISTENCY(state->parameters)) {
+        /* Need to move record level consistency pointers if on a block boundary */
+        if (wrotePage && state->nextDataPageId % state->eraseSizeInPages == 0) {
+            /* move record-level consistency blocks */
+            shiftRecordLevelConsistencyBlocks(state);
+        }
+        return writeTemporaryPage(state, state->buffer);
+    }
+
+    return 0;
+}
+
+int8_t shiftRecordLevelConsistencyBlocks(embedDBState *state) {
+    /* erase the record-level consistency blocks */
+
+    /* TODO: Likely an optimisation here where we don't always need to erase the second block, but that will make this algorithm more complicated and the savings could be minimal */
+    uint32_t numRecordLevelConsistencyPages = state->eraseSizeInPages * 2;
+    uint32_t eraseStartingPage = state->rlcPhysicalStartingPage;
+
+    /* if we have wraped, we need to erase an additional block as the block we are shifting into is not empty */
+    bool haveWrapped = (state->minDataPageId % state->numDataPages) == ((state->rlcPhysicalStartingPage + numRecordLevelConsistencyPages) % state->numDataPages);
+    uint32_t numBlocksToErase = haveWrapped ? 2 : 3;
+
+    /* erase pages */
+    uint32_t eraseEndingPage = (eraseStartingPage + state->eraseSizeInPages * numBlocksToErase) % state->numDataPages;
+    int8_t eraseSuccess = state->fileInterface->erase(eraseStartingPage, eraseEndingPage, state->dataFile);
+    if (!eraseSuccess) {
+#ifdef PRINT_ERRORS
+        printf("Keys must be strictly ascending order. Insert Failed.\n");
+#endif
+        return -1;
+    }
+
+    /* shift record-level consistency blocks */
+    state->rlcPhysicalStartingPage = (state->rlcPhysicalStartingPage + state->eraseSizeInPages) % state->numDataPages;
+    state->nextRLCPhysicalPageLocation = state->rlcPhysicalStartingPage;
+
+    /* shift min data page if needed */
+
+    updateMinKeyEstimate(state);
     return 0;
 }
 
@@ -1668,24 +1780,9 @@ id_t writePage(embedDBState *state, void *buffer) {
     memcpy(buffer, &(pageNum), sizeof(id_t));
 
     if (state->numAvailDataPages <= 0) {
-        /* Erase pages to make space for new data */
-        int8_t eraseResult = state->fileInterface->erase(physicalPageNum, physicalPageNum + state->eraseSizeInPages, state->dataFile);
-        if (eraseResult != 1) {
-#ifdef PRINT_ERRORS
-            printf("Failed to erase data page: %i (%i)\n", pageNum, physicalPageNum);
-#endif
-            return -1;
-        }
-
-        /* Flag the pages as usable to EmbedDB */
-        state->numAvailDataPages += state->eraseSizeInPages;
-        state->minDataPageId += state->eraseSizeInPages;
-
-        /* remove any spline points related to these pages */
-        if (state->cleanSpline)
-            cleanSpline(state, &state->minKey);
-        // Estimate the smallest key now. Could determine exactly by reading this page
-        state->minKey += state->eraseSizeInPages * state->maxRecordsPerPage * state->avgKeyDiff;
+        int8_t eraseResult = eraseDataPages(state, physicalPageNum, physicalPageNum + state->eraseSizeInPages);
+        if (eraseResult == -1)
+            return eraseResult;
     }
 
     /* Seek to page location in file */
@@ -1701,6 +1798,79 @@ id_t writePage(embedDBState *state, void *buffer) {
     state->numWrites++;
 
     return pageNum;
+}
+
+int8_t eraseDataPages(embedDBState *state, uint32_t startingPage, uint32_t endingPage) {
+    /* Erase pages to make space for new data */
+    int8_t eraseResult = state->fileInterface->erase(startingPage, endingPage, state->dataFile);
+    if (eraseResult != 1) {
+#ifdef PRINT_ERRORS
+        printf("Failed to erase data pages from physical page %i to %i\n", startingPage, endingPage);
+#endif
+        return -1;
+    }
+
+    /* Flag the pages as usable to EmbedDB */
+    state->numAvailDataPages += state->eraseSizeInPages;
+    state->minDataPageId += state->eraseSizeInPages;
+
+    /* remove any spline points related to these pages */
+    if (state->cleanSpline)
+        cleanSpline(state, &state->minKey);
+    // Estimate the smallest key now. Could determine exactly by reading this page
+    updateMinKeyEstimate(state);
+}
+
+void updateMinKeyEstimate(embedDBState *state) {
+    state->minKey += state->eraseSizeInPages * state->maxRecordsPerPage * state->avgKeyDiff;
+}
+
+int8_t writeTemporaryPage(embedDBState *state, void *buffer) {
+    if (state->dataFile == NULL) {
+#ifdef PRINT_ERRORS
+        printf("The dataFile in embedDBState was null.");
+#endif
+        return -1;
+    }
+
+    /* Setup page number in header */
+    /* TODO: Maybe talk to Ramon about optimizing this */
+    memcpy(buffer, &(state->nextDataPageId), sizeof(id_t));
+
+    /* Wrap if needed */
+    state->nextRLCPhysicalPageLocation %= state->numDataPages;
+
+    /* If the nextPhysicalPage wrapped, we need to add the numDataPages to it to properly compare the page numbers below */
+    uint32_t nextPage = state->nextRLCPhysicalPageLocation + (state->nextRLCPhysicalPageLocation < state->rlcPhysicalStartingPage ? state->numDataPages : 0);
+
+    /* if the nextRLC physical page number would be outside the block, we wrap to the start of our record-level consistency blocks */
+    if (nextPage - state->rlcPhysicalStartingPage >= state->eraseSizeInPages * 2) {
+        state->nextRLCPhysicalPageLocation = state->rlcPhysicalStartingPage;
+    }
+
+    /* If in pageNum is second page in block, we erase the other record-level consistency block */
+    if (state->nextRLCPhysicalPageLocation % state->eraseSizeInPages == 1) {
+        uint32_t eraseStartingPage = (state->nextRLCPhysicalPageLocation + state->eraseSizeInPages - 1) % state->numDataPages;
+        uint32_t eraseEndingPage = eraseStartingPage + state->eraseSizeInPages;
+        int8_t eraseSuccess = state->fileInterface->erase(eraseStartingPage, eraseEndingPage, state->dataFile);
+        if (!eraseSuccess) {
+#ifdef PRINT_ERRORS
+            printf("Failed to erase block starting at physical page %i in the data file.", state->nextRLCPhysicalPageLocation);
+            return -1;
+#endif
+        }
+    }
+
+    /* Write temporary page to storage */
+    int8_t writeSuccess = state->fileInterface->write(buffer, state->nextRLCPhysicalPageLocation++, state->pageSize, state->dataFile);
+    if (!writeSuccess) {
+#ifdef PRINT_ERRORS
+        printf("Failed to write temporary page for record-level-consistency: Logical Page Number %i - Physical Page (%i)\n", state->nextDataPageId, state->nextRLCPhysicalPageLocation - 1);
+#endif
+        return -1;
+    }
+
+    return 0;
 }
 
 /**
