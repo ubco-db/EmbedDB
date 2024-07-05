@@ -911,21 +911,36 @@ int8_t shiftRecordLevelConsistencyBlocks(embedDBState *state) {
 
     /* erase pages */
     uint32_t eraseEndingPage = (eraseStartingPage + state->eraseSizeInPages * numBlocksToErase) % state->numDataPages;
-    int8_t eraseSuccess = eraseDataPages(state, eraseStartingPage, eraseEndingPage);
-    if (!eraseSuccess) {
-#ifdef PRINT_ERRORS
-        printf("Unable to shift record-level consistency blocks due to an erase error.\n");
-#endif
-        return -1;
+
+    /* Erase pages to make space for new data */
+    int8_t eraseResult = state->fileInterface->erase(eraseStartingPage, eraseEndingPage, state->dataFile);
+
+    /* shift min data page if needed */
+    if (haveWrapped) {
+        /* Flag the pages as usable to EmbedDB */
+        state->numAvailDataPages += state->eraseSizeInPages;
+        state->minDataPageId += state->eraseSizeInPages;
+
+        /* remove any spline points related to these pages */
+        if (state->cleanSpline)
+            cleanSpline(state, &state->minKey);
+
+        // Estimate the smallest key now. Could determine exactly by reading this page
+        state->minKey += state->eraseSizeInPages * state->maxRecordsPerPage * state->avgKeyDiff;
+        updateMinKeyEstimate(state);
     }
 
     /* shift record-level consistency blocks */
     state->rlcPhysicalStartingPage = (state->rlcPhysicalStartingPage + state->eraseSizeInPages) % state->numDataPages;
     state->nextRLCPhysicalPageLocation = state->rlcPhysicalStartingPage;
 
-    /* shift min data page if needed */
+    if (eraseResult != 1) {
+#ifdef PRINT_ERRORS
+        printf("Failed to erase data page for physical page ids %i - %i\n", eraseStartingPage, eraseEndingPage);
+#endif
+        return -1;
+    }
 
-    updateMinKeyEstimate(state);
     return 0;
 }
 
@@ -1780,9 +1795,24 @@ id_t writePage(embedDBState *state, void *buffer) {
     memcpy(buffer, &(pageNum), sizeof(id_t));
 
     if (state->numAvailDataPages <= 0) {
-        int8_t eraseResult = eraseDataPages(state, physicalPageNum, physicalPageNum + state->eraseSizeInPages);
-        if (eraseResult == -1)
-            return eraseResult;
+        /* Erase pages to make space for new data */
+        int8_t eraseResult = state->fileInterface->erase(physicalPageNum, physicalPageNum + state->eraseSizeInPages, state->dataFile);
+        if (eraseResult != 1) {
+#ifdef PRINT_ERRORS
+            printf("Failed to erase data page: %i (%i)\n", pageNum, physicalPageNum);
+#endif
+            return -1;
+        }
+
+        /* Flag the pages as usable to EmbedDB */
+        state->numAvailDataPages += state->eraseSizeInPages;
+        state->minDataPageId += state->eraseSizeInPages;
+
+        /* remove any spline points related to these pages */
+        if (state->cleanSpline)
+            cleanSpline(state, &state->minKey);
+        // Estimate the smallest key now. Could determine exactly by reading this page
+        state->minKey += state->eraseSizeInPages * state->maxRecordsPerPage * state->avgKeyDiff;
     }
 
     /* Seek to page location in file */
@@ -1798,27 +1828,6 @@ id_t writePage(embedDBState *state, void *buffer) {
     state->numWrites++;
 
     return pageNum;
-}
-
-int8_t eraseDataPages(embedDBState *state, uint32_t startingPage, uint32_t endingPage) {
-    /* Erase pages to make space for new data */
-    int8_t eraseResult = state->fileInterface->erase(startingPage, endingPage, state->dataFile);
-    if (eraseResult != 1) {
-#ifdef PRINT_ERRORS
-        printf("Failed to erase data pages from physical page %i to %i\n", startingPage, endingPage);
-#endif
-        return -1;
-    }
-
-    /* Flag the pages as usable to EmbedDB */
-    state->numAvailDataPages += state->eraseSizeInPages;
-    state->minDataPageId += state->eraseSizeInPages;
-
-    /* remove any spline points related to these pages */
-    if (state->cleanSpline)
-        cleanSpline(state, &state->minKey);
-    // Estimate the smallest key now. Could determine exactly by reading this page
-    updateMinKeyEstimate(state);
 }
 
 void updateMinKeyEstimate(embedDBState *state) {
