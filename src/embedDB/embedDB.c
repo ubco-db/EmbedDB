@@ -911,10 +911,10 @@ int8_t shiftRecordLevelConsistencyBlocks(embedDBState *state) {
 
     /* erase pages */
     uint32_t eraseEndingPage = (eraseStartingPage + state->eraseSizeInPages * numBlocksToErase) % state->numDataPages;
-    int8_t eraseSuccess = state->fileInterface->erase(eraseStartingPage, eraseEndingPage, state->dataFile);
+    int8_t eraseSuccess = eraseDataPages(state, eraseStartingPage, eraseEndingPage);
     if (!eraseSuccess) {
 #ifdef PRINT_ERRORS
-        printf("Keys must be strictly ascending order. Insert Failed.\n");
+        printf("Unable to shift record-level consistency blocks due to an erase error.\n");
 #endif
         return -1;
     }
