@@ -69,6 +69,7 @@
 /* Helper Functions */
 int8_t embedDBInitData(embedDBState *state);
 int8_t embedDBInitDataFromFile(embedDBState *state);
+int8_t embedDBInitDataFromFileWithRecordLevelConsistency(embedDBState *state);
 int8_t embedDBInitIndex(embedDBState *state);
 int8_t embedDBInitIndexFromFile(embedDBState *state);
 int8_t embedDBInitVarData(embedDBState *state);
@@ -330,14 +331,20 @@ int8_t embedDBInitData(embedDBState *state) {
     }
 
     /* Setup data file. */
+    int8_t openStatus = 0;
     if (!EMBEDDB_RESETING_DATA(state->parameters)) {
-        int8_t openStatus = state->fileInterface->open(state->dataFile, EMBEDDB_FILE_MODE_R_PLUS_B);
+        openStatus = state->fileInterface->open(state->dataFile, EMBEDDB_FILE_MODE_R_PLUS_B);
         if (openStatus) {
-            return embedDBInitDataFromFile(state);
+            if (EMBEDB_USING_RECORD_LEVEL_CONSISTENCY(state->parameters)) {
+                return embedDBInitDataFromFileWithRecordLevelConsistency(state);
+            } else {
+                return embedDBInitDataFromFile(state);
+            }
         }
+    } else {
+        openStatus = state->fileInterface->open(state->dataFile, EMBEDDB_FILE_MODE_W_PLUS_B);
     }
 
-    int8_t openStatus = state->fileInterface->open(state->dataFile, EMBEDDB_FILE_MODE_W_PLUS_B);
     if (!openStatus) {
 #ifdef PRINT_ERRORS
         printf("Error: Can't open data file!\n");
@@ -356,7 +363,6 @@ int8_t embedDBInitDataFromFile(embedDBState *state) {
     /* This will become zero if there is no more to read */
     int8_t moreToRead = !(readPage(state, physicalPageId));
 
-    bool haveWrappedInMemory = false;
     int count = 0;
     void *buffer = (int8_t *)state->buffer + state->pageSize * EMBEDDB_DATA_READ_BUFFER;
     bool validData = false;
@@ -400,6 +406,131 @@ int8_t embedDBInitDataFromFile(embedDBState *state) {
         /* check if data is valid or if it is junk */
         memcpy(&logicalPageId, buffer, sizeof(id_t));
         validData = logicalPageId % state->numDataPages == physicalPageId;
+
+        /* this means we have wrapped and our start is actually here */
+        if (validData) {
+            physicalPageIDOfSmallestData = physicalPageId;
+        } else if (count == 0) {
+            /* if the data was not valid and our count of pages visited is 0 there was no data to begin with so EmbedDB was empty and a fresh init was all that was needed*/
+            return 0;
+        }
+    }
+
+    state->nextDataPageId = maxLogicalPageId + 1;
+    readPage(state, physicalPageIDOfSmallestData);
+    memcpy(&(state->minDataPageId), buffer, sizeof(id_t));
+    state->numAvailDataPages = state->numDataPages + state->minDataPageId - maxLogicalPageId - 1;
+    if (state->keySize <= 4) {
+        uint32_t minKey = 0;
+        memcpy(&minKey, embedDBGetMinKey(state, buffer), state->keySize);
+        state->minKey = minKey;
+    } else {
+        uint64_t minKey = 0;
+        memcpy(&minKey, embedDBGetMinKey(state, buffer), state->keySize);
+        state->minKey = minKey;
+    }
+
+    /* Put largest key back into the buffer */
+    readPage(state, (state->nextDataPageId - 1) % state->numDataPages);
+
+    updateAverageKeyDifference(state, buffer);
+    /* Strange edge case that we probably need to think more about */
+    if (state->avgKeyDiff == 0)
+        state->avgKeyDiff = 1;
+
+    if (SEARCH_METHOD == 2) {
+        embedDBInitSplineFromFile(state);
+    }
+
+    return 0;
+}
+
+int8_t embedDBInitDataFromFileWithRecordLevelConsistency(embedDBState *state) {
+    id_t logicalPageId = 0;
+    id_t maxLogicalPageId = 0;
+    id_t physicalPageId = 0;
+
+    /* This will become zero if there is no more to read */
+    int8_t moreToRead = !(readPage(state, physicalPageId));
+
+    int count = 0;
+    void *buffer = (int8_t *)state->buffer + state->pageSize * EMBEDDB_DATA_READ_BUFFER;
+    bool validData = false;
+    while (moreToRead && count < state->numDataPages) {
+        memcpy(&logicalPageId, buffer, sizeof(id_t));
+        validData = logicalPageId % state->numDataPages == count;
+        if (validData && (count == 0 || logicalPageId == maxLogicalPageId + 1)) {
+            maxLogicalPageId = logicalPageId;
+            physicalPageId++;
+            updateMaxiumError(state, buffer);
+            moreToRead = !(readPage(state, physicalPageId));
+            count++;
+        } else {
+            break;
+        }
+    }
+
+    /* now we need to find where the page with the smallest key that is still valid */
+
+    /* default case is we start at beginning of data file*/
+    id_t physicalPageIDOfSmallestData = 0;
+    count_t blockSize = state->eraseSizeInPages;
+    if (!moreToRead && count == 0) {
+        return 0;
+    }
+
+    /* check if data exists at this location */
+    if (moreToRead && count < state->numDataPages) {
+        /* find where the next block boundary is */
+        id_t pagesToBlockBoundary = blockSize - (count % blockSize);
+        /* if we are on a block-boundary, we erase the next page in case the erase failed and then skip to the start of the next block */
+        if (pagesToBlockBoundary == 0) {
+            pagesToBlockBoundary += 4;
+            /* don't know if we need this yet */
+            //             int8_t eraseSuccess = state->fileInterface->erase(count, count + blockSize, state->dataFile);
+            //             if (!eraseSuccess) {
+            // #ifdef PRINT_ERRORS
+            //                 printf("Error: Unable to erase data page during recovery!\n");
+            // #endif
+            //                 return -1;
+            //             }
+        }
+
+        /* go to the next block boundary */
+        physicalPageId = (physicalPageId + pagesToBlockBoundary) % state->numDataPages;
+
+        /* need to potentially read the next three pages for record-level consistency recovery */
+        uint32_t i = 0;
+        // while (i < 3) {
+        //     /* Should be more to read but might not be */
+        //     moreToRead = !(readPage(state, physicalPageId));
+        //     if (!moreToRead) {
+        //         break;
+        //     }
+
+        // }
+
+        /* PAGE 1 */
+        moreToRead = !(readPage(state, physicalPageId));
+
+        /* there should have been more to read becuase the file should not be empty at this point if it was not empty at the previous block */
+        if (!moreToRead) {
+            return -1;
+        }
+
+        /* Check conditions for page number */
+        memcpy(&logicalPageId, buffer, sizeof(id_t));
+
+        /* Condition 1 => Page Number is the same as the previous page, which means no record-level consistency is required */
+
+        /* PAGE 2 */
+
+        /* PAGE 3 */
+
+        /* check if data is valid or if it is junk */
+
+        validData = logicalPageId % state->numDataPages == physicalPageId;
+        /* loop for checking record level consistency pages */
 
         /* this means we have wrapped and our start is actually here */
         if (validData) {
