@@ -440,7 +440,7 @@ id_t writeVariablePage(embedDBState *state, void *buffer);
  * @brief   Writes a temporary page when using record-levek-consistency to storage.
  * @param	state	embedDB algorithm state structure
  * @param	pageNum	Page number to read
- * @return  Returns 0 for success and -1 if error.
+ * @return  Returns 0 for success and non-zero value for an error.
  */
 int8_t writeTemporaryPage(embedDBState *state, void *buffer);
 

@@ -1839,7 +1839,7 @@ int8_t writeTemporaryPage(embedDBState *state, void *buffer) {
 #ifdef PRINT_ERRORS
         printf("The dataFile in embedDBState was null.");
 #endif
-        return -1;
+        return -3;
     }
 
     /* Setup page number in header */
@@ -1865,7 +1865,7 @@ int8_t writeTemporaryPage(embedDBState *state, void *buffer) {
         if (!eraseSuccess) {
 #ifdef PRINT_ERRORS
             printf("Failed to erase block starting at physical page %i in the data file.", state->nextRLCPhysicalPageLocation);
-            return -1;
+            return -2;
 #endif
         }
     }
