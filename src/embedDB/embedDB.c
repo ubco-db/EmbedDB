@@ -494,7 +494,7 @@ int8_t embedDBInitDataFromFileWithRecordLevelConsistency(embedDBState *state) {
     id_t pagesToBlockBoundary = blockSize - (count % blockSize);
     /* if we are on a block-boundary, we erase the next page in case the erase failed and then skip to the start of the next block */
     if (pagesToBlockBoundary == 0) {
-        pagesToBlockBoundary += 4;
+        pagesToBlockBoundary += blockSize;
         int8_t eraseSuccess = state->fileInterface->erase(count, count + blockSize, state->dataFile);
         if (!eraseSuccess) {
 #ifdef PRINT_ERRORS
