@@ -359,15 +359,25 @@ int8_t embedDBInitDataFromFile(embedDBState *state) {
     id_t logicalPageId = 0;
     id_t maxLogicalPageId = 0;
     id_t physicalPageId = 0;
+    uint32_t count = 0;
+    count_t blockSize = state->eraseSizeInPages;
+    bool validData = false;
+    void *buffer = (int8_t *)state->buffer + state->pageSize * EMBEDDB_DATA_READ_BUFFER;
 
     /* This will become zero if there is no more to read */
     int8_t moreToRead = !(readPage(state, physicalPageId));
 
-    /* TODO: fix case where erased block happens to be at the start of the file (and add test so I don't forget about this again) */
+    /* this handles the case where the first page may have been erased, so has junk data and we actually need to start from the second page */
+    if (moreToRead) {
+        memcpy(&logicalPageId, buffer, sizeof(id_t));
+        bool validData = logicalPageId % state->numDataPages == count;
+        if (!validData) {
+            physicalPageId += blockSize;
+            count += blockSize;
+            moreToRead = !(readPage(state, physicalPageId));
+        }
+    }
 
-    int count = 0;
-    void *buffer = (int8_t *)state->buffer + state->pageSize * EMBEDDB_DATA_READ_BUFFER;
-    bool validData = false;
     while (moreToRead && count < state->numDataPages) {
         memcpy(&logicalPageId, buffer, sizeof(id_t));
         validData = logicalPageId % state->numDataPages == count;
@@ -386,7 +396,6 @@ int8_t embedDBInitDataFromFile(embedDBState *state) {
 
     /* default case is we start at beginning of data file*/
     id_t physicalPageIDOfSmallestData = 0;
-    count_t blockSize = state->eraseSizeInPages;
     if (!moreToRead && count == 0) {
         return 0;
     }
@@ -451,13 +460,17 @@ int8_t embedDBInitDataFromFileWithRecordLevelConsistency(embedDBState *state) {
     id_t logicalPageId = 0;
     id_t maxLogicalPageId = 0;
     id_t physicalPageId = 0;
+    uint32_t count = 0;
     count_t blockSize = state->eraseSizeInPages;
+    bool validData = false;
+    void *buffer = (int8_t *)state->buffer + state->pageSize * EMBEDDB_DATA_READ_BUFFER;
 
     /* This will become zero if there is no more to read */
     int8_t moreToRead = !(readPage(state, physicalPageId));
-    int count = 0;
-    void *buffer = (int8_t *)state->buffer + state->pageSize * EMBEDDB_DATA_READ_BUFFER;
-    bool validData = false;
+
+    /* This handles the case that the first three pages may not have valid data in them.
+     * They may be either an erased page or pages for record-level consistency.
+     */
     uint32_t i = 0;
     while (moreToRead && i < 4) {
         memcpy(&logicalPageId, buffer, sizeof(id_t));
