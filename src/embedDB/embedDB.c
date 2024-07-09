@@ -451,15 +451,25 @@ int8_t embedDBInitDataFromFileWithRecordLevelConsistency(embedDBState *state) {
     id_t logicalPageId = 0;
     id_t maxLogicalPageId = 0;
     id_t physicalPageId = 0;
+    count_t blockSize = state->eraseSizeInPages;
 
     /* This will become zero if there is no more to read */
     int8_t moreToRead = !(readPage(state, physicalPageId));
-
-    /* TODO: Fix issue where this will likely not work if record-level consistency is at the start of the file, or if an erased block is*/
-
     int count = 0;
     void *buffer = (int8_t *)state->buffer + state->pageSize * EMBEDDB_DATA_READ_BUFFER;
     bool validData = false;
+    uint32_t i = 0;
+    while (moreToRead && i < 4) {
+        memcpy(&logicalPageId, buffer, sizeof(id_t));
+        validData = logicalPageId % state->numDataPages == count;
+        if (validData)
+            break;
+        physicalPageId += blockSize;
+        count += blockSize;
+        moreToRead = !(readPage(state, physicalPageId));
+        i++;
+    }
+
     while (moreToRead && count < state->numDataPages) {
         memcpy(&logicalPageId, buffer, sizeof(id_t));
         validData = logicalPageId % state->numDataPages == count;
@@ -474,11 +484,8 @@ int8_t embedDBInitDataFromFileWithRecordLevelConsistency(embedDBState *state) {
         }
     }
 
-    /* TODO: Need to account for case where the max record is actually the last record ie we may need to skip past the first block or so to start the recovery algorithm */
-
     /* default case is we start at beginning of data file*/
     id_t physicalPageIDOfSmallestData = 0;
-    count_t blockSize = state->eraseSizeInPages;
     if (!moreToRead && count == 0) {
         return 0;
     }
