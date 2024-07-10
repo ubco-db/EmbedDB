@@ -170,6 +170,21 @@ void record_level_consistency_blocks_should_wrap_when_storage_is_full() {
     TEST_ASSERT_EQUAL_UINT32_MESSAGE(1, state->nextRLCPhysicalPageLocation, "After wrapping the second record-level consistency block, the nextRLCPhysicalPageLocation is incorrect.");
 }
 
+void embedDBInit_should_detect_when_no_records_written_with_record_level_consistency() {
+    /* close embedDB and recover */
+    tearDown();
+    int8_t setupParameters = EMBEDDB_RECORD_LEVEL_CONSISTENCY;
+    setupEmbedDB(setupParameters);
+
+    /* test that we recovered correctly to the default state */
+    TEST_ASSERT_EQUAL_UINT32_MESSAGE(0, state->minDataPageId, "embedDBInit did not set the correct minDataPageId after recovering with no records written.");
+    TEST_ASSERT_EQUAL_UINT32_MESSAGE(UINT32_MAX, state->minKey, "embedDBInit did not set the correct minKey after recovering with no records written.");
+    TEST_ASSERT_EQUAL_UINT32_MESSAGE(24, state->numAvailDataPages, "embedDBInit did not set the correct value of numAvailDataPages after recovering with no records written.");
+    TEST_ASSERT_EQUAL_UINT32_MESSAGE(0, state->nextDataPageId, "embedDBInit did not set the correct value of nextDataPageId after recovering with no records written.");
+    TEST_ASSERT_EQUAL_UINT32_MESSAGE(4, state->nextRLCPhysicalPageLocation, "embedDBInit did not set the correct value of nextRLCPhysicalPageLocation after recovering with no records written.");
+    TEST_ASSERT_EQUAL_UINT32_MESSAGE(4, state->rlcPhysicalStartingPage, "embedDBInit did not set the correct value of rlcPhysicalStartingPage after recovering with no records written.");
+}
+
 void embedDBInit_should_recover_record_level_consistency_records_when_no_permanent_pages_written() {
     /* insert records */
     insertRecords(202020, 101010, 12);
@@ -180,7 +195,32 @@ void embedDBInit_should_recover_record_level_consistency_records_when_no_permane
     setupEmbedDB(setupParameters);
 
     /* test that we recovered correctly */
-    // TEST_ASSERT_EQUAL_UINT32_MESSAGE(0, state->minDataPageId, "embedDBInit did not set the correct minDataPageId after recovering with no permanent records written.");
+    TEST_ASSERT_EQUAL_UINT32_MESSAGE(0, state->minDataPageId, "embedDBInit did not set the correct minDataPageId after recovering with no permanent records written.");
+    TEST_ASSERT_EQUAL_UINT32_MESSAGE(0, state->nextDataPageId, "embedDBInit did not set the correct value of nextDataPageId with no permanent records written.");
+    TEST_ASSERT_EQUAL_UINT32_MESSAGE(UINT32_MAX, state->minKey, "embedDBInit did not set the correct minKey after recovering with no permanent records written.");
+    TEST_ASSERT_EQUAL_UINT32_MESSAGE(24, state->numAvailDataPages, "embedDBInit did not set the correct value of numAvailDataPages with no permanent records written.");
+    TEST_ASSERT_EQUAL_UINT32_MESSAGE(8, state->nextRLCPhysicalPageLocation, "embedDBInit did not set the correct value of nextRLCPhysicalPageLocation with no permanent records written.");
+    TEST_ASSERT_EQUAL_UINT32_MESSAGE(4, state->rlcPhysicalStartingPage, "embedDBInit did not set the correct value of rlcPhysicalStartingPage with no permanent records written.");
+
+    /* test that we can query all records written before reset */
+    uint32_t key = 202021;
+    uint64_t expectedData = 101011;
+    uint64_t actualData = 0;
+    char message[100];
+    for (uint32_t i = 0; i < 12; i++) {
+        int8_t getResult = embedDBGet(state, &key, &actualData);
+        snprintf(message, 100, "embedDBGet was unable to fetch the data for key %u.", key);
+        TEST_ASSERT_EQUAL_INT8_MESSAGE(0, getResult, message);
+        snprintf(message, 100, "embedDBGet returned the wrong data for key %u.", key);
+        TEST_ASSERT_EQUAL_MEMORY_MESSAGE(&expectedData, &actualData, sizeof(uint64_t), message);
+        key++;
+        expectedData++;
+    }
+
+    /* Check that if we try to query one more it should return an error */
+    int8_t getResult = embedDBGet(state, &key, &actualData);
+    snprintf(message, 100, "embedDBGet fetched data for a record that should not exist %u.", key);
+    TEST_ASSERT_EQUAL_INT8_MESSAGE(-1, getResult, message);
 }
 
 int runUnityTests() {
@@ -189,6 +229,7 @@ int runUnityTests() {
     RUN_TEST(writeTemporaryPage_places_pages_in_correct_location);
     RUN_TEST(record_level_consistency_blocks_should_move_when_write_block_is_full);
     RUN_TEST(record_level_consistency_blocks_should_wrap_when_storage_is_full);
+    RUN_TEST(embedDBInit_should_detect_when_no_records_written_with_record_level_consistency);
     RUN_TEST(embedDBInit_should_recover_record_level_consistency_records_when_no_permanent_pages_written);
     return UNITY_END();
 }
