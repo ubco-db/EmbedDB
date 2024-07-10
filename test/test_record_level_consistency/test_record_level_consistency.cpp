@@ -32,7 +32,7 @@
 
 embedDBState *state;
 
-void setupEmbedDB() {
+void setupEmbedDB(int8_t parameters) {
     /* The setup below will result in having 42 records per page */
     state = (embedDBState *)malloc(sizeof(embedDBState));
     TEST_ASSERT_NOT_NULL_MESSAGE(state, "Unable to allocate embedDBState.");
@@ -50,7 +50,7 @@ void setupEmbedDB() {
 
     state->numDataPages = 32;
     state->eraseSizeInPages = 4;
-    state->parameters = EMBEDDB_RECORD_LEVEL_CONSISTENCY | EMBEDDB_RESET_DATA;
+    state->parameters = parameters;
     state->compareKey = int32Comparator;
     state->compareData = int64Comparator;
     int8_t result = embedDBInit(state, 1);
@@ -58,7 +58,8 @@ void setupEmbedDB() {
 }
 
 void setUp() {
-    setupEmbedDB();
+    int8_t setupParamaters = EMBEDDB_RECORD_LEVEL_CONSISTENCY | EMBEDDB_RESET_DATA;
+    setupEmbedDB(setupParamaters);
 }
 
 void tearDown() {
@@ -169,12 +170,26 @@ void record_level_consistency_blocks_should_wrap_when_storage_is_full() {
     TEST_ASSERT_EQUAL_UINT32_MESSAGE(1, state->nextRLCPhysicalPageLocation, "After wrapping the second record-level consistency block, the nextRLCPhysicalPageLocation is incorrect.");
 }
 
+void embedDBInit_should_recover_record_level_consistency_records_when_no_permanent_pages_written() {
+    /* insert records */
+    insertRecords(202020, 101010, 12);
+
+    /* close embedDB and recover */
+    tearDown();
+    int8_t setupParameters = EMBEDDB_RECORD_LEVEL_CONSISTENCY;
+    setupEmbedDB(setupParameters);
+
+    /* test that we recovered correctly */
+    // TEST_ASSERT_EQUAL_UINT32_MESSAGE(0, state->minDataPageId, "embedDBInit did not set the correct minDataPageId after recovering with no permanent records written.");
+}
+
 int runUnityTests() {
     UNITY_BEGIN();
     RUN_TEST(embedDBInit_should_initialize_with_correct_values_for_record_level_consistency);
     RUN_TEST(writeTemporaryPage_places_pages_in_correct_location);
     RUN_TEST(record_level_consistency_blocks_should_move_when_write_block_is_full);
     RUN_TEST(record_level_consistency_blocks_should_wrap_when_storage_is_full);
+    RUN_TEST(embedDBInit_should_recover_record_level_consistency_records_when_no_permanent_pages_written);
     return UNITY_END();
 }
 
