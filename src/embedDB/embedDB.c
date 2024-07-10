@@ -533,8 +533,10 @@ int8_t embedDBInitDataFromFileWithRecordLevelConsistency(embedDBState *state) {
     moreToRead = !(readPage(state, physicalPageId));
     while (moreToRead && numPagesRead < numPagesToRead) {
         memcpy(&logicalPageId, buffer, sizeof(id_t));
-        /* if the next logical page number is not the one after the max data page, we can just skip to the next page */
-        if (logicalPageId == maxLogicalPageId + 1 || logicalPageId == 0) {
+        /* If the next logical page number is not the one after the max data page, we can just skip to the next page.
+         * We also need to read the page if there are no permanent records but the logicalPageId is zero, as this indicates we have record-level consistency records
+         */
+        if (logicalPageId == maxLogicalPageId + 1 || (logicalPageId == 0 && !hasPermanentData)) {
             uint32_t numRecords = EMBEDDB_GET_COUNT(buffer);
             if (rlcMaxRecordCount == UINT32_MAX || numRecords > rlcMaxRecordCount) {
                 rlcMaxRecordCount = numRecords;

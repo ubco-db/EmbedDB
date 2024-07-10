@@ -223,6 +223,133 @@ void embedDBInit_should_recover_record_level_consistency_records_when_no_permane
     TEST_ASSERT_EQUAL_INT8_MESSAGE(-1, getResult, message);
 }
 
+void embedDBInit_should_recover_record_level_consistency_records_when_one_permanent_page_is_written() {
+    /* insert records */
+    insertRecords(12344, 11, 42);
+    embedDBFlush(state);
+
+    /* close embedDB and recover */
+    tearDown();
+    int8_t setupParameters = EMBEDDB_RECORD_LEVEL_CONSISTENCY;
+    setupEmbedDB(setupParameters);
+
+    /* Check that data was initialised correctly */
+    TEST_ASSERT_EQUAL_UINT32_MESSAGE(0, state->minDataPageId, "embedDBInit did not set the correct minDataPageId after recovering with no permanent records written.");
+    TEST_ASSERT_EQUAL_UINT32_MESSAGE(1, state->nextDataPageId, "embedDBInit did not set the correct value of nextDataPageId with no permanent records written.");
+    TEST_ASSERT_EQUAL_UINT32_MESSAGE(12345, state->minKey, "embedDBInit did not set the correct minKey after recovering with no permanent records written.");
+    TEST_ASSERT_EQUAL_UINT32_MESSAGE(23, state->numAvailDataPages, "embedDBInit did not set the correct value of numAvailDataPages with no permanent records written.");
+    TEST_ASSERT_EQUAL_UINT32_MESSAGE(4, state->nextRLCPhysicalPageLocation, "embedDBInit did not set the correct value of nextRLCPhysicalPageLocation with no permanent records written.");
+    TEST_ASSERT_EQUAL_UINT32_MESSAGE(4, state->rlcPhysicalStartingPage, "embedDBInit did not set the correct value of rlcPhysicalStartingPage with no permanent records written.");
+
+    /* Check that there is nothing in the buffer */
+    int8_t *buffer = (int8_t *)(state->buffer) + (state->pageSize * EMBEDDB_DATA_WRITE_BUFFER);
+    int8_t count = EMBEDDB_GET_COUNT(buffer);
+    TEST_ASSERT_EQUAL_INT8_MESSAGE(0, count, "embedDBInit did not correctly initialize the write buffer after recovery.");
+}
+
+void embedDBInit_should_recover_record_level_consistency_records_when_four_permanent_pages_are_written() {
+    /* insert records */
+    insertRecords(1032, 243718, 168);
+    embedDBFlush(state);
+
+    /* close embedDB and recover */
+    tearDown();
+    int8_t setupParameters = EMBEDDB_RECORD_LEVEL_CONSISTENCY;
+    setupEmbedDB(setupParameters);
+
+    /* Check that data was initialised correctly */
+    TEST_ASSERT_EQUAL_UINT32_MESSAGE(0, state->minDataPageId, "embedDBInit did not set the correct minDataPageId after recovering with no permanent records written.");
+    TEST_ASSERT_EQUAL_UINT32_MESSAGE(4, state->nextDataPageId, "embedDBInit did not set the correct value of nextDataPageId with no permanent records written.");
+    TEST_ASSERT_EQUAL_UINT32_MESSAGE(1033, state->minKey, "embedDBInit did not set the correct minKey after recovering with no permanent records written.");
+    TEST_ASSERT_EQUAL_UINT32_MESSAGE(20, state->numAvailDataPages, "embedDBInit did not set the correct value of numAvailDataPages with no permanent records written.");
+    TEST_ASSERT_EQUAL_UINT32_MESSAGE(8, state->nextRLCPhysicalPageLocation, "embedDBInit did not set the correct value of nextRLCPhysicalPageLocation with no permanent records written.");
+    TEST_ASSERT_EQUAL_UINT32_MESSAGE(8, state->rlcPhysicalStartingPage, "embedDBInit did not set the correct value of rlcPhysicalStartingPage with no permanent records written.");
+
+    /* Check that there is nothing in the buffer */
+    int8_t *buffer = (int8_t *)(state->buffer) + (state->pageSize * EMBEDDB_DATA_WRITE_BUFFER);
+    int8_t count = EMBEDDB_GET_COUNT(buffer);
+    TEST_ASSERT_EQUAL_INT8_MESSAGE(0, count, "embedDBInit did not correctly initialize the write buffer after recovery.");
+
+    /* Should be able to write records to record-level consistency pages */
+    insertRecords(1400, 231427, 34);
+    TEST_ASSERT_EQUAL_UINT32_MESSAGE(0, state->minDataPageId, "embedDBPut incremented minDataPageId before a page should have been written.");
+    TEST_ASSERT_EQUAL_UINT32_MESSAGE(4, state->nextDataPageId, "embedDBPut incremented nextDataPageId before a page should have been written.");
+    TEST_ASSERT_EQUAL_UINT32_MESSAGE(1033, state->minKey, "embedDBPut changed minKey after inserting keys.");
+    TEST_ASSERT_EQUAL_UINT32_MESSAGE(20, state->numAvailDataPages, "embedDBPut changed numAvailDataPages before a page should have been written.");
+    TEST_ASSERT_EQUAL_UINT32_MESSAGE(10, state->nextRLCPhysicalPageLocation, "embedDBInit did not set the correct value of nextRLCPhysicalPageLocation with no permanent records written.");
+    TEST_ASSERT_EQUAL_UINT32_MESSAGE(8, state->rlcPhysicalStartingPage, "embedDBInit did not set the correct value of rlcPhysicalStartingPage with no permanent records written.");
+
+    /* Check that we can query these new records */
+    uint32_t key = 1401;
+    uint64_t expectedData = 231428;
+    uint64_t actualData = 0;
+    char message[100];
+    for (uint32_t i = 0; i < 34; i++) {
+        int8_t getResult = embedDBGet(state, &key, &actualData);
+        snprintf(message, 100, "embedDBGet was unable to fetch the data for key %u.", key);
+        TEST_ASSERT_EQUAL_INT8_MESSAGE(0, getResult, message);
+        snprintf(message, 100, "embedDBGet returned the wrong data for key %u.", key);
+        TEST_ASSERT_EQUAL_MEMORY_MESSAGE(&expectedData, &actualData, sizeof(uint64_t), message);
+        key++;
+        expectedData++;
+    }
+}
+
+void embedDBInit_should_recover_record_level_consistency_records_when_eight_permanent_pages_are_written() {
+    /* insert 8 pages of records and 39 individual records */
+    insertRecords(544479, 651844, 375);
+
+    /* close embedDB and recover */
+    tearDown();
+    int8_t setupParameters = EMBEDDB_RECORD_LEVEL_CONSISTENCY;
+    setupEmbedDB(setupParameters);
+
+    /* Check that data was initialised correctly */
+    TEST_ASSERT_EQUAL_UINT32_MESSAGE(0, state->minDataPageId, "embedDBInit did not set the correct minDataPageId after recovering with no permanent records written.");
+    TEST_ASSERT_EQUAL_UINT32_MESSAGE(8, state->nextDataPageId, "embedDBInit did not set the correct value of nextDataPageId with no permanent records written.");
+    TEST_ASSERT_EQUAL_UINT32_MESSAGE(544480, state->minKey, "embedDBInit did not set the correct minKey after recovering with no permanent records written.");
+    TEST_ASSERT_EQUAL_UINT32_MESSAGE(16, state->numAvailDataPages, "embedDBInit did not set the correct value of numAvailDataPages with no permanent records written.");
+    TEST_ASSERT_EQUAL_UINT32_MESSAGE(19, state->nextRLCPhysicalPageLocation, "embedDBInit did not set the correct value of nextRLCPhysicalPageLocation with no permanent records written.");
+    TEST_ASSERT_EQUAL_UINT32_MESSAGE(12, state->rlcPhysicalStartingPage, "embedDBInit did not set the correct value of rlcPhysicalStartingPage with no permanent records written.");
+
+    /* Check that buffer was initialised correctly */
+    int8_t *buffer = (int8_t *)(state->buffer) + (state->pageSize * EMBEDDB_DATA_WRITE_BUFFER);
+    int8_t count = EMBEDDB_GET_COUNT(buffer);
+    TEST_ASSERT_EQUAL_INT8_MESSAGE(39, count, "embedDBInit did not correctly initialize the write buffer after recovery.");
+
+    /* insert four more records to trigger page write */
+    insertRecords(552242, 2431549, 4);
+    TEST_ASSERT_EQUAL_UINT32_MESSAGE(0, state->minDataPageId, "embedDBInit did not set the correct minDataPageId after recovering with no permanent records written.");
+    TEST_ASSERT_EQUAL_UINT32_MESSAGE(9, state->nextDataPageId, "embedDBInit did not set the correct value of nextDataPageId with no permanent records written.");
+    TEST_ASSERT_EQUAL_UINT32_MESSAGE(544480, state->minKey, "embedDBInit did not set the correct minKey after recovering with no permanent records written.");
+    TEST_ASSERT_EQUAL_UINT32_MESSAGE(15, state->numAvailDataPages, "embedDBInit did not set the correct value of numAvailDataPages with no permanent records written.");
+    TEST_ASSERT_EQUAL_UINT32_MESSAGE(15, state->nextRLCPhysicalPageLocation, "embedDBInit did not set the correct value of nextRLCPhysicalPageLocation with no permanent records written.");
+    TEST_ASSERT_EQUAL_UINT32_MESSAGE(12, state->rlcPhysicalStartingPage, "embedDBInit did not set the correct value of rlcPhysicalStartingPage with no permanent records written.");
+}
+
+void embedDBInit_should_recover_record_level_consistency_records_when_twenty_one_permanent_pages_are_written() {
+    /* insert 21 pages of records and 13 individual records */
+    insertRecords(20241017, 370701, 895);
+
+    /* close embedDB and recover */
+    tearDown();
+    int8_t setupParameters = EMBEDDB_RECORD_LEVEL_CONSISTENCY;
+    setupEmbedDB(setupParameters);
+
+    /* Check that data was initialised correctly */
+    TEST_ASSERT_EQUAL_UINT32_MESSAGE(0, state->minDataPageId, "embedDBInit did not set the correct minDataPageId after recovering with no permanent records written.");
+    TEST_ASSERT_EQUAL_UINT32_MESSAGE(21, state->nextDataPageId, "embedDBInit did not set the correct value of nextDataPageId with no permanent records written.");
+    TEST_ASSERT_EQUAL_UINT32_MESSAGE(20241018, state->minKey, "embedDBInit did not set the correct minKey after recovering with no permanent records written.");
+    TEST_ASSERT_EQUAL_UINT32_MESSAGE(3, state->numAvailDataPages, "embedDBInit did not set the correct value of numAvailDataPages with no permanent records written.");
+    TEST_ASSERT_EQUAL_UINT32_MESSAGE(31, state->nextRLCPhysicalPageLocation, "embedDBInit did not set the correct value of nextRLCPhysicalPageLocation with no permanent records written.");
+    TEST_ASSERT_EQUAL_UINT32_MESSAGE(24, state->rlcPhysicalStartingPage, "embedDBInit did not set the correct value of rlcPhysicalStartingPage with no permanent records written.");
+
+    /* Check that buffer was initialised correctly */
+    int8_t *buffer = (int8_t *)(state->buffer) + (state->pageSize * EMBEDDB_DATA_WRITE_BUFFER);
+    int8_t count = EMBEDDB_GET_COUNT(buffer);
+    TEST_ASSERT_EQUAL_INT8_MESSAGE(13, count, "embedDBInit did not correctly initialize the write buffer after recovery.");
+}
+
 int runUnityTests() {
     UNITY_BEGIN();
     RUN_TEST(embedDBInit_should_initialize_with_correct_values_for_record_level_consistency);
@@ -231,6 +358,10 @@ int runUnityTests() {
     RUN_TEST(record_level_consistency_blocks_should_wrap_when_storage_is_full);
     RUN_TEST(embedDBInit_should_detect_when_no_records_written_with_record_level_consistency);
     RUN_TEST(embedDBInit_should_recover_record_level_consistency_records_when_no_permanent_pages_written);
+    RUN_TEST(embedDBInit_should_recover_record_level_consistency_records_when_one_permanent_page_is_written);
+    RUN_TEST(embedDBInit_should_recover_record_level_consistency_records_when_four_permanent_pages_are_written);
+    RUN_TEST(embedDBInit_should_recover_record_level_consistency_records_when_eight_permanent_pages_are_written);
+    RUN_TEST(embedDBInit_should_recover_record_level_consistency_records_when_twenty_one_permanent_pages_are_written);
     return UNITY_END();
 }
 
