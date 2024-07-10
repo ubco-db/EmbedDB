@@ -463,6 +463,7 @@ int8_t embedDBInitDataFromFileWithRecordLevelConsistency(embedDBState *state) {
     uint32_t count = 0;
     count_t blockSize = state->eraseSizeInPages;
     bool validData = false;
+    bool hasPermanentData = false;
     void *buffer = (int8_t *)state->buffer + state->pageSize * EMBEDDB_DATA_READ_BUFFER;
 
     /* This will become zero if there is no more to read */
@@ -475,8 +476,10 @@ int8_t embedDBInitDataFromFileWithRecordLevelConsistency(embedDBState *state) {
     while (moreToRead && i < 4) {
         memcpy(&logicalPageId, buffer, sizeof(id_t));
         validData = logicalPageId % state->numDataPages == count;
-        if (validData && EMBEDDB_GET_COUNT(buffer) > 0)
+        if (validData && EMBEDDB_GET_COUNT(buffer) > 0) {
+            hasPermanentData = true;
             break;
+        }
         physicalPageId += blockSize;
         count += blockSize;
         moreToRead = !(readPage(state, physicalPageId));
@@ -497,14 +500,8 @@ int8_t embedDBInitDataFromFileWithRecordLevelConsistency(embedDBState *state) {
         }
     }
 
-    /* default case is we start at beginning of data file*/
-    id_t physicalPageIDOfSmallestData = 0;
-    if (!moreToRead && count == 0) {
-        return 0;
-    }
-
-    /* case where the there is no permanent pages written, but we may still have record-level consistency records in block 2 */
-    if (!validData && maxLogicalPageId == 0) {
+    /* Case where the there is no permanent pages written, but we may still have record-level consistency records in block 2 */
+    if (!hasPermanentData) {
         count = 0;
         physicalPageId = 0;
     }
@@ -512,8 +509,7 @@ int8_t embedDBInitDataFromFileWithRecordLevelConsistency(embedDBState *state) {
     /* find where the next block boundary is */
     id_t pagesToBlockBoundary = blockSize - (count % blockSize);
     /* if we are on a block-boundary, we erase the next page in case the erase failed and then skip to the start of the next block */
-    if (pagesToBlockBoundary == 0) {
-        pagesToBlockBoundary += blockSize;
+    if (pagesToBlockBoundary == blockSize) {
         int8_t eraseSuccess = state->fileInterface->erase(count, count + blockSize, state->dataFile);
         if (!eraseSuccess) {
 #ifdef PRINT_ERRORS
@@ -572,6 +568,7 @@ int8_t embedDBInitDataFromFileWithRecordLevelConsistency(embedDBState *state) {
         eraseEndingPage = (eraseStartingPage + blockSize) % state->numDataPages;
     }
     int8_t eraseSuccess = state->fileInterface->erase(eraseStartingPage, eraseEndingPage, state->dataFile);
+
     if (!eraseSuccess) {
 #ifdef PRINT_ERRORS
         printf("Error: Unable to erase pages in data file!\n");
@@ -579,24 +576,31 @@ int8_t embedDBInitDataFromFileWithRecordLevelConsistency(embedDBState *state) {
         return -1;
     }
 
-    /* now we see if we wrapped or not after the record level consistency */
+    /* if we don't have any permanent data, we can just return now that the record-level consistency records have been handled */
+    if (!hasPermanentData) {
+        return 0;
+    }
+
+    /* Now check if we have wrapped after the record level consistency.
+     * The default case is we start at beginning of data file.
+     */
+    id_t physicalPageIDOfSmallestData = 0;
+
     int8_t readSuccess = readPage(state, (state->rlcPhysicalStartingPage + 2 * blockSize % state->numDataPages));
-    if (readSuccess) {
+    if (readSuccess == 0) {
         memcpy(&logicalPageId, buffer, sizeof(id_t));
         validData = logicalPageId % state->numDataPages == physicalPageId;
+
         /* this means we have wrapped and our start is actually here */
         if (validData) {
             physicalPageIDOfSmallestData = physicalPageId;
-        } else if (count == 0) {
-            /* if the data was not valid and our count of pages visited is 0 there was no data to begin with so EmbedDB was empty and a fresh init was all that was needed */
-            return 0;
         }
     }
 
     state->nextDataPageId = maxLogicalPageId + 1;
     readPage(state, physicalPageIDOfSmallestData);
     memcpy(&(state->minDataPageId), buffer, sizeof(id_t));
-    state->numAvailDataPages = state->numDataPages + state->minDataPageId - maxLogicalPageId - 1 - blockSize;
+    state->numAvailDataPages = state->numDataPages + state->minDataPageId - maxLogicalPageId - 1 - (2 * blockSize);
     if (state->keySize <= 4) {
         uint32_t minKey = 0;
         memcpy(&minKey, embedDBGetMinKey(state, buffer), state->keySize);
