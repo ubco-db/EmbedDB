@@ -277,7 +277,7 @@ embedDBState* init_state() {
     // ensure successful malloc
     if (state == NULL) {
         printf("Unable to allocate state. Exiting\n");
-        exit(0);
+        exit(-1);
     }
     /* configure EmbedDB state variables */
     // for fixed-length records
@@ -291,7 +291,7 @@ embedDBState* init_state() {
     // ensure successful malloc
     if (state->buffer == NULL) {
         printf("Unable to allocate buffer. Exciting\n");
-        exit(0);
+        exit(-1);
     }
 
     // for learned indexing and bitmap
@@ -328,7 +328,7 @@ embedDBState* init_state() {
     size_t splineMaxError = 1;
     if (embedDBInit(state, splineMaxError) != 0) {
         printf("Initialization error");
-        exit(0);
+        exit(-1);
     }
 
     embedDBResetStats(state);
