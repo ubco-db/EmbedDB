@@ -383,6 +383,8 @@ void embedDBInit_should_recover_record_level_consistency_records_when_twenty_thr
     TEST_ASSERT_EQUAL_UINT32_MESSAGE(28, state->rlcPhysicalStartingPage, "embedDBInit did not set the correct value of rlcPhysicalStartingPage with no permanent records written.");
 }
 
+/* TODO: Add cases for wrap around */
+
 int runUnityTests() {
     UNITY_BEGIN();
     RUN_TEST(embedDBInit_should_initialize_with_correct_values_for_record_level_consistency);

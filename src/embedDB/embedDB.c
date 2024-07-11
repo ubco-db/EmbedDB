@@ -362,21 +362,30 @@ int8_t embedDBInitDataFromFile(embedDBState *state) {
     uint32_t count = 0;
     count_t blockSize = state->eraseSizeInPages;
     bool validData = false;
+    bool hasData = false;
     void *buffer = (int8_t *)state->buffer + state->pageSize * EMBEDDB_DATA_READ_BUFFER;
 
     /* This will become zero if there is no more to read */
     int8_t moreToRead = !(readPage(state, physicalPageId));
 
     /* this handles the case where the first page may have been erased, so has junk data and we actually need to start from the second page */
-    if (moreToRead) {
+    uint32_t i = 0;
+    while (moreToRead && i < 2) {
         memcpy(&logicalPageId, buffer, sizeof(id_t));
-        bool validData = logicalPageId % state->numDataPages == count;
-        if (!validData) {
-            physicalPageId += blockSize;
-            count += blockSize;
-            moreToRead = !(readPage(state, physicalPageId));
+        validData = logicalPageId % state->numDataPages == count;
+        if (validData && EMBEDDB_GET_COUNT(buffer) > 0) {
+            hasData = true;
+            break;
         }
+        physicalPageId += blockSize;
+        count += blockSize;
+        moreToRead = !(readPage(state, physicalPageId));
+        i++;
     }
+
+    /* if we have no valid data, we just have an empty file can can start from the scratch */
+    if (!hasData)
+        return 0;
 
     while (moreToRead && count < state->numDataPages) {
         memcpy(&logicalPageId, buffer, sizeof(id_t));
@@ -392,13 +401,11 @@ int8_t embedDBInitDataFromFile(embedDBState *state) {
         }
     }
 
-    /* now we need to find where the page with the smallest key that is still valid */
-
-    /* default case is we start at beginning of data file*/
+    /*
+     * Now we need to find where the page with the smallest key that is still valid.
+     * The default case is we have not wrapped and the page number for the physical page with the smallest key is 0.
+     */
     id_t physicalPageIDOfSmallestData = 0;
-    if (!moreToRead && count == 0) {
-        return 0;
-    }
 
     /* check if data exists at this location */
     if (moreToRead && count < state->numDataPages) {
