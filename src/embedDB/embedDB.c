@@ -375,10 +375,15 @@ int8_t embedDBInitDataFromFile(embedDBState *state) {
         validData = logicalPageId % state->numDataPages == count;
         if (validData && EMBEDDB_GET_COUNT(buffer) > 0) {
             hasData = true;
-            break;
+            maxLogicalPageId = logicalPageId;
+            physicalPageId++;
+            updateMaxiumError(state, buffer);
+            count++;
+            i = 2;
+        } else {
+            physicalPageId += blockSize;
+            count += blockSize;
         }
-        physicalPageId += blockSize;
-        count += blockSize;
         moreToRead = !(readPage(state, physicalPageId));
         i++;
     }
@@ -390,7 +395,7 @@ int8_t embedDBInitDataFromFile(embedDBState *state) {
     while (moreToRead && count < state->numDataPages) {
         memcpy(&logicalPageId, buffer, sizeof(id_t));
         validData = logicalPageId % state->numDataPages == count;
-        if (validData && (count == 0 || logicalPageId == maxLogicalPageId + 1)) {
+        if (validData && logicalPageId == maxLogicalPageId + 1) {
             maxLogicalPageId = logicalPageId;
             physicalPageId++;
             updateMaxiumError(state, buffer);
@@ -484,31 +489,37 @@ int8_t embedDBInitDataFromFileWithRecordLevelConsistency(embedDBState *state) {
         memcpy(&logicalPageId, buffer, sizeof(id_t));
         validData = logicalPageId % state->numDataPages == count;
         if (validData && EMBEDDB_GET_COUNT(buffer) > 0) {
+            /* Setup for next loop so it does not have to worry about setting the initial values */
             hasPermanentData = true;
-            break;
+            maxLogicalPageId = logicalPageId;
+            physicalPageId++;
+            updateMaxiumError(state, buffer);
+            count++;
+            i = 4;
+        } else {
+            physicalPageId += blockSize;
+            count += blockSize;
         }
-        physicalPageId += blockSize;
-        count += blockSize;
         moreToRead = !(readPage(state, physicalPageId));
         i++;
     }
 
-    while (moreToRead && count < state->numDataPages) {
-        memcpy(&logicalPageId, buffer, sizeof(id_t));
-        validData = logicalPageId % state->numDataPages == count;
-        if (validData && (count == 0 || logicalPageId == maxLogicalPageId + 1)) {
-            maxLogicalPageId = logicalPageId;
-            physicalPageId++;
-            updateMaxiumError(state, buffer);
-            moreToRead = !(readPage(state, physicalPageId));
-            count++;
-        } else {
-            break;
+    if (hasPermanentData) {
+        while (moreToRead && count < state->numDataPages) {
+            memcpy(&logicalPageId, buffer, sizeof(id_t));
+            validData = logicalPageId % state->numDataPages == count;
+            if (validData && logicalPageId == maxLogicalPageId + 1) {
+                maxLogicalPageId = logicalPageId;
+                physicalPageId++;
+                updateMaxiumError(state, buffer);
+                moreToRead = !(readPage(state, physicalPageId));
+                count++;
+            } else {
+                break;
+            }
         }
-    }
-
-    /* Case where the there is no permanent pages written, but we may still have record-level consistency records in block 2 */
-    if (!hasPermanentData) {
+    } else {
+        /* Case where the there is no permanent pages written, but we may still have record-level consistency records in block 2 */
         count = 0;
         physicalPageId = 0;
     }
@@ -595,7 +606,7 @@ int8_t embedDBInitDataFromFileWithRecordLevelConsistency(embedDBState *state) {
      */
     id_t physicalPageIDOfSmallestData = 0;
 
-    int8_t readSuccess = readPage(state, (state->rlcPhysicalStartingPage + 2 * blockSize % state->numDataPages));
+    int8_t readSuccess = readPage(state, (state->rlcPhysicalStartingPage + 2 * blockSize) % state->numDataPages);
     if (readSuccess == 0) {
         memcpy(&logicalPageId, buffer, sizeof(id_t));
         validData = logicalPageId % state->numDataPages == physicalPageId;

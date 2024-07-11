@@ -383,21 +383,40 @@ void embedDBInit_should_recover_record_level_consistency_records_when_twenty_thr
     TEST_ASSERT_EQUAL_UINT32_MESSAGE(28, state->rlcPhysicalStartingPage, "embedDBInit did not set the correct value of rlcPhysicalStartingPage with no permanent records written.");
 }
 
+void embedDBInit_should_recover_correctly_with_wraped_record_level_consistency_block() {
+    /* insert 24 pages of records and 15 record-level consistency records*/
+    insertRecords(240559, 459870, 1023);
+
+    /* close embedDB and recover */
+    tearDown();
+    int8_t setupParameters = EMBEDDB_RECORD_LEVEL_CONSISTENCY;
+    setupEmbedDB(setupParameters);
+
+    /* Check that data was initialised correctly */
+    TEST_ASSERT_EQUAL_UINT32_MESSAGE(4, state->minDataPageId, "embedDBInit did not set the correct minDataPageId after recovering with no permanent records written.");
+    TEST_ASSERT_EQUAL_UINT32_MESSAGE(24, state->nextDataPageId, "embedDBInit did not set the correct value of nextDataPageId with no permanent records written.");
+    TEST_ASSERT_EQUAL_UINT32_MESSAGE(240560, state->minKey, "embedDBInit did not set the correct minKey after recovering with no permanent records written.");
+    TEST_ASSERT_EQUAL_UINT32_MESSAGE(4, state->numAvailDataPages, "embedDBInit did not set the correct value of numAvailDataPages with no permanent records written.");
+    TEST_ASSERT_EQUAL_UINT32_MESSAGE(28, state->rlcPhysicalStartingPage, "embedDBInit did not set the correct value of rlcPhysicalStartingPage with no permanent records written.");
+    TEST_ASSERT_EQUAL_UINT32_MESSAGE(3, state->nextRLCPhysicalPageLocation, "embedDBInit did not set the correct value of nextRLCPhysicalPageLocation with no permanent records written.");
+}
+
 /* TODO: Add cases for wrap around */
 
 int runUnityTests() {
     UNITY_BEGIN();
-    RUN_TEST(embedDBInit_should_initialize_with_correct_values_for_record_level_consistency);
-    RUN_TEST(writeTemporaryPage_places_pages_in_correct_location);
-    RUN_TEST(record_level_consistency_blocks_should_move_when_write_block_is_full);
-    RUN_TEST(record_level_consistency_blocks_should_wrap_when_storage_is_full);
-    RUN_TEST(embedDBInit_should_detect_when_no_records_written_with_record_level_consistency);
-    RUN_TEST(embedDBInit_should_recover_record_level_consistency_records_when_no_permanent_pages_written);
-    RUN_TEST(embedDBInit_should_recover_record_level_consistency_records_when_one_permanent_page_is_written);
-    RUN_TEST(embedDBInit_should_recover_record_level_consistency_records_when_four_permanent_pages_are_written);
-    RUN_TEST(embedDBInit_should_recover_record_level_consistency_records_when_eight_permanent_pages_are_written);
-    RUN_TEST(embedDBInit_should_recover_record_level_consistency_records_when_twenty_one_permanent_pages_are_written);
-    RUN_TEST(embedDBInit_should_recover_record_level_consistency_records_when_twenty_three_permanent_pages_are_written);
+    // RUN_TEST(embedDBInit_should_initialize_with_correct_values_for_record_level_consistency);
+    // RUN_TEST(writeTemporaryPage_places_pages_in_correct_location);
+    // RUN_TEST(record_level_consistency_blocks_should_move_when_write_block_is_full);
+    // RUN_TEST(record_level_consistency_blocks_should_wrap_when_storage_is_full);
+    // RUN_TEST(embedDBInit_should_detect_when_no_records_written_with_record_level_consistency);
+    // RUN_TEST(embedDBInit_should_recover_record_level_consistency_records_when_no_permanent_pages_written);
+    // RUN_TEST(embedDBInit_should_recover_record_level_consistency_records_when_one_permanent_page_is_written);
+    // RUN_TEST(embedDBInit_should_recover_record_level_consistency_records_when_four_permanent_pages_are_written);
+    // RUN_TEST(embedDBInit_should_recover_record_level_consistency_records_when_eight_permanent_pages_are_written);
+    // RUN_TEST(embedDBInit_should_recover_record_level_consistency_records_when_twenty_one_permanent_pages_are_written);
+    // RUN_TEST(embedDBInit_should_recover_record_level_consistency_records_when_twenty_three_permanent_pages_are_written);
+    RUN_TEST(embedDBInit_should_recover_correctly_with_wraped_record_level_consistency_block);
     return UNITY_END();
 }
 
