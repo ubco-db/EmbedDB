@@ -943,6 +943,8 @@ int test_vardata() {
         }
         printf("\t%lu\n", sum / r);
     }
+
+    return 0;
 }
 
 uint32_t randomData(void **data, uint32_t sizeLowerBound, uint32_t sizeUpperBound) {

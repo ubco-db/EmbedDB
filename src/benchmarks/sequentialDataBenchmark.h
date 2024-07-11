@@ -636,6 +636,7 @@ int runalltests_embedDB() {
         }
         printf("\t%lu\n", sum / r);
     }
+    return 0;
 }
 
 #endif

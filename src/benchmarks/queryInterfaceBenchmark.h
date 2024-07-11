@@ -400,6 +400,7 @@ int advancedQueryExample() {
     free(stateSEA->buffer);
     free(stateSEA);
     embedDBFreeSchema(&baseSchema);
+
     return 0;
 }
 
