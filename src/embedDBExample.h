@@ -301,7 +301,7 @@ embedDBState* init_state() {
     // address storage characteristics
     state->numDataPages = 1000;
     state->numIndexPages = 48;
-    state->numVarPages = 75;
+    state->numVarPages = 76;
     state->eraseSizeInPages = 4;
 
     if (STORAGE_TYPE == 1) {

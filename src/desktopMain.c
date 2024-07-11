@@ -19,15 +19,15 @@
 #include "benchmarks/queryInterfaceBenchmark.h"
 #endif
 
-void main() {
+int main() {
 #if WHICH_PROGRAM == 0
-    embedDBExample();
+    return embedDBExample();
 #elif WHICH_PROGRAM == 1
-    runalltests_embedDB();
+    return runalltests_embedDB();
 #elif WHICH_PROGRAM == 2
-    test_vardata();
+    return test_vardata();
 #elif WHICH_PROGRAM == 3
-    advancedQueryExample();
+    return advancedQueryExample();
 #endif
 }
 
