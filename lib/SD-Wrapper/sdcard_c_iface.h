@@ -161,6 +161,13 @@ sd_fwrite(
     size_t nmemb,
     SD_FILE *stream);
 
+/**
+ * @brief	Returns the length of the SD file
+ * @param	stream	A pointer to a C file struct type associated with an SD file object.
+ * @return  The size of the file in bytes
+ */
+size_t sd_length(SD_FILE *stream);
+
 void init_sdcard(void *sd);
 
 #if defined(__cplusplus)

@@ -207,7 +207,7 @@ void embedDB_parameters_initializes_correctly_from_data_file_with_no_data() {
     TEST_ASSERT_EQUAL_MEMORY_MESSAGE(&expectedMinKey, &state->minKey, sizeof(uint64_t), "EmbedDB minkey is not correctly identified after reload from data file.");
     TEST_ASSERT_EQUAL_UINT32_MESSAGE(0, state->nextDataPageId, "EmbedDB nextDataPageId is not correctly identified after reload from data file.");
     TEST_ASSERT_EQUAL_UINT32_MESSAGE(0, state->minDataPageId, "EmbedDB minDataPageId was not correctly identified.");
-    TEST_ASSERT_EQUAL_UINT32_MESSAGE(92, state->numAvailDataPages, "EmbedDB numAvailDataPages is not ");
+    TEST_ASSERT_EQUAL_UINT32_MESSAGE(92, state->numAvailDataPages, "EmbedDB numAvailDataPages is not initialized correctly.");
 }
 
 void embedDB_inserts_correctly_into_data_file_after_reload() {

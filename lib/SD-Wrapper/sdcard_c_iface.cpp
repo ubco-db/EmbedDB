@@ -83,7 +83,7 @@ SD_FILE *sd_fopen(const char *filename, const char *mode) {
         } else {
             f = sdcard->open(filename, O_WRITE | O_CREAT);
         }
-        if(f.isOpen() == false)
+        if (f.isOpen() == false)
             return NULL;
         f.truncate(0);
     } else if (mode[0] == 'r') {
@@ -128,4 +128,8 @@ size_t sd_fwrite(void *ptr, size_t size, size_t nmemb, SD_FILE *stream) {
     if (total_count != bytes_written)
         return 0;
     return total_count;
+}
+
+size_t sd_length(SD_FILE *stream) {
+    return stream->f.size();
 }
