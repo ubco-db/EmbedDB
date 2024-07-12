@@ -435,9 +435,6 @@ int8_t embedDBInitDataFromFile(embedDBState *state) {
         /* this means we have wrapped and our start is actually here */
         if (validData) {
             physicalPageIDOfSmallestData = physicalPageId;
-        } else if (count == blockSize && maxLogicalPageId == 0) {
-            /* if the data was not valid and our count of pages visited is the block size there was no data to begin with so EmbedDB was empty and a fresh init was all that was needed*/
-            return 0;
         }
     }
 
