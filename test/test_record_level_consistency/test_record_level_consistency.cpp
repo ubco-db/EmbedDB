@@ -507,6 +507,24 @@ void embedDBInit_should_recover_correctly_after_wrapping_with_one_page_of_data_a
     TEST_ASSERT_EQUAL_UINT32_MESSAGE(21, state->nextRLCPhysicalPageLocation, "embedDBInit did not set the correct value of nextRLCPhysicalPageLocation after recovering and inserting 15 more pages of records.");
 }
 
+void embedDBInit_should_recover_correctly_when_old_permanent_records_in_record_level_consistency_area() {
+    /* Write out 40 pages of records */
+    insertRecords(6164198, 62967765, 1680);
+    embedDBFlush(state);
+
+    /* close embedDB and recover */
+    tearDown();
+    int8_t setupParameters = EMBEDDB_RECORD_LEVEL_CONSISTENCY;
+    setupEmbedDB(setupParameters);
+
+    /* Check that data was initialised correctly */
+    TEST_ASSERT_EQUAL_UINT32_MESSAGE(20, state->minDataPageId, "embedDBInit did not set the correct minDataPageId after recovering with 33 pages of permanent records and 1 RLC record.");
+    TEST_ASSERT_EQUAL_UINT32_MESSAGE(40, state->nextDataPageId, "embedDBInit did not set the correct value of nextDataPageId after recovering with 33 pages of permanent records and 1 RLC record.");
+    TEST_ASSERT_EQUAL_UINT32_MESSAGE(4, state->numAvailDataPages, "embedDBInit did not set the correct value of numAvailDataPages after recovering with 33 pages of permanent records and 1 RLC record.");
+    TEST_ASSERT_EQUAL_UINT32_MESSAGE(12, state->rlcPhysicalStartingPage, "embedDBInit did not set the correct value of rlcPhysicalStartingPage after recovering with 33 pages of permanent records and 1 RLC record.");
+    TEST_ASSERT_EQUAL_UINT32_MESSAGE(12, state->nextRLCPhysicalPageLocation, "embedDBInit did not set the correct value of nextRLCPhysicalPageLocation after recovering with 33 pages of permanent records and 1 RLC record.");
+}
+
 void embedDBInit_should_recover_correctly_after_wrapping_several_times() {
     /* insert 135 pages of records and 27 RLC records */
     insertRecords(20180429, 68, 5697);
@@ -550,6 +568,7 @@ int runUnityTests() {
     RUN_TEST(embedDBInit_should_recover_correctly_with_both_record_level_consistency_blocks_at_start_of_data_file);
     RUN_TEST(embedDBInit_should_recover_correctly_with_junk_data_at_start_of_data_file);
     RUN_TEST(embedDBInit_should_recover_correctly_after_wrapping_with_one_page_of_data_at_start_of_data_file);
+    RUN_TEST(embedDBInit_should_recover_correctly_when_old_permanent_records_in_record_level_consistency_area);
     RUN_TEST(embedDBInit_should_recover_correctly_after_wrapping_several_times);
     return UNITY_END();
 }
