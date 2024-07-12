@@ -585,7 +585,7 @@ int8_t embedDBInitDataFromFileWithRecordLevelConsistency(embedDBState *state) {
             return -1;
         }
         memcpy(state->buffer, buffer, state->pageSize);
-        eraseStartingPage = (state->rlcPhysicalStartingPage + rlcMaxPage < blockSize ? blockSize : 0) % state->numDataPages;
+        eraseStartingPage = (state->rlcPhysicalStartingPage + (rlcMaxPage < blockSize ? blockSize : 0)) % state->numDataPages;
         eraseEndingPage = (eraseStartingPage + blockSize) % state->numDataPages;
     }
     int8_t eraseSuccess = state->fileInterface->erase(eraseStartingPage, eraseEndingPage, state->dataFile);
@@ -607,7 +607,8 @@ int8_t embedDBInitDataFromFileWithRecordLevelConsistency(embedDBState *state) {
      */
     id_t physicalPageIDOfSmallestData = 0;
 
-    int8_t readSuccess = readPage(state, (state->rlcPhysicalStartingPage + 2 * blockSize) % state->numDataPages);
+    physicalPageId = (state->rlcPhysicalStartingPage + 2 * blockSize) % state->numDataPages;
+    int8_t readSuccess = readPage(state, physicalPageId);
     if (readSuccess == 0) {
         memcpy(&logicalPageId, buffer, sizeof(id_t));
         validData = logicalPageId % state->numDataPages == physicalPageId;
