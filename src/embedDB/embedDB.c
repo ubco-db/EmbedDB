@@ -370,10 +370,12 @@ int8_t embedDBInitDataFromFile(embedDBState *state) {
 
     /* this handles the case where the first page may have been erased, so has junk data and we actually need to start from the second page */
     uint32_t i = 0;
+    int8_t numRecords = 0;
     while (moreToRead && i < 2) {
         memcpy(&logicalPageId, buffer, sizeof(id_t));
         validData = logicalPageId % state->numDataPages == count;
-        if (validData && EMBEDDB_GET_COUNT(buffer) > 0) {
+        numRecords = EMBEDDB_GET_COUNT(buffer);
+        if (validData && numRecords > 0 && numRecords < state->maxRecordsPerPage + 1) {
             hasData = true;
             maxLogicalPageId = logicalPageId;
             physicalPageId++;
@@ -485,10 +487,12 @@ int8_t embedDBInitDataFromFileWithRecordLevelConsistency(embedDBState *state) {
      * They may be either an erased page or pages for record-level consistency.
      */
     uint32_t i = 0;
+    int8_t numRecords = 0;
     while (moreToRead && i < 4) {
         memcpy(&logicalPageId, buffer, sizeof(id_t));
         validData = logicalPageId % state->numDataPages == count;
-        if (validData && EMBEDDB_GET_COUNT(buffer) > 0) {
+        numRecords = EMBEDDB_GET_COUNT(buffer);
+        if (validData && numRecords > 0 && numRecords < state->maxRecordsPerPage + 1) {
             /* Setup for next loop so it does not have to worry about setting the initial values */
             hasPermanentData = true;
             maxLogicalPageId = logicalPageId;
