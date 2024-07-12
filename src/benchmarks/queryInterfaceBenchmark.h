@@ -151,7 +151,11 @@ int advancedQueryExample() {
     stateUWA->inBitmap = inBitmapInt16;
     stateUWA->updateBitmap = updateBitmapInt16;
     stateUWA->buildBitmapFromRange = buildBitmapInt16FromRange;
-    embedDBInit(stateUWA, 1);
+    int8_t initResult = embedDBInit(stateUWA, 1);
+    if (initResult != 0) {
+        printf("There was an error setting up the state of the UWA dataset.");
+        return -1;
+    }
 
     int8_t colSizes[] = {4, 4, 4, 4};
     int8_t colSignedness[] = {embedDB_COLUMN_UNSIGNED, embedDB_COLUMN_SIGNED, embedDB_COLUMN_SIGNED, embedDB_COLUMN_SIGNED};
@@ -316,7 +320,11 @@ int advancedQueryExample() {
     stateSEA->inBitmap = inBitmapInt16;
     stateSEA->updateBitmap = updateBitmapInt16;
     stateSEA->buildBitmapFromRange = buildBitmapInt16FromRange;
-    embedDBInit(stateSEA, 1);
+    initResult = embedDBInit(stateSEA, 1);
+    if (initResult != 0) {
+        printf("There was an error setting up the state of the SEA dataset.");
+        return -1;
+    }
 
     // Insert records
     insertData(stateSEA, "data/sea100K.bin");
@@ -392,6 +400,7 @@ int advancedQueryExample() {
     free(stateSEA->buffer);
     free(stateSEA);
     embedDBFreeSchema(&baseSchema);
+
     return 0;
 }
 

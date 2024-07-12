@@ -121,7 +121,7 @@ void retrieveImageData(embedDBState *state, embedDBVarDataStream *varStream, int
 uint8_t dataEquals(embedDBState *state, embedDBVarDataStream *varStream, Node *node);
 void randomVarData(uint32_t chance, uint32_t sizeLowerBound, uint32_t sizeUpperBound, uint8_t *usingVarData, uint32_t *length, void **varData);
 
-void test_vardata() {
+int test_vardata() {
     printf("\nSTARTING EmbedDB VARIABLE DATA TESTS.\n");
 
     // Two extra bufferes required for variable data
@@ -267,7 +267,7 @@ void test_vardata() {
 
         if (embedDBInit(state, splineMaxError) != 0) {
             printf("Initialization error.\n");
-            return;
+            return -1;
         } else {
             printf("Initialization success.\n");
             embedDBPrintInit(state);
@@ -943,6 +943,8 @@ void test_vardata() {
         }
         printf("\t%lu\n", sum / r);
     }
+
+    return 0;
 }
 
 uint32_t randomData(void **data, uint32_t sizeLowerBound, uint32_t sizeUpperBound) {

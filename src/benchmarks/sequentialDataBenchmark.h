@@ -93,7 +93,7 @@
 /**
  * Runs all tests and collects benchmarks
  */
-void runalltests_embedDB() {
+int runalltests_embedDB() {
     printf("\n EmbedDB Example: \n");
     int8_t M = 4;
     int32_t numRecords = 1000;     // default values
@@ -247,7 +247,7 @@ void runalltests_embedDB() {
         /* Initialize embedDB structure with parameters */
         if (embedDBInit(state, splineMaxError) != 0) {
             printf("Initialization error.\n");
-            return;
+            return -1;
         }
 
         embedDBPrintInit(state);
@@ -636,6 +636,7 @@ void runalltests_embedDB() {
         }
         printf("\t%lu\n", sum / r);
     }
+    return 0;
 }
 
 #endif
