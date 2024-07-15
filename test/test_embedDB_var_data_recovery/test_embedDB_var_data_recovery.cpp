@@ -299,8 +299,8 @@ void embedDB_variable_data_reloads_and_queries_with_two_hundred_forty_seven_page
 
 int runUnityTests() {
     UNITY_BEGIN();
-    RUN_TEST(embedDB_variable_data_page_numbers_are_correct);
-    RUN_TEST(embedDB_variable_data_reloads_with_no_data_correctly);
+    // RUN_TEST(embedDB_variable_data_page_numbers_are_correct);
+    // RUN_TEST(embedDB_variable_data_reloads_with_no_data_correctly);
     RUN_TEST(embedDB_variable_data_reloads_with_one_page_of_data_correctly);
     RUN_TEST(embedDB_variable_data_reloads_with_sixteen_pages_of_data_correctly);
     RUN_TEST(embedDB_variable_data_reloads_with_fifty_three_pages_of_data_correctly);

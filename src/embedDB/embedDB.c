@@ -766,7 +766,7 @@ int8_t embedDBInitVarData(embedDBState *state) {
 
     state->variableDataHeaderSize = state->keySize + sizeof(id_t);
     state->currentVarLoc = state->variableDataHeaderSize;
-    state->minVarRecordId = 0;
+    state->minVarRecordId = UINT64_MAX;
     state->numAvailVarPages = state->numVarPages;
     state->nextVarPageId = 0;
 
@@ -789,36 +789,117 @@ int8_t embedDBInitVarData(embedDBState *state) {
 }
 
 int8_t embedDBInitVarDataFromFile(embedDBState *state) {
-    void *buffer = (int8_t *)state->buffer + state->pageSize * EMBEDDB_VAR_READ_BUFFER(state->parameters);
     id_t logicalVariablePageId = 0;
     id_t maxLogicalVariablePageId = 0;
     id_t physicalVariablePageId = 0;
+    id_t count = 0;
+    count_t blockSize = state->eraseSizeInPages;
+    bool validData = false;
+    bool hasData = false;
+    void *buffer = (int8_t *)state->buffer + state->pageSize * EMBEDDB_VAR_READ_BUFFER(state->parameters);
+
+    /* This will equal 0 if there are no pages to read */
     int8_t moreToRead = !(readVariablePage(state, physicalVariablePageId));
-    uint32_t count = 0;
-    bool haveWrappedInMemory = false;
+
+    /* this handles the case where the first page may have been erased, so has junk data and we actually need to start from the second page */
+    uint32_t i = 0;
+    while (moreToRead && i < 2) {
+        memcpy(&logicalVariablePageId, buffer, sizeof(id_t));
+        validData = logicalVariablePageId % state->numVarPages == count;
+        if (validData) {
+            uint64_t largestVarRecordId = 0;
+            /* Fetch the largest key value for which we have data on this page */
+            memcpy(&largestVarRecordId, (int8_t *)buffer + sizeof(id_t), state->keySize);
+            /*
+             * Since 0 is a valid first page and a valid record key, we may have a case where this data is valid.
+             * So we go to the next page to check if it is valid as well.
+             */
+            if (logicalVariablePageId != 0 || largestVarRecordId != 0) {
+                i = 2;
+                hasData = true;
+                maxLogicalVariablePageId = logicalVariablePageId;
+            }
+            physicalVariablePageId++;
+            count++;
+        } else {
+            id_t pagesToBlockBoundary = blockSize - (count % blockSize);
+            physicalVariablePageId += pagesToBlockBoundary;
+            count += pagesToBlockBoundary;
+            i++;
+        }
+        moreToRead = !(readPage(state, physicalVariablePageId));
+    }
+
+    /* if we have no valid data, we just have an empty file can can start from the scratch */
+    if (!hasData)
+        return 0;
+
     while (moreToRead && count < state->numVarPages) {
         memcpy(&logicalVariablePageId, buffer, sizeof(id_t));
-        if (count == 0 || logicalVariablePageId == maxLogicalVariablePageId + 1) {
+        validData = logicalVariablePageId % state->numVarPages == count;
+        if (validData && logicalVariablePageId == maxLogicalVariablePageId + 1) {
             maxLogicalVariablePageId = logicalVariablePageId;
             physicalVariablePageId++;
             moreToRead = !(readVariablePage(state, physicalVariablePageId));
             count++;
         } else {
-            haveWrappedInMemory = logicalVariablePageId == maxLogicalVariablePageId - state->numVarPages + 1;
             break;
         }
     }
 
-    if (count == 0)
-        return 0;
+    /*
+     * Now we need to find where the page with the smallest key that is still valid.
+     * The default case is we have not wrapped and the page number for the physical page with the smallest key is 0.
+     */
+    id_t physicalPageIDOfSmallestData = 0;
+
+    /* check if data exists at this location */
+    if (moreToRead && count < state->numDataPages) {
+        /* find where the next block boundary is */
+        id_t pagesToBlockBoundary = blockSize - (count % blockSize);
+
+        /* go to the next block boundary */
+        physicalVariablePageId = (physicalVariablePageId + pagesToBlockBoundary) % state->numDataPages;
+        moreToRead = !(readPage(state, physicalVariablePageId));
+
+        /* there should have been more to read becuase the file should not be empty at this point if it was not empty at the previous block */
+        if (!moreToRead) {
+            return -1;
+        }
+
+        /* check if data is valid or if it is junk */
+        memcpy(&logicalVariablePageId, buffer, sizeof(id_t));
+        validData = logicalVariablePageId % state->numVarPages == physicalVariablePageId;
+
+        /* this means we have wrapped and our start is actually here */
+        if (validData) {
+            physicalPageIDOfSmallestData = physicalVariablePageId;
+        }
+    }
 
     state->nextVarPageId = maxLogicalVariablePageId + 1;
     id_t minVarPageId = 0;
-    if (haveWrappedInMemory) {
-        id_t physicalPageIDOfSmallestData = logicalVariablePageId % state->numVarPages;
-        readVariablePage(state, physicalPageIDOfSmallestData);
+    readVariablePage(state, physicalPageIDOfSmallestData);
+    memcpy(&minVarPageId, buffer, sizeof(id_t));
+
+    /* If the smallest varPageId is 0, nothing was ever overwritten, so we have all the data */
+    if (minVarPageId == 0) {
+        /* read page with smallest data we still have */
+        int8_t readResult = readPage(state, state->minDataPageId % state->numDataPages);
+        if (readResult != 0) {
+#ifdef PRINT_ERRORS
+            printf("Error: Read page in data file!\n");
+#endif
+            return -1;
+        }
+
+        /* Get smallest key from page and put it into the minVarRecordId */
+        void *dataBuffer = (int8_t *)state->buffer + state->pageSize * EMBEDDB_DATA_READ_BUFFER;
+        memcpy(&state->minVarRecordId, embedDBGetMinKey(state, buffer), state->keySize);
+
+    } else {
+        /* We lose some records, but know for sure we have all records larger than this*/
         memcpy(&(state->minVarRecordId), (int8_t *)buffer + sizeof(id_t), state->keySize);
-        memcpy(&minVarPageId, buffer, sizeof(id_t));
         state->minVarRecordId++;
     }
 
@@ -1219,6 +1300,10 @@ int8_t embedDBPutVar(embedDBState *state, void *key, void *data, void *variableD
     int8_t r;
     if ((r = embedDBPut(state, key, data)) != 0) {
         return r;
+    }
+
+    if (state->minVarRecordId == UINT64_MAX) {
+        memcpy(&state->minVarRecordId, key, state->keySize);
     }
 
     // Update the header to include the maximum key value stored on this page
