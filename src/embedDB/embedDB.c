@@ -190,7 +190,7 @@ int8_t embedDBInit(embedDBState *state, size_t indexMaxError) {
         return -1;
     }
 
-    if (state->numDataPages < (EMBEDB_USING_RECORD_LEVEL_CONSISTENCY(state->parameters) ? 4 : 2) * state->eraseSizeInPages) {
+    if (state->numDataPages < (EMBEDDB_USING_RECORD_LEVEL_CONSISTENCY(state->parameters) ? 4 : 2) * state->eraseSizeInPages) {
 #ifdef PRINT_ERRORS
         printf("ERROR: The minimum number of data pages is twice the eraseSizeInPages or 4 times the eraseSizeInPages if using record-level consistency.\n");
 #endif
@@ -323,7 +323,7 @@ int8_t embedDBInitData(embedDBState *state) {
         return -1;
     }
 
-    if (EMBEDB_USING_RECORD_LEVEL_CONSISTENCY(state->parameters)) {
+    if (EMBEDDB_USING_RECORD_LEVEL_CONSISTENCY(state->parameters)) {
         state->numAvailDataPages -= (state->eraseSizeInPages * 2);
         state->nextRLCPhysicalPageLocation = state->eraseSizeInPages;
         state->rlcPhysicalStartingPage = state->eraseSizeInPages;
@@ -334,7 +334,7 @@ int8_t embedDBInitData(embedDBState *state) {
     if (!EMBEDDB_RESETING_DATA(state->parameters)) {
         openStatus = state->fileInterface->open(state->dataFile, EMBEDDB_FILE_MODE_R_PLUS_B);
         if (openStatus) {
-            if (EMBEDB_USING_RECORD_LEVEL_CONSISTENCY(state->parameters)) {
+            if (EMBEDDB_USING_RECORD_LEVEL_CONSISTENCY(state->parameters)) {
                 return embedDBInitDataFromFileWithRecordLevelConsistency(state);
             } else {
                 return embedDBInitDataFromFile(state);
@@ -1094,7 +1094,7 @@ int8_t embedDBPut(embedDBState *state, void *key, void *data) {
     }
 
     /* If using record level consistency, we need to immediately write the updated page to storage */
-    if (EMBEDB_USING_RECORD_LEVEL_CONSISTENCY(state->parameters)) {
+    if (EMBEDDB_USING_RECORD_LEVEL_CONSISTENCY(state->parameters)) {
         /* Need to move record level consistency pointers if on a block boundary */
         if (wrotePage && state->nextDataPageId % state->eraseSizeInPages == 0) {
             /* move record-level consistency blocks */
@@ -1257,6 +1257,11 @@ int8_t embedDBPutVar(embedDBState *state, void *key, void *data, void *variableD
             state->currentVarLoc += state->variableDataHeaderSize;
         }
     }
+
+    if (EMBEDDB_USING_RECORD_LEVEL_CONSISTENCY(state->parameters)) {
+        embedDBFlushVar(state);
+    }
+
     return 0;
 }
 

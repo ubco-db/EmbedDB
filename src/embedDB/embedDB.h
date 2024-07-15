@@ -66,7 +66,7 @@ typedef uint16_t count_t;
 #define EMBEDDB_USING_SUM(x) ((x & EMBEDDB_USE_SUM) > 0 ? 1 : 0)
 #define EMBEDDB_USING_BMAP(x) ((x & EMBEDDB_USE_BMAP) > 0 ? 1 : 0)
 #define EMBEDDB_USING_VDATA(x) ((x & EMBEDDB_USE_VDATA) > 0 ? 1 : 0)
-#define EMBEDB_USING_RECORD_LEVEL_CONSISTENCY(x) ((x & EMBEDDB_RECORD_LEVEL_CONSISTENCY) > 0 ? 1 : 0)
+#define EMBEDDB_USING_RECORD_LEVEL_CONSISTENCY(x) ((x & EMBEDDB_RECORD_LEVEL_CONSISTENCY) > 0 ? 1 : 0)
 #define EMBEDDB_RESETING_DATA(x) ((x & EMBEDDB_RESET_DATA) > 0 ? 1 : 0)
 
 /* Offsets with header */
