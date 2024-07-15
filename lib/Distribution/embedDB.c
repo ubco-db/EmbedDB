@@ -886,7 +886,6 @@ int8_t embedDBSetupVarDataStream(embedDBState *state, void *key, embedDBVarDataS
 uint32_t cleanSpline(embedDBState *state, void *key);
 void readToWriteBuf(embedDBState *state);
 void readToWriteBufVar(embedDBState *state);
-void embedDBFlushVar(embedDBState *state);
 
 void printBitmap(char *bm) {
     for (int8_t i = 0; i <= 7; i++) {
@@ -2458,12 +2457,25 @@ void embedDBCloseIterator(embedDBIterator *it) {
 }
 
 /**
- * @brief   Flushes variable write buffer to storage and updates variable record pointer accordingly.
- * @param   state   algorithm state structure
+ * @brief	Flushes output buffer.
+ * @param	state	algorithm state structure
+ * @returns 0 if successul and a non-zero value otherwise
  */
-void embedDBFlushVar(embedDBState *state) {
+int8_t embedDBFlushVar(embedDBState *state) {
+    /* Check if we actually have any variable data in the buffer */
+    if (state->currentVarLoc % state->pageSize == state->variableDataHeaderSize) {
+        return 0;
+    }
+
     // only flush variable buffer
-    writeVariablePage(state, (int8_t *)state->buffer + EMBEDDB_VAR_WRITE_BUFFER(state->parameters) * state->pageSize);
+    id_t writeResult = writeVariablePage(state, (int8_t *)state->buffer + EMBEDDB_VAR_WRITE_BUFFER(state->parameters) * state->pageSize);
+    if (writeResult == -1) {
+#ifdef PRINT_ERRORS
+        printf("Failed to write variable data page during embedDBFlushVar.");
+#endif
+        return -1;
+    }
+
     state->fileInterface->flush(state->varFile);
     // init new buffer
     initBufferPage(state, EMBEDDB_VAR_WRITE_BUFFER(state->parameters));
@@ -2471,15 +2483,28 @@ void embedDBFlushVar(embedDBState *state) {
     int temp = state->pageSize - (state->currentVarLoc % state->pageSize);
     // create new offset
     state->currentVarLoc += temp + state->variableDataHeaderSize;
+    return 0;
 }
 
 /**
  * @brief	Flushes output buffer.
  * @param	state	algorithm state structure
+ * @returns 0 if successul and a non-zero value otherwise
  */
 int8_t embedDBFlush(embedDBState *state) {
     // As the first buffer is the data write buffer, no address change is required
-    id_t pageNum = writePage(state, (int8_t *)state->buffer + EMBEDDB_DATA_WRITE_BUFFER * state->pageSize);
+    int8_t *buffer = (int8_t *)state->buffer + EMBEDDB_DATA_WRITE_BUFFER * state->pageSize;
+    if (EMBEDDB_GET_COUNT(buffer) < 1)
+        return 0;
+
+    id_t pageNum = writePage(state, buffer);
+    if (pageNum == -1) {
+#ifdef PRINT_ERRORS
+        printf("Failed to write page during embedDBFlush.");
+#endif
+        return -1;
+    }
+
     state->fileInterface->flush(state->dataFile);
 
     indexPage(state, pageNum);
@@ -2493,7 +2518,14 @@ int8_t embedDBFlush(embedDBState *state) {
         void *bm = EMBEDDB_GET_BITMAP(state->buffer);
         memcpy((void *)((int8_t *)buf + EMBEDDB_IDX_HEADER_SIZE + state->bitmapSize * idxcount), bm, state->bitmapSize);
 
-        writeIndexPage(state, buf);
+        id_t writeResult = writeIndexPage(state, buf);
+        if (writeResult == -1) {
+#ifdef PRINT_ERRORS
+            printf("Failed to write index page during embedDBFlush.");
+#endif
+            return -1;
+        }
+
         state->fileInterface->flush(state->indexFile);
 
         /* Reinitialize buffer */
@@ -2506,7 +2538,14 @@ int8_t embedDBFlush(embedDBState *state) {
     // Flush var data page
     if (EMBEDDB_USING_VDATA(state->parameters)) {
         // send write buffer pointer to write variable page
-        writeVariablePage(state, (int8_t *)state->buffer + EMBEDDB_VAR_WRITE_BUFFER(state->parameters) * state->pageSize);
+        id_t writeResult = writeVariablePage(state, (int8_t *)state->buffer + EMBEDDB_VAR_WRITE_BUFFER(state->parameters) * state->pageSize);
+        if (writeResult == -1) {
+#ifdef PRINT_ERRORS
+            printf("Failed to write variable data page during embedDBFlush.");
+#endif
+            return -1;
+        }
+
         state->fileInterface->flush(state->varFile);
         // init new buffer
         initBufferPage(state, EMBEDDB_VAR_WRITE_BUFFER(state->parameters));
