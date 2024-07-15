@@ -239,6 +239,17 @@ void iteratorReturnsCorrectRecords(void) {
     embedDBCloseIterator(&it);
 }
 
+void embedDBFlush_does_not_write_when_nothing_in_buffer() {
+    /* Check that flush should not write page out when there are no recors in write buffer*/
+    int8_t flushResult = embedDBFlush(state);
+    TEST_ASSERT_EQUAL_INT8_MESSAGE(0, flushResult, "embedDBFlush should have returned successful.");
+
+    TEST_ASSERT_EQUAL_UINT32_MESSAGE(UINT32_MAX, state->minKey, "EmbedDB minKey should not change when empty page flushed.");
+    TEST_ASSERT_EQUAL_UINT32_MESSAGE(0, state->nextDataPageId, "embedDBFlush should not change nextDataPageId when no records in buffer.");
+    TEST_ASSERT_EQUAL_UINT32_MESSAGE(0, state->minDataPageId, "embedDBFlush should not change minDataPageId when no records in buffer.");
+    TEST_ASSERT_EQUAL_UINT32_MESSAGE(1000, state->numAvailDataPages, "embedDBFlush should not change numAvailDataPages when no records in buffer.");
+}
+
 int runUnityTests(void) {
     UNITY_BEGIN();
     RUN_TEST(embedDB_initial_configuration_is_correct);
@@ -247,6 +258,7 @@ int runUnityTests(void) {
     RUN_TEST(embedDB_put_inserts_one_page_of_records_correctly);
     RUN_TEST(embedDB_put_inserts_one_more_than_one_page_of_records_correctly);
     RUN_TEST(iteratorReturnsCorrectRecords);
+    RUN_TEST(embedDBFlush_does_not_write_when_nothing_in_buffer);
     return UNITY_END();
 }
 

@@ -219,17 +219,14 @@ void embedDBGet_should_return_no_data_when_requested_key_greater_than_max_buffer
 }
 
 void embedDBGet_should_return_not_found_when_key_is_less_then_min_key(void) {
-    /* flush database so nextDataPageId > 0*/
-    embedDBFlush(state);
-
     /* insert some records */
-    uint32_t numInserts = 8;
-    for (uint32_t i = 1; i <= numInserts; ++i) {
+    uint32_t numInserts = 154;
+    for (uint32_t i = 100; i <= numInserts; ++i) {
         insertStaticRecord(state, i, (i + 100));
     }
 
     /* query for key lower then the min key in the database */
-    uint32_t key = 0;
+    uint32_t key = 99;
     uint32_t actualData[] = {0, 0, 0};
     int8_t embedDBGetResult = embedDBGet(state, &key, actualData);
 
@@ -264,7 +261,7 @@ int insertStaticRecord(embedDBState* state, uint32_t key, uint32_t data) {
     // set dataPtr[0] to data
     ((uint32_t*)dataPtr)[0] = data;
     // insert into buffer, save result
-    char result = embedDBPut(state, (void*)&key, (void*)dataPtr);
+    int8_t result = embedDBPut(state, (void*)&key, (void*)dataPtr);
     // free dataPtr
     free(dataPtr);
     // return based on success

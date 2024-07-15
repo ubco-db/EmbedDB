@@ -384,9 +384,17 @@ uint32_t embedDBVarDataStreamRead(embedDBState *state, embedDBVarDataStream *str
 
 /**
  * @brief	Flushes output buffer.
- * @param	state	embedDB algorithm state structure
+ * @param	state	algorithm state structure
+ * @returns 0 if successul and a non-zero value otherwise
  */
 int8_t embedDBFlush(embedDBState *state);
+
+/**
+ * @brief	Flushes output buffer.
+ * @param	state	algorithm state structure
+ * @returns 0 if successul and a non-zero value otherwise
+ */
+int8_t embedDBFlushVar(embedDBState *state);
 
 /**
  * @brief	Reads given page from storage.
