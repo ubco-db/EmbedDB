@@ -770,7 +770,7 @@ int8_t embedDBInitVarData(embedDBState *state) {
     state->numAvailVarPages = state->numVarPages;
     state->nextVarPageId = 0;
 
-    if (!EMBEDDB_RESETING_DATA(state->parameters)) {
+    if (!EMBEDDB_RESETING_DATA(state->parameters) && state->nextDataPageId > 0) {
         int8_t openResult = state->fileInterface->open(state->varFile, EMBEDDB_FILE_MODE_R_PLUS_B);
         if (openResult) {
             return embedDBInitVarDataFromFile(state);
@@ -827,7 +827,7 @@ int8_t embedDBInitVarDataFromFile(embedDBState *state) {
             count += pagesToBlockBoundary;
             i++;
         }
-        moreToRead = !(readPage(state, physicalVariablePageId));
+        moreToRead = !(readVariablePage(state, physicalVariablePageId));
     }
 
     /* if we have no valid data, we just have an empty file can can start from the scratch */
@@ -860,7 +860,7 @@ int8_t embedDBInitVarDataFromFile(embedDBState *state) {
 
         /* go to the next block boundary */
         physicalVariablePageId = (physicalVariablePageId + pagesToBlockBoundary) % state->numDataPages;
-        moreToRead = !(readPage(state, physicalVariablePageId));
+        moreToRead = !(readVariablePage(state, physicalVariablePageId));
 
         /* there should have been more to read becuase the file should not be empty at this point if it was not empty at the previous block */
         if (!moreToRead) {
@@ -879,13 +879,20 @@ int8_t embedDBInitVarDataFromFile(embedDBState *state) {
 
     state->nextVarPageId = maxLogicalVariablePageId + 1;
     id_t minVarPageId = 0;
-    readVariablePage(state, physicalPageIDOfSmallestData);
+    int8_t readResult = readVariablePage(state, physicalPageIDOfSmallestData);
+    if (readResult != 0) {
+#ifdef PRINT_ERRORS
+        printf("Error reading variable page with smallest data. \n");
+#endif
+        return -1;
+    }
+
     memcpy(&minVarPageId, buffer, sizeof(id_t));
 
     /* If the smallest varPageId is 0, nothing was ever overwritten, so we have all the data */
     if (minVarPageId == 0) {
         /* read page with smallest data we still have */
-        int8_t readResult = readPage(state, state->minDataPageId % state->numDataPages);
+        readResult = readPage(state, state->minDataPageId % state->numDataPages);
         if (readResult != 0) {
 #ifdef PRINT_ERRORS
             printf("Error reading page in data file when recovering variable data. \n");
@@ -1137,7 +1144,7 @@ int8_t embedDBPut(embedDBState *state, void *key, void *data) {
     EMBEDDB_INC_COUNT(state->buffer);
 
     /* Set minimum key for first record insert */
-    if (state->minKey == UINT32_MAX)
+    if (state->minKey == UINT32_MAX && state->nextDataPageId == 0)
         memcpy(&state->minKey, key, state->keySize);
 
     if (EMBEDDB_USING_MAX_MIN(state->parameters)) {
