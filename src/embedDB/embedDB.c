@@ -888,15 +888,16 @@ int8_t embedDBInitVarDataFromFile(embedDBState *state) {
         int8_t readResult = readPage(state, state->minDataPageId % state->numDataPages);
         if (readResult != 0) {
 #ifdef PRINT_ERRORS
-            printf("Error: Read page in data file!\n");
+            printf("Error reading page in data file when recovering variable data. \n");
 #endif
             return -1;
         }
 
         /* Get smallest key from page and put it into the minVarRecordId */
+        uint64_t minKey = 0;
         void *dataBuffer = (int8_t *)state->buffer + state->pageSize * EMBEDDB_DATA_READ_BUFFER;
-        memcpy(&state->minVarRecordId, embedDBGetMinKey(state, buffer), state->keySize);
-
+        memcpy(&minKey, embedDBGetMinKey(state, dataBuffer), state->keySize);
+        state->minVarRecordId = minKey;
     } else {
         /* We lose some records, but know for sure we have all records larger than this*/
         memcpy(&(state->minVarRecordId), (int8_t *)buffer + sizeof(id_t), state->keySize);
