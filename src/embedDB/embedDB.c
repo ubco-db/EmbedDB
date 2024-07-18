@@ -770,7 +770,7 @@ int8_t embedDBInitVarData(embedDBState *state) {
     state->numAvailVarPages = state->numVarPages;
     state->nextVarPageId = 0;
 
-    if (!EMBEDDB_RESETING_DATA(state->parameters) && state->nextDataPageId > 0) {
+    if (!EMBEDDB_RESETING_DATA(state->parameters) && (state->nextDataPageId > 0 || EMBEDDB_USING_RECORD_LEVEL_CONSISTENCY(state->parameters))) {
         int8_t openResult = state->fileInterface->open(state->varFile, EMBEDDB_FILE_MODE_R_PLUS_B);
         if (openResult) {
             return embedDBInitVarDataFromFile(state);
@@ -891,18 +891,25 @@ int8_t embedDBInitVarDataFromFile(embedDBState *state) {
 
     /* If the smallest varPageId is 0, nothing was ever overwritten, so we have all the data */
     if (minVarPageId == 0) {
-        /* read page with smallest data we still have */
-        readResult = readPage(state, state->minDataPageId % state->numDataPages);
-        if (readResult != 0) {
+        void *dataBuffer;
+        /* Using record level consistency where nothing was written to permanent storage yet but  */
+        if (EMBEDDB_USING_RECORD_LEVEL_CONSISTENCY(state->parameters) && state->nextDataPageId == 0) {
+            /* check the buffer for records  */
+            dataBuffer = (int8_t *)state->buffer + state->pageSize * EMBEDDB_DATA_WRITE_BUFFER;
+        } else {
+            /* read page with smallest data we still have */
+            void *dataBuffer = (int8_t *)state->buffer + state->pageSize * EMBEDDB_DATA_READ_BUFFER;
+            readResult = readPage(state, state->minDataPageId % state->numDataPages);
+            if (readResult != 0) {
 #ifdef PRINT_ERRORS
-            printf("Error reading page in data file when recovering variable data. \n");
+                printf("Error reading page in data file when recovering variable data. \n");
 #endif
-            return -1;
+                return -1;
+            }
         }
 
         /* Get smallest key from page and put it into the minVarRecordId */
         uint64_t minKey = 0;
-        void *dataBuffer = (int8_t *)state->buffer + state->pageSize * EMBEDDB_DATA_READ_BUFFER;
         memcpy(&minKey, embedDBGetMinKey(state, dataBuffer), state->keySize);
         state->minVarRecordId = minKey;
     } else {

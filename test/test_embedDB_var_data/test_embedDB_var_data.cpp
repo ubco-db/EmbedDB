@@ -250,7 +250,7 @@ void embedDBFlushVar_should_not_write_when_no_data_in_buffer() {
     embedDBFlushVar(state);
 
     TEST_ASSERT_EQUAL_UINT32_MESSAGE(8, state->currentVarLoc, "embedDBFlushVar should not change currentVarLoc when flushing an empty variable data page.");
-    uint64_t expectedMinVarRecordId = 0;
+    uint64_t expectedMinVarRecordId = UINT64_MAX;
     TEST_ASSERT_EQUAL_MEMORY_MESSAGE(&expectedMinVarRecordId, &state->minVarRecordId, sizeof(uint64_t), "embedDBFlushVar should not change expectedMinVarRecordId when flushing an empty variable data page.");
     TEST_ASSERT_EQUAL_UINT32_MESSAGE(1000, state->numAvailVarPages, "embedDBFlushVar should not change numAvailVarPages when flushing an empty variable data page.");
     TEST_ASSERT_EQUAL_UINT32_MESSAGE(0, state->nextVarPageId, "embedDBFlushVar should not change nextVarPageId when flushing an empty variable data page.");
