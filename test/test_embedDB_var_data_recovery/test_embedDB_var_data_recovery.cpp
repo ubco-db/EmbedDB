@@ -227,7 +227,7 @@ void embedDB_variable_data_reloads_with_fifty_three_pages_of_data_correctly() {
     tearDown();
     initalizeEmbedDBFromFile();
     TEST_ASSERT_EQUAL_UINT32_MESSAGE(15368, state->currentVarLoc, "EmbedDB currentVarLoc did not have the correct value after initializing variable data from a file with 106 pages of records.");
-    uint64_t expectedMinVarRecordId = 803;
+    uint32_t expectedMinVarRecordId = 803;
     TEST_ASSERT_EQUAL_MEMORY_MESSAGE(&expectedMinVarRecordId, &state->minVarRecordId, sizeof(uint32_t), "EmbedDB minVarRecordId did not have the correct value after initializing variable data from a file with 106 pages of records.");
     TEST_ASSERT_EQUAL_UINT32_MESSAGE(2, state->numAvailVarPages, "EmbedDB numAvailVarPages did not have the correct value after initializing variable data from a file with 106 pages of records.");
     TEST_ASSERT_EQUAL_UINT32_MESSAGE(106, state->nextVarPageId, "EmbedDB nextVarPageId did not have the correct value after initializing variable data from a file with 106 pages of records.");
