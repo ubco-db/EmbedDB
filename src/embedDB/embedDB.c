@@ -898,7 +898,7 @@ int8_t embedDBInitVarDataFromFile(embedDBState *state) {
             dataBuffer = (int8_t *)state->buffer + state->pageSize * EMBEDDB_DATA_WRITE_BUFFER;
         } else {
             /* read page with smallest data we still have */
-            void *dataBuffer = (int8_t *)state->buffer + state->pageSize * EMBEDDB_DATA_READ_BUFFER;
+            dataBuffer = (int8_t *)state->buffer + state->pageSize * EMBEDDB_DATA_READ_BUFFER;
             readResult = readPage(state, state->minDataPageId % state->numDataPages);
             if (readResult != 0) {
 #ifdef PRINT_ERRORS
