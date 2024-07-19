@@ -854,12 +854,12 @@ int8_t embedDBInitVarDataFromFile(embedDBState *state) {
     id_t physicalPageIDOfSmallestData = 0;
 
     /* check if data exists at this location */
-    if (moreToRead && count < state->numDataPages) {
+    if (moreToRead && count < state->numVarPages) {
         /* find where the next block boundary is */
         id_t pagesToBlockBoundary = blockSize - (count % blockSize);
 
         /* go to the next block boundary */
-        physicalVariablePageId = (physicalVariablePageId + pagesToBlockBoundary) % state->numDataPages;
+        physicalVariablePageId = (physicalVariablePageId + pagesToBlockBoundary) % state->numVarPages;
         moreToRead = !(readVariablePage(state, physicalVariablePageId));
 
         /* there should have been more to read becuase the file should not be empty at this point if it was not empty at the previous block */
@@ -1297,7 +1297,7 @@ int8_t embedDBPutVar(embedDBState *state, void *key, void *data, void *variableD
      * data here and if the data page will be written in embedDBGet
      */
     void *buf = (int8_t *)state->buffer + state->pageSize * (EMBEDDB_VAR_WRITE_BUFFER(state->parameters));
-    if (state->currentVarLoc % state->pageSize > state->pageSize - 4 || EMBEDDB_GET_COUNT(state->buffer) >= state->maxRecordsPerPage) {
+    if (state->currentVarLoc % state->pageSize > state->pageSize - 4 || (!(EMBEDDB_USING_RECORD_LEVEL_CONSISTENCY(state->parameters)) && EMBEDDB_GET_COUNT(state->buffer) >= state->maxRecordsPerPage)) {
         writeVariablePage(state, buf);
         initBufferPage(state, EMBEDDB_VAR_WRITE_BUFFER(state->parameters));
         // Move data writing location to the beginning of the next page, leaving the room for the header
@@ -1840,22 +1840,13 @@ int8_t embedDBFlush(embedDBState *state) {
 
     // Flush var data page
     if (EMBEDDB_USING_VDATA(state->parameters)) {
-        // send write buffer pointer to write variable page
-        id_t writeResult = writeVariablePage(state, (int8_t *)state->buffer + EMBEDDB_VAR_WRITE_BUFFER(state->parameters) * state->pageSize);
-        if (writeResult == -1) {
+        int8_t varFlushResult = embedDBFlushVar(state);
+        if (varFlushResult != 0) {
 #ifdef PRINT_ERRORS
-            printf("Failed to write variable data page during embedDBFlush.");
+            printf("Failed to flush variable data page");
 #endif
             return -1;
         }
-
-        state->fileInterface->flush(state->varFile);
-        // init new buffer
-        initBufferPage(state, EMBEDDB_VAR_WRITE_BUFFER(state->parameters));
-        // determine how many bytes are left
-        int temp = state->pageSize - (state->currentVarLoc % state->pageSize);
-        // create new offset
-        state->currentVarLoc += temp + state->variableDataHeaderSize;
     }
     return 0;
 }
