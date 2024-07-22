@@ -115,7 +115,6 @@ void splineAdd(spline *spl, void *key, uint32_t page) {
         memcpy(((int8_t *)spl->upper + spl->keySize), &upperPage, sizeof(uint32_t));
         memcpy(spl->lastKey, key, spl->keySize);
         spl->lastLoc = page;
-        return;
     }
 
     /* Skip duplicates */
@@ -123,7 +122,7 @@ void splineAdd(spline *spl, void *key, uint32_t page) {
     memcpy(&keyVal, key, spl->keySize);
     memcpy(&lastKeyVal, spl->lastKey, spl->keySize);
 
-    if (keyVal <= lastKeyVal)
+    if (keyVal <= lastKeyVal && spl->numAddCalls != 2)
         return;
 
     /* Last point added to spline, check if previous point is temporary - overwrite previous point if temporary */
