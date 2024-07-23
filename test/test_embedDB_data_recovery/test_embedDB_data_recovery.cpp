@@ -65,8 +65,8 @@
 
 #include "unity.h"
 
-/* On the desktop platform, tjere is a file interface which simulates "erasing" by writing out all 1's to the location in the file ot be erased */
-#define MOCK_ERASE_INTERFACE 0
+/* On the desktop platform, there is a file interface which simulates "erasing" by writing out all 1's to the location in the file ot be erased */
+#define MOCK_ERASE_INTERFACE 1
 
 #define UNITY_SUPPORT_64
 

@@ -67,7 +67,7 @@
 #define VAR_DATA_FILE_PATH "build/artifacts/varFile.bin"
 #endif
 
-/* On the desktop platform, tjere is a file interface which simulates "erasing" by writing out all 1's to the location in the file ot be erased */
+/* On the desktop platform, there is a file interface which simulates "erasing" by writing out all 1's to the location in the file ot be erased */
 #define MOCK_ERASE_INTERFACE 1
 
 #include "unity.h"
