@@ -61,12 +61,11 @@
 #else
 #include "desktopFileInterface.h"
 #define DATA_FILE_PATH "build/artifacts/dataFile.bin"
+/* On the desktop platform, there is a file interface which simulates "erasing" by writing out all 1's to the location in the file ot be erased */
+#define MOCK_ERASE_INTERFACE
 #endif
 
 #include "unity.h"
-
-/* On the desktop platform, there is a file interface which simulates "erasing" by writing out all 1's to the location in the file ot be erased */
-#define MOCK_ERASE_INTERFACE 1
 
 #define UNITY_SUPPORT_64
 
@@ -84,7 +83,7 @@ void setupEmbedDB() {
     TEST_ASSERT_NOT_NULL_MESSAGE(state->buffer, "Failed to allocate buffer for EmbedDB.");
 
 /* configure EmbedDB storage */
-#if MOCK_ERASE_INTERFACE == 1
+#ifdef MOCK_ERASE_INTERFACE
     state->fileInterface = getMockEraseFileInterface();
 #else
     state->fileInterface = getFileInterface();
@@ -112,7 +111,7 @@ void initalizeEmbedDBFromFile(void) {
     TEST_ASSERT_NOT_NULL_MESSAGE(state->buffer, "Failed to allocate buffer for EmbedDB.");
 
 /* configure EmbedDB storage */
-#if MOCK_ERASE_INTERFACE == 1
+#ifdef MOCK_ERASE_INTERFACE
     state->fileInterface = getMockEraseFileInterface();
 #else
     state->fileInterface = getFileInterface();
