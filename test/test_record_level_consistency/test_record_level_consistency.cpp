@@ -88,8 +88,6 @@ void insertRecords(uint32_t startingKey, uint64_t startingData, uint32_t numReco
         int8_t result = embedDBPut(state, data, (void *)(data + 4));
         TEST_ASSERT_EQUAL_INT8_MESSAGE(0, result, "EmbedDBPut did not correctly insert data (returned non-zero code)");
     }
-    uint32_t keyValue = *((uint32_t *)data);
-    printf("Data Value: %u", keyValue);
     free(data);
 }
 

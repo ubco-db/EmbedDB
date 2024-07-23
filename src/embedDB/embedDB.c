@@ -84,7 +84,6 @@ int8_t embedDBSetupVarDataStream(embedDBState *state, void *key, embedDBVarDataS
 uint32_t cleanSpline(embedDBState *state, void *key);
 void readToWriteBuf(embedDBState *state);
 void readToWriteBufVar(embedDBState *state);
-void embedDBFlushVar(embedDBState *state);
 
 void printBitmap(char *bm) {
     for (int8_t i = 0; i <= 7; i++) {
@@ -191,7 +190,7 @@ int8_t embedDBInit(embedDBState *state, size_t indexMaxError) {
         return -1;
     }
 
-    if (state->numDataPages < (EMBEDB_USING_RECORD_LEVEL_CONSISTENCY(state->parameters) ? 4 : 2) * state->eraseSizeInPages) {
+    if (state->numDataPages < (EMBEDDB_USING_RECORD_LEVEL_CONSISTENCY(state->parameters) ? 4 : 2) * state->eraseSizeInPages) {
 #ifdef PRINT_ERRORS
         printf("ERROR: The minimum number of data pages is twice the eraseSizeInPages or 4 times the eraseSizeInPages if using record-level consistency.\n");
 #endif
@@ -324,7 +323,7 @@ int8_t embedDBInitData(embedDBState *state) {
         return -1;
     }
 
-    if (EMBEDB_USING_RECORD_LEVEL_CONSISTENCY(state->parameters)) {
+    if (EMBEDDB_USING_RECORD_LEVEL_CONSISTENCY(state->parameters)) {
         state->numAvailDataPages -= (state->eraseSizeInPages * 2);
         state->nextRLCPhysicalPageLocation = state->eraseSizeInPages;
         state->rlcPhysicalStartingPage = state->eraseSizeInPages;
@@ -335,7 +334,7 @@ int8_t embedDBInitData(embedDBState *state) {
     if (!EMBEDDB_RESETING_DATA(state->parameters)) {
         openStatus = state->fileInterface->open(state->dataFile, EMBEDDB_FILE_MODE_R_PLUS_B);
         if (openStatus) {
-            if (EMBEDB_USING_RECORD_LEVEL_CONSISTENCY(state->parameters)) {
+            if (EMBEDDB_USING_RECORD_LEVEL_CONSISTENCY(state->parameters)) {
                 return embedDBInitDataFromFileWithRecordLevelConsistency(state);
             } else {
                 return embedDBInitDataFromFile(state);
@@ -772,11 +771,11 @@ int8_t embedDBInitVarData(embedDBState *state) {
 
     state->variableDataHeaderSize = state->keySize + sizeof(id_t);
     state->currentVarLoc = state->variableDataHeaderSize;
-    state->minVarRecordId = 0;
+    state->minVarRecordId = UINT64_MAX;
     state->numAvailVarPages = state->numVarPages;
     state->nextVarPageId = 0;
 
-    if (!EMBEDDB_RESETING_DATA(state->parameters)) {
+    if (!EMBEDDB_RESETING_DATA(state->parameters) && (state->nextDataPageId > 0 || EMBEDDB_USING_RECORD_LEVEL_CONSISTENCY(state->parameters))) {
         int8_t openResult = state->fileInterface->open(state->varFile, EMBEDDB_FILE_MODE_R_PLUS_B);
         if (openResult) {
             return embedDBInitVarDataFromFile(state);
@@ -795,36 +794,132 @@ int8_t embedDBInitVarData(embedDBState *state) {
 }
 
 int8_t embedDBInitVarDataFromFile(embedDBState *state) {
-    void *buffer = (int8_t *)state->buffer + state->pageSize * EMBEDDB_VAR_READ_BUFFER(state->parameters);
     id_t logicalVariablePageId = 0;
     id_t maxLogicalVariablePageId = 0;
     id_t physicalVariablePageId = 0;
+    id_t count = 0;
+    count_t blockSize = state->eraseSizeInPages;
+    bool validData = false;
+    bool hasData = false;
+    void *buffer = (int8_t *)state->buffer + state->pageSize * EMBEDDB_VAR_READ_BUFFER(state->parameters);
+
+    /* This will equal 0 if there are no pages to read */
     int8_t moreToRead = !(readVariablePage(state, physicalVariablePageId));
-    uint32_t count = 0;
-    bool haveWrappedInMemory = false;
+
+    /* this handles the case where the first page may have been erased, so has junk data and we actually need to start from the second page */
+    uint32_t i = 0;
+    while (moreToRead && i < 2) {
+        memcpy(&logicalVariablePageId, buffer, sizeof(id_t));
+        validData = logicalVariablePageId % state->numVarPages == count;
+        if (validData) {
+            uint64_t largestVarRecordId = 0;
+            /* Fetch the largest key value for which we have data on this page */
+            memcpy(&largestVarRecordId, (int8_t *)buffer + sizeof(id_t), state->keySize);
+            /*
+             * Since 0 is a valid first page and a valid record key, we may have a case where this data is valid.
+             * So we go to the next page to check if it is valid as well.
+             */
+            if (logicalVariablePageId != 0 || largestVarRecordId != 0) {
+                i = 2;
+                hasData = true;
+                maxLogicalVariablePageId = logicalVariablePageId;
+            }
+            physicalVariablePageId++;
+            count++;
+        } else {
+            id_t pagesToBlockBoundary = blockSize - (count % blockSize);
+            physicalVariablePageId += pagesToBlockBoundary;
+            count += pagesToBlockBoundary;
+            i++;
+        }
+        moreToRead = !(readVariablePage(state, physicalVariablePageId));
+    }
+
+    /* if we have no valid data, we just have an empty file can can start from the scratch */
+    if (!hasData)
+        return 0;
+
     while (moreToRead && count < state->numVarPages) {
         memcpy(&logicalVariablePageId, buffer, sizeof(id_t));
-        if (count == 0 || logicalVariablePageId == maxLogicalVariablePageId + 1) {
+        validData = logicalVariablePageId % state->numVarPages == count;
+        if (validData && logicalVariablePageId == maxLogicalVariablePageId + 1) {
             maxLogicalVariablePageId = logicalVariablePageId;
             physicalVariablePageId++;
             moreToRead = !(readVariablePage(state, physicalVariablePageId));
             count++;
         } else {
-            haveWrappedInMemory = logicalVariablePageId == maxLogicalVariablePageId - state->numVarPages + 1;
             break;
         }
     }
 
-    if (count == 0)
-        return 0;
+    /*
+     * Now we need to find where the page with the smallest key that is still valid.
+     * The default case is we have not wrapped and the page number for the physical page with the smallest key is 0.
+     */
+    id_t physicalPageIDOfSmallestData = 0;
+
+    /* check if data exists at this location */
+    if (moreToRead && count < state->numVarPages) {
+        /* find where the next block boundary is */
+        id_t pagesToBlockBoundary = blockSize - (count % blockSize);
+
+        /* go to the next block boundary */
+        physicalVariablePageId = (physicalVariablePageId + pagesToBlockBoundary) % state->numVarPages;
+        moreToRead = !(readVariablePage(state, physicalVariablePageId));
+
+        /* there should have been more to read becuase the file should not be empty at this point if it was not empty at the previous block */
+        if (!moreToRead) {
+            return -1;
+        }
+
+        /* check if data is valid or if it is junk */
+        memcpy(&logicalVariablePageId, buffer, sizeof(id_t));
+        validData = logicalVariablePageId % state->numVarPages == physicalVariablePageId;
+
+        /* this means we have wrapped and our start is actually here */
+        if (validData) {
+            physicalPageIDOfSmallestData = physicalVariablePageId;
+        }
+    }
 
     state->nextVarPageId = maxLogicalVariablePageId + 1;
     id_t minVarPageId = 0;
-    if (haveWrappedInMemory) {
-        id_t physicalPageIDOfSmallestData = logicalVariablePageId % state->numVarPages;
-        readVariablePage(state, physicalPageIDOfSmallestData);
+    int8_t readResult = readVariablePage(state, physicalPageIDOfSmallestData);
+    if (readResult != 0) {
+#ifdef PRINT_ERRORS
+        printf("Error reading variable page with smallest data. \n");
+#endif
+        return -1;
+    }
+
+    memcpy(&minVarPageId, buffer, sizeof(id_t));
+
+    /* If the smallest varPageId is 0, nothing was ever overwritten, so we have all the data */
+    if (minVarPageId == 0) {
+        void *dataBuffer;
+        /* Using record level consistency where nothing was written to permanent storage yet but  */
+        if (EMBEDDB_USING_RECORD_LEVEL_CONSISTENCY(state->parameters) && state->nextDataPageId == 0) {
+            /* check the buffer for records  */
+            dataBuffer = (int8_t *)state->buffer + state->pageSize * EMBEDDB_DATA_WRITE_BUFFER;
+        } else {
+            /* read page with smallest data we still have */
+            dataBuffer = (int8_t *)state->buffer + state->pageSize * EMBEDDB_DATA_READ_BUFFER;
+            readResult = readPage(state, state->minDataPageId % state->numDataPages);
+            if (readResult != 0) {
+#ifdef PRINT_ERRORS
+                printf("Error reading page in data file when recovering variable data. \n");
+#endif
+                return -1;
+            }
+        }
+
+        /* Get smallest key from page and put it into the minVarRecordId */
+        uint64_t minKey = 0;
+        memcpy(&minKey, embedDBGetMinKey(state, dataBuffer), state->keySize);
+        state->minVarRecordId = minKey;
+    } else {
+        /* We lose some records, but know for sure we have all records larger than this*/
         memcpy(&(state->minVarRecordId), (int8_t *)buffer + sizeof(id_t), state->keySize);
-        memcpy(&minVarPageId, buffer, sizeof(id_t));
         state->minVarRecordId++;
     }
 
@@ -1061,7 +1156,7 @@ int8_t embedDBPut(embedDBState *state, void *key, void *data) {
     EMBEDDB_INC_COUNT(state->buffer);
 
     /* Set minimum key for first record insert */
-    if (state->minKey == UINT32_MAX)
+    if (state->minKey == UINT32_MAX && state->nextDataPageId == 0)
         memcpy(&state->minKey, key, state->keySize);
 
     if (EMBEDDB_USING_MAX_MIN(state->parameters)) {
@@ -1100,7 +1195,7 @@ int8_t embedDBPut(embedDBState *state, void *key, void *data) {
     }
 
     /* If using record level consistency, we need to immediately write the updated page to storage */
-    if (EMBEDB_USING_RECORD_LEVEL_CONSISTENCY(state->parameters)) {
+    if (EMBEDDB_USING_RECORD_LEVEL_CONSISTENCY(state->parameters)) {
         /* Need to move record level consistency pointers if on a block boundary */
         if (wrotePage && state->nextDataPageId % state->eraseSizeInPages == 0) {
             /* move record-level consistency blocks */
@@ -1208,7 +1303,7 @@ int8_t embedDBPutVar(embedDBState *state, void *key, void *data, void *variableD
      * data here and if the data page will be written in embedDBGet
      */
     void *buf = (int8_t *)state->buffer + state->pageSize * (EMBEDDB_VAR_WRITE_BUFFER(state->parameters));
-    if (state->currentVarLoc % state->pageSize > state->pageSize - 4 || EMBEDDB_GET_COUNT(state->buffer) >= state->maxRecordsPerPage) {
+    if (state->currentVarLoc % state->pageSize > state->pageSize - 4 || (!(EMBEDDB_USING_RECORD_LEVEL_CONSISTENCY(state->parameters)) && EMBEDDB_GET_COUNT(state->buffer) >= state->maxRecordsPerPage)) {
         writeVariablePage(state, buf);
         initBufferPage(state, EMBEDDB_VAR_WRITE_BUFFER(state->parameters));
         // Move data writing location to the beginning of the next page, leaving the room for the header
@@ -1226,6 +1321,10 @@ int8_t embedDBPutVar(embedDBState *state, void *key, void *data, void *variableD
     int8_t r;
     if ((r = embedDBPut(state, key, data)) != 0) {
         return r;
+    }
+
+    if (state->minVarRecordId == UINT64_MAX) {
+        memcpy(&state->minVarRecordId, key, state->keySize);
     }
 
     // Update the header to include the maximum key value stored on this page
@@ -1264,6 +1363,11 @@ int8_t embedDBPutVar(embedDBState *state, void *key, void *data, void *variableD
             state->currentVarLoc += state->variableDataHeaderSize;
         }
     }
+
+    if (EMBEDDB_USING_RECORD_LEVEL_CONSISTENCY(state->parameters)) {
+        embedDBFlushVar(state);
+    }
+
     return 0;
 }
 
@@ -1662,12 +1766,25 @@ void embedDBCloseIterator(embedDBIterator *it) {
 }
 
 /**
- * @brief   Flushes variable write buffer to storage and updates variable record pointer accordingly.
- * @param   state   algorithm state structure
+ * @brief	Flushes output buffer.
+ * @param	state	algorithm state structure
+ * @returns 0 if successul and a non-zero value otherwise
  */
-void embedDBFlushVar(embedDBState *state) {
+int8_t embedDBFlushVar(embedDBState *state) {
+    /* Check if we actually have any variable data in the buffer */
+    if (state->currentVarLoc % state->pageSize == state->variableDataHeaderSize) {
+        return 0;
+    }
+
     // only flush variable buffer
-    writeVariablePage(state, (int8_t *)state->buffer + EMBEDDB_VAR_WRITE_BUFFER(state->parameters) * state->pageSize);
+    id_t writeResult = writeVariablePage(state, (int8_t *)state->buffer + EMBEDDB_VAR_WRITE_BUFFER(state->parameters) * state->pageSize);
+    if (writeResult == -1) {
+#ifdef PRINT_ERRORS
+        printf("Failed to write variable data page during embedDBFlushVar.");
+#endif
+        return -1;
+    }
+
     state->fileInterface->flush(state->varFile);
     // init new buffer
     initBufferPage(state, EMBEDDB_VAR_WRITE_BUFFER(state->parameters));
@@ -1675,15 +1792,28 @@ void embedDBFlushVar(embedDBState *state) {
     int temp = state->pageSize - (state->currentVarLoc % state->pageSize);
     // create new offset
     state->currentVarLoc += temp + state->variableDataHeaderSize;
+    return 0;
 }
 
 /**
  * @brief	Flushes output buffer.
  * @param	state	algorithm state structure
+ * @returns 0 if successul and a non-zero value otherwise
  */
 int8_t embedDBFlush(embedDBState *state) {
     // As the first buffer is the data write buffer, no address change is required
-    id_t pageNum = writePage(state, (int8_t *)state->buffer + EMBEDDB_DATA_WRITE_BUFFER * state->pageSize);
+    int8_t *buffer = (int8_t *)state->buffer + EMBEDDB_DATA_WRITE_BUFFER * state->pageSize;
+    if (EMBEDDB_GET_COUNT(buffer) < 1)
+        return 0;
+
+    id_t pageNum = writePage(state, buffer);
+    if (pageNum == -1) {
+#ifdef PRINT_ERRORS
+        printf("Failed to write page during embedDBFlush.");
+#endif
+        return -1;
+    }
+
     state->fileInterface->flush(state->dataFile);
 
     indexPage(state, pageNum);
@@ -1697,7 +1827,14 @@ int8_t embedDBFlush(embedDBState *state) {
         void *bm = EMBEDDB_GET_BITMAP(state->buffer);
         memcpy((void *)((int8_t *)buf + EMBEDDB_IDX_HEADER_SIZE + state->bitmapSize * idxcount), bm, state->bitmapSize);
 
-        writeIndexPage(state, buf);
+        id_t writeResult = writeIndexPage(state, buf);
+        if (writeResult == -1) {
+#ifdef PRINT_ERRORS
+            printf("Failed to write index page during embedDBFlush.");
+#endif
+            return -1;
+        }
+
         state->fileInterface->flush(state->indexFile);
 
         /* Reinitialize buffer */
@@ -1709,15 +1846,13 @@ int8_t embedDBFlush(embedDBState *state) {
 
     // Flush var data page
     if (EMBEDDB_USING_VDATA(state->parameters)) {
-        // send write buffer pointer to write variable page
-        writeVariablePage(state, (int8_t *)state->buffer + EMBEDDB_VAR_WRITE_BUFFER(state->parameters) * state->pageSize);
-        state->fileInterface->flush(state->varFile);
-        // init new buffer
-        initBufferPage(state, EMBEDDB_VAR_WRITE_BUFFER(state->parameters));
-        // determine how many bytes are left
-        int temp = state->pageSize - (state->currentVarLoc % state->pageSize);
-        // create new offset
-        state->currentVarLoc += temp + state->variableDataHeaderSize;
+        int8_t varFlushResult = embedDBFlushVar(state);
+        if (varFlushResult != 0) {
+#ifdef PRINT_ERRORS
+            printf("Failed to flush variable data page");
+#endif
+            return -1;
+        }
     }
     return 0;
 }

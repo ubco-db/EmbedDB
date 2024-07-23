@@ -244,6 +244,18 @@ void test_insert_rest() {
     TEST_ASSERT_EQUAL_INT_MESSAGE(0, insertRecords(numRecords - inserted), "Error while inserting records");
 }
 
+void embedDBFlushVar_should_not_write_when_no_data_in_buffer() {
+    initState(8);
+    embedDBInit(state, 0);
+    embedDBFlushVar(state);
+
+    TEST_ASSERT_EQUAL_UINT32_MESSAGE(8, state->currentVarLoc, "embedDBFlushVar should not change currentVarLoc when flushing an empty variable data page.");
+    uint64_t expectedMinVarRecordId = UINT64_MAX;
+    TEST_ASSERT_EQUAL_MEMORY_MESSAGE(&expectedMinVarRecordId, &state->minVarRecordId, sizeof(uint64_t), "embedDBFlushVar should not change expectedMinVarRecordId when flushing an empty variable data page.");
+    TEST_ASSERT_EQUAL_UINT32_MESSAGE(1000, state->numAvailVarPages, "embedDBFlushVar should not change numAvailVarPages when flushing an empty variable data page.");
+    TEST_ASSERT_EQUAL_UINT32_MESSAGE(0, state->nextVarPageId, "embedDBFlushVar should not change nextVarPageId when flushing an empty variable data page.");
+}
+
 int runUnityTests() {
     UNITY_BEGIN();
 
@@ -269,6 +281,8 @@ int runUnityTests() {
         // Clean up state
         resetState();
     }
+
+    RUN_TEST(embedDBFlushVar_should_not_write_when_no_data_in_buffer);
 
     return UNITY_END();
 }
