@@ -90,13 +90,13 @@ void insertRecords(uint32_t startingKey, uint64_t startingData, void *variableDa
     }
 }
 
-void insertRecordsCustomVarData(uint32_t startingKey, uint64_t startingData, uint32_t numRecords) {
+void insertRecordsCustomVarData(uint32_t startingKey, uint64_t startingData, uint32_t numRecords, uint32_t length) {
     uint32_t key = startingKey;
     uint64_t data = startingData;
-    char variableData[25];
+    char variableData[length];
     for (uint32_t i = 0; i < numRecords; i++) {
-        snprintf(variableData, 24, "Variable Data %u", key);
-        int8_t result = embedDBPutVar(state, &key, &data, variableData, 24);
+        snprintf(variableData, length, "Variable Data %u", key);
+        int8_t result = embedDBPutVar(state, &key, &data, variableData, length);
         TEST_ASSERT_EQUAL_INT8_MESSAGE(0, result, "embedDBPutVar did not correctly insert data (returned non-zero code)");
         key++;
         data++;
@@ -124,7 +124,7 @@ void variable_data_record_level_consistency_records_should_be_readable() {
 
     /* Check that we can still query the remaining records */
     uint64_t recordData = 0;
-    char variableDataBuffer[13];
+    char variableDataBuffer[15];
     char expectedVariableData[] = "Database COD";
     char message[120];
     key = 955666;
@@ -139,7 +139,7 @@ void variable_data_record_level_consistency_records_should_be_readable() {
         uint32_t streamBytesRead = 0;
         snprintf(message, 120, "embedDBGetVar returned null stream for key %u.", key);
         TEST_ASSERT_NOT_NULL_MESSAGE(stream, message);
-        streamBytesRead = embedDBVarDataStreamRead(state, stream, variableDataBuffer, 12);
+        streamBytesRead = embedDBVarDataStreamRead(state, stream, variableDataBuffer, 15);
         snprintf(message, 120, "embedDBGetVar did not return correct data for a record inserted before reloading (key %u).", key);
         TEST_ASSERT_EQUAL_MEMORY_MESSAGE(&data, &recordData, sizeof(uint64_t), message);
         TEST_ASSERT_EQUAL_UINT32_MESSAGE(12, streamBytesRead, "EmbedDB var data stream did not read the correct number of bytes.");
@@ -155,8 +155,7 @@ void variable_data_record_level_consistency_records_should_be_readable() {
 void variable_data_record_level_consistency_should_recover_64_records_correctly() {
     uint32_t key = 157557064;
     uint64_t data = 449130689;
-    char variableData[24];
-    insertRecordsCustomVarData(key, data, 64);
+    insertRecordsCustomVarData(key, data, 64, 24);
 
     /* tear down state and recover */
     tearDown();
@@ -172,7 +171,7 @@ void variable_data_record_level_consistency_should_recover_64_records_correctly(
 
     /* Check that we can still query the records inserted before recovery */
     uint64_t actualData = 0;
-    char actualVariableData[24];
+    char actualVariableData[25];
     char expectedVariableData[24];
     char message[120];
     uint32_t expectedKey = 157557064;
@@ -208,7 +207,7 @@ void variable_data_record_level_consistency_should_recover_64_records_correctly(
 void variable_data_record_level_consistency_should_recover_four_pages_data_records_correctly() {
     uint32_t key = 571933978;
     uint64_t data = 691272876;
-    insertRecordsCustomVarData(key, data, 124);
+    insertRecordsCustomVarData(key, data, 124, 24);
     embedDBFlush(state);
 
     /* tear down state and recover */
@@ -225,7 +224,7 @@ void variable_data_record_level_consistency_should_recover_four_pages_data_recor
 
     /* Check that we can still query the records inserted before recovery */
     uint64_t actualData = 0;
-    char actualVariableData[24];
+    char actualVariableData[25];
     char expectedVariableData[24];
     char message[120];
     uint32_t expectedKey = 571933978;
@@ -273,7 +272,7 @@ void variable_data_record_level_consistency_should_recover_four_pages_data_recor
 void variable_data_record_level_consistency_should_recover_71_pages_data_and_19_record_level_consistency_records() {
     uint32_t key = 85824389;
     uint64_t data = 46212944;
-    insertRecordsCustomVarData(key, data, 2218);
+    insertRecordsCustomVarData(key, data, 2218, 23);
 
     /* tear down state and recover */
     tearDown();
@@ -289,8 +288,8 @@ void variable_data_record_level_consistency_should_recover_71_pages_data_and_19_
 
     /* Check that we can query some record-level consistency and regular records */
     uint64_t actualData = 0;
-    char actualVariableData[24];
-    char expectedVariableData[24];
+    char actualVariableData[25];
+    char expectedVariableData[23];
     char message[120];
     uint32_t expectedKey = 85826577;
     uint64_t expectedData = 46215132;
@@ -307,10 +306,10 @@ void variable_data_record_level_consistency_should_recover_71_pages_data_and_19_
         streamBytesRead = embedDBVarDataStreamRead(state, stream, actualVariableData, 25);
         snprintf(message, 120, "embedDBGetVar did not return correct data for a record inserted before reloading (key %u).", expectedKey);
         TEST_ASSERT_EQUAL_MEMORY_MESSAGE(&expectedData, &actualData, sizeof(uint64_t), message);
-        TEST_ASSERT_EQUAL_UINT32_MESSAGE(24, streamBytesRead, "EmbedDB var data stream did not read the correct number of bytes.");
-        snprintf(expectedVariableData, 24, "Variable Data %u", expectedKey);
+        TEST_ASSERT_EQUAL_UINT32_MESSAGE(23, streamBytesRead, "EmbedDB var data stream did not read the correct number of bytes.");
+        snprintf(expectedVariableData, 23, "Variable Data %u", expectedKey);
         snprintf(message, 120, "embedDBGetVar did not return the correct variable data for key %u.", expectedKey);
-        TEST_ASSERT_EQUAL_CHAR_ARRAY_MESSAGE(expectedVariableData, actualVariableData, 24, message);
+        TEST_ASSERT_EQUAL_CHAR_ARRAY_MESSAGE(expectedVariableData, actualVariableData, 23, message);
         free(stream);
         stream = NULL;
         expectedKey++;
@@ -344,7 +343,7 @@ void variable_data_record_level_consistency_should_recover_variable_data_longer_
 
     /* Check that we can query records */
     uint64_t actualData = 0;
-    char actualVariableData[690];
+    char actualVariableData[700];
     char expectedVariableData[] = LONG_VARIABLE_DATA;
     char message[120];
     uint32_t expectedKey = 98208683;
@@ -359,7 +358,7 @@ void variable_data_record_level_consistency_should_recover_variable_data_longer_
         uint32_t streamBytesRead = 0;
         snprintf(message, 120, "embedDBGetVar returned null stream for key %u.", expectedKey);
         TEST_ASSERT_NOT_NULL_MESSAGE(stream, message);
-        streamBytesRead = embedDBVarDataStreamRead(state, stream, actualVariableData, 690);
+        streamBytesRead = embedDBVarDataStreamRead(state, stream, actualVariableData, 700);
         snprintf(message, 120, "embedDBGetVar did not return correct data for a record inserted before reloading (key %u).", expectedKey);
         TEST_ASSERT_EQUAL_MEMORY_MESSAGE(&expectedData, &actualData, sizeof(uint64_t), message);
         TEST_ASSERT_EQUAL_UINT32_MESSAGE(690, streamBytesRead, "EmbedDB var data stream did not read the correct number of bytes.");
@@ -381,15 +380,15 @@ void variable_data_record_level_consistency_should_recover_after_inserting_131_p
     /* 131 pages of data and 6 indidivudal records*/
     uint32_t key = 64454095;
     uint64_t data = 29636444;
-    char variableData[25];
+    char variableData[23];
     /* 1/4 of records have variable data */
     for (uint32_t i = 0; i < 4067; i++) {
         int8_t result = 0;
         if (i % 4 == 3) {
-            snprintf(variableData, 24, "Variable Data %u", key);
-            result = embedDBPutVar(state, &key, &data, variableData, 24);
+            snprintf(variableData, 23, "Variable Data %u", key);
+            result = embedDBPutVar(state, &key, &data, variableData, 23);
         } else {
-            embedDBPutVar(state, &key, &data, NULL, 24);
+            embedDBPutVar(state, &key, &data, NULL, 23);
         }
         TEST_ASSERT_EQUAL_INT8_MESSAGE(0, result, "embedDBPutVar did not correctly insert data (returned non-zero code)");
         key++;
@@ -410,8 +409,8 @@ void variable_data_record_level_consistency_should_recover_after_inserting_131_p
 
     /* Check that we can still query the records inserted before recovery */
     uint64_t actualData = 0;
-    char actualVariableData[24];
-    char expectedVariableData[24];
+    char actualVariableData[25];
+    char expectedVariableData[23];
     char message[120];
     uint32_t expectedKey = 64457843;
     uint64_t expectedData = 29640192;
@@ -445,10 +444,10 @@ void variable_data_record_level_consistency_should_recover_after_inserting_131_p
             snprintf(message, 120, "embedDBGetVar returned null stream for key %u.", expectedKey);
             TEST_ASSERT_NOT_NULL_MESSAGE(stream, message);
             streamBytesRead = embedDBVarDataStreamRead(state, stream, actualVariableData, 25);
-            TEST_ASSERT_EQUAL_UINT32_MESSAGE(24, streamBytesRead, "EmbedDB var data stream did not read the correct number of bytes.");
-            snprintf(expectedVariableData, 24, "Variable Data %u", expectedKey);
+            TEST_ASSERT_EQUAL_UINT32_MESSAGE(23, streamBytesRead, "EmbedDB var data stream did not read the correct number of bytes.");
+            snprintf(expectedVariableData, 23, "Variable Data %u", expectedKey);
             snprintf(message, 120, "embedDBGetVar did not return the correct variable data for key %u.", expectedKey);
-            TEST_ASSERT_EQUAL_CHAR_ARRAY_MESSAGE(expectedVariableData, actualVariableData, 24, message);
+            TEST_ASSERT_EQUAL_CHAR_ARRAY_MESSAGE(expectedVariableData, actualVariableData, 23, message);
             free(stream);
             stream = NULL;
         }
