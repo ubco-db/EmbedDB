@@ -529,7 +529,7 @@ int8_t embedDBInitDataFromFileWithRecordLevelConsistency(embedDBState *state) {
     id_t pagesToBlockBoundary = blockSize - (count % blockSize);
     /* if we are on a block-boundary, we erase the next page in case the erase failed and then skip to the start of the next block */
     if (pagesToBlockBoundary == blockSize) {
-        int8_t eraseSuccess = state->fileInterface->erase(count, count + blockSize, state->dataFile);
+        int8_t eraseSuccess = state->fileInterface->erase(count, count + blockSize, state->pageSize, state->dataFile);
         if (!eraseSuccess) {
 #ifdef PRINT_ERRORS
             printf("Error: Unable to erase data page during recovery!\n");
@@ -571,9 +571,10 @@ int8_t embedDBInitDataFromFileWithRecordLevelConsistency(embedDBState *state) {
     /* need to find larged record-level consistency page to place back into the buffer and either one or both of the record-level consistency pages */
     uint32_t eraseStartingPage = 0;
     uint32_t eraseEndingPage = 0;
+    uint32_t numBlocksToErase = 0;
     if (rlcMaxLogicialPageNumber == UINT32_MAX) {
         eraseStartingPage = state->rlcPhysicalStartingPage % state->numDataPages;
-        eraseEndingPage = (state->rlcPhysicalStartingPage + blockSize * 2) % state->numDataPages;
+        numBlocksToErase = 2;
     } else {
         state->nextRLCPhysicalPageLocation = (state->rlcPhysicalStartingPage + rlcMaxPage + 1) % state->numDataPages;
         /* need to read the max page into read buffer again so we can copy into the write buffer */
@@ -586,15 +587,19 @@ int8_t embedDBInitDataFromFileWithRecordLevelConsistency(embedDBState *state) {
         }
         memcpy(state->buffer, buffer, state->pageSize);
         eraseStartingPage = (state->rlcPhysicalStartingPage + (rlcMaxPage < blockSize ? blockSize : 0)) % state->numDataPages;
-        eraseEndingPage = (eraseStartingPage + blockSize) % state->numDataPages;
+        numBlocksToErase = 1;
     }
-    int8_t eraseSuccess = state->fileInterface->erase(eraseStartingPage, eraseEndingPage, state->dataFile);
 
-    if (!eraseSuccess) {
+    for (uint32_t i = 0; i < numBlocksToErase; i++) {
+        eraseEndingPage = eraseStartingPage + blockSize;
+        int8_t eraseSuccess = state->fileInterface->erase(eraseStartingPage, eraseEndingPage, state->pageSize, state->dataFile);
+        if (!eraseSuccess) {
 #ifdef PRINT_ERRORS
-        printf("Error: Unable to erase pages in data file!\n");
+            printf("Error: Unable to erase pages in data file!\n");
 #endif
-        return -1;
+            return -1;
+        }
+        eraseStartingPage = eraseEndingPage % state->numDataPages;
     }
 
     /* if we don't have any permanent data, we can just return now that the record-level consistency records have been handled */
@@ -1113,16 +1118,24 @@ int8_t shiftRecordLevelConsistencyBlocks(embedDBState *state) {
     /* TODO: Likely an optimisation here where we don't always need to erase the second block, but that will make this algorithm more complicated and the savings could be minimal */
     uint32_t numRecordLevelConsistencyPages = state->eraseSizeInPages * 2;
     uint32_t eraseStartingPage = state->rlcPhysicalStartingPage;
+    uint32_t eraseEndingPage = 0;
 
     /* if we have wraped, we need to erase an additional block as the block we are shifting into is not empty */
     bool haveWrapped = (state->minDataPageId % state->numDataPages) == ((state->rlcPhysicalStartingPage + numRecordLevelConsistencyPages) % state->numDataPages);
     uint32_t numBlocksToErase = haveWrapped ? 2 : 3;
 
-    /* erase pages */
-    uint32_t eraseEndingPage = (eraseStartingPage + state->eraseSizeInPages * numBlocksToErase) % state->numDataPages;
-
     /* Erase pages to make space for new data */
-    int8_t eraseResult = state->fileInterface->erase(eraseStartingPage, eraseEndingPage, state->dataFile);
+    for (size_t i = 0; i < numBlocksToErase; i++) {
+        eraseEndingPage = eraseStartingPage + state->eraseSizeInPages;
+        int8_t eraseSuccess = state->fileInterface->erase(eraseStartingPage, eraseEndingPage, state->pageSize, state->dataFile);
+        if (!eraseSuccess) {
+#ifdef PRINT_ERRORS
+            printf("Error: Unable to erase pages in data file when shifting record level consistency blocks!\n");
+#endif
+            return -1;
+        }
+        eraseStartingPage = eraseEndingPage % state->numDataPages;
+    }
 
     /* shift min data page if needed */
     if (haveWrapped) {
@@ -1142,13 +1155,6 @@ int8_t shiftRecordLevelConsistencyBlocks(embedDBState *state) {
     /* shift record-level consistency blocks */
     state->rlcPhysicalStartingPage = (state->rlcPhysicalStartingPage + state->eraseSizeInPages) % state->numDataPages;
     state->nextRLCPhysicalPageLocation = state->rlcPhysicalStartingPage;
-
-    if (eraseResult != 1) {
-#ifdef PRINT_ERRORS
-        printf("Failed to erase data page for physical page ids %i - %i\n", eraseStartingPage, eraseEndingPage);
-#endif
-        return -1;
-    }
 
     return 0;
 }
@@ -2005,7 +2011,7 @@ id_t writePage(embedDBState *state, void *buffer) {
 
     if (state->numAvailDataPages <= 0) {
         /* Erase pages to make space for new data */
-        int8_t eraseResult = state->fileInterface->erase(physicalPageNum, physicalPageNum + state->eraseSizeInPages, state->dataFile);
+        int8_t eraseResult = state->fileInterface->erase(physicalPageNum, physicalPageNum + state->eraseSizeInPages, state->pageSize, state->dataFile);
         if (eraseResult != 1) {
 #ifdef PRINT_ERRORS
             printf("Failed to erase data page: %i (%i)\n", pageNum, physicalPageNum);
@@ -2070,7 +2076,7 @@ int8_t writeTemporaryPage(embedDBState *state, void *buffer) {
     if (state->nextRLCPhysicalPageLocation % state->eraseSizeInPages == 1) {
         uint32_t eraseStartingPage = (state->nextRLCPhysicalPageLocation + state->eraseSizeInPages - 1) % state->numDataPages;
         uint32_t eraseEndingPage = eraseStartingPage + state->eraseSizeInPages;
-        int8_t eraseSuccess = state->fileInterface->erase(eraseStartingPage, eraseEndingPage, state->dataFile);
+        int8_t eraseSuccess = state->fileInterface->erase(eraseStartingPage, eraseEndingPage, state->pageSize, state->dataFile);
         if (!eraseSuccess) {
 #ifdef PRINT_ERRORS
             printf("Failed to erase block starting at physical page %i in the data file.", state->nextRLCPhysicalPageLocation);
@@ -2135,7 +2141,7 @@ id_t writeIndexPage(embedDBState *state, void *buffer) {
 
     if (state->numAvailIndexPages <= 0) {
         // Erase index pages to make room for new page
-        int8_t eraseResult = state->fileInterface->erase(physicalPageNumber, physicalPageNumber + state->eraseSizeInPages, state->indexFile);
+        int8_t eraseResult = state->fileInterface->erase(physicalPageNumber, physicalPageNumber + state->eraseSizeInPages, state->pageSize, state->indexFile);
         if (eraseResult != 1) {
 #ifdef PRINT_ERRORS
             printf("Failed to erase data page: %i (%i)\n", pageNum, physicalPageNumber);
@@ -2177,7 +2183,7 @@ id_t writeVariablePage(embedDBState *state, void *buffer) {
 
     // Erase data if needed
     if (state->numAvailVarPages <= 0) {
-        int8_t eraseResult = state->fileInterface->erase(physicalPageId, physicalPageId + state->eraseSizeInPages, state->varFile);
+        int8_t eraseResult = state->fileInterface->erase(physicalPageId, physicalPageId + state->eraseSizeInPages, state->pageSize, state->varFile);
         if (eraseResult != 1) {
 #ifdef PRINT_ERRORS
             printf("Failed to erase data page: %i (%i)\n", state->nextVarPageId, physicalPageId);
