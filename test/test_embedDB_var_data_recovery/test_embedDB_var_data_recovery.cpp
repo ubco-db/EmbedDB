@@ -67,6 +67,9 @@
 #define VAR_DATA_FILE_PATH "build/artifacts/varFile.bin"
 #endif
 
+/* On the desktop platform, tjere is a file interface which simulates "erasing" by writing out all 1's to the location in the file ot be erased */
+#define MOCK_ERASE_INTERFACE 1
+
 #include "unity.h"
 #define UNITY_SUPPORT_64
 
@@ -82,7 +85,12 @@ void setupEmbedDB() {
     state->buffer = calloc(1, state->pageSize * state->bufferSizeInBlocks);
     TEST_ASSERT_NOT_NULL_MESSAGE(state->buffer, "Failed to allocate EmbedDB buffer.");
 
+/* configure EmbedDB storage */
+#if MOCK_ERASE_INTERFACE == 1
+    state->fileInterface = getMockEraseFileInterface();
+#else
     state->fileInterface = getFileInterface();
+#endif
     char dataPath[] = DATA_FILE_PATH, varPath[] = VAR_DATA_FILE_PATH;
     state->dataFile = setupFile(dataPath);
     state->varFile = setupFile(varPath);
@@ -107,7 +115,12 @@ void initalizeEmbedDBFromFile(void) {
     state->buffer = calloc(1, state->pageSize * state->bufferSizeInBlocks);
     TEST_ASSERT_NOT_NULL_MESSAGE(state->buffer, "Failed to allocate EmbedDB buffer.");
 
+/* configure EmbedDB storage */
+#if MOCK_ERASE_INTERFACE == 1
+    state->fileInterface = getMockEraseFileInterface();
+#else
     state->fileInterface = getFileInterface();
+#endif
     char dataPath[] = DATA_FILE_PATH, varPath[] = VAR_DATA_FILE_PATH;
     state->dataFile = setupFile(dataPath);
     state->varFile = setupFile(varPath);
@@ -210,8 +223,8 @@ void embedDB_variable_data_reloads_with_fifty_three_pages_of_data_correctly() {
     tearDown();
     initalizeEmbedDBFromFile();
     TEST_ASSERT_EQUAL_UINT32_MESSAGE(15368, state->currentVarLoc, "EmbedDB currentVarLoc did not have the correct value after initializing variable data from a file with 106 pages of records.");
-    uint64_t expectedMinVarRecordId = 761;
-    TEST_ASSERT_EQUAL_MEMORY_MESSAGE(&expectedMinVarRecordId, &state->minVarRecordId, sizeof(uint64_t), "EmbedDB minVarRecordId did not have the correct value after initializing variable data from a file with 106 pages of records.");
+    int32_t expectedMinVarRecordId = 761;
+    TEST_ASSERT_EQUAL_MEMORY_MESSAGE(&expectedMinVarRecordId, &state->minVarRecordId, sizeof(int32_t), "EmbedDB minVarRecordId did not have the correct value after initializing variable data from a file with 106 pages of records.");
     TEST_ASSERT_EQUAL_UINT32_MESSAGE(0, state->numAvailVarPages, "EmbedDB numAvailVarPages did not have the correct value after initializing variable data from a file with 106 pages of records.");
     TEST_ASSERT_EQUAL_UINT32_MESSAGE(106, state->nextVarPageId, "EmbedDB nextVarPageId did not have the correct value after initializing variable data from a file with 106 pages of records.");
     tearDownEmbedDB();

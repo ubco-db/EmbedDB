@@ -28,6 +28,9 @@
 #define DATA_FILE_PATH "build/artifacts/dataFile.bin"
 #endif
 
+/* On the desktop platform, tjere is a file interface which simulates "erasing" by writing out all 1's to the location in the file ot be erased */
+#define MOCK_ERASE_INTERFACE 0
+
 #include "unity.h"
 
 embedDBState *state;
@@ -44,8 +47,13 @@ void setupEmbedDB(int8_t parameters) {
     state->buffer = malloc((size_t)state->bufferSizeInBlocks * state->pageSize);
     TEST_ASSERT_NOT_NULL_MESSAGE(state->buffer, "Failed to allocate buffer for EmbedDB.");
 
-    /* configure EmbedDB storage */
+/* configure EmbedDB storage */
+#if MOCK_ERASE_INTERFACE == 1
+    state->fileInterface = getMockEraseFileInterface();
+#else
     state->fileInterface = getFileInterface();
+#endif
+
     state->dataFile = setupFile(DATA_FILE_PATH);
 
     state->numDataPages = 32;

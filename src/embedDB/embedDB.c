@@ -2074,8 +2074,13 @@ int8_t writeTemporaryPage(embedDBState *state, void *buffer) {
 
     /* If in pageNum is second page in block, we erase the other record-level consistency block */
     if (state->nextRLCPhysicalPageLocation % state->eraseSizeInPages == 1) {
-        uint32_t eraseStartingPage = (state->nextRLCPhysicalPageLocation + state->eraseSizeInPages - 1) % state->numDataPages;
-        uint32_t eraseEndingPage = eraseStartingPage + state->eraseSizeInPages;
+        uint32_t eraseStartingPage = state->rlcPhysicalStartingPage;
+        count_t blockSize = state->eraseSizeInPages;
+        if (state->nextRLCPhysicalPageLocation == eraseStartingPage + 1) {
+            eraseStartingPage = (eraseStartingPage + blockSize) % state->numDataPages;
+        }
+        uint32_t eraseEndingPage = eraseStartingPage + blockSize;
+
         int8_t eraseSuccess = state->fileInterface->erase(eraseStartingPage, eraseEndingPage, state->pageSize, state->dataFile);
         if (!eraseSuccess) {
 #ifdef PRINT_ERRORS

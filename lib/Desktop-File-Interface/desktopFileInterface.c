@@ -56,7 +56,9 @@ int8_t MOCK_FILE_ERASE(uint32_t startPage, uint32_t endPage, uint32_t pageSize, 
     memset(buffer, 1, memorySize);
 
     /* Erase data */
-    return fwrite(buffer, memorySize, 1, fileInfo->file);
+    size_t writeResult = fwrite(buffer, memorySize, 1, fileInfo->file);
+    free(buffer);
+    return writeResult;
 }
 
 int8_t FILE_CLOSE(void *file) {
