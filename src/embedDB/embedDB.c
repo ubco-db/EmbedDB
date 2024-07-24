@@ -239,12 +239,8 @@ int8_t embedDBInit(embedDBState *state, size_t indexMaxError) {
 
     /* Initalize the spline or radix spline structure if either are to be used */
     if (!EMBEDDB_USING_BINARY_SEARCH(state->parameters)) {
-        if (RADIX_BITS > 0) {
-            initRadixSpline(state, RADIX_BITS);
-        } else {
-            state->spl = malloc(sizeof(spline));
-            splineInit(state->spl, state->numSplinePoints, indexMaxError, state->keySize);
-        }
+        state->spl = malloc(sizeof(spline));
+        splineInit(state->spl, state->numSplinePoints, indexMaxError, state->keySize);
     }
 
     /* Allocate file for data*/
@@ -646,11 +642,7 @@ void embedDBInitSplineFromFile(embedDBState *state) {
     id_t numberOfPagesToRead = state->nextDataPageId - state->minDataPageId;
     while (pagesRead < numberOfPagesToRead) {
         readPage(state, pageNumberToRead % state->numDataPages);
-        if (RADIX_BITS > 0) {
-            radixsplineAddPoint(state->rdix, embedDBGetMinKey(state, buffer), pageNumberToRead++);
-        } else {
-            splineAdd(state->spl, embedDBGetMinKey(state, buffer), pageNumberToRead++);
-        }
+        splineAdd(state->spl, embedDBGetMinKey(state, buffer), pageNumberToRead++);
         pagesRead++;
     }
 }
