@@ -76,7 +76,6 @@ class TestFileHandlers(unittest.TestCase):
         expected_c_files = [
             os.path.join(self.query_interface_files, "advancedQueries.c"),
             os.path.join(self.embedDB_files, "embedDB.c"),
-            os.path.join(self.spline_files, "radixspline.c"),
             os.path.join(self.query_interface_files, "schema.c"),
             os.path.join(self.spline_files, "spline.c"),
             os.path.join(self.utility_functions_files, "embedDBUtility.c"),
@@ -92,7 +91,6 @@ class TestFileHandlers(unittest.TestCase):
         expected_h_files = [
             os.path.join(self.query_interface_files, "advancedQueries.h"),
             os.path.join(self.embedDB_files, "embedDB.h"),
-            os.path.join(self.spline_files, "radixspline.h"),
             os.path.join(self.query_interface_files, "schema.h"),
             os.path.join(self.spline_files, "spline.h"),
             os.path.join(self.utility_functions_files, "embedDBUtility.h"),
