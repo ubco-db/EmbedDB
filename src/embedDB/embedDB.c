@@ -48,12 +48,6 @@
 #include "serial_c_iface.h"
 #endif
 
-/**
- * Number of bits to be indexed by the Radix Search structure
- * Note: The Radix search structure is only used with Spline (SEARCH_METHOD == 2) To use a pure Spline index without a Radix table, set RADIX_BITS to 0
- */
-#define RADIX_BITS 0
-
 /* Helper Functions */
 int8_t embedDBInitData(embedDBState *state);
 int8_t embedDBInitDataFromFile(embedDBState *state);
@@ -117,24 +111,6 @@ void initBufferPage(embedDBState *state, int pageNum) {
             ((int8_t *)min)[i] = 1;
         }
     }
-}
-
-/**
- * @brief   Initializes the Radix Spline data structure and assigns it to state
- * @param   state       embedDB state structure
- * @param   size        Size data to load into data structure
- * @param   radixSize   number bits to be indexed by radix
- * @return  void
- */
-void initRadixSpline(embedDBState *state, size_t radixSize) {
-    spline *spl = (spline *)malloc(sizeof(spline));
-    state->spl = spl;
-
-    splineInit(state->spl, state->numSplinePoints, state->indexMaxError, state->keySize);
-
-    radixspline *rsidx = (radixspline *)malloc(sizeof(radixspline));
-    state->rdix = rsidx;
-    radixsplineInit(state->rdix, state->spl, radixSize, state->keySize);
 }
 
 /**
@@ -237,7 +213,7 @@ int8_t embedDBInit(embedDBState *state, size_t indexMaxError) {
         return -1;
     }
 
-    /* Initalize the spline or radix spline structure if either are to be used */
+    /* Initalize the spline structure if being used */
     if (!EMBEDDB_USING_BINARY_SEARCH(state->parameters)) {
         state->spl = malloc(sizeof(spline));
         splineInit(state->spl, state->numSplinePoints, indexMaxError, state->keySize);
@@ -1041,11 +1017,7 @@ int32_t getMaxError(embedDBState *state, void *buffer) {
  */
 void indexPage(embedDBState *state, uint32_t pageNumber) {
     if (!EMBEDDB_USING_BINARY_SEARCH(state->parameters)) {
-        if (RADIX_BITS > 0) {
-            radixsplineAddPoint(state->rdix, embedDBGetMinKey(state, state->buffer), pageNumber);
-        } else {
-            splineAdd(state->spl, embedDBGetMinKey(state, state->buffer), pageNumber);
-        }
+        splineAdd(state->spl, embedDBGetMinKey(state, state->buffer), pageNumber);
     }
 }
 
@@ -1485,11 +1457,7 @@ int8_t binarySearch(embedDBState *state, void *buffer, void *key) {
 int8_t splineSearch(embedDBState *state, void *buffer, void *key) {
     /* Spline search */
     uint32_t location, lowbound, highbound;
-    if (RADIX_BITS > 0) {
-        radixsplineFind(state->rdix, key, state->compareKey, &location, &lowbound, &highbound);
-    } else {
-        splineFind(state->spl, key, state->compareKey, &location, &lowbound, &highbound);
-    }
+    splineFind(state->spl, key, state->compareKey, &location, &lowbound, &highbound);
 
     // Check if the currently buffered page is the correct one
     if (!(lowbound <= state->bufferedPageId &&
@@ -1686,11 +1654,7 @@ void embedDBInitIterator(embedDBState *state, embedDBIterator *it) {
     if (state->spl->count != 0 && it->minKey != NULL && !(EMBEDDB_USING_BINARY_SEARCH(state->parameters))) {
         /* Spline search */
         uint32_t location, lowbound, highbound = 0;
-        if (RADIX_BITS > 0) {
-            radixsplineFind(state->rdix, it->minKey, state->compareKey, &location, &lowbound, &highbound);
-        } else {
-            splineFind(state->spl, it->minKey, state->compareKey, &location, &lowbound, &highbound);
-        }
+        splineFind(state->spl, it->minKey, state->compareKey, &location, &lowbound, &highbound);
 
         // Use the low bound as the start for our search
         it->nextDataPage = max(lowbound, state->minDataPageId);
@@ -2063,12 +2027,7 @@ void embedDBPrintStats(embedDBState *state) {
     printf("Max Error: %d\n", state->maxError);
 
     if (!EMBEDDB_USING_BINARY_SEARCH(state->parameters)) {
-        if (RADIX_BITS > 0) {
-            splinePrint(state->rdix->spl);
-            radixsplinePrint(state->rdix);
-        } else {
-            splinePrint(state->spl);
-        }
+        splinePrint(state->spl);
     }
 }
 
@@ -2437,17 +2396,9 @@ void embedDBClose(embedDBState *state) {
     if (state->varFile != NULL) {
         state->fileInterface->close(state->varFile);
     }
-    if (!EMBEDDB_USING_BINARY_SEARCH(state->parameters)) {  // Spline
-        if (RADIX_BITS > 0) {
-            radixsplineClose(state->rdix);
-            free(state->rdix);
-            state->rdix = NULL;
-            // Spl already freed by radixsplineClose
-            state->spl = NULL;
-        } else {
-            splineClose(state->spl);
-            free(state->spl);
-            state->spl = NULL;
-        }
+    if (!EMBEDDB_USING_BINARY_SEARCH(state->parameters)) {
+        splineClose(state->spl);
+        free(state->spl);
+        state->spl = NULL;
     }
 }
