@@ -249,10 +249,9 @@ class TestRead(unittest.TestCase):
         input_1 = {
             '#include "embedDB.h"',
             '#include "../spline/spline.h"',
-            '#include "../spline/radixspline.h"',
         }
 
-        expected_header_file_names = {"embedDB.h", "spline.h", "radixspline.h"}
+        expected_header_file_names = {"embedDB.h", "spline.h"}
 
         actual_header_file_names = format_external_lib(input_1)
         self.assertEqual(expected_header_file_names, actual_header_file_names)
@@ -262,14 +261,12 @@ class TestRead(unittest.TestCase):
         input_2 = {
             '#include "embedDB.h"',
             '#include "../../../../../spline/spline.h"',
-            '#include "../spline/cats/foo/radixspline.h"',
             '#include "../../../../../../spline-and-then/cats/foo/file.h"',
         }
 
         expected_header_file_names_2 = {
             "embedDB.h",
             "spline.h",
-            "radixspline.h",
             "file.h",
         }
         actual_header_file_names_2 = format_external_lib(input_2)
@@ -280,12 +277,10 @@ class TestRead(unittest.TestCase):
         input_3 = {
             '#include "embedDB.h"',
             '#include "../spline/spline.h"',
-            '#include "../spline/radixspline.h"',
             '#include "embedDB.h"',
             '#include "../spline/spline.h"',
-            '#include "../spline/radixspline.h"',
         }
 
-        expected_header_file_names_3 = {"embedDB.h", "spline.h", "radixspline.h"}
+        expected_header_file_names_3 = {"embedDB.h", "spline.h"}
         actual_header_file_names_3 = format_external_lib(input_3)
         self.assertEqual(expected_header_file_names_3, actual_header_file_names_3)

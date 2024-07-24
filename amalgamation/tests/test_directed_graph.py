@@ -104,7 +104,6 @@ class TestDirectedGraph(unittest.TestCase):
         expected_header_file_names = {
             "advancedQueries.h",
             "embedDB.h",
-            "radixspline.h",
             "schema.h",
             "spline.h",
             "embedDBUtility.h",
@@ -118,7 +117,6 @@ class TestDirectedGraph(unittest.TestCase):
             "advancedQueries.c",
             "embedDBUtility.c",
             "embedDB.c",
-            "radixspline.c",
             "schema.c",
             "spline.c",
         }
@@ -153,11 +151,10 @@ class TestDirectedGraph(unittest.TestCase):
 
     def test_create_dir_graph(self):
         expected_graph = {
-            "embedDB.h": {"radixspline.h", "spline.h"},
+            "embedDB.h": {"spline.h"},
             "embedDBUtility.h": set(),
             "advancedQueries.h": {"embedDB.h", "schema.h"},
             "schema.h": set(),
-            "radixspline.h": {"spline.h"},
             "spline.h": set(),
         }
 
@@ -192,7 +189,7 @@ class TestDirectedGraph(unittest.TestCase):
         # convert it to a list and reverse it to match the expected DFS order
         actual_res = list(stack)[::-1]
 
-        expected_res = ["embedDB.h", "radixspline.h", "spline.h"]
+        expected_res = ["embedDB.h", "spline.h"]
 
         # Check if the actual result matches the expected result
         self.assertEqual(actual_res, expected_res)
