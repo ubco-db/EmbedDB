@@ -385,6 +385,8 @@ typedef uint16_t count_t;
 #define EMBEDDB_USE_VDATA 16
 #define EMBEDDB_RESET_DATA 32
 #define EMBEDDB_RECORD_LEVEL_CONSISTENCY 64
+#define EMBEDDB_USE_BINARY_SEARCH 128
+#define EMBEDDB_DISABLE_SPLINE_CLEAN 256
 
 #define EMBEDDB_USING_INDEX(x) ((x & EMBEDDB_USE_INDEX) > 0 ? 1 : 0)
 #define EMBEDDB_USING_MAX_MIN(x) ((x & EMBEDDB_USE_MAX_MIN) > 0 ? 1 : 0)
@@ -392,6 +394,8 @@ typedef uint16_t count_t;
 #define EMBEDDB_USING_BMAP(x) ((x & EMBEDDB_USE_BMAP) > 0 ? 1 : 0)
 #define EMBEDDB_USING_VDATA(x) ((x & EMBEDDB_USE_VDATA) > 0 ? 1 : 0)
 #define EMBEDDB_USING_RECORD_LEVEL_CONSISTENCY(x) ((x & EMBEDDB_RECORD_LEVEL_CONSISTENCY) > 0 ? 1 : 0)
+#define EMBEDDB_USING_BINARY_SEARCH(x) ((x & EMBEDDB_USE_BINARY_SEARCH) > 0 ? 1 : 0)
+#define EMBEDDB_DISABLED_SPLINE_CLEAN(x) ((x & EMBEDDB_DISABLE_SPLINE_CLEAN) > 0 ? 1 : 0)
 #define EMBEDDB_RESETING_DATA(x) ((x & EMBEDDB_RESET_DATA) > 0 ? 1 : 0)
 
 /* Offsets with header */
@@ -544,14 +548,13 @@ typedef struct {
     int32_t indexMaxError;                                                /* Max error for indexing structure (Spline or PGM) */
     int8_t bufferSizeInBlocks;                                            /* Size of buffer in blocks */
     count_t pageSize;                                                     /* Size of physical page on device */
-    int8_t parameters;                                                    /* Parameter flags for indexing and bitmaps */
+    int16_t parameters;                                                   /* Parameter flags for indexing and bitmaps */
     int8_t keySize;                                                       /* Size of key in bytes (fixed-size records) */
     int8_t dataSize;                                                      /* Size of data in bytes (fixed-size records). Do not include space for variable size records if you are using them. */
     int8_t recordSize;                                                    /* Size of record in bytes (fixed-size records) */
     int8_t headerSize;                                                    /* Size of header in bytes (calculated during init()) */
     int8_t variableDataHeaderSize;                                        /* Size of page header in variable data files (calculated during init()) */
     int8_t bitmapSize;                                                    /* Size of bitmap in bytes */
-    int8_t cleanSpline;                                                   /* Enables automatic spline cleaning */
     id_t avgKeyDiff;                                                      /* Estimate for difference between key values. Used for get() to predict location of record. */
     count_t maxRecordsPerPage;                                            /* Maximum records per page */
     count_t maxIdxRecordsPerPage;                                         /* Maximum index records per page */

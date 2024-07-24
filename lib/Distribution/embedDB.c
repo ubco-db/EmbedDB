@@ -850,22 +850,10 @@ void radixsplineClose(radixspline *rsidx) {
 #endif
 
 /**
- * 0 = Modified binary search
- * 1 = Binary serach
- * 2 = Modified linear search (Spline)
- */
-#define SEARCH_METHOD 2
-
-/**
  * Number of bits to be indexed by the Radix Search structure
  * Note: The Radix search structure is only used with Spline (SEARCH_METHOD == 2) To use a pure Spline index without a Radix table, set RADIX_BITS to 0
  */
 #define RADIX_BITS 0
-
-/**
- * Should the spline be automatically cleaned when data pages are erased? 1 = yes, 0 = no
- */
-#define CLEAN_SPLINE 1
 
 /* Helper Functions */
 int8_t embedDBInitData(embedDBState *state);
@@ -1051,8 +1039,7 @@ int8_t embedDBInit(embedDBState *state, size_t indexMaxError) {
     }
 
     /* Initalize the spline or radix spline structure if either are to be used */
-    if (SEARCH_METHOD == 2) {
-        state->cleanSpline = CLEAN_SPLINE;
+    if (!EMBEDDB_USING_BINARY_SEARCH(state->parameters)) {
         if (RADIX_BITS > 0) {
             initRadixSpline(state, RADIX_BITS);
         } else {
@@ -1260,7 +1247,7 @@ int8_t embedDBInitDataFromFile(embedDBState *state) {
     if (state->avgKeyDiff == 0)
         state->avgKeyDiff = 1;
 
-    if (SEARCH_METHOD == 2) {
+    if (!EMBEDDB_USING_BINARY_SEARCH(state->parameters)) {
         embedDBInitSplineFromFile(state);
     }
 
@@ -1446,7 +1433,7 @@ int8_t embedDBInitDataFromFileWithRecordLevelConsistency(embedDBState *state) {
     if (state->avgKeyDiff == 0)
         state->avgKeyDiff = 1;
 
-    if (SEARCH_METHOD == 2) {
+    if (!EMBEDDB_USING_BINARY_SEARCH(state->parameters)) {
         embedDBInitSplineFromFile(state);
     }
 
@@ -1862,7 +1849,7 @@ int32_t getMaxError(embedDBState *state, void *buffer) {
  * @param	state	embedDB algorithm state structure
  */
 void indexPage(embedDBState *state, uint32_t pageNumber) {
-    if (SEARCH_METHOD == 2) {
+    if (!EMBEDDB_USING_BINARY_SEARCH(state->parameters)) {
         if (RADIX_BITS > 0) {
             radixsplineAddPoint(state->rdix, embedDBGetMinKey(state, state->buffer), pageNumber);
         } else {
@@ -2040,7 +2027,7 @@ int8_t shiftRecordLevelConsistencyBlocks(embedDBState *state) {
         state->minDataPageId += state->eraseSizeInPages;
 
         /* remove any spline points related to these pages */
-        if (state->cleanSpline)
+        if (!EMBEDDB_DISABLED_SPLINE_CLEAN(state->parameters))
             cleanSpline(state, &state->minKey);
 
         // Estimate the smallest key now. Could determine exactly by reading this page
@@ -2249,7 +2236,7 @@ id_t embedDBSearchNode(embedDBState *state, void *buffer, void *key, int8_t rang
  * @param 	high		Uper bound for the page the record could be found on
  * @return	Return 0 if success. Non-zero value if error.
  */
-int8_t linearSearch(embedDBState *state, int16_t *numReads, void *buf, void *key, int32_t pageId, int32_t low, int32_t high) {
+linearSearch(embedDBState *state, void *buf, void *key, int32_t pageId, int32_t low, int32_t high) {
     int32_t pageError = 0;
     int32_t physPageId;
     while (1) {
@@ -2261,11 +2248,9 @@ int8_t linearSearch(embedDBState *state, int16_t *numReads, void *buf, void *key
         }
 
         /* Read page into buffer. If 0 not returned, there was an error */
-        id_t start = state->numReads;
         if (readPage(state, physPageId) != 0) {
             return -1;
         }
-        *numReads += state->numReads - start;
 
         if (state->compareKey(key, embedDBGetMinKey(state, buf)) < 0) { /* Key is less than smallest record in block. */
             high = --pageId;
@@ -2278,6 +2263,53 @@ int8_t linearSearch(embedDBState *state, int16_t *numReads, void *buf, void *key
             return 0;
         }
     }
+}
+
+int8_t binarySearch(embedDBState *state, void *buffer, void *key) {
+    uint32_t first = state->minDataPageId, last = state->nextDataPageId - 1;
+    uint32_t pageId = (first + last) / 2;
+    while (1) {
+        /* Read page into buffer */
+        if (readPage(state, pageId % state->numDataPages) != 0)
+            return -1;
+
+        if (first >= last)
+            break;
+
+        if (state->compareKey(key, embedDBGetMinKey(state, buffer)) < 0) {
+            /* Key is less than smallest record in block. */
+            last = pageId - 1;
+            pageId = (first + last) / 2;
+        } else if (state->compareKey(key, embedDBGetMaxKey(state, buffer)) > 0) {
+            /* Key is larger than largest record in block. */
+            first = pageId + 1;
+            pageId = (first + last) / 2;
+        } else {
+            /* Found correct block */
+            return 0;
+        }
+    }
+}
+
+int8_t splineSearch(embedDBState *state, void *buffer, void *key) {
+    /* Spline search */
+    uint32_t location, lowbound, highbound;
+    if (RADIX_BITS > 0) {
+        radixsplineFind(state->rdix, key, state->compareKey, &location, &lowbound, &highbound);
+    } else {
+        splineFind(state->spl, key, state->compareKey, &location, &lowbound, &highbound);
+    }
+
+    // Check if the currently buffered page is the correct one
+    if (!(lowbound <= state->bufferedPageId &&
+          highbound >= state->bufferedPageId &&
+          state->compareKey(embedDBGetMinKey(state, buffer), key) <= 0 &&
+          state->compareKey(embedDBGetMaxKey(state, buffer), key) >= 0)) {
+        if (linearSearch(state, buffer, key, location, lowbound, highbound) == -1) {
+            return -1;
+        }
+    }
+    return 0;
 }
 
 /**
@@ -2353,101 +2385,22 @@ int8_t embedDBGet(embedDBState *state, void *key, void *data) {
         }
     }
 
-#if SEARCH_METHOD == 0
-    /* Perform a modified binary search that uses info on key location sequence for first placement. */
-
-    // Guess logical page id
-    uint32_t pageId;
-    if (state->compareKey(key, (void *)&(state->minKey)) < 0) {
-        pageId = state->minDataPageId;
+    int8_t searchResult = 0;
+    if (EMBEDDB_USING_BINARY_SEARCH(state->parameters)) {
+        /* Regular binary search */
+        searchResult = binarySearch(state, buf, key);
     } else {
-        pageId = (thisKey - state->minKey) / (state->maxRecordsPerPage * state->avgKeyDiff) + state->minDataPageId;
-
-        if (pageId >= state->nextDataPageId)
-            pageId = state->nextDataPageId - 1; /* Logical page would be beyond maximum. Set to last page. */
+        /* Spline search */
+        searchResult = splineSearch(state, buf, key);
     }
 
-    int32_t offset = 0;
-    uint32_t first = state->minDataPageId, last = state->nextDataPageId - 1;
-    while (1) {
-        /* Read page into buffer */
-        if (readPage(state, pageId % state->numDataPages) != 0)
-            return -1;
-        numReads++;
-
-        if (first >= last)
-            break;
-
-        if (state->compareKey(key, embedDBGetMinKey(state, buf)) < 0) {
-            /* Key is less than smallest record in block. */
-            last = pageId - 1;
-            uint64_t minKey = 0;
-            memcpy(&minKey, embedDBGetMinKey(state, buf), state->keySize);
-            offset = (thisKey - minKey) / (state->maxRecordsPerPage * state->avgKeyDiff) - 1;
-            if (pageId + offset < first)
-                offset = first - pageId;
-            pageId += offset;
-
-        } else if (state->compareKey(key, embedDBGetMaxKey(state, buf)) > 0) {
-            /* Key is larger than largest record in block. */
-            first = pageId + 1;
-            uint64_t maxKey = 0;
-            memcpy(&maxKey, embedDBGetMaxKey(state, buf), state->keySize);
-            offset = (thisKey - maxKey) / (state->maxRecordsPerPage * state->avgKeyDiff) + 1;
-            if (pageId + offset > last)
-                offset = last - pageId;
-            pageId += offset;
-        } else {
-            /* Found correct block */
-            break;
-        }
-    }
-#elif SEARCH_METHOD == 1
-    /* Regular binary search */
-    uint32_t first = state->minDataPageId, last = state->nextDataPageId - 1;
-    uint32_t pageId = (first + last) / 2;
-    while (1) {
-        /* Read page into buffer */
-        if (readPage(state, pageId % state->numDataPages) != 0)
-            return -1;
-        numReads++;
-
-        if (first >= last)
-            break;
-
-        if (state->compareKey(key, embedDBGetMinKey(state, buf)) < 0) {
-            /* Key is less than smallest record in block. */
-            last = pageId - 1;
-            pageId = (first + last) / 2;
-        } else if (state->compareKey(key, embedDBGetMaxKey(state, buf)) > 0) {
-            /* Key is larger than largest record in block. */
-            first = pageId + 1;
-            pageId = (first + last) / 2;
-        } else {
-            /* Found correct block */
-            break;
-        }
-    }
-#elif SEARCH_METHOD == 2
-    /* Spline search */
-    uint32_t location, lowbound, highbound;
-    if (RADIX_BITS > 0) {
-        radixsplineFind(state->rdix, key, state->compareKey, &location, &lowbound, &highbound);
-    } else {
-        splineFind(state->spl, key, state->compareKey, &location, &lowbound, &highbound);
-    }
-
-    // Check if the currently buffered page is the correct one
-    if (!(lowbound <= state->bufferedPageId &&
-          highbound >= state->bufferedPageId &&
-          state->compareKey(embedDBGetMinKey(state, buf), key) <= 0 &&
-          state->compareKey(embedDBGetMaxKey(state, buf), key) >= 0)) {
-        if (linearSearch(state, &numReads, buf, key, location, lowbound, highbound) == -1) {
-            return -1;
-        }
-    }
-
+    if (searchResult != 0) {
+#ifdef PRINT_ERRORS
+        printf("ERROR: embedDBGet was unable to find page to search for record\n");
 #endif
+        return -1;
+    }
+
     id_t nextId = embedDBSearchNode(state, buf, key, 0);
 
     if (nextId != -1) {
@@ -2539,7 +2492,7 @@ void embedDBInitIterator(embedDBState *state, embedDBIterator *it) {
 #endif
 
     /* Determine which data page should be the first examined if there is a min key and that we have spline points */
-    if (state->spl->count != 0 && it->minKey != NULL && SEARCH_METHOD == 2) {
+    if (state->spl->count != 0 && it->minKey != NULL && !(EMBEDDB_USING_BINARY_SEARCH(state->parameters))) {
         /* Spline search */
         uint32_t location, lowbound, highbound = 0;
         if (RADIX_BITS > 0) {
@@ -2918,7 +2871,7 @@ void embedDBPrintStats(embedDBState *state) {
     printf("Num index writes: %d\n", state->numIdxWrites);
     printf("Max Error: %d\n", state->maxError);
 
-    if (SEARCH_METHOD == 2) {
+    if (!EMBEDDB_USING_BINARY_SEARCH(state->parameters)) {
         if (RADIX_BITS > 0) {
             splinePrint(state->rdix->spl);
             radixsplinePrint(state->rdix);
@@ -2960,7 +2913,7 @@ id_t writePage(embedDBState *state, void *buffer) {
         state->minDataPageId += state->eraseSizeInPages;
 
         /* remove any spline points related to these pages */
-        if (state->cleanSpline)
+        if (!EMBEDDB_DISABLED_SPLINE_CLEAN(state->parameters))
             cleanSpline(state, &state->minKey);
         // Estimate the smallest key now. Could determine exactly by reading this page
         state->minKey += state->eraseSizeInPages * state->maxRecordsPerPage * state->avgKeyDiff;
@@ -3293,7 +3246,7 @@ void embedDBClose(embedDBState *state) {
     if (state->varFile != NULL) {
         state->fileInterface->close(state->varFile);
     }
-    if (SEARCH_METHOD == 2) {  // Spline
+    if (!EMBEDDB_USING_BINARY_SEARCH(state->parameters)) {  // Spline
         if (RADIX_BITS > 0) {
             radixsplineClose(state->rdix);
             free(state->rdix);
