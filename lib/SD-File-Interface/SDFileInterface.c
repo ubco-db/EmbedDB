@@ -92,7 +92,7 @@ int8_t FILE_WRITE(void *buffer, uint32_t pageNum, uint32_t pageSize, void *file)
     return 1;
 }
 
-int8_t FILE_ERASE(uint32_t startPage, uint32_t endPage, void *file) {
+int8_t FILE_ERASE(uint32_t startPage, uint32_t endPage, uint32_t pageSize, void *file) {
     return 1;
 }
 

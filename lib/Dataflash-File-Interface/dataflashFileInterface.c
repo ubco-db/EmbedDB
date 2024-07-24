@@ -84,7 +84,7 @@ int8_t DF_WRITE(void *buffer, uint32_t pageNum, uint32_t pageSize, void *file) {
     }
 }
 
-int8_t DF_ERASE(uint32_t startPage, uint32_t endPage, void *file) {
+int8_t DF_ERASE(uint32_t startPage, uint32_t endPage, uint32_t pageSize, void *file) {
     return 1;
 }
 

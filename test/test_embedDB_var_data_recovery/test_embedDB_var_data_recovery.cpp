@@ -65,6 +65,8 @@
 #define DATA_FILE_PATH "build/artifacts/dataFile.bin"
 #define INDEX_FILE_PATH "build/artifacts/indexFile.bin"
 #define VAR_DATA_FILE_PATH "build/artifacts/varFile.bin"
+/* On the desktop platform, there is a file interface which simulates "erasing" by writing out all 1's to the location in the file ot be erased */
+#define MOCK_ERASE_INTERFACE
 #endif
 
 #include "unity.h"
@@ -82,7 +84,12 @@ void setupEmbedDB() {
     state->buffer = calloc(1, state->pageSize * state->bufferSizeInBlocks);
     TEST_ASSERT_NOT_NULL_MESSAGE(state->buffer, "Failed to allocate EmbedDB buffer.");
 
+/* configure EmbedDB storage */
+#ifdef MOCK_ERASE_INTERFACE
+    state->fileInterface = getMockEraseFileInterface();
+#else
     state->fileInterface = getFileInterface();
+#endif
     char dataPath[] = DATA_FILE_PATH, varPath[] = VAR_DATA_FILE_PATH;
     state->dataFile = setupFile(dataPath);
     state->varFile = setupFile(varPath);
@@ -107,7 +114,12 @@ void initalizeEmbedDBFromFile(void) {
     state->buffer = calloc(1, state->pageSize * state->bufferSizeInBlocks);
     TEST_ASSERT_NOT_NULL_MESSAGE(state->buffer, "Failed to allocate EmbedDB buffer.");
 
+/* configure EmbedDB storage */
+#ifdef MOCK_ERASE_INTERFACE
+    state->fileInterface = getMockEraseFileInterface();
+#else
     state->fileInterface = getFileInterface();
+#endif
     char dataPath[] = DATA_FILE_PATH, varPath[] = VAR_DATA_FILE_PATH;
     state->dataFile = setupFile(dataPath);
     state->varFile = setupFile(varPath);

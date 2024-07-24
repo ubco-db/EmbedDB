@@ -34,8 +34,31 @@ int8_t FILE_WRITE(void *buffer, uint32_t pageNum, uint32_t pageSize, void *file)
     return fwrite(buffer, pageSize, 1, fileInfo->file);
 }
 
-int8_t FILE_ERASE(uint32_t startPage, uint32_t endPage, void *file) {
+int8_t FILE_ERASE(uint32_t startPage, uint32_t endPage, uint32_t pageSize, void *file) {
     return 1;
+}
+
+int8_t MOCK_FILE_ERASE(uint32_t startPage, uint32_t endPage, uint32_t pageSize, void *file) {
+    /* Seek to position in file */
+    FILE_INFO *fileInfo = (FILE_INFO *)file;
+    int seekResult = fseek(fileInfo->file, startPage * pageSize, SEEK_SET);
+
+    if (seekResult != 0) {
+#ifdef PRINT_ERRORS
+        printf("Error seeking in file.\n");
+#endif
+        return seekResult;
+    }
+
+    /* Setup data to insert */
+    size_t memorySize = (endPage - startPage) * pageSize;
+    char *buffer = malloc(memorySize);
+    memset(buffer, 1, memorySize);
+
+    /* Erase data */
+    size_t writeResult = fwrite(buffer, memorySize, 1, fileInfo->file);
+    free(buffer);
+    return writeResult;
 }
 
 int8_t FILE_CLOSE(void *file) {
@@ -74,6 +97,17 @@ embedDBFileInterface *getFileInterface() {
     fileInterface->read = FILE_READ;
     fileInterface->write = FILE_WRITE;
     fileInterface->erase = FILE_ERASE;
+    fileInterface->open = FILE_OPEN;
+    fileInterface->flush = FILE_FLUSH;
+    return fileInterface;
+}
+
+embedDBFileInterface *getMockEraseFileInterface() {
+    embedDBFileInterface *fileInterface = malloc(sizeof(embedDBFileInterface));
+    fileInterface->close = FILE_CLOSE;
+    fileInterface->read = FILE_READ;
+    fileInterface->write = FILE_WRITE;
+    fileInterface->erase = MOCK_FILE_ERASE;
     fileInterface->open = FILE_OPEN;
     fileInterface->flush = FILE_FLUSH;
     return fileInterface;
