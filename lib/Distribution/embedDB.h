@@ -493,7 +493,7 @@ typedef struct {
      * @param	file		The file data that was stored in embedDBState->dataFile etc
      * @return	1 for success and 0 for failure
      */
-    int8_t (*erase)(id_t startPage, id_t endPage, void *file);
+    int8_t (*erase)(id_t startPage, id_t endPage, uint32_t pageSize, void *file);
 
     /**
      * @brief	Closes the file
