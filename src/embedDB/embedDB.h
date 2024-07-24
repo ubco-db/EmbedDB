@@ -40,11 +40,11 @@
 extern "C" {
 #endif
 
+#include <math.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "../spline/radixspline.h"
 #include "../spline/spline.h"
 
 /* Define type for page ids (physical and logical). */
@@ -219,7 +219,6 @@ typedef struct {
     void *buffer;                                                         /* Pre-allocated memory buffer for use by algorithm */
     spline *spl;                                                          /* Spline model */
     uint32_t numSplinePoints;                                             /* Number of spline points to allocate */
-    radixspline *rdix;                                                    /* Radix Spline search model */
     int32_t indexMaxError;                                                /* Max error for indexing structure (Spline or PGM) */
     int8_t bufferSizeInBlocks;                                            /* Size of buffer in blocks */
     count_t pageSize;                                                     /* Size of physical page on device */
@@ -476,4 +475,5 @@ void embedDBClose(embedDBState *state);
 #ifdef __cplusplus
 }
 #endif
+
 #endif

@@ -12,11 +12,6 @@ GLOBAL VARIABLES: DO NOT EDIT
 REGEX_INCLUDE = r'\s*#include ((<[^>]+>)|("[^"]+"))'  # https://stackoverflow.com/questions/1420017/regular-expression-to-match-c-include-file
 REGEX_COMMENTS = r"//.*?\n|/\*.*?\*/"
 
-# Ask Ramon how he would like these dealt with
-DEFINE_SEARCH_METHOD_REGEX = "#define SEARCH_METHOD [1-9]"
-DEFINE_RADIX_BITS_REGEX = "#define RADIX_BITS [1-9]"
-DEFINE_PRINT_ERRORS_REGEX = "#define PRINT_ERRORS"
-
 # standard libraries
 c_stand = {
     "#include <assert.h>",
