@@ -57,8 +57,6 @@ int8_t embedDBInitIndexFromFile(embedDBState *state);
 int8_t embedDBInitVarData(embedDBState *state);
 int8_t embedDBInitVarDataFromFile(embedDBState *state);
 int8_t shiftRecordLevelConsistencyBlocks(embedDBState *state);
-void updateMinKeyEstimate(embedDBState *state);
-void updateAverageKeyDifference(embedDBState *state, void *buffer);
 void embedDBInitSplineFromFile(embedDBState *state);
 int32_t getMaxError(embedDBState *state, void *buffer);
 void updateMaxiumError(embedDBState *state, void *buffer);
@@ -192,7 +190,6 @@ int8_t embedDBInit(embedDBState *state, size_t indexMaxError) {
         state->headerSize += state->keySize * 2 + state->dataSize * 2;
 
     /* Flags to show that these values have not been initalized with actual data yet */
-    state->minKey = UINT32_MAX;
     state->bufferedPageId = -1;
     state->bufferedIndexPageId = -1;
     state->bufferedVarPage = -1;
@@ -270,7 +267,6 @@ int8_t embedDBInit(embedDBState *state, size_t indexMaxError) {
 
 int8_t embedDBInitData(embedDBState *state) {
     state->nextDataPageId = 0;
-    state->avgKeyDiff = 1;
     state->nextDataPageId = 0;
     state->numAvailDataPages = state->numDataPages;
     state->minDataPageId = 0;
@@ -400,23 +396,9 @@ int8_t embedDBInitDataFromFile(embedDBState *state) {
     readPage(state, physicalPageIDOfSmallestData);
     memcpy(&(state->minDataPageId), buffer, sizeof(id_t));
     state->numAvailDataPages = state->numDataPages + state->minDataPageId - maxLogicalPageId - 1;
-    if (state->keySize <= 4) {
-        uint32_t minKey = 0;
-        memcpy(&minKey, embedDBGetMinKey(state, buffer), state->keySize);
-        state->minKey = minKey;
-    } else {
-        uint64_t minKey = 0;
-        memcpy(&minKey, embedDBGetMinKey(state, buffer), state->keySize);
-        state->minKey = minKey;
-    }
 
     /* Put largest key back into the buffer */
     readPage(state, (state->nextDataPageId - 1) % state->numDataPages);
-
-    updateAverageKeyDifference(state, buffer);
-    /* Strange edge case that we probably need to think more about */
-    if (state->avgKeyDiff == 0)
-        state->avgKeyDiff = 1;
 
     if (!EMBEDDB_USING_BINARY_SEARCH(state->parameters)) {
         embedDBInitSplineFromFile(state);
@@ -586,24 +568,9 @@ int8_t embedDBInitDataFromFileWithRecordLevelConsistency(embedDBState *state) {
     readPage(state, physicalPageIDOfSmallestData);
     memcpy(&(state->minDataPageId), buffer, sizeof(id_t));
     state->numAvailDataPages = state->numDataPages + state->minDataPageId - maxLogicalPageId - 1 - (2 * blockSize);
-    if (state->keySize <= 4) {
-        uint32_t minKey = 0;
-        memcpy(&minKey, embedDBGetMinKey(state, buffer), state->keySize);
-        state->minKey = minKey;
-    } else {
-        uint64_t minKey = 0;
-        memcpy(&minKey, embedDBGetMinKey(state, buffer), state->keySize);
-        state->minKey = minKey;
-    }
 
     /* Put largest key back into the buffer */
     readPage(state, (state->nextDataPageId - 1) % state->numDataPages);
-
-    updateAverageKeyDifference(state, buffer);
-    /* Strange edge case that we probably need to think more about */
-    if (state->avgKeyDiff == 0)
-        state->avgKeyDiff = 1;
-
     if (!EMBEDDB_USING_BINARY_SEARCH(state->parameters)) {
         embedDBInitSplineFromFile(state);
     }
@@ -1032,7 +999,7 @@ int8_t embedDBPut(embedDBState *state, void *key, void *data) {
     /* Copy record into block */
 
     count_t count = EMBEDDB_GET_COUNT(state->buffer);
-    if (state->minKey != UINT32_MAX) {
+    if (state->nextDataPageId > 0 || count > 0) {
         void *previousKey = NULL;
         if (count == 0) {
             readPage(state, (state->nextDataPageId - 1) % state->numDataPages);
@@ -1080,7 +1047,6 @@ int8_t embedDBPut(embedDBState *state, void *key, void *data) {
             memcpy((void *)((int8_t *)buf + EMBEDDB_IDX_HEADER_SIZE + state->bitmapSize * idxcount), bm, state->bitmapSize);
         }
 
-        updateAverageKeyDifference(state, state->buffer);
         updateMaxiumError(state, state->buffer);
 
         count = 0;
@@ -1105,10 +1071,6 @@ int8_t embedDBPut(embedDBState *state, void *key, void *data) {
 
     /* Update count */
     EMBEDDB_INC_COUNT(state->buffer);
-
-    /* Set minimum key for first record insert */
-    if (state->minKey == UINT32_MAX && state->nextDataPageId == 0)
-        memcpy(&state->minKey, key, state->keySize);
 
     if (EMBEDDB_USING_MAX_MIN(state->parameters)) {
         /* Update MIN/MAX */
@@ -1190,12 +1152,10 @@ int8_t shiftRecordLevelConsistencyBlocks(embedDBState *state) {
         state->minDataPageId += state->eraseSizeInPages;
 
         /* remove any spline points related to these pages */
-        if (!EMBEDDB_DISABLED_SPLINE_CLEAN(state->parameters))
-            cleanSpline(state, &state->minKey);
-
-        // Estimate the smallest key now. Could determine exactly by reading this page
-        state->minKey += state->eraseSizeInPages * state->maxRecordsPerPage * state->avgKeyDiff;
-        updateMinKeyEstimate(state);
+        if (!EMBEDDB_DISABLED_SPLINE_CLEAN(state->parameters)) {
+            /* TODO: Fix clean spline call */
+            // cleanSpline(state, &state->minKey);
+        }
     }
 
     /* shift record-level consistency blocks */
@@ -1210,23 +1170,6 @@ void updateMaxiumError(embedDBState *state, void *buffer) {
     int32_t maxError = getMaxError(state, buffer);
     if (state->maxError < maxError) {
         state->maxError = maxError;
-    }
-}
-
-void updateAverageKeyDifference(embedDBState *state, void *buffer) {
-    /* Update estimate of average key difference. */
-    int32_t numBlocks = state->numDataPages - state->numAvailDataPages;
-    if (numBlocks == 0)
-        numBlocks = 1;
-
-    if (state->keySize <= 4) {
-        uint32_t maxKey = 0;
-        memcpy(&maxKey, embedDBGetMaxKey(state, buffer), state->keySize);
-        state->avgKeyDiff = (maxKey - state->minKey) / numBlocks / state->maxRecordsPerPage;
-    } else {
-        uint64_t maxKey = 0;
-        memcpy(&maxKey, embedDBGetMaxKey(state, buffer), state->keySize);
-        state->avgKeyDiff = (maxKey - state->minKey) / numBlocks / state->maxRecordsPerPage;
     }
 }
 
@@ -2059,10 +2002,10 @@ id_t writePage(embedDBState *state, void *buffer) {
         state->minDataPageId += state->eraseSizeInPages;
 
         /* remove any spline points related to these pages */
-        if (!EMBEDDB_DISABLED_SPLINE_CLEAN(state->parameters))
-            cleanSpline(state, &state->minKey);
-        // Estimate the smallest key now. Could determine exactly by reading this page
-        state->minKey += state->eraseSizeInPages * state->maxRecordsPerPage * state->avgKeyDiff;
+        if (!EMBEDDB_DISABLED_SPLINE_CLEAN(state->parameters)) {
+            /* TODO: Fix clean spline call */
+            // cleanSpline(state, &state->minKey);
+        }
     }
 
     /* Seek to page location in file */
@@ -2078,10 +2021,6 @@ id_t writePage(embedDBState *state, void *buffer) {
     state->numWrites++;
 
     return pageNum;
-}
-
-void updateMinKeyEstimate(embedDBState *state) {
-    state->minKey += state->eraseSizeInPages * state->maxRecordsPerPage * state->avgKeyDiff;
 }
 
 int8_t writeTemporaryPage(embedDBState *state, void *buffer) {

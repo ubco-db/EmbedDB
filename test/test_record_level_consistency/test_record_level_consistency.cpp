@@ -185,7 +185,6 @@ void embedDBInit_should_detect_when_no_records_written_with_record_level_consist
 
     /* test that we recovered correctly to the default state */
     TEST_ASSERT_EQUAL_UINT32_MESSAGE(0, state->minDataPageId, "embedDBInit did not set the correct minDataPageId after recovering with no records written.");
-    TEST_ASSERT_EQUAL_UINT32_MESSAGE(UINT32_MAX, state->minKey, "embedDBInit did not set the correct minKey after recovering with no records written.");
     TEST_ASSERT_EQUAL_UINT32_MESSAGE(24, state->numAvailDataPages, "embedDBInit did not set the correct value of numAvailDataPages after recovering with no records written.");
     TEST_ASSERT_EQUAL_UINT32_MESSAGE(0, state->nextDataPageId, "embedDBInit did not set the correct value of nextDataPageId after recovering with no records written.");
     TEST_ASSERT_EQUAL_UINT32_MESSAGE(4, state->nextRLCPhysicalPageLocation, "embedDBInit did not set the correct value of nextRLCPhysicalPageLocation after recovering with no records written.");
@@ -204,7 +203,6 @@ void embedDBInit_should_recover_record_level_consistency_records_when_no_permane
     /* test that we recovered correctly */
     TEST_ASSERT_EQUAL_UINT32_MESSAGE(0, state->minDataPageId, "embedDBInit did not set the correct minDataPageId after recovering with no permanent records written.");
     TEST_ASSERT_EQUAL_UINT32_MESSAGE(0, state->nextDataPageId, "embedDBInit did not set the correct value of nextDataPageId after recovering with no permanent records written.");
-    TEST_ASSERT_EQUAL_UINT32_MESSAGE(UINT32_MAX, state->minKey, "embedDBInit did not set the correct minKey after recovering after recovering with no permanent records written.");
     TEST_ASSERT_EQUAL_UINT32_MESSAGE(24, state->numAvailDataPages, "embedDBInit did not set the correct value of numAvailDataPages after recovering with no permanent records written.");
     TEST_ASSERT_EQUAL_UINT32_MESSAGE(8, state->nextRLCPhysicalPageLocation, "embedDBInit did not set the correct value of nextRLCPhysicalPageLocation after recovering with no permanent records written.");
     TEST_ASSERT_EQUAL_UINT32_MESSAGE(4, state->rlcPhysicalStartingPage, "embedDBInit did not set the correct value of rlcPhysicalStartingPage after recovering with no permanent records written.");
@@ -243,7 +241,6 @@ void embedDBInit_should_recover_record_level_consistency_records_when_one_perman
     /* Check that data was initialised correctly */
     TEST_ASSERT_EQUAL_UINT32_MESSAGE(0, state->minDataPageId, "embedDBInit did not set the correct minDataPageId after recovering with one page of permanent records.");
     TEST_ASSERT_EQUAL_UINT32_MESSAGE(1, state->nextDataPageId, "embedDBInit did not set the correct value of nextDataPageId after recovering with one page of permanent records.");
-    TEST_ASSERT_EQUAL_UINT32_MESSAGE(12345, state->minKey, "embedDBInit did not set the correct minKey after recovering after recovering with one page of permanent records.");
     TEST_ASSERT_EQUAL_UINT32_MESSAGE(23, state->numAvailDataPages, "embedDBInit did not set the correct value of numAvailDataPages after recovering with one page of permanent records.");
     TEST_ASSERT_EQUAL_UINT32_MESSAGE(4, state->nextRLCPhysicalPageLocation, "embedDBInit did not set the correct value of nextRLCPhysicalPageLocation after recovering with one page of permanent records.");
     TEST_ASSERT_EQUAL_UINT32_MESSAGE(4, state->rlcPhysicalStartingPage, "embedDBInit did not set the correct value of rlcPhysicalStartingPage after recovering with one page of permanent records.");
@@ -267,7 +264,6 @@ void embedDBInit_should_recover_record_level_consistency_records_when_four_perma
     /* Check that data was initialised correctly */
     TEST_ASSERT_EQUAL_UINT32_MESSAGE(0, state->minDataPageId, "embedDBInit did not set the correct minDataPageId after recovering with four pages of permanent records written.");
     TEST_ASSERT_EQUAL_UINT32_MESSAGE(4, state->nextDataPageId, "embedDBInit did not set the correct value of nextDataPageId after recovering with four pages of permanent records written.");
-    TEST_ASSERT_EQUAL_UINT32_MESSAGE(1033, state->minKey, "embedDBInit did not set the correct minKey after recovering after recovering with four pages of permanent records written.");
     TEST_ASSERT_EQUAL_UINT32_MESSAGE(20, state->numAvailDataPages, "embedDBInit did not set the correct value of numAvailDataPages after recovering with four pages of permanent records written.");
     TEST_ASSERT_EQUAL_UINT32_MESSAGE(8, state->nextRLCPhysicalPageLocation, "embedDBInit did not set the correct value of nextRLCPhysicalPageLocation after recovering with four pages of permanent records written.");
     TEST_ASSERT_EQUAL_UINT32_MESSAGE(8, state->rlcPhysicalStartingPage, "embedDBInit did not set the correct value of rlcPhysicalStartingPage after recovering with four pages of permanent records written.");
@@ -281,7 +277,6 @@ void embedDBInit_should_recover_record_level_consistency_records_when_four_perma
     insertRecords(1400, 231427, 34);
     TEST_ASSERT_EQUAL_UINT32_MESSAGE(0, state->minDataPageId, "embedDBPut incremented minDataPageId before a page should have been written.");
     TEST_ASSERT_EQUAL_UINT32_MESSAGE(4, state->nextDataPageId, "embedDBPut incremented nextDataPageId before a page should have been written.");
-    TEST_ASSERT_EQUAL_UINT32_MESSAGE(1033, state->minKey, "embedDBPut changed minKey after inserting keys when there was no need to erase pages.");
     TEST_ASSERT_EQUAL_UINT32_MESSAGE(20, state->numAvailDataPages, "embedDBPut changed numAvailDataPages before a page should have been written.");
     TEST_ASSERT_EQUAL_UINT32_MESSAGE(10, state->nextRLCPhysicalPageLocation, "embedDBInit did not set the correct value of nextRLCPhysicalPageLocation after writing record-level consistency pages.");
     TEST_ASSERT_EQUAL_UINT32_MESSAGE(8, state->rlcPhysicalStartingPage, "embedDBInit did not set the correct value of rlcPhysicalStartingPage after writing record-level consistency pages.");
@@ -314,7 +309,6 @@ void embedDBInit_should_recover_record_level_consistency_records_when_eight_perm
     /* Check that data was initialised correctly */
     TEST_ASSERT_EQUAL_UINT32_MESSAGE(0, state->minDataPageId, "embedDBInit did not set the correct minDataPageId after recovering with eight pages of permanent records and 39 RLC records.");
     TEST_ASSERT_EQUAL_UINT32_MESSAGE(8, state->nextDataPageId, "embedDBInit did not set the correct value of nextDataPageId after recovering with eight pages of permanent records and 39 RLC records.");
-    TEST_ASSERT_EQUAL_UINT32_MESSAGE(544480, state->minKey, "embedDBInit did not set the correct minKey after recovering after recovering with eight pages of permanent records and 39 RLC records.");
     TEST_ASSERT_EQUAL_UINT32_MESSAGE(16, state->numAvailDataPages, "embedDBInit did not set the correct value of numAvailDataPages after recovering with eight pages of permanent records and 39 RLC records.");
     TEST_ASSERT_EQUAL_UINT32_MESSAGE(19, state->nextRLCPhysicalPageLocation, "embedDBInit did not set the correct value of nextRLCPhysicalPageLocation after recovering with eight pages of permanent records and 39 RLC records.");
     TEST_ASSERT_EQUAL_UINT32_MESSAGE(12, state->rlcPhysicalStartingPage, "embedDBInit did not set the correct value of rlcPhysicalStartingPage after recovering with eight pages of permanent records and 39 RLC records.");
@@ -328,7 +322,6 @@ void embedDBInit_should_recover_record_level_consistency_records_when_eight_perm
     insertRecords(552242, 2431549, 4);
     TEST_ASSERT_EQUAL_UINT32_MESSAGE(0, state->minDataPageId, "embedDBInit did not set the correct minDataPageId after writing four more records.");
     TEST_ASSERT_EQUAL_UINT32_MESSAGE(9, state->nextDataPageId, "embedDBInit did not set the correct value of next after inserting four more records.");
-    TEST_ASSERT_EQUAL_UINT32_MESSAGE(544480, state->minKey, "embedDBInit did not set the correct minKey after writing after inserting four more records.");
     TEST_ASSERT_EQUAL_UINT32_MESSAGE(15, state->numAvailDataPages, "embedDBInit did not set the correct value of numAvaiwriting after inserting four more records.");
     TEST_ASSERT_EQUAL_UINT32_MESSAGE(15, state->nextRLCPhysicalPageLocation, "embedDBInit did not set the correct value of nextRLCPhysicalPawriting after inserting four more records.");
     TEST_ASSERT_EQUAL_UINT32_MESSAGE(12, state->rlcPhysicalStartingPage, "embedDBInit did not set the correct value of rlcPhysicalStwriting after inserting four more records.");
@@ -346,7 +339,6 @@ void embedDBInit_should_recover_record_level_consistency_records_when_twenty_one
     /* Check that data was initialised correctly */
     TEST_ASSERT_EQUAL_UINT32_MESSAGE(0, state->minDataPageId, "embedDBInit did not set the correct minDataPageId after recovering with 21 permanent pages and 13 RLC records.");
     TEST_ASSERT_EQUAL_UINT32_MESSAGE(21, state->nextDataPageId, "embedDBInit did not set the correct value of nextDataPageId after recovering with 21 permanent pages and 13 RLC records.");
-    TEST_ASSERT_EQUAL_UINT32_MESSAGE(20241018, state->minKey, "embedDBInit did not set the correct minKey after recovering after recovering with 21 permanent pages and 13 RLC records.");
     TEST_ASSERT_EQUAL_UINT32_MESSAGE(3, state->numAvailDataPages, "embedDBInit did not set the correct value of numAvailDataPages after recovering with 21 permanent pages and 13 RLC records.");
     TEST_ASSERT_EQUAL_UINT32_MESSAGE(31, state->nextRLCPhysicalPageLocation, "embedDBInit did not set the correct value of nextRLCPhysicalPageLocation after recovering with 21 permanent pages and 13 RLC records.");
     TEST_ASSERT_EQUAL_UINT32_MESSAGE(24, state->rlcPhysicalStartingPage, "embedDBInit did not set the correct value of rlcPhysicalStartingPage after recovering with 21 permanent pages and 13 RLC records.");
@@ -369,7 +361,6 @@ void embedDBInit_should_recover_record_level_consistency_records_when_twenty_thr
     /* Check that data was initialised correctly */
     TEST_ASSERT_EQUAL_UINT32_MESSAGE(0, state->minDataPageId, "embedDBInit did not set the correct minDataPageId after recovering with 23 pages of permanent records and 42 RLC records.");
     TEST_ASSERT_EQUAL_UINT32_MESSAGE(23, state->nextDataPageId, "embedDBInit did not set the correct value of nextDataPageId after recovering with 23 pages of permanent records and 42 RLC records.");
-    TEST_ASSERT_EQUAL_UINT32_MESSAGE(2803580, state->minKey, "embedDBInit did not set the correct minKey after recovering after recovering with 23 pages of permanent records and 42 RLC records.");
     TEST_ASSERT_EQUAL_UINT32_MESSAGE(1, state->numAvailDataPages, "embedDBInit did not set the correct value of numAvailDataPages after recovering with 23 pages of permanent records and 42 RLC records.");
     TEST_ASSERT_EQUAL_UINT32_MESSAGE(0, state->nextRLCPhysicalPageLocation, "embedDBInit did not set the correct value of nextRLCPhysicalPageLocation after recovering with 23 pages of permanent records and 42 RLC records.");
     TEST_ASSERT_EQUAL_UINT32_MESSAGE(24, state->rlcPhysicalStartingPage, "embedDBInit did not set the correct value of rlcPhysicalStartingPage after recovering with 23 pages of permanent records and 42 RLC records.");
@@ -402,7 +393,6 @@ void embedDBInit_should_recover_correctly_with_one_wraped_record_level_consisten
     /* Check that data was initialised correctly */
     TEST_ASSERT_EQUAL_UINT32_MESSAGE(4, state->minDataPageId, "embedDBInit did not set the correct minDataPageId after recovering with 24 pages of records and 15 RLC records.");
     TEST_ASSERT_EQUAL_UINT32_MESSAGE(24, state->nextDataPageId, "embedDBInit did not set the correct value of nextDataPageId after recovering with 24 pages of records and 15 RLC records.");
-    TEST_ASSERT_EQUAL_UINT32_MESSAGE(240728, state->minKey, "embedDBInit did not set the correct minKey after recovering after recovering with 24 pages of records and 15 RLC records.");
     TEST_ASSERT_EQUAL_UINT32_MESSAGE(4, state->numAvailDataPages, "embedDBInit did not set the correct value of numAvailDataPages after recovering with 24 pages of records and 15 RLC records.");
     TEST_ASSERT_EQUAL_UINT32_MESSAGE(28, state->rlcPhysicalStartingPage, "embedDBInit did not set the correct value of rlcPhysicalStartingPage after recovering with 24 pages of records and 15 RLC records.");
     TEST_ASSERT_EQUAL_UINT32_MESSAGE(3, state->nextRLCPhysicalPageLocation, "embedDBInit did not set the correct value of nextRLCPhysicalPageLocation after recovering with 24 pages of records and 15 RLC records.");
@@ -435,7 +425,6 @@ void embedDBInit_should_recover_correctly_with_both_record_level_consistency_blo
     /* Check that data was initialised correctly */
     TEST_ASSERT_EQUAL_UINT32_MESSAGE(8, state->minDataPageId, "embedDBInit did not set the correct minDataPageId after recovering with 31 pages of records and 4 RLC records.");
     TEST_ASSERT_EQUAL_UINT32_MESSAGE(31, state->nextDataPageId, "embedDBInit did not set the correct value of nextDataPageId after recovering with 31 pages of records and 4 RLC records.");
-    TEST_ASSERT_EQUAL_UINT32_MESSAGE(971696251, state->minKey, "embedDBInit did not set the correct minKey after recovering after recovering with 31 pages of records and 4 RLC records.");
     TEST_ASSERT_EQUAL_UINT32_MESSAGE(1, state->numAvailDataPages, "embedDBInit did not set the correct value of numAvailDataPages after recovering with 31 pages of records and 4 RLC records.");
     TEST_ASSERT_EQUAL_UINT32_MESSAGE(0, state->rlcPhysicalStartingPage, "embedDBInit did not set the correct value of rlcPhysicalStartingPage after recovering with 31 pages of records and 4 RLC records.");
     TEST_ASSERT_EQUAL_UINT32_MESSAGE(2, state->nextRLCPhysicalPageLocation, "embedDBInit did not set the correct value of nextRLCPhysicalPageLocation after recovering with 31 pages of records and 4 RLC records.");
@@ -468,7 +457,6 @@ void embedDBInit_should_recover_correctly_with_junk_data_at_start_of_data_file()
     /* Check that 32 pages of records and 33 RLC recordsy */
     TEST_ASSERT_EQUAL_UINT32_MESSAGE(12, state->minDataPageId, "embedDBInit did not set the correct minDataPageId after recovering with 32 pages of records and 33 RLC records.");
     TEST_ASSERT_EQUAL_UINT32_MESSAGE(32, state->nextDataPageId, "embedDBInit did not set the correct value of nextDataPageId after recovering with 32 pages of records and 33 RLC records.");
-    TEST_ASSERT_EQUAL_UINT32_MESSAGE(1505, state->minKey, "embedDBInit did not set the correct minKey after recovering after recovering with 32 pages of records and 33 RLC records.");
     TEST_ASSERT_EQUAL_UINT32_MESSAGE(4, state->numAvailDataPages, "embedDBInit did not set the correct value of numAvailDataPages after recovering with 32 pages of records and 33 RLC records.");
     TEST_ASSERT_EQUAL_UINT32_MESSAGE(4, state->rlcPhysicalStartingPage, "embedDBInit did not set the correct value of rlcPhysicalStartingPage after recovering with 32 pages of records and 33 RLC records.");
     TEST_ASSERT_EQUAL_UINT32_MESSAGE(5, state->nextRLCPhysicalPageLocation, "embedDBInit did not set the correct value of nextRLCPhysicalPageLocation after recovering with 32 pages of records and 33 RLC records.");
