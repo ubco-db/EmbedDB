@@ -1520,10 +1520,6 @@ int8_t embedDBGet(embedDBState *state, void *key, void *data) {
     uint64_t thisKey = 0;
     memcpy(&thisKey, key, state->keySize);
 
-    /* Check if requested key is less than min key */
-    if (thisKey < state->minKey)
-        return -2;
-
     void *buf = (int8_t *)state->buffer + state->pageSize;
     int16_t numReads = 0;
 
