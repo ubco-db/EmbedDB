@@ -212,6 +212,12 @@ int8_t embedDBInit(embedDBState *state, size_t indexMaxError) {
 
     /* Initalize the spline structure if being used */
     if (!EMBEDDB_USING_BINARY_SEARCH(state->parameters)) {
+        //         if (state->numSplinePoints < 4) {
+        // #ifdef PRINT_ERRORS
+        //             printf("ERROR: Unable to setup spline with less than 4 points.");
+        // #endif
+        //             return -1;
+        //         }
         state->spl = malloc(sizeof(spline));
         splineInit(state->spl, state->numSplinePoints, indexMaxError, state->keySize);
     }

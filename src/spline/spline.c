@@ -171,6 +171,11 @@ void splineAdd(spline *spl, void *key, uint32_t page) {
         memcpy(spl->upper, key, spl->keySize);
         uint32_t upperPage = page + spl->maxError;
         memcpy((int8_t *)spl->upper + spl->keySize, &upperPage, sizeof(uint32_t));
+
+        /* If we add a point, we might need to erase again */
+        if (spl->count >= spl->size)
+            splineErase(spl, spl->eraseSize);
+
     } else {
         /* Check if must update upper or lower limits */
 
