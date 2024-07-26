@@ -61,7 +61,7 @@ void embedDBInitSplineFromFile(embedDBState *state);
 int32_t getMaxError(embedDBState *state, void *buffer);
 void updateMaxiumError(embedDBState *state, void *buffer);
 int8_t embedDBSetupVarDataStream(embedDBState *state, void *key, embedDBVarDataStream **varData, id_t recordNumber);
-uint32_t cleanSpline(embedDBState *state, void *key);
+uint32_t cleanSpline(embedDBState *state, uint32_t minPageNumber);
 void readToWriteBuf(embedDBState *state);
 void readToWriteBufVar(embedDBState *state);
 
@@ -212,12 +212,12 @@ int8_t embedDBInit(embedDBState *state, size_t indexMaxError) {
 
     /* Initalize the spline structure if being used */
     if (!EMBEDDB_USING_BINARY_SEARCH(state->parameters)) {
-        //         if (state->numSplinePoints < 4) {
-        // #ifdef PRINT_ERRORS
-        //             printf("ERROR: Unable to setup spline with less than 4 points.");
-        // #endif
-        //             return -1;
-        //         }
+        if (state->numSplinePoints < 4) {
+#ifdef PRINT_ERRORS
+            printf("ERROR: Unable to setup spline with less than 4 points.");
+#endif
+            return -1;
+        }
         state->spl = malloc(sizeof(spline));
         splineInit(state->spl, state->numSplinePoints, indexMaxError, state->keySize);
     }
@@ -1159,8 +1159,7 @@ int8_t shiftRecordLevelConsistencyBlocks(embedDBState *state) {
 
         /* remove any spline points related to these pages */
         if (!EMBEDDB_DISABLED_SPLINE_CLEAN(state->parameters)) {
-            /* TODO: Fix clean spline call */
-            // cleanSpline(state, &state->minKey);
+            cleanSpline(state, state->minDataPageId);
         }
     }
 
@@ -1348,7 +1347,7 @@ id_t embedDBSearchNode(embedDBState *state, void *buffer, void *key, int8_t rang
  * @param 	high		Uper bound for the page the record could be found on
  * @return	Return 0 if success. Non-zero value if error.
  */
-linearSearch(embedDBState *state, void *buf, void *key, int32_t pageId, int32_t low, int32_t high) {
+int8_t linearSearch(embedDBState *state, void *buf, void *key, int32_t pageId, int32_t low, int32_t high) {
     int32_t pageError = 0;
     int32_t physPageId;
     while (1) {
@@ -1407,6 +1406,17 @@ int8_t splineSearch(embedDBState *state, void *buffer, void *key) {
     /* Spline search */
     uint32_t location, lowbound, highbound;
     splineFind(state->spl, key, state->compareKey, &location, &lowbound, &highbound);
+
+    /* If the spline thinks the data is on a page smaller than the smallest data page we have, we know we don't have the data */
+    if (highbound < state->minDataPageId) {
+        return -1;
+    }
+
+    /* if the spline returns a lowbound lower than than the smallest page we have, we can move the lowbound and location up */
+    if (lowbound < state->minDataPageId) {
+        lowbound = state->minDataPageId;
+        location = (lowbound + highbound) / 2;
+    }
 
     // Check if the currently buffered page is the correct one
     if (!(lowbound <= state->bufferedPageId &&
@@ -2009,8 +2019,7 @@ id_t writePage(embedDBState *state, void *buffer) {
 
         /* remove any spline points related to these pages */
         if (!EMBEDDB_DISABLED_SPLINE_CLEAN(state->parameters)) {
-            /* TODO: Fix clean spline call */
-            // cleanSpline(state, &state->minKey);
+            cleanSpline(state, state->minDataPageId);
         }
     }
 
@@ -2088,16 +2097,18 @@ int8_t writeTemporaryPage(embedDBState *state, void *buffer) {
  * @param	key 	The minimim key embedDB still needs points for
  * @return	Returns the number of points deleted
  */
-uint32_t cleanSpline(embedDBState *state, void *key) {
+uint32_t cleanSpline(embedDBState *state, uint32_t minPageNumber) {
     uint32_t numPointsErased = 0;
-    void *currentPoint;
+    void *nextPoint;
+    uint32_t currentPageNumber = 0;
     for (size_t i = 0; i < state->spl->count; i++) {
-        currentPoint = splinePointLocation(state->spl, i);
-        int8_t compareResult = state->compareKey(currentPoint, key);
-        if (compareResult < 0)
+        nextPoint = splinePointLocation(state->spl, i + 1);
+        memcpy(&currentPageNumber, (int8_t *)nextPoint + state->keySize, sizeof(uint32_t));
+        if (currentPageNumber < minPageNumber) {
             numPointsErased++;
-        else
+        } else {
             break;
+        }
     }
     if (state->spl->count - numPointsErased < 2)
         numPointsErased -= 2 - (state->spl->count - numPointsErased);

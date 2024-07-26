@@ -80,7 +80,7 @@ void setupEmbedDB() {
     state->dataSize = 4;
     state->pageSize = 512;
     state->bufferSizeInBlocks = 4;
-    state->numSplinePoints = 2;
+    state->numSplinePoints = 8;
     state->buffer = calloc(1, state->pageSize * state->bufferSizeInBlocks);
     TEST_ASSERT_NOT_NULL_MESSAGE(state->buffer, "Failed to allocate EmbedDB buffer.");
 
@@ -110,7 +110,7 @@ void initalizeEmbedDBFromFile(void) {
     state->dataSize = 4;
     state->pageSize = 512;
     state->bufferSizeInBlocks = 4;
-    state->numSplinePoints = 2;
+    state->numSplinePoints = 8;
     state->buffer = calloc(1, state->pageSize * state->bufferSizeInBlocks);
     TEST_ASSERT_NOT_NULL_MESSAGE(state->buffer, "Failed to allocate EmbedDB buffer.");
 

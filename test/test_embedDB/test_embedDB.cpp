@@ -77,7 +77,7 @@ void setupEmbedDB() {
     state->dataSize = 4;
     state->pageSize = 512;
     state->bufferSizeInBlocks = 2;
-    state->numSplinePoints = 2;
+    state->numSplinePoints = 8;
     state->buffer = malloc(state->bufferSizeInBlocks * state->pageSize);
     TEST_ASSERT_NOT_NULL_MESSAGE(state->buffer, "Failed to allocate buffer for EmbedDB.");
     state->numDataPages = 1000;

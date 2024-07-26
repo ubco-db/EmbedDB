@@ -85,7 +85,7 @@ void setupembedDBInstanceKeySize4DataSize4(embedDBState *state, int number) {
     state->dataSize = 4;
     state->pageSize = 512;
     state->bufferSizeInBlocks = 2;
-    state->numSplinePoints = 2;
+    state->numSplinePoints = 8;
     state->buffer = calloc(1, state->pageSize * state->bufferSizeInBlocks);
     TEST_ASSERT_NOT_NULL_MESSAGE(state->buffer, "Failed to allocate EmbedDB buffer.");
     state->numDataPages = 2000;

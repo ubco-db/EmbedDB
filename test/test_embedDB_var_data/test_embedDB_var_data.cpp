@@ -94,7 +94,7 @@ void initState(uint32_t dataSize) {
     state->dataSize = dataSize;
     state->pageSize = 512;
     state->bufferSizeInBlocks = 6;
-    state->numSplinePoints = 2;
+    state->numSplinePoints = 8;
     state->buffer = calloc(1, state->pageSize * state->bufferSizeInBlocks);
     TEST_ASSERT_NOT_NULL_MESSAGE(state->buffer, "Failed to allocate EmbedDB buffer.");
     state->numDataPages = 1000;
