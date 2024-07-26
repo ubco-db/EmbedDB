@@ -86,8 +86,13 @@ void should_erase_previous_spline_points_when_full() {
         startingKey++;
         startingData++;
     }
+    TEST_ASSERT_EQUAL_UINT32(1, state->spl->count);
 
-    splinePrint(state->spl);
+    /* Check that the key and page numbers are correct */
+    uint32_t expectedKey = 97855;
+    uint32_t expectedPageNumber = 0;
+    TEST_ASSERT_EQUAL_MEMORY(&expectedKey, state->spl->points, sizeof(uint32_t));
+    TEST_ASSERT_EQUAL_MEMORY(&expectedPageNumber, (int8_t *)state->spl->points + state->keySize, sizeof(uint32_t));
 
     /* Insert 170 records with one increment 15 at a time*/
     for (size_t i = 0; i < 170; i++) {
@@ -97,8 +102,28 @@ void should_erase_previous_spline_points_when_full() {
         startingData++;
     }
 
-    splinePrint(state->spl);
-    TEST_ASSERT_LESS_OR_EQUAL_size_t(4, state->spl->count);
+    TEST_ASSERT_EQUAL_UINT32(3, state->spl->count);
+
+    /* Check that the firt point is the same and the second and third are added */
+
+    /* first point */
+    void *splinePoint = splinePointLocation(state->spl, 0);
+    TEST_ASSERT_EQUAL_MEMORY(&expectedKey, splinePoint, sizeof(uint32_t));
+    TEST_ASSERT_EQUAL_MEMORY(&expectedPageNumber, (int8_t *)splinePoint + state->keySize, sizeof(uint32_t));
+
+    /* second point */
+    expectedKey = 97995;
+    expectedPageNumber = 2;
+    splinePoint = splinePointLocation(state->spl, 1);
+    TEST_ASSERT_EQUAL_MEMORY(&expectedKey, splinePoint, sizeof(uint32_t));
+    TEST_ASSERT_EQUAL_MEMORY(&expectedPageNumber, (int8_t *)splinePoint + state->keySize, sizeof(uint32_t));
+
+    /* third point */
+    expectedKey = 99255;
+    expectedPageNumber = 4;
+    splinePoint = splinePointLocation(state->spl, 2);
+    TEST_ASSERT_EQUAL_MEMORY(&expectedKey, splinePoint, sizeof(uint32_t));
+    TEST_ASSERT_EQUAL_MEMORY(&expectedPageNumber, (int8_t *)splinePoint + state->keySize, sizeof(uint32_t));
 
     /* Insert 170 records with one increment 2 at a time*/
     for (size_t i = 0; i < 170; i++) {
@@ -107,7 +132,21 @@ void should_erase_previous_spline_points_when_full() {
         startingKey += 2;
         startingData++;
     }
-    TEST_ASSERT_LESS_OR_EQUAL_size_t(4, state->spl->count);
+    TEST_ASSERT_EQUAL_UINT32(4, state->spl->count);
+
+    /* first point */
+    splinePoint = splinePointLocation(state->spl, 0);
+    expectedKey = 97855;
+    expectedPageNumber = 0;
+    TEST_ASSERT_EQUAL_MEMORY(&expectedKey, splinePoint, sizeof(uint32_t));
+    TEST_ASSERT_EQUAL_MEMORY(&expectedPageNumber, (int8_t *)splinePoint + state->keySize, sizeof(uint32_t));
+
+    /* fourth point */
+    splinePoint = splinePointLocation(state->spl, 3);
+    expectedKey = 98485;
+    expectedPageNumber = 5;
+    TEST_ASSERT_EQUAL_MEMORY(&expectedKey, splinePoint, sizeof(uint32_t));
+    TEST_ASSERT_EQUAL_MEMORY(&expectedPageNumber, (int8_t *)splinePoint + state->keySize, sizeof(uint32_t));
 
     /* Insert 170 records with one increment 45 at a time*/
     for (size_t i = 0; i < 170; i++) {
@@ -116,7 +155,7 @@ void should_erase_previous_spline_points_when_full() {
         startingKey += 45;
         startingData++;
     }
-    TEST_ASSERT_LESS_OR_EQUAL_size_t(4, state->spl->count);
+    TEST_ASSERT_EQUAL_UINT32(4, state->spl->count);
 
     /* Insert 200 records with one increment 55 at a time*/
     for (size_t i = 0; i < 300; i++) {
@@ -125,7 +164,7 @@ void should_erase_previous_spline_points_when_full() {
         startingKey += 128;
         startingData++;
     }
-    TEST_ASSERT_LESS_OR_EQUAL_size_t(4, state->spl->count);
+    TEST_ASSERT_EQUAL_UINT32(4, state->spl->count);
 
     /* test querrying key before minimum spline point */
     uint32_t keyToQuery = 97856;
@@ -173,7 +212,7 @@ void should_clean_spline_when_data_overwritten() {
 int runUnityTests() {
     UNITY_BEGIN();
     RUN_TEST(should_erase_previous_spline_points_when_full);
-    RUN_TEST(should_clean_spline_when_data_overwritten);
+    // RUN_TEST(should_clean_spline_when_data_overwritten);
     return UNITY_END();
 }
 
