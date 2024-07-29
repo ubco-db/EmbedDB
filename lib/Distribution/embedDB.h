@@ -409,7 +409,6 @@ typedef struct {
     int8_t headerSize;                                                    /* Size of header in bytes (calculated during init()) */
     int8_t variableDataHeaderSize;                                        /* Size of page header in variable data files (calculated during init()) */
     int8_t bitmapSize;                                                    /* Size of bitmap in bytes */
-    id_t avgKeyDiff;                                                      /* Estimate for difference between key values. Used for get() to predict location of record. */
     count_t maxRecordsPerPage;                                            /* Maximum records per page */
     count_t maxIdxRecordsPerPage;                                         /* Maximum index records per page */
     int8_t (*compareKey)(void *a, void *b);                               /* Function that compares two arbitrary keys passed as parameters */
@@ -418,7 +417,6 @@ typedef struct {
     void (*buildBitmapFromRange)(void *minData, void *maxData, void *bm); /* Given a record, builds bitmap based on its data (key) value */
     void (*updateBitmap)(void *data, void *bm);                           /* Given a record, updates bitmap based on its data (key) value */
     int8_t (*inBitmap)(void *data, void *bm);                             /* Returns 1 if data (key) value is a valid value given the bitmap */
-    uint64_t minKey;                                                      /* Minimum key */
     uint64_t maxKey;                                                      /* Maximum key */
     int32_t maxError;                                                     /* Maximum key error */
     id_t numWrites;                                                       /* Number of page writes */
