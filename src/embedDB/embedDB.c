@@ -657,35 +657,84 @@ int8_t embedDBInitIndexFromFile(embedDBState *state) {
     id_t logicalIndexPageId = 0;
     id_t maxLogicaIndexPageId = 0;
     id_t physicalIndexPageId = 0;
+    uint32_t count = 0;
+    count_t blockSize = state->eraseSizeInPages;
+    bool validData = false;
+    bool hasData = false;
+    void *buffer = (int8_t *)state->buffer + state->pageSize * EMBEDDB_INDEX_READ_BUFFER;
 
     /* This will become zero if there is no more to read */
     int8_t moreToRead = !(readIndexPage(state, physicalIndexPageId));
 
-    bool haveWrappedInMemory = false;
-    int count = 0;
-    void *buffer = (int8_t *)state->buffer + state->pageSize * EMBEDDB_INDEX_READ_BUFFER;
+    /* this handles the case where the first page may have been erased, so has junk data and we actually need to start from the second page */
+    uint32_t i = 0;
+    int8_t indexCount = 0;
+    while (moreToRead && i < 2) {
+        memcpy(&logicalIndexPageId, buffer, sizeof(id_t));
+        validData = logicalIndexPageId % state->numIndexPages == count;
+        indexCount = EMBEDDB_GET_COUNT(buffer);
+        if (validData && indexCount > 0 && indexCount < state->maxIdxRecordsPerPage + 1) {
+            hasData = true;
+            maxLogicaIndexPageId = logicalIndexPageId;
+            physicalIndexPageId++;
+            count++;
+            i = 2;
+        } else {
+            physicalIndexPageId += blockSize;
+            count += blockSize;
+        }
+        moreToRead = !(readIndexPage(state, physicalIndexPageId));
+        i++;
+    }
+
+    /* if we have no valid data, we just have an empty file can can start from the scratch */
+    if (!hasData)
+        return 0;
 
     while (moreToRead && count < state->numIndexPages) {
         memcpy(&logicalIndexPageId, buffer, sizeof(id_t));
-        if (count == 0 || logicalIndexPageId == maxLogicaIndexPageId + 1) {
+        validData = logicalIndexPageId % state->numIndexPages == count;
+        if (validData && logicalIndexPageId == maxLogicaIndexPageId + 1) {
             maxLogicaIndexPageId = logicalIndexPageId;
             physicalIndexPageId++;
             moreToRead = !(readIndexPage(state, physicalIndexPageId));
             count++;
         } else {
-            haveWrappedInMemory = logicalIndexPageId == maxLogicaIndexPageId - state->numIndexPages + 1;
             break;
         }
     }
 
-    if (count == 0)
-        return 0;
+    /*
+     * Now we need to find where the page with the smallest key that is still valid.
+     * The default case is we have not wrapped and the page number for the physical page with the smallest key is 0.
+     */
+    id_t physicalPageIDOfSmallestData = 0;
+
+    /* check if data exists at this location */
+    if (moreToRead && count < state->numIndexPages) {
+        /* find where the next block boundary is */
+        id_t pagesToBlockBoundary = blockSize - (count % blockSize);
+
+        /* go to the next block boundary */
+        physicalIndexPageId = (physicalIndexPageId + pagesToBlockBoundary) % state->numIndexPages;
+        moreToRead = !(readIndexPage(state, physicalIndexPageId));
+
+        /* there should have been more to read becuase the file should not be empty at this point if it was not empty at the previous block */
+        if (!moreToRead) {
+            return -1;
+        }
+
+        /* check if data is valid or if it is junk */
+        memcpy(&logicalIndexPageId, buffer, sizeof(id_t));
+        validData = logicalIndexPageId % state->numIndexPages == physicalIndexPageId;
+
+        /* this means we have wrapped and our start is actually here */
+        if (validData) {
+            physicalPageIDOfSmallestData = physicalIndexPageId;
+        }
+    }
 
     state->nextIdxPageId = maxLogicaIndexPageId + 1;
-    id_t physicalPageIDOfSmallestData = 0;
-    if (haveWrappedInMemory) {
-        physicalPageIDOfSmallestData = logicalIndexPageId % state->numIndexPages;
-    }
     readIndexPage(state, physicalPageIDOfSmallestData);
     memcpy(&(state->minIndexPageId), buffer, sizeof(id_t));
     state->numAvailIndexPages = state->numIndexPages + state->minIndexPageId - maxLogicaIndexPageId - 1;
