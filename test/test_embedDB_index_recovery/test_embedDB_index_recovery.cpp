@@ -68,8 +68,9 @@
 #include "unity.h"
 
 embedDBState *state;
+const int16_t RECOVERY_PARAMETERS = EMBEDDB_USE_INDEX;
 
-void setupEmbedDB() {
+void setupEmbedDB(int16_t parameters) {
     state = (embedDBState *)malloc(sizeof(embedDBState));
     state->keySize = 4;
     state->dataSize = 4;
@@ -86,38 +87,9 @@ void setupEmbedDB() {
 
     state->numDataPages = 10000;
     state->eraseSizeInPages = 2;
-    state->numIndexPages = 4;
+    state->numIndexPages = 16;
     state->bitmapSize = 1;
-    state->parameters = EMBEDDB_USE_INDEX | EMBEDDB_RESET_DATA;
-    state->inBitmap = inBitmapInt8;
-    state->updateBitmap = updateBitmapInt8;
-    state->buildBitmapFromRange = buildBitmapInt8FromRange;
-    state->compareKey = int32Comparator;
-    state->compareData = int32Comparator;
-    int8_t result = embedDBInit(state, 1);
-    TEST_ASSERT_EQUAL_INT8_MESSAGE(0, result, "EmbedDB did not initialize correctly.");
-}
-
-void initalizeEmbedDBFromFile() {
-    state = (embedDBState *)malloc(sizeof(embedDBState));
-    state->keySize = 4;
-    state->dataSize = 4;
-    state->pageSize = 512;
-    state->bufferSizeInBlocks = 4;
-    state->numSplinePoints = 8;
-    state->buffer = calloc(1, state->pageSize * state->bufferSizeInBlocks);
-    TEST_ASSERT_NOT_NULL_MESSAGE(state->buffer, "Failed to allocate EmbedDB buffer.");
-
-    /* initialize EmbedDB storage */
-    state->fileInterface = getFileInterface();
-    state->dataFile = setupFile(DATA_FILE_PATH);
-    state->indexFile = setupFile(INDEX_FILE_PATH);
-
-    state->numDataPages = 10000;
-    state->numIndexPages = 4;
-    state->eraseSizeInPages = 2;
-    state->bitmapSize = 1;
-    state->parameters = EMBEDDB_USE_INDEX;
+    state->parameters = parameters;
     state->inBitmap = inBitmapInt8;
     state->updateBitmap = updateBitmapInt8;
     state->buildBitmapFromRange = buildBitmapInt8FromRange;
@@ -128,7 +100,8 @@ void initalizeEmbedDBFromFile() {
 }
 
 void setUp() {
-    setupEmbedDB();
+    int16_t parameters = EMBEDDB_USE_INDEX | EMBEDDB_RESET_DATA;
+    setupEmbedDB(parameters);
 }
 
 void tearDown() {
@@ -155,38 +128,56 @@ void insertRecordsLinearly(int32_t startingKey, int32_t startingData, int32_t nu
 
 void embedDB_index_file_correctly_reloads_with_no_data() {
     tearDown();
-    initalizeEmbedDBFromFile();
+    setupEmbedDB(RECOVERY_PARAMETERS);
     TEST_ASSERT_EQUAL_UINT32_MESSAGE(496, state->maxIdxRecordsPerPage, "EmbedDB maxIdxRecordsPerPage was initialized incorrectly when no data was present in the index file.");
     TEST_ASSERT_EQUAL_UINT32_MESSAGE(0, state->nextIdxPageId, "EmbedDB nextIdxPageId was initialized incorrectly when no data was present in the index file.");
-    TEST_ASSERT_EQUAL_UINT32_MESSAGE(4, state->numAvailIndexPages, "EmbedDB nextIdxPageId was initialized incorrectly when no data was present in the index file.");
+    TEST_ASSERT_EQUAL_UINT32_MESSAGE(16, state->numAvailIndexPages, "EmbedDB nextIdxPageId was initialized incorrectly when no data was present in the index file.");
     TEST_ASSERT_EQUAL_UINT32_MESSAGE(0, state->minIndexPageId, "EmbedDB minIndexPageId was initialized incorrectly when no data was present in the index file.");
 }
 
 void embedDB_index_file_correctly_reloads_with_one_page_of_data() {
     insertRecordsLinearly(100, 100, 31312);
     tearDown();
-    initalizeEmbedDBFromFile();
+    setupEmbedDB(RECOVERY_PARAMETERS);
     TEST_ASSERT_EQUAL_UINT32_MESSAGE(1, state->nextIdxPageId, "EmbedDB nextIdxPageId was initialized incorrectly when one index page was present in the index file.");
-    TEST_ASSERT_EQUAL_UINT32_MESSAGE(3, state->numAvailIndexPages, "EmbedDB nextIdxPageId was initialized incorrectly when one index page was present in the index file.");
+    TEST_ASSERT_EQUAL_UINT32_MESSAGE(15, state->numAvailIndexPages, "EmbedDB nextIdxPageId was initialized incorrectly when one index page was present in the index file.");
     TEST_ASSERT_EQUAL_UINT32_MESSAGE(0, state->minIndexPageId, "EmbedDB minIndexPageId was initialized incorrectly when one index page was present in the index file.");
 }
 
 void embedDB_index_file_correctly_reloads_with_four_pages_of_data() {
     insertRecordsLinearly(100, 100, 125056);
     tearDown();
-    initalizeEmbedDBFromFile();
+    setupEmbedDB(RECOVERY_PARAMETERS);
     TEST_ASSERT_EQUAL_UINT32_MESSAGE(4, state->nextIdxPageId, "EmbedDB nextIdxPageId was initialized incorrectly when four index pages were present in the index file.");
+    TEST_ASSERT_EQUAL_UINT32_MESSAGE(12, state->numAvailIndexPages, "EmbedDB nextIdxPageId was initialized incorrectly when four index pages were present in the index file.");
+    TEST_ASSERT_EQUAL_UINT32_MESSAGE(0, state->minIndexPageId, "EmbedDB minIndexPageId was initialized incorrectly when four index pages were present in the index file.");
+}
+
+void embedDB_index_file_correctly_reloads_with_eight_pages_of_data() {
+    insertRecordsLinearly(100, 100, 250111);
+    tearDown();
+    setupEmbedDB(RECOVERY_PARAMETERS);
+    TEST_ASSERT_EQUAL_UINT32_MESSAGE(8, state->nextIdxPageId, "EmbedDB nextIdxPageId was initialized incorrectly when four index pages were present in the index file.");
+    TEST_ASSERT_EQUAL_UINT32_MESSAGE(8, state->numAvailIndexPages, "EmbedDB nextIdxPageId was initialized incorrectly when four index pages were present in the index file.");
+    TEST_ASSERT_EQUAL_UINT32_MESSAGE(0, state->minIndexPageId, "EmbedDB minIndexPageId was initialized incorrectly when four index pages were present in the index file.");
+}
+
+void embedDB_index_file_correctly_reloads_with_sixteen_pages_of_data() {
+    insertRecordsLinearly(100, 100, 500222);
+    tearDown();
+    setupEmbedDB(RECOVERY_PARAMETERS);
+    TEST_ASSERT_EQUAL_UINT32_MESSAGE(16, state->nextIdxPageId, "EmbedDB nextIdxPageId was initialized incorrectly when four index pages were present in the index file.");
     TEST_ASSERT_EQUAL_UINT32_MESSAGE(0, state->numAvailIndexPages, "EmbedDB nextIdxPageId was initialized incorrectly when four index pages were present in the index file.");
     TEST_ASSERT_EQUAL_UINT32_MESSAGE(0, state->minIndexPageId, "EmbedDB minIndexPageId was initialized incorrectly when four index pages were present in the index file.");
 }
 
-void embedDB_index_file_correctly_reloads_with_eleven_pages_of_data() {
-    insertRecordsLinearly(100, 100, 343792);
+void embedDB_index_file_correctly_reloads_with_seventeen_pages_of_data() {
+    insertRecordsLinearly(100, 100, 532288);
     tearDown();
-    initalizeEmbedDBFromFile();
-    TEST_ASSERT_EQUAL_UINT32_MESSAGE(11, state->nextIdxPageId, "EmbedDB nextIdxPageId was initialized incorrectly when four index pages were present in the index file.");
-    TEST_ASSERT_EQUAL_UINT32_MESSAGE(0, state->numAvailIndexPages, "EmbedDB nextIdxPageId was initialized incorrectly when four index pages were present in the index file.");
-    TEST_ASSERT_EQUAL_UINT32_MESSAGE(7, state->minIndexPageId, "EmbedDB minIndexPageId was initialized incorrectly when four index pages were present in the index file.");
+    setupEmbedDB(RECOVERY_PARAMETERS);
+    TEST_ASSERT_EQUAL_UINT32_MESSAGE(17, state->nextIdxPageId, "EmbedDB nextIdxPageId was initialized incorrectly when four index pages were present in the index file.");
+    TEST_ASSERT_EQUAL_UINT32_MESSAGE(1, state->numAvailIndexPages, "EmbedDB nextIdxPageId was initialized incorrectly when four index pages were present in the index file.");
+    TEST_ASSERT_EQUAL_UINT32_MESSAGE(2, state->minIndexPageId, "EmbedDB minIndexPageId was initialized incorrectly when four index pages were present in the index file.");
 }
 
 int runUnityTests() {
@@ -194,7 +185,9 @@ int runUnityTests() {
     RUN_TEST(embedDB_index_file_correctly_reloads_with_no_data);
     RUN_TEST(embedDB_index_file_correctly_reloads_with_one_page_of_data);
     RUN_TEST(embedDB_index_file_correctly_reloads_with_four_pages_of_data);
-    RUN_TEST(embedDB_index_file_correctly_reloads_with_eleven_pages_of_data);
+    RUN_TEST(embedDB_index_file_correctly_reloads_with_eight_pages_of_data);
+    RUN_TEST(embedDB_index_file_correctly_reloads_with_sixteen_pages_of_data);
+    RUN_TEST(embedDB_index_file_correctly_reloads_with_seventeen_pages_of_data);
     return UNITY_END();
 }
 

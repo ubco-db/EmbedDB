@@ -152,9 +152,9 @@ int8_t embedDBInit(embedDBState *state, size_t indexMaxError) {
         return -1;
     }
 
-    if (state->numDataPages < (EMBEDDB_USING_RECORD_LEVEL_CONSISTENCY(state->parameters) ? 4 : 2) * state->eraseSizeInPages) {
+    if (state->numDataPages < 4 * state->eraseSizeInPages) {
 #ifdef PRINT_ERRORS
-        printf("ERROR: The minimum number of data pages is twice the eraseSizeInPages or 4 times the eraseSizeInPages if using record-level consistency.\n");
+        printf("ERROR: The minimum number of data pages is 4 times the eraseSizeInPages.\n");
 #endif
         return -1;
     }
@@ -167,6 +167,14 @@ int8_t embedDBInit(embedDBState *state, size_t indexMaxError) {
 #endif
             return -1;
         }
+
+        if (state->numVarPages < 4 * state->eraseSizeInPages) {
+#ifdef PRINT_ERRORS
+            printf("ERROR: The minimum number of variable data pages is 4 times the eraseSizeInPages.\n");
+#endif
+            return -1;
+        }
+
         state->recordSize += 4;
     }
 
@@ -183,6 +191,14 @@ int8_t embedDBInit(embedDBState *state, size_t indexMaxError) {
 #endif
             return -1;
         }
+
+        if (state->numIndexPages < 2 * state->eraseSizeInPages) {
+#ifdef PRINT_ERRORS
+            printf("ERROR: The minimum number of index pages is 4 times the eraseSizeInPages.\n");
+#endif
+            return -1;
+        }
+
         state->headerSize += state->bitmapSize;
     }
 
@@ -668,7 +684,7 @@ int8_t embedDBInitIndexFromFile(embedDBState *state) {
 
     /* this handles the case where the first page may have been erased, so has junk data and we actually need to start from the second page */
     uint32_t i = 0;
-    int8_t indexCount = 0;
+    count_t indexCount = 0;
     while (moreToRead && i < 2) {
         memcpy(&logicalIndexPageId, buffer, sizeof(id_t));
         validData = logicalIndexPageId % state->numIndexPages == count;

@@ -38,7 +38,7 @@
 
 embedDBState *state;
 
-void setupEmbedDB(int8_t parameters) {
+void setupEmbedDB(int16_t parameters) {
     /* The setup below will result in having 42 records per page */
     state = (embedDBState *)malloc(sizeof(embedDBState));
     TEST_ASSERT_NOT_NULL_MESSAGE(state, "Unable to allocate embedDBState.");
@@ -73,7 +73,7 @@ void setupEmbedDB(int8_t parameters) {
 }
 
 void setUp() {
-    int8_t setupParamaters = EMBEDDB_RECORD_LEVEL_CONSISTENCY | EMBEDDB_RESET_DATA | EMBEDDB_USE_VDATA;
+    int16_t setupParamaters = EMBEDDB_RECORD_LEVEL_CONSISTENCY | EMBEDDB_RESET_DATA | EMBEDDB_USE_VDATA;
     setupEmbedDB(setupParamaters);
 }
 
@@ -119,7 +119,7 @@ void variable_data_record_level_consistency_records_should_be_readable() {
 
     /* tear down state and recover */
     tearDown();
-    int8_t setupParameters = EMBEDDB_RECORD_LEVEL_CONSISTENCY | EMBEDDB_USE_VDATA;
+    int16_t setupParameters = EMBEDDB_RECORD_LEVEL_CONSISTENCY | EMBEDDB_USE_VDATA;
     setupEmbedDB(setupParameters);
 
     /* Check that the state was correctly setup again */
@@ -166,7 +166,7 @@ void variable_data_record_level_consistency_should_recover_64_records_correctly(
 
     /* tear down state and recover */
     tearDown();
-    int8_t setupParameters = EMBEDDB_RECORD_LEVEL_CONSISTENCY | EMBEDDB_USE_VDATA;
+    int16_t setupParameters = EMBEDDB_RECORD_LEVEL_CONSISTENCY | EMBEDDB_USE_VDATA;
     setupEmbedDB(setupParameters);
 
     /* Check that state was initialised correctly */
@@ -219,7 +219,7 @@ void variable_data_record_level_consistency_should_recover_four_pages_data_recor
 
     /* tear down state and recover */
     tearDown();
-    int8_t setupParameters = EMBEDDB_RECORD_LEVEL_CONSISTENCY | EMBEDDB_USE_VDATA;
+    int16_t setupParameters = EMBEDDB_RECORD_LEVEL_CONSISTENCY | EMBEDDB_USE_VDATA;
     setupEmbedDB(setupParameters);
 
     /* Check that state was initialised correctly */
@@ -283,7 +283,7 @@ void variable_data_record_level_consistency_should_recover_71_pages_data_and_19_
 
     /* tear down state and recover */
     tearDown();
-    int8_t setupParameters = EMBEDDB_RECORD_LEVEL_CONSISTENCY | EMBEDDB_USE_VDATA;
+    int16_t setupParameters = EMBEDDB_RECORD_LEVEL_CONSISTENCY | EMBEDDB_USE_VDATA;
     setupEmbedDB(setupParameters);
 
     /* Check that state was initialised correctly */
@@ -338,7 +338,7 @@ void variable_data_record_level_consistency_should_recover_variable_data_longer_
 
     /* tear down state and recover */
     tearDown();
-    int8_t setupParameters = EMBEDDB_RECORD_LEVEL_CONSISTENCY | EMBEDDB_USE_VDATA;
+    int16_t setupParameters = EMBEDDB_RECORD_LEVEL_CONSISTENCY | EMBEDDB_USE_VDATA;
     setupEmbedDB(setupParameters);
 
     /* Check that state was initialised correctly */
@@ -404,7 +404,7 @@ void variable_data_record_level_consistency_should_recover_after_inserting_131_p
 
     /* tear down state and recover */
     tearDown();
-    int8_t setupParameters = EMBEDDB_RECORD_LEVEL_CONSISTENCY | EMBEDDB_USE_VDATA;
+    int16_t setupParameters = EMBEDDB_RECORD_LEVEL_CONSISTENCY | EMBEDDB_USE_VDATA;
     setupEmbedDB(setupParameters);
 
     /* Check that state was initialised correctly */
