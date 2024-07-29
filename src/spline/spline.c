@@ -151,8 +151,9 @@ void splineAdd(spline *spl, void *key, uint32_t page) {
     memcpy(&lowerYDiff, (int8_t *)spl->lower + spl->keySize, sizeof(uint32_t));
     lowerYDiff -= lastPage;
 
-    if (spl->count >= spl->size)
-        splineErase(spl, spl->eraseSize);
+    if (spl->count >= spl->size) {
+        int8_t eraseResult = splineErase(spl, spl->eraseSize);
+    }
 
     /* Check if next point still in error corridor */
     if (splineIsLeft(xdiff, ydiff, upperXDiff, upperYDiff) == 1 ||
@@ -171,6 +172,12 @@ void splineAdd(spline *spl, void *key, uint32_t page) {
         memcpy(spl->upper, key, spl->keySize);
         uint32_t upperPage = page + spl->maxError;
         memcpy((int8_t *)spl->upper + spl->keySize, &upperPage, sizeof(uint32_t));
+
+        /* If we add a point, we might need to erase again */
+        if (spl->count >= spl->size) {
+            int8_t eraseResult = splineErase(spl, spl->eraseSize);
+        }
+
     } else {
         /* Check if must update upper or lower limits */
 

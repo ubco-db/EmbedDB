@@ -229,8 +229,29 @@ void embedDBGet_should_return_not_found_when_key_is_less_then_min_key(void) {
     uint32_t key = 99;
     uint32_t actualData[] = {0, 0, 0};
     int8_t embedDBGetResult = embedDBGet(state, &key, actualData);
+    TEST_ASSERT_EQUAL_INT8_MESSAGE(-1, embedDBGetResult, "embedDBGet returned data for a key that is less than the minimum key in the database");
 
-    TEST_ASSERT_EQUAL_INT8_MESSAGE(-2, embedDBGetResult, "embedDBGet returned data for a key that is less than the minimum key in the database");
+    /* query for the min key */
+    key = 100;
+    embedDBGetResult = embedDBGet(state, &key, actualData);
+    TEST_ASSERT_EQUAL_INT8_MESSAGE(0, embedDBGetResult, "embedDBGet returned data for a key that is less than the minimum key in the database");
+}
+
+void embedDBGet_should_return_not_found_when_key_is_less_then_min_key_and_in_buffer(void) {
+    /* insert some records */
+    uint32_t numInserts = 30;
+    uint32_t key = 502289;
+    uint32_t data[] = {720602, 1633222, 7048364};
+    for (uint32_t i = 0; i < numInserts; i++) {
+        embedDBPut(state, (void*)&key, (void*)data);
+        key++;
+    }
+
+    /* query for key lower then the min key in the database */
+    key = 502288;
+    uint32_t actualData[] = {0, 0, 0};
+    int8_t embedDBGetResult = embedDBGet(state, &key, actualData);
+    TEST_ASSERT_EQUAL_INT8_MESSAGE(-1, embedDBGetResult, "embedDBGet returned data for a key that is less than the minimum key in the database");
 }
 
 void embedDBGet_should_return_no_data_found_when_database_and_buffer_are_empty(void) {
@@ -251,6 +272,7 @@ int runUnityTests() {
     RUN_TEST(embedDBGet_should_return_no_data_when_requested_key_greater_than_max_buffer_key);
     RUN_TEST(embedDBGet_should_return_not_found_when_key_is_less_then_min_key);
     RUN_TEST(embedDBGet_should_return_no_data_found_when_database_and_buffer_are_empty);
+    RUN_TEST(embedDBGet_should_return_not_found_when_key_is_less_then_min_key_and_in_buffer);
     return UNITY_END();
 }
 

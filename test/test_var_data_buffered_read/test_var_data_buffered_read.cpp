@@ -449,7 +449,7 @@ embedDBState *init_state() {
     state->keySize = 4;
     state->dataSize = 12;
     state->pageSize = 512;
-    state->numSplinePoints = 2;
+    state->numSplinePoints = 8;
     state->bitmapSize = 1;
     state->bufferSizeInBlocks = 6;
 

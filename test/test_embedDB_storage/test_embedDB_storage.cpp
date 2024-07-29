@@ -52,7 +52,7 @@ void embedDBInit_should_return_erorr_if_numDataPages_is_not_divisible_by_eraseSi
     state->dataSize = 8;
     state->pageSize = 512;
     state->bufferSizeInBlocks = 8;
-    state->numSplinePoints = 4;
+    state->numSplinePoints = 8;
     state->buffer = malloc((size_t)state->bufferSizeInBlocks * state->pageSize);
     TEST_ASSERT_NOT_NULL_MESSAGE(state->buffer, "Failed to allocate buffer for EmbedDB.");
 
@@ -91,7 +91,7 @@ void embedDBInit_should_return_erorr_if_numIndexPages_is_not_divisible_by_eraseS
     state->dataSize = 4;
     state->pageSize = 512;
     state->bufferSizeInBlocks = 4;
-    state->numSplinePoints = 2;
+    state->numSplinePoints = 8;
     state->buffer = calloc(1, state->pageSize * state->bufferSizeInBlocks);
     TEST_ASSERT_NOT_NULL_MESSAGE(state->buffer, "Failed to allocate buffer for EmbedDB.");
 
@@ -137,7 +137,7 @@ void embedDBInit_should_return_erorr_if_numVarPages_is_not_divisible_by_eraseSiz
     state->dataSize = 4;
     state->pageSize = 512;
     state->bufferSizeInBlocks = 16;
-    state->numSplinePoints = 2;
+    state->numSplinePoints = 8;
     state->buffer = calloc(1, state->pageSize * state->bufferSizeInBlocks);
     TEST_ASSERT_NOT_NULL_MESSAGE(state->buffer, "Failed to allocate EmbedDB buffer.");
 

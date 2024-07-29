@@ -78,7 +78,7 @@ void setupEmbedDB() {
     state->dataSize = 8;
     state->pageSize = 512;
     state->bufferSizeInBlocks = 4;
-    state->numSplinePoints = 4;
+    state->numSplinePoints = 8;
     state->buffer = malloc((size_t)state->bufferSizeInBlocks * state->pageSize);
     TEST_ASSERT_NOT_NULL_MESSAGE(state->buffer, "Failed to allocate buffer for EmbedDB.");
 
@@ -106,7 +106,7 @@ void initalizeEmbedDBFromFile(void) {
     state->dataSize = 8;
     state->pageSize = 512;
     state->bufferSizeInBlocks = 4;
-    state->numSplinePoints = 4;
+    state->numSplinePoints = 8;
     state->buffer = malloc((size_t)state->bufferSizeInBlocks * state->pageSize);
     TEST_ASSERT_NOT_NULL_MESSAGE(state->buffer, "Failed to allocate buffer for EmbedDB.");
 
@@ -169,8 +169,6 @@ void embedDB_parameters_initializes_from_data_file_with_twenty_seven_pages_corre
     insertRecordsLinearly(9, 20230614, 1135);
     tearDown();
     initalizeEmbedDBFromFile();
-    uint64_t expectedMinKey = 10;
-    TEST_ASSERT_EQUAL_MEMORY_MESSAGE(&expectedMinKey, &state->minKey, sizeof(uint64_t), "EmbedDB minkey is not correctly identified after reload from data file.");
     TEST_ASSERT_EQUAL_UINT32_MESSAGE(27, state->nextDataPageId, "EmbedDB nextDataPageId is not correctly identified after reload from data file.");
     TEST_ASSERT_EQUAL_UINT32_MESSAGE(0, state->minDataPageId, "EmbedDB minDataPageId was not correctly identified.");
     TEST_ASSERT_EQUAL_UINT32_MESSAGE(65, state->numAvailDataPages, "EmbedDB numAvailDataPages is not correctly initialized.");
@@ -181,8 +179,6 @@ void embedDB_parameters_initializes_from_data_file_with_ninety_two_pages_correct
     insertRecordsLinearly(3456, 2548, 3865);
     tearDown();
     initalizeEmbedDBFromFile();
-    uint64_t expectedMinKey = 3457;
-    TEST_ASSERT_EQUAL_MEMORY_MESSAGE(&expectedMinKey, &state->minKey, sizeof(uint64_t), "EmbedDB minkey is not correctly identified after reload from data file.");
     TEST_ASSERT_EQUAL_UINT32_MESSAGE(92, state->nextDataPageId, "EmbedDB nextDataPageId is not correctly identified after reload from data file.");
     TEST_ASSERT_EQUAL_UINT32_MESSAGE(0, state->minDataPageId, "EmbedDB minDataPageId was not correctly identified.");
     TEST_ASSERT_EQUAL_UINT32_MESSAGE(0, state->numAvailDataPages, "EmbedDB numAvailDataPages is not correctly initialized.");
@@ -192,8 +188,6 @@ void embedDB_parameters_initializes_from_data_file_with_ninety_three_pages_corre
     insertRecordsLinearly(1645, 2548, 3907);
     tearDown();
     initalizeEmbedDBFromFile();
-    uint32_t expectedMinKey = 1814;
-    TEST_ASSERT_EQUAL_UINT32_MESSAGE(expectedMinKey, state->minKey, "EmbedDB minkey is not correctly identified after reload from data file.");
     TEST_ASSERT_EQUAL_UINT32_MESSAGE(93, state->nextDataPageId, "EmbedDB nextDataPageId is not correctly identified after reload from data file.");
     TEST_ASSERT_EQUAL_UINT32_MESSAGE(4, state->minDataPageId, "EmbedDB minDataPageId was not correctly identified.");
     TEST_ASSERT_EQUAL_UINT32_MESSAGE(3, state->numAvailDataPages, "EmbedDB numAvailDataPages is not correctly initialized.");
@@ -203,8 +197,6 @@ void embedDB_parameters_initializes_correctly_from_data_file_with_four_hundred_s
     insertRecordsLinearly(2000, 11205, 17473);
     tearDown();
     initalizeEmbedDBFromFile();
-    uint32_t expectedMinKey = 15777;
-    TEST_ASSERT_EQUAL_UINT32_MESSAGE(expectedMinKey, state->minKey, "EmbedDB minkey is not correctly identified after reload from data file.");
     TEST_ASSERT_EQUAL_UINT32_MESSAGE(416, state->nextDataPageId, "EmbedDB nextDataPageId is not correctly identified after reload from data file.");
     TEST_ASSERT_EQUAL_UINT32_MESSAGE(328, state->minDataPageId, "EmbedDB minDataPageId was not correctly identified.");
     TEST_ASSERT_EQUAL_UINT32_MESSAGE(4, state->numAvailDataPages, "EmbedDB numAvailDataPages is not correctly initialized.");
@@ -213,8 +205,6 @@ void embedDB_parameters_initializes_correctly_from_data_file_with_four_hundred_s
 void embedDB_parameters_initializes_correctly_from_data_file_with_no_data() {
     tearDown();
     initalizeEmbedDBFromFile();
-    uint64_t expectedMinKey = UINT32_MAX;
-    TEST_ASSERT_EQUAL_MEMORY_MESSAGE(&expectedMinKey, &state->minKey, sizeof(uint64_t), "EmbedDB minkey is not correctly identified after reload from data file.");
     TEST_ASSERT_EQUAL_UINT32_MESSAGE(0, state->nextDataPageId, "EmbedDB nextDataPageId is not correctly identified after reload from data file.");
     TEST_ASSERT_EQUAL_UINT32_MESSAGE(0, state->minDataPageId, "EmbedDB minDataPageId was not correctly identified.");
     TEST_ASSERT_EQUAL_UINT32_MESSAGE(92, state->numAvailDataPages, "EmbedDB numAvailDataPages is not initialized correctly.");
@@ -258,8 +248,6 @@ void embedDB_correctly_gets_records_after_reload_with_wrapped_data() {
     embedDBFlush(state);
     tearDown();
     initalizeEmbedDBFromFile();
-    uint32_t expectedMinKey = 10081;
-    TEST_ASSERT_EQUAL_UINT32_MESSAGE(expectedMinKey, state->minKey, "EmbedDB minkey is not the correct value after reloading.");
     int8_t *recordBuffer = (int8_t *)malloc(state->dataSize);
     int32_t key = 10081;
     int64_t data = 10081;
@@ -294,8 +282,6 @@ void embedDB_queries_correctly_with_non_liner_data_after_reload() {
     insertRecordsParabolic(1000, 367, 4495);
     tearDown();
     initalizeEmbedDBFromFile();
-    uint32_t expectedMinKey = 227128;
-    TEST_ASSERT_EQUAL_UINT32_MESSAGE(expectedMinKey, state->minKey, "EmbedDB minkey is not the correct value after reloading.");
     int8_t *recordBuffer = (int8_t *)malloc(state->dataSize);
     int32_t key = 227128;
     int64_t data = 1040;
@@ -322,8 +308,6 @@ void embedDB_recovery_algorithm_wraps_when_skipping_to_next_block() {
     embedDBFlush(state);
     tearDown();
     initalizeEmbedDBFromFile();
-    uint32_t expectedMinKey = 3865;
-    TEST_ASSERT_EQUAL_UINT32_MESSAGE(expectedMinKey, state->minKey, "EmbedDB minkey is not correctly identified after reload from data file.");
     TEST_ASSERT_EQUAL_UINT32_MESSAGE(180, state->nextDataPageId, "EmbedDB nextDataPageId is not correctly identified after reload from data file.");
     TEST_ASSERT_EQUAL_UINT32_MESSAGE(92, state->minDataPageId, "EmbedDB minDataPageId was not correctly identified.");
     TEST_ASSERT_EQUAL_UINT32_MESSAGE(4, state->numAvailDataPages, "EmbedDB numAvailDataPages is not correctly initialized.");
@@ -334,8 +318,6 @@ void embedDB_recovery_algorithm_functions_correctly_when_have_wrapped_but_at_the
     embedDBFlush(state);
     tearDown();
     initalizeEmbedDBFromFile();
-    uint32_t expectedMinKey = 3865;
-    TEST_ASSERT_EQUAL_UINT32_MESSAGE(expectedMinKey, state->minKey, "EmbedDB minkey is not correctly identified after reload from data file.");
     TEST_ASSERT_EQUAL_UINT32_MESSAGE(184, state->nextDataPageId, "EmbedDB nextDataPageId is not correctly identified after reload from data file.");
     TEST_ASSERT_EQUAL_UINT32_MESSAGE(92, state->minDataPageId, "EmbedDB minDataPageId was not correctly identified.");
     TEST_ASSERT_EQUAL_UINT32_MESSAGE(0, state->numAvailDataPages, "EmbedDB numAvailDataPages is not correctly initialized.");
@@ -348,8 +330,6 @@ void embedDB_recovery_algorithm_functions_correctly_when_have_wrapped_but_at_the
     embedDBFlush(state);
 
     /* Check that database incremented correctly and we can fetch data */
-    expectedMinKey = 4033;
-    TEST_ASSERT_EQUAL_UINT32_MESSAGE(expectedMinKey, state->minKey, "EmbedDB minkey is not correctly identified after reload from data file.");
     TEST_ASSERT_EQUAL_UINT32_MESSAGE(185, state->nextDataPageId, "EmbedDB nextDataPageId is not correctly identified after reload from data file.");
     TEST_ASSERT_EQUAL_UINT32_MESSAGE(96, state->minDataPageId, "EmbedDB minDataPageId was not correctly identified.");
     TEST_ASSERT_EQUAL_UINT32_MESSAGE(3, state->numAvailDataPages, "EmbedDB numAvailDataPages is not correctly initialized.");
