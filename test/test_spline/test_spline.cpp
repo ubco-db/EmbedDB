@@ -125,8 +125,8 @@ void should_erase_previous_spline_points_when_full() {
     TEST_ASSERT_EQUAL_MEMORY(&expectedKey, splinePoint, sizeof(uint32_t));
     TEST_ASSERT_EQUAL_MEMORY(&expectedPageNumber, (int8_t *)splinePoint + state->keySize, sizeof(uint32_t));
 
-    /* Insert 170 records with one increment 2 at a time*/
-    for (size_t i = 0; i < 170; i++) {
+    /* Insert 171 records with one increment 2 at a time*/
+    for (size_t i = 0; i < 171; i++) {
         insertResult = embedDBPut(state, &startingKey, &startingData);
         TEST_ASSERT_EQUAL_INT8_MESSAGE(0, insertResult, "embedDBPut was unable to insert records into the database.");
         startingKey += 2;
@@ -141,10 +141,17 @@ void should_erase_previous_spline_points_when_full() {
     TEST_ASSERT_EQUAL_MEMORY(&expectedKey, splinePoint, sizeof(uint32_t));
     TEST_ASSERT_EQUAL_MEMORY(&expectedPageNumber, (int8_t *)splinePoint + state->keySize, sizeof(uint32_t));
 
+    /* third point */
+    expectedKey = 100573;
+    expectedPageNumber = 7;
+    splinePoint = splinePointLocation(state->spl, 2);
+    TEST_ASSERT_EQUAL_MEMORY(&expectedKey, splinePoint, sizeof(uint32_t));
+    TEST_ASSERT_EQUAL_MEMORY(&expectedPageNumber, (int8_t *)splinePoint + state->keySize, sizeof(uint32_t));
+
     /* fourth point */
     splinePoint = splinePointLocation(state->spl, 3);
-    expectedKey = 98485;
-    expectedPageNumber = 5;
+    expectedKey = 100741;
+    expectedPageNumber = 9;
     TEST_ASSERT_EQUAL_MEMORY(&expectedKey, splinePoint, sizeof(uint32_t));
     TEST_ASSERT_EQUAL_MEMORY(&expectedPageNumber, (int8_t *)splinePoint + state->keySize, sizeof(uint32_t));
 
@@ -157,7 +164,28 @@ void should_erase_previous_spline_points_when_full() {
     }
     TEST_ASSERT_EQUAL_UINT32(4, state->spl->count);
 
-    /* Insert 200 records with one increment 55 at a time*/
+    /* fourth point added, but in third spot due to erase */
+    splinePoint = splinePointLocation(state->spl, 2);
+    expectedKey = 100825;
+    expectedPageNumber = 10;
+    TEST_ASSERT_EQUAL_MEMORY(&expectedKey, splinePoint, sizeof(uint32_t));
+    TEST_ASSERT_EQUAL_MEMORY(&expectedPageNumber, (int8_t *)splinePoint + state->keySize, sizeof(uint32_t));
+
+    /* fifth point added, but in fourth spot becuase of erase */
+    splinePoint = splinePointLocation(state->spl, 3);
+    expectedKey = 106452;
+    expectedPageNumber = 13;
+    TEST_ASSERT_EQUAL_MEMORY(&expectedKey, splinePoint, sizeof(uint32_t));
+    TEST_ASSERT_EQUAL_MEMORY(&expectedPageNumber, (int8_t *)splinePoint + state->keySize, sizeof(uint32_t));
+
+    /* check that the first point was erased */
+    splinePoint = splinePointLocation(state->spl, 0);
+    expectedKey = 97995;
+    expectedPageNumber = 2;
+    TEST_ASSERT_EQUAL_MEMORY(&expectedKey, splinePoint, sizeof(uint32_t));
+    TEST_ASSERT_EQUAL_MEMORY(&expectedPageNumber, (int8_t *)splinePoint + state->keySize, sizeof(uint32_t));
+
+    /* Insert 300 records with one increment 128 at a time*/
     for (size_t i = 0; i < 300; i++) {
         insertResult = embedDBPut(state, &startingKey, &startingData);
         TEST_ASSERT_EQUAL_INT8_MESSAGE(0, insertResult, "embedDBPut was unable to insert records into the database.");
@@ -165,6 +193,27 @@ void should_erase_previous_spline_points_when_full() {
         startingData++;
     }
     TEST_ASSERT_EQUAL_UINT32(4, state->spl->count);
+
+    /* check that last point was moved */
+    splinePoint = splinePointLocation(state->spl, 2);
+    expectedKey = 108342;
+    expectedPageNumber = 14;
+    TEST_ASSERT_EQUAL_MEMORY(&expectedKey, splinePoint, sizeof(uint32_t));
+    TEST_ASSERT_EQUAL_MEMORY(&expectedPageNumber, (int8_t *)splinePoint + state->keySize, sizeof(uint32_t));
+
+    /* check that the new point is inserted properly */
+    splinePoint = splinePointLocation(state->spl, 3);
+    expectedKey = 140349;
+    expectedPageNumber = 20;
+    TEST_ASSERT_EQUAL_MEMORY(&expectedKey, splinePoint, sizeof(uint32_t));
+    TEST_ASSERT_EQUAL_MEMORY(&expectedPageNumber, (int8_t *)splinePoint + state->keySize, sizeof(uint32_t));
+
+    /* check that min key was erased again */ /* check that the new point is inserted properly */
+    splinePoint = splinePointLocation(state->spl, 0);
+    expectedKey = 100573;
+    expectedPageNumber = 7;
+    TEST_ASSERT_EQUAL_MEMORY(&expectedKey, splinePoint, sizeof(uint32_t));
+    TEST_ASSERT_EQUAL_MEMORY(&expectedPageNumber, (int8_t *)splinePoint + state->keySize, sizeof(uint32_t));
 
     /* test querrying key before minimum spline point */
     uint32_t keyToQuery = 97856;
@@ -212,7 +261,7 @@ void should_clean_spline_when_data_overwritten() {
 int runUnityTests() {
     UNITY_BEGIN();
     RUN_TEST(should_erase_previous_spline_points_when_full);
-    // RUN_TEST(should_clean_spline_when_data_overwritten);
+    RUN_TEST(should_clean_spline_when_data_overwritten);
     return UNITY_END();
 }
 
