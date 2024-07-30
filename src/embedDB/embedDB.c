@@ -673,7 +673,8 @@ int8_t embedDBInitIndexFromFile(embedDBState *state) {
     id_t logicalIndexPageId = 0;
     id_t maxLogicaIndexPageId = 0;
     id_t physicalIndexPageId = 0;
-    uint32_t count = 0;
+    id_t count = 0;
+    id_t numberOfBitmaps = 0;
     count_t blockSize = state->eraseSizeInPages;
     bool validData = false;
     bool hasData = false;
@@ -695,6 +696,7 @@ int8_t embedDBInitIndexFromFile(embedDBState *state) {
             physicalIndexPageId++;
             count++;
             i = 2;
+            numberOfBitmaps += indexCount;
         } else {
             physicalIndexPageId += blockSize;
             count += blockSize;
@@ -714,6 +716,8 @@ int8_t embedDBInitIndexFromFile(embedDBState *state) {
             maxLogicaIndexPageId = logicalIndexPageId;
             physicalIndexPageId++;
             moreToRead = !(readIndexPage(state, physicalIndexPageId));
+            indexCount = EMBEDDB_GET_COUNT(buffer);
+            numberOfBitmaps += indexCount;
             count++;
         } else {
             break;
@@ -754,6 +758,9 @@ int8_t embedDBInitIndexFromFile(embedDBState *state) {
     readIndexPage(state, physicalPageIDOfSmallestData);
     memcpy(&(state->minIndexPageId), buffer, sizeof(id_t));
     state->numAvailIndexPages = state->numIndexPages + state->minIndexPageId - maxLogicaIndexPageId - 1;
+
+    /* Compute how many bitmaps we should have and how many we do have */
+    id_t numberOfDataPages = state->nextDataPageId - state->minDataPageId;
 
     return 0;
 }
@@ -1060,6 +1067,40 @@ void indexPage(embedDBState *state, uint32_t pageNumber) {
 }
 
 /**
+ * @brief	Adds an entry into the data index for a given page.
+ * @param	state	    embedDB algorithm state structure
+ * @param	pageNumber	Page number to index
+ * @return	Return 0 if success. Non-zero value if error.
+ */
+int8_t indexData(embedDBState *state, id_t pageNumber) {
+    void *buf = (int8_t *)state->buffer + state->pageSize * (EMBEDDB_INDEX_WRITE_BUFFER);
+    count_t idxcount = EMBEDDB_GET_COUNT(buf);
+    if (idxcount >= state->maxIdxRecordsPerPage) {
+        /* Save index page */
+        id_t indexPageNumber = writeIndexPage(state, buf);
+        if (indexPageNumber == -1) {
+#ifdef PRINT_ERRORS
+            printf("ERROR: failed to write index page to storage");
+#endif
+            return -1;
+        }
+
+        idxcount = 0;
+        initBufferPage(state, EMBEDDB_INDEX_WRITE_BUFFER);
+
+        /* Add page id to minimum value spot in page */
+        memcpy((int8_t *)buf + 8, &pageNumber, sizeof(id_t));
+    }
+
+    EMBEDDB_INC_COUNT(buf);
+
+    /* Copy record onto index page */
+    void *bm = EMBEDDB_GET_BITMAP(state->buffer);
+    memcpy((void *)((int8_t *)buf + EMBEDDB_IDX_HEADER_SIZE + state->bitmapSize * idxcount), bm, state->bitmapSize);
+    return 0;
+}
+
+/**
  * @brief	Puts a given key, data pair into structure.
  * @param	state	embedDB algorithm state structure
  * @param	key		Key for record
@@ -1090,35 +1131,29 @@ int8_t embedDBPut(embedDBState *state, void *key, void *data) {
     /* Write current page if full */
     bool wrotePage = false;
     if (count >= state->maxRecordsPerPage) {
-        // As the first buffer is the data write buffer, no manipulation is required
-        id_t pageNum = writePage(state, state->buffer);
+        void *dataWriteBuffer = state->buffer + state->pageSize * EMBEDDB_DATA_WRITE_BUFFER;
+        id_t pageNum = writePage(state, dataWriteBuffer);
+        if (pageNum == -1) {
+#ifdef PRINT_ERRORS
+            printf("ERROR: Unable to write data page when buffer is full. \n");
+#endif
+            return 2;
+        }
 
         indexPage(state, pageNum);
 
         /* Save record in index file */
-        if (state->indexFile != NULL) {
-            void *buf = (int8_t *)state->buffer + state->pageSize * (EMBEDDB_INDEX_WRITE_BUFFER);
-            count_t idxcount = EMBEDDB_GET_COUNT(buf);
-            if (idxcount >= state->maxIdxRecordsPerPage) {
-                /* Save index page */
-                writeIndexPage(state, buf);
-
-                idxcount = 0;
-                initBufferPage(state, EMBEDDB_INDEX_WRITE_BUFFER);
-
-                /* Add page id to minimum value spot in page */
-                id_t *ptr = (id_t *)((int8_t *)buf + 8);
-                *ptr = pageNum;
+        if (EMBEDDB_USING_INDEX(state->parameters)) {
+            int8_t indexResult = indexData(state, pageNum);
+            if (pageNum == -1) {
+#ifdef PRINT_ERRORS
+                printf("ERROR: Unable to index data. \n");
+#endif
+                return 3;
             }
-
-            EMBEDDB_INC_COUNT(buf);
-
-            /* Copy record onto index page */
-            void *bm = EMBEDDB_GET_BITMAP(state->buffer);
-            memcpy((void *)((int8_t *)buf + EMBEDDB_IDX_HEADER_SIZE + state->bitmapSize * idxcount), bm, state->bitmapSize);
         }
 
-        updateMaxiumError(state, state->buffer);
+        updateMaxiumError(state, dataWriteBuffer);
 
         count = 0;
         initBufferPage(state, 0);
@@ -1746,28 +1781,9 @@ int8_t embedDBFlush(embedDBState *state) {
     state->fileInterface->flush(state->dataFile);
 
     indexPage(state, pageNum);
-
+    int8_t indexResult = 0;
     if (EMBEDDB_USING_INDEX(state->parameters)) {
-        void *buf = (int8_t *)state->buffer + state->pageSize * (EMBEDDB_INDEX_WRITE_BUFFER);
-        count_t idxcount = EMBEDDB_GET_COUNT(buf);
-        EMBEDDB_INC_COUNT(buf);
-
-        /* Copy record onto index page */
-        void *bm = EMBEDDB_GET_BITMAP(state->buffer);
-        memcpy((void *)((int8_t *)buf + EMBEDDB_IDX_HEADER_SIZE + state->bitmapSize * idxcount), bm, state->bitmapSize);
-
-        id_t writeResult = writeIndexPage(state, buf);
-        if (writeResult == -1) {
-#ifdef PRINT_ERRORS
-            printf("Failed to write index page during embedDBFlush.");
-#endif
-            return -1;
-        }
-
-        state->fileInterface->flush(state->indexFile);
-
-        /* Reinitialize buffer */
-        initBufferPage(state, EMBEDDB_INDEX_WRITE_BUFFER);
+        indexResult = indexData(state, pageNum);
     }
 
     /* Reinitialize buffer */
@@ -1783,6 +1799,14 @@ int8_t embedDBFlush(embedDBState *state) {
             return -1;
         }
     }
+
+    if (indexResult == -1) {
+#ifdef PRINT_ERRORS
+        printf("ERROR: Failed to index data when flushing data to storage.");
+#endif
+        return -1;
+    }
+
     return 0;
 }
 
