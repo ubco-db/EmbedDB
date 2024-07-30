@@ -71,6 +71,7 @@ embedDBState *state;
 const int16_t RECOVERY_PARAMETERS = EMBEDDB_USE_INDEX | EMBEDDB_USE_BMAP;
 
 void setupEmbedDB(int16_t parameters) {
+    /* This setup results in having 63 records per page */
     state = (embedDBState *)malloc(sizeof(embedDBState));
     state->keySize = 4;
     state->dataSize = 4;
@@ -114,13 +115,18 @@ void tearDown() {
 }
 
 void insertRecordsLinearly(int32_t startingKey, uint32_t numRecords) {
-    /* TODO: Decide on how to vary the data to get better bitmap results*/
     int32_t key = startingKey;
     int32_t data = 0;
     for (uint32_t i = 0; i < numRecords; i++) {
-        int8_t result = embedDBPut(state, &startingKey, &data);
+        int8_t result = embedDBPut(state, &key, &data);
         TEST_ASSERT_EQUAL_INT8_MESSAGE(0, result, "EmbedDB Put did not correctly insert data (returned non-zero code)");
         key++;
+        if (i % 2 == 0) {
+            data++;
+        }
+        if (data % 110 == 0) {
+            data = 0;
+        }
     }
 }
 
@@ -133,8 +139,23 @@ void embedDB_index_file_correctly_reloads_with_no_data() {
     TEST_ASSERT_EQUAL_UINT32_MESSAGE(0, state->minIndexPageId, "EmbedDB minIndexPageId was initialized incorrectly when no data was present in the index file.");
 }
 
+void embedDBFlush_should_not_flush_index_pages() {
+    /* Check that there is the correct number of indicies in buffer before flushing */
+    insertRecordsLinearly(100, 24948);
+    void *buffer = (int8_t *)state->buffer + (state->pageSize * EMBEDDB_INDEX_WRITE_BUFFER);
+    count_t recordCount = EMBEDDB_GET_COUNT(buffer);
+    TEST_ASSERT_EQUAL_UINT32_MESSAGE(395, recordCount, "Count of data indicies was incorrect before flushing to storage.");
+
+    /* Flush to storage */
+    embedDBFlush(state);
+
+    /* Check that we only added one for the new page */
+    recordCount = EMBEDDB_GET_COUNT(buffer);
+    TEST_ASSERT_EQUAL_UINT32_MESSAGE(396, recordCount, "Count of data indicies was incorrect before flushing to storage.");
+}
+
 void embedDB_index_file_correctly_reloads_with_one_page_of_data() {
-    insertRecordsLinearly(100, 100, 31312);
+    insertRecordsLinearly(100, 31312);
     tearDown();
     setupEmbedDB(RECOVERY_PARAMETERS);
     TEST_ASSERT_EQUAL_UINT32_MESSAGE(1, state->nextIdxPageId, "EmbedDB nextIdxPageId was initialized incorrectly when one index page was present in the index file.");
@@ -143,7 +164,7 @@ void embedDB_index_file_correctly_reloads_with_one_page_of_data() {
 }
 
 void embedDB_index_file_correctly_reloads_with_four_pages_of_data() {
-    insertRecordsLinearly(100, 100, 125056);
+    insertRecordsLinearly(100, 125056);
     tearDown();
     setupEmbedDB(RECOVERY_PARAMETERS);
     TEST_ASSERT_EQUAL_UINT32_MESSAGE(4, state->nextIdxPageId, "EmbedDB nextIdxPageId was initialized incorrectly when four index pages were present in the index file.");
@@ -152,7 +173,7 @@ void embedDB_index_file_correctly_reloads_with_four_pages_of_data() {
 }
 
 void embedDB_index_file_correctly_reloads_with_eight_pages_of_data() {
-    insertRecordsLinearly(100, 100, 250111);
+    insertRecordsLinearly(100, 250111);
     tearDown();
     setupEmbedDB(RECOVERY_PARAMETERS);
     TEST_ASSERT_EQUAL_UINT32_MESSAGE(8, state->nextIdxPageId, "EmbedDB nextIdxPageId was initialized incorrectly when four index pages were present in the index file.");
@@ -161,7 +182,7 @@ void embedDB_index_file_correctly_reloads_with_eight_pages_of_data() {
 }
 
 void embedDB_index_file_correctly_reloads_with_sixteen_pages_of_data() {
-    insertRecordsLinearly(100, 100, 500222);
+    insertRecordsLinearly(100, 500222);
     tearDown();
     setupEmbedDB(RECOVERY_PARAMETERS);
     TEST_ASSERT_EQUAL_UINT32_MESSAGE(16, state->nextIdxPageId, "EmbedDB nextIdxPageId was initialized incorrectly when four index pages were present in the index file.");
@@ -170,7 +191,7 @@ void embedDB_index_file_correctly_reloads_with_sixteen_pages_of_data() {
 }
 
 void embedDB_index_file_correctly_reloads_with_seventeen_pages_of_data() {
-    insertRecordsLinearly(100, 100, 532288);
+    insertRecordsLinearly(100, 532288);
     tearDown();
     setupEmbedDB(RECOVERY_PARAMETERS);
     TEST_ASSERT_EQUAL_UINT32_MESSAGE(17, state->nextIdxPageId, "EmbedDB nextIdxPageId was initialized incorrectly when four index pages were present in the index file.");
@@ -181,6 +202,7 @@ void embedDB_index_file_correctly_reloads_with_seventeen_pages_of_data() {
 int runUnityTests() {
     UNITY_BEGIN();
     RUN_TEST(embedDB_index_file_correctly_reloads_with_no_data);
+    RUN_TEST(embedDBFlush_should_not_flush_index_pages);
     RUN_TEST(embedDB_index_file_correctly_reloads_with_one_page_of_data);
     RUN_TEST(embedDB_index_file_correctly_reloads_with_four_pages_of_data);
     RUN_TEST(embedDB_index_file_correctly_reloads_with_eight_pages_of_data);

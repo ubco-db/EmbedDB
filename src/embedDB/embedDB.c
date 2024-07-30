@@ -185,6 +185,7 @@ int8_t embedDBInit(embedDBState *state, size_t indexMaxError) {
     /* Header size depends on bitmap size: 6 + X bytes: 4 byte id, 2 for record count, X for bitmap. */
     state->headerSize = 6;
     if (EMBEDDB_USING_INDEX(state->parameters)) {
+        /* TODO: Add check that bitmap is also enabled */
         if (state->numIndexPages % state->eraseSizeInPages != 0) {
 #ifdef PRINT_ERRORS
             printf("ERROR: The number of allocated index pages must be divisible by the erase size in pages.\n");
@@ -197,6 +198,13 @@ int8_t embedDBInit(embedDBState *state, size_t indexMaxError) {
             printf("ERROR: The minimum number of index pages is 4 times the eraseSizeInPages.\n");
 #endif
             return -1;
+        }
+
+        if (!EMBEDDB_USING_BMAP(state->parameters)) {
+#ifdef PRINT_ERRORS
+            printf("WARNING: Using the data index requires the bitmap to be enabled. This will automatically be enabled.\n");
+#endif
+            state->parameters |= EMBEDDB_USE_BMAP;
         }
 
         state->headerSize += state->bitmapSize;
@@ -760,7 +768,14 @@ int8_t embedDBInitIndexFromFile(embedDBState *state) {
     state->numAvailIndexPages = state->numIndexPages + state->minIndexPageId - maxLogicaIndexPageId - 1;
 
     /* Compute how many bitmaps we should have and how many we do have */
+    id_t minDataPageWithIndex = 0;
+    memcpy(&minDataPageWithIndex, (int8_t *)buffer + 8, sizeof(id_t));
     id_t numberOfDataPages = state->nextDataPageId - state->minDataPageId;
+
+    /* Check if the minDataPage on record is less than the minIndexPage on record */
+    if (state->minDataPageId < minDataPageWithIndex) {
+        /* code */
+    }
 
     return 0;
 }
