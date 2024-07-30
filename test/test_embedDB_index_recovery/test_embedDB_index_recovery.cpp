@@ -68,7 +68,7 @@
 #include "unity.h"
 
 embedDBState *state;
-const int16_t RECOVERY_PARAMETERS = EMBEDDB_USE_INDEX;
+const int16_t RECOVERY_PARAMETERS = EMBEDDB_USE_INDEX | EMBEDDB_USE_BMAP;
 
 void setupEmbedDB(int16_t parameters) {
     state = (embedDBState *)malloc(sizeof(embedDBState));
@@ -100,7 +100,7 @@ void setupEmbedDB(int16_t parameters) {
 }
 
 void setUp() {
-    int16_t parameters = EMBEDDB_USE_INDEX | EMBEDDB_RESET_DATA;
+    int16_t parameters = EMBEDDB_USE_INDEX | EMBEDDB_RESET_DATA | EMBEDDB_USE_BMAP;
     setupEmbedDB(parameters);
 }
 
@@ -113,17 +113,15 @@ void tearDown() {
     free(state);
 }
 
-void insertRecordsLinearly(int32_t startingKey, int32_t startingData, int32_t numRecords) {
-    int8_t *data = (int8_t *)malloc(state->recordSize);
-    *((int32_t *)data) = startingKey;
-    *((int32_t *)(data + 4)) = startingData;
-    for (int i = 0; i < numRecords; i++) {
-        *((int32_t *)data) += 1;
-        *((int64_t *)(data + 4)) += 1;
-        int8_t result = embedDBPut(state, data, (void *)(data + 4));
+void insertRecordsLinearly(int32_t startingKey, uint32_t numRecords) {
+    /* TODO: Decide on how to vary the data to get better bitmap results*/
+    int32_t key = startingKey;
+    int32_t data = 0;
+    for (uint32_t i = 0; i < numRecords; i++) {
+        int8_t result = embedDBPut(state, &startingKey, &data);
         TEST_ASSERT_EQUAL_INT8_MESSAGE(0, result, "EmbedDB Put did not correctly insert data (returned non-zero code)");
+        key++;
     }
-    free(data);
 }
 
 void embedDB_index_file_correctly_reloads_with_no_data() {
