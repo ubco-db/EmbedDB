@@ -623,8 +623,8 @@ void embedDBInitSplineFromFile(embedDBState *state) {
 int8_t embedDBInitIndex(embedDBState *state) {
     /* Setup index file. */
 
-    /* 4 for id, 2 for count, 2 unused, 4 for minKey (pageId), 4 for maxKey (pageId) */
-    state->maxIdxRecordsPerPage = (state->pageSize - 16) / state->bitmapSize;
+    /* 4 for id, 2 for count, 2 unused, 4 for minKey (pageId), 4 that are currently empty */
+    state->maxIdxRecordsPerPage = (state->pageSize - EMBEDDB_IDX_HEADER_SIZE) / state->bitmapSize;
 
     /* Allocate third page of buffer as index output page */
     initBufferPage(state, EMBEDDB_INDEX_WRITE_BUFFER);
@@ -713,68 +713,89 @@ int8_t embedDBInitIndexFromFile(embedDBState *state) {
         i++;
     }
 
-    /* if we have no valid data, we just have an empty file can can start from the scratch */
-    if (!hasData)
-        return 0;
+    /**
+     *  If we have index data, we need to scan through the file for recovery.
+     *  If there is no data in the file, there still may be bitmaps written to storage on the datafile that we can recover.
+     **/
+    if (hasData) {
+        while (moreToRead && count < state->numIndexPages) {
+            memcpy(&logicalIndexPageId, buffer, sizeof(id_t));
+            validData = logicalIndexPageId % state->numIndexPages == count;
+            if (validData && logicalIndexPageId == maxLogicaIndexPageId + 1) {
+                maxLogicaIndexPageId = logicalIndexPageId;
+                physicalIndexPageId++;
+                moreToRead = !(readIndexPage(state, physicalIndexPageId));
+                indexCount = EMBEDDB_GET_COUNT(buffer);
+                numberOfBitmaps += indexCount;
+                count++;
+            } else {
+                break;
+            }
+        }
 
-    while (moreToRead && count < state->numIndexPages) {
-        memcpy(&logicalIndexPageId, buffer, sizeof(id_t));
-        validData = logicalIndexPageId % state->numIndexPages == count;
-        if (validData && logicalIndexPageId == maxLogicaIndexPageId + 1) {
-            maxLogicaIndexPageId = logicalIndexPageId;
-            physicalIndexPageId++;
+        /*
+         * Now we need to find where the page with the smallest key that is still valid.
+         * The default case is we have not wrapped and the page number for the physical page with the smallest key is 0.
+         */
+        id_t physicalPageIDOfSmallestData = 0;
+
+        /* check if data exists at this location */
+        if (moreToRead && count < state->numIndexPages) {
+            /* find where the next block boundary is */
+            id_t pagesToBlockBoundary = blockSize - (count % blockSize);
+
+            /* go to the next block boundary */
+            physicalIndexPageId = (physicalIndexPageId + pagesToBlockBoundary) % state->numIndexPages;
             moreToRead = !(readIndexPage(state, physicalIndexPageId));
-            indexCount = EMBEDDB_GET_COUNT(buffer);
-            numberOfBitmaps += indexCount;
-            count++;
-        } else {
-            break;
+
+            /* there should have been more to read becuase the file should not be empty at this point if it was not empty at the previous block */
+            if (!moreToRead) {
+                return -1;
+            }
+
+            /* check if data is valid or if it is junk */
+            memcpy(&logicalIndexPageId, buffer, sizeof(id_t));
+            validData = logicalIndexPageId % state->numIndexPages == physicalIndexPageId;
+
+            /* this means we have wrapped and our start is actually here */
+            if (validData) {
+                physicalPageIDOfSmallestData = physicalIndexPageId;
+            }
         }
+
+        state->nextIdxPageId = maxLogicaIndexPageId + 1;
+        readIndexPage(state, physicalPageIDOfSmallestData);
+        memcpy(&(state->minIndexPageId), buffer, sizeof(id_t));
+        state->numAvailIndexPages = state->numIndexPages + state->minIndexPageId - maxLogicaIndexPageId - 1;
     }
-
-    /*
-     * Now we need to find where the page with the smallest key that is still valid.
-     * The default case is we have not wrapped and the page number for the physical page with the smallest key is 0.
-     */
-    id_t physicalPageIDOfSmallestData = 0;
-
-    /* check if data exists at this location */
-    if (moreToRead && count < state->numIndexPages) {
-        /* find where the next block boundary is */
-        id_t pagesToBlockBoundary = blockSize - (count % blockSize);
-
-        /* go to the next block boundary */
-        physicalIndexPageId = (physicalIndexPageId + pagesToBlockBoundary) % state->numIndexPages;
-        moreToRead = !(readIndexPage(state, physicalIndexPageId));
-
-        /* there should have been more to read becuase the file should not be empty at this point if it was not empty at the previous block */
-        if (!moreToRead) {
-            return -1;
-        }
-
-        /* check if data is valid or if it is junk */
-        memcpy(&logicalIndexPageId, buffer, sizeof(id_t));
-        validData = logicalIndexPageId % state->numIndexPages == physicalIndexPageId;
-
-        /* this means we have wrapped and our start is actually here */
-        if (validData) {
-            physicalPageIDOfSmallestData = physicalIndexPageId;
-        }
-    }
-
-    state->nextIdxPageId = maxLogicaIndexPageId + 1;
-    readIndexPage(state, physicalPageIDOfSmallestData);
-    memcpy(&(state->minIndexPageId), buffer, sizeof(id_t));
-    state->numAvailIndexPages = state->numIndexPages + state->minIndexPageId - maxLogicaIndexPageId - 1;
 
     /* Compute how many bitmaps we should have and how many we do have */
-    id_t minDataPageWithIndex = 0;
-    memcpy(&minDataPageWithIndex, (int8_t *)buffer + 8, sizeof(id_t));
-    id_t numberOfDataPages = state->nextDataPageId - state->minDataPageId;
+    id_t expectedNumberOfIndices = state->nextDataPageId;
+    id_t numDataIndicies = state->nextIdxPageId * state->maxIdxRecordsPerPage;
+    id_t numPagesToRead = expectedNumberOfIndices - numDataIndicies;
 
-    /* Check if the minDataPage on record is less than the minIndexPage on record */
-    if (state->minDataPageId < minDataPageWithIndex) {
-        /* code */
+    if (numPagesToRead > 0) {
+        id_t pageToRead = state->nextDataPageId - numPagesToRead;
+        int8_t readResult = 0;
+        void *dataPageBuffer = state->buffer + state->pageSize * EMBEDDB_DATA_READ_BUFFER;
+        void *indexWriteBuffer = state->buffer + state->pageSize * EMBEDDB_INDEX_WRITE_BUFFER;
+
+        /* Add page id to minimum value spot in page */
+        memcpy((int8_t *)indexWriteBuffer + 8, &pageToRead, sizeof(id_t));
+
+        /* Put all bitmaps that were written to storgae on the data page but not yet on the index page into the buffer */
+        for (id_t i = 0; i < numPagesToRead; i++) {
+            readResult = readPage(state, pageToRead % state->numDataPages);
+            if (readResult == -1) {
+#ifdef PRINT_ERRORS
+                printf("Error: Unable to read page from data file!\n");
+#endif
+                return -1;
+            }
+            void *bitmap = EMBEDDB_GET_BITMAP(dataPageBuffer);
+            EMBEDDB_INC_COUNT(indexWriteBuffer);
+            memcpy((int8_t *)indexWriteBuffer + EMBEDDB_IDX_HEADER_SIZE + state->bitmapSize * i, bitmap, state->bitmapSize);
+        }
     }
 
     return 0;

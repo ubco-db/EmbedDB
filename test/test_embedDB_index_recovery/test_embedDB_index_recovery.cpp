@@ -137,6 +137,11 @@ void embedDB_index_file_correctly_reloads_with_no_data() {
     TEST_ASSERT_EQUAL_UINT32_MESSAGE(0, state->nextIdxPageId, "EmbedDB nextIdxPageId was initialized incorrectly when no data was present in the index file.");
     TEST_ASSERT_EQUAL_UINT32_MESSAGE(16, state->numAvailIndexPages, "EmbedDB nextIdxPageId was initialized incorrectly when no data was present in the index file.");
     TEST_ASSERT_EQUAL_UINT32_MESSAGE(0, state->minIndexPageId, "EmbedDB minIndexPageId was initialized incorrectly when no data was present in the index file.");
+
+    /* Check that index buffer also has no records. */
+    void *indexWriteBuffer = state->buffer + state->pageSize * EMBEDDB_INDEX_WRITE_BUFFER;
+    count_t numIndices = EMBEDDB_GET_COUNT(indexWriteBuffer);
+    TEST_ASSERT_EQUAL_UINT16(0, numIndices);
 }
 
 void embedDBFlush_should_not_flush_index_pages() {
@@ -199,6 +204,49 @@ void embedDB_index_file_correctly_reloads_with_seventeen_pages_of_data() {
     TEST_ASSERT_EQUAL_UINT32_MESSAGE(2, state->minIndexPageId, "EmbedDB minIndexPageId was initialized incorrectly when four index pages were present in the index file.");
 }
 
+void embedDBIndexRecovery_should_recover_indicies_in_buffer_with_no_index_pages_written() {
+    insertRecordsLinearly(100, 11907);
+    embedDBFlush(state);
+    tearDown();
+    setupEmbedDB(RECOVERY_PARAMETERS);
+    TEST_ASSERT_EQUAL_UINT32_MESSAGE(0, state->nextIdxPageId, "EmbedDB nextIdxPageId was initialized incorrectly when four index pages were present in the index file.");
+    TEST_ASSERT_EQUAL_UINT32_MESSAGE(16, state->numAvailIndexPages, "EmbedDB nextIdxPageId was initialized incorrectly when four index pages were present in the index file.");
+    TEST_ASSERT_EQUAL_UINT32_MESSAGE(0, state->minIndexPageId, "EmbedDB minIndexPageId was initialized incorrectly when four index pages were present in the index file.");
+
+    /* Check that index buffer also . */
+    void *indexWriteBuffer = (int8_t *)state->buffer + state->pageSize * EMBEDDB_INDEX_WRITE_BUFFER;
+    count_t numIndices = EMBEDDB_GET_COUNT(indexWriteBuffer);
+    TEST_ASSERT_EQUAL_UINT16(189, numIndices);
+
+    /* Check that the bitmap is correct */
+    uint8_t expectedBitmap = 128 | 64 | 32 | 16;
+    uint8_t actualBitmap = 0;
+    memcpy(&actualBitmap, (uint8_t *)indexWriteBuffer + EMBEDDB_IDX_HEADER_SIZE, state->bitmapSize);
+    TEST_ASSERT_EQUAL_UINT8_MESSAGE(expectedBitmap, actualBitmap, "embedDBIndexRecovery did not correctly recover the bitmap for the first data index.");
+}
+
+void embedDBIndexRecovery_should_recover_indicies_in_buffer_with_with_seven_pages_written() {
+    /* This number of inserts results in 7 full index pages being written and then three data pages whose indicies are only in the buffer before tearDown */
+    insertRecordsLinearly(100, 218925);
+    embedDBFlush(state);
+    tearDown();
+    setupEmbedDB(RECOVERY_PARAMETERS);
+    TEST_ASSERT_EQUAL_UINT32_MESSAGE(7, state->nextIdxPageId, "EmbedDB nextIdxPageId was initialized incorrectly when four index pages were present in the index file.");
+    TEST_ASSERT_EQUAL_UINT32_MESSAGE(9, state->numAvailIndexPages, "EmbedDB nextIdxPageId was initialized incorrectly when four index pages were present in the index file.");
+    TEST_ASSERT_EQUAL_UINT32_MESSAGE(0, state->minIndexPageId, "EmbedDB minIndexPageId was initialized incorrectly when four index pages were present in the index file.");
+
+    /* Check that index buffer also . */
+    void *indexWriteBuffer = (int8_t *)state->buffer + state->pageSize * EMBEDDB_INDEX_WRITE_BUFFER;
+    count_t numIndices = EMBEDDB_GET_COUNT(indexWriteBuffer);
+    TEST_ASSERT_EQUAL_UINT16(3, numIndices);
+
+    /* Check that the bitmap is correct */
+    uint8_t expectedBitmap = 128 | 64 | 32 | 16;
+    uint8_t actualBitmap = 0;
+    memcpy(&actualBitmap, (uint8_t *)indexWriteBuffer + EMBEDDB_IDX_HEADER_SIZE, state->bitmapSize);
+    TEST_ASSERT_EQUAL_UINT8_MESSAGE(expectedBitmap, actualBitmap, "embedDBIndexRecovery did not correctly recover the bitmap for the first data index.");
+}
+
 int runUnityTests() {
     UNITY_BEGIN();
     RUN_TEST(embedDB_index_file_correctly_reloads_with_no_data);
@@ -208,6 +256,8 @@ int runUnityTests() {
     RUN_TEST(embedDB_index_file_correctly_reloads_with_eight_pages_of_data);
     RUN_TEST(embedDB_index_file_correctly_reloads_with_sixteen_pages_of_data);
     RUN_TEST(embedDB_index_file_correctly_reloads_with_seventeen_pages_of_data);
+    RUN_TEST(embedDBIndexRecovery_should_recover_indicies_in_buffer_with_no_index_pages_written);
+    RUN_TEST(embedDBIndexRecovery_should_recover_indicies_in_buffer_with_with_seven_pages_written);
     return UNITY_END();
 }
 
