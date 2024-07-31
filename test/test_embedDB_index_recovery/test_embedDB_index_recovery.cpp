@@ -139,7 +139,7 @@ void embedDB_index_file_correctly_reloads_with_no_data() {
     TEST_ASSERT_EQUAL_UINT32_MESSAGE(0, state->minIndexPageId, "EmbedDB minIndexPageId was initialized incorrectly when no data was present in the index file.");
 
     /* Check that index buffer also has no records. */
-    void *indexWriteBuffer = state->buffer + state->pageSize * EMBEDDB_INDEX_WRITE_BUFFER;
+    void *indexWriteBuffer = (int8_t *)state->buffer + state->pageSize * EMBEDDB_INDEX_WRITE_BUFFER;
     count_t numIndices = EMBEDDB_GET_COUNT(indexWriteBuffer);
     TEST_ASSERT_EQUAL_UINT16(0, numIndices);
 }
@@ -235,15 +235,56 @@ void embedDBIndexRecovery_should_recover_indicies_in_buffer_with_with_seven_page
     TEST_ASSERT_EQUAL_UINT32_MESSAGE(9, state->numAvailIndexPages, "EmbedDB nextIdxPageId was initialized incorrectly when four index pages were present in the index file.");
     TEST_ASSERT_EQUAL_UINT32_MESSAGE(0, state->minIndexPageId, "EmbedDB minIndexPageId was initialized incorrectly when four index pages were present in the index file.");
 
-    /* Check that index buffer also . */
+    /* Check that index buffer also has correct data. */
     void *indexWriteBuffer = (int8_t *)state->buffer + state->pageSize * EMBEDDB_INDEX_WRITE_BUFFER;
     count_t numIndices = EMBEDDB_GET_COUNT(indexWriteBuffer);
     TEST_ASSERT_EQUAL_UINT16(3, numIndices);
 
     /* Check that the bitmap is correct */
-    uint8_t expectedBitmap = 128 | 64 | 32 | 16;
+    uint8_t expectedBitmap = 32 | 16 | 8 | 4;
     uint8_t actualBitmap = 0;
     memcpy(&actualBitmap, (uint8_t *)indexWriteBuffer + EMBEDDB_IDX_HEADER_SIZE, state->bitmapSize);
+    TEST_ASSERT_EQUAL_UINT8_MESSAGE(expectedBitmap, actualBitmap, "embedDBIndexRecovery did not correctly recover the bitmap for the first data index.");
+}
+
+void embedDBIndexRecovery_should_recover_indicies_in_buffer_with_sixteen_pages_of_data_written() {
+    /* Write out 16 index pages and have 289 on the datafile but not buffered */
+    insertRecordsLinearly(4000, 518175);
+    embedDBFlush(state);
+    tearDown();
+    setupEmbedDB(RECOVERY_PARAMETERS);
+    TEST_ASSERT_EQUAL_UINT32_MESSAGE(16, state->nextIdxPageId, "EmbedDB nextIdxPageId was initialized incorrectly when four index pages were present in the index file.");
+    TEST_ASSERT_EQUAL_UINT32_MESSAGE(0, state->numAvailIndexPages, "EmbedDB nextIdxPageId was initialized incorrectly when four index pages were present in the index file.");
+    TEST_ASSERT_EQUAL_UINT32_MESSAGE(0, state->minIndexPageId, "EmbedDB minIndexPageId was initialized incorrectly when four index pages were present in the index file.");
+
+    void *indexWriteBuffer = (int8_t *)state->buffer + state->pageSize * EMBEDDB_INDEX_WRITE_BUFFER;
+    count_t numIndices = EMBEDDB_GET_COUNT(indexWriteBuffer);
+    TEST_ASSERT_EQUAL_UINT16(289, numIndices);
+
+    /* Check that the bitmap is correct */
+    uint8_t expectedBitmap = 2;
+    uint8_t actualBitmap = 0;
+    memcpy(&actualBitmap, (uint8_t *)indexWriteBuffer + EMBEDDB_IDX_HEADER_SIZE, state->bitmapSize);
+    TEST_ASSERT_EQUAL_UINT8_MESSAGE(expectedBitmap, actualBitmap, "embedDBIndexRecovery did not correctly recover the bitmap for the first data index.");
+}
+
+void embedDBIndexRecovery_should_recover_indicies_in_buffer_with_21_pages_of_data_written() {
+    /* 21 pages of index written and then five extra indicies */
+    insertRecordsLinearly(4000, 656523);
+    embedDBFlush(state);
+    tearDown();
+    setupEmbedDB(RECOVERY_PARAMETERS);
+    TEST_ASSERT_EQUAL_UINT32_MESSAGE(21, state->nextIdxPageId, "EmbedDB nextIdxPageId was initialized incorrectly when four index pages were present in the index file.");
+    TEST_ASSERT_EQUAL_UINT32_MESSAGE(1, state->numAvailIndexPages, "EmbedDB nextIdxPageId was initialized incorrectly when four index pages were present in the index file.");
+    TEST_ASSERT_EQUAL_UINT32_MESSAGE(6, state->minIndexPageId, "EmbedDB minIndexPageId was initialized incorrectly when four index pages were present in the index file.");
+
+    void *indexWriteBuffer = (int8_t *)state->buffer + state->pageSize * EMBEDDB_INDEX_WRITE_BUFFER;
+    count_t numIndices = EMBEDDB_GET_COUNT(indexWriteBuffer);
+    TEST_ASSERT_EQUAL_UINT16(5, numIndices);
+
+    uint8_t expectedBitmap = 1 | 128 | 2;
+    uint8_t actualBitmap = 0;
+    memcpy(&actualBitmap, (uint8_t *)indexWriteBuffer + EMBEDDB_IDX_HEADER_SIZE + state->bitmapSize * (numIndices - 1), state->bitmapSize);
     TEST_ASSERT_EQUAL_UINT8_MESSAGE(expectedBitmap, actualBitmap, "embedDBIndexRecovery did not correctly recover the bitmap for the first data index.");
 }
 
@@ -258,6 +299,8 @@ int runUnityTests() {
     RUN_TEST(embedDB_index_file_correctly_reloads_with_seventeen_pages_of_data);
     RUN_TEST(embedDBIndexRecovery_should_recover_indicies_in_buffer_with_no_index_pages_written);
     RUN_TEST(embedDBIndexRecovery_should_recover_indicies_in_buffer_with_with_seven_pages_written);
+    RUN_TEST(embedDBIndexRecovery_should_recover_indicies_in_buffer_with_sixteen_pages_of_data_written);
+    RUN_TEST(embedDBIndexRecovery_should_recover_indicies_in_buffer_with_21_pages_of_data_written);
     return UNITY_END();
 }
 
