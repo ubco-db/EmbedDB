@@ -790,6 +790,7 @@ int8_t embedDBInitIndexFromFile(embedDBState *state) {
             void *bitmap = EMBEDDB_GET_BITMAP(dataPageBuffer);
             EMBEDDB_INC_COUNT(indexWriteBuffer);
             memcpy((int8_t *)indexWriteBuffer + EMBEDDB_IDX_HEADER_SIZE + state->bitmapSize * i, bitmap, state->bitmapSize);
+            pageToRead++;
         }
     }
 
