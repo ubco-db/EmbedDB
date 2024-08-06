@@ -185,7 +185,6 @@ int8_t embedDBInit(embedDBState *state, size_t indexMaxError) {
     /* Header size depends on bitmap size: 6 + X bytes: 4 byte id, 2 for record count, X for bitmap. */
     state->headerSize = 6;
     if (EMBEDDB_USING_INDEX(state->parameters)) {
-        /* TODO: Add check that bitmap is also enabled */
         if (state->numIndexPages % state->eraseSizeInPages != 0) {
 #ifdef PRINT_ERRORS
             printf("ERROR: The number of allocated index pages must be divisible by the erase size in pages.\n");
@@ -2172,7 +2171,6 @@ int8_t writeTemporaryPage(embedDBState *state, void *buffer) {
     }
 
     /* Setup page number in header */
-    /* TODO: Maybe talk to Ramon about optimizing this */
     memcpy(buffer, &(state->nextDataPageId), sizeof(id_t));
 
     /* Wrap if needed */
