@@ -316,7 +316,7 @@ embedDBState* init_state() {
 
     // address level parameters
     state->numDataPages = 256;
-    state->numIndexPages = 8;
+    state->numIndexPages = 16;
     state->eraseSizeInPages = 4;
 
     // configure file interface
