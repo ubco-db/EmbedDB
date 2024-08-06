@@ -681,7 +681,6 @@ int8_t embedDBInitIndexFromFile(embedDBState *state) {
     id_t maxLogicaIndexPageId = 0;
     id_t physicalIndexPageId = 0;
     id_t count = 0;
-    id_t numberOfBitmaps = 0;
     count_t blockSize = state->eraseSizeInPages;
     bool validData = false;
     bool hasData = false;
@@ -703,7 +702,6 @@ int8_t embedDBInitIndexFromFile(embedDBState *state) {
             physicalIndexPageId++;
             count++;
             i = 2;
-            numberOfBitmaps += indexCount;
         } else {
             physicalIndexPageId += blockSize;
             count += blockSize;
@@ -724,8 +722,6 @@ int8_t embedDBInitIndexFromFile(embedDBState *state) {
                 maxLogicaIndexPageId = logicalIndexPageId;
                 physicalIndexPageId++;
                 moreToRead = !(readIndexPage(state, physicalIndexPageId));
-                indexCount = EMBEDDB_GET_COUNT(buffer);
-                numberOfBitmaps += indexCount;
                 count++;
             } else {
                 break;
