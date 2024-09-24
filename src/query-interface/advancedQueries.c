@@ -464,6 +464,106 @@ embedDBOperator* createSelectionOperator(embedDBOperator* input, int8_t colNum, 
     return op;
 }
 
+
+void initOrderBy(embedDBOperator *op) {
+    if (op == NULL || op->input == NULL) {
+#ifdef PRINT_ERRORS
+        printf("ERROR: ORDER BY: NULL input operator\n");
+#endif
+        return;
+    }
+
+    op->input->init(op->input);
+
+    if (op->schema == NULL) {
+        op->schema = copySchema(op->input->schema);
+    }
+
+    if (op->recordBuffer == NULL) {
+        op->recordBuffer = createBufferFromSchema(op->schema);
+        if (op->recordBuffer == NULL) {
+#ifdef PRINT_ERRORS
+            printf("ERROR: ORDER BY: Failed to allocate buffer\n");
+#endif
+            return;
+        }
+    }
+
+    initSort(op);
+
+    return;
+}
+
+int8_t nextOrderBy(embedDBOperator *op) {
+    if (op == NULL) {
+#ifdef PRINT_ERRORS
+        printf("ERROR: ORDER BY: NULL input operator\n");
+#endif
+        return -1;  
+    }
+
+    if (readNextRecord(((orderByInfo *)op->state)->fileIterator, op->recordBuffer) != 0) {
+        return -1;
+    } 
+
+    return 0;
+}
+
+void closeOrderBy(embedDBOperator *op) {
+    op->input->close(op->input);
+    op->input = NULL;
+    embedDBFreeSchema(&op->schema);
+    // TODO: free state data
+    free(op->state);
+    op->state = NULL;
+    free(op->recordBuffer);
+    op->recordBuffer = NULL;
+}
+
+/**
+ * @brief Create an operator that will reorder records based on a given method
+ * 
+ * @param dbState       The database state
+ * @param input         The operator that this operator can pull records from
+ * @param colNum        The column that is being sorted on 
+ * @param method        Ordering:
+ *                      0:      Asc
+ *                      1:      Dec
+ */
+embedDBOperator* createOrderByOperator(embedDBState *dbState, embedDBOperator *input, int8_t colNum, int8_t method) {
+    if (input == NULL || dbState == NULL) {
+#ifdef PRINT_ERRORS
+        printf("ERROR: ORDER BY: Input operator or database state is null\n");
+#endif
+        return NULL;  
+    }
+
+    // Operator state
+    struct orderByInfo *state = malloc(sizeof(struct orderByInfo));
+    embedDBOperator *op = malloc(sizeof(embedDBOperator));
+    
+    if (state == NULL || op == NULL) {
+#ifdef PRINT_ERRORS
+        printf("ERROR: ORDER BY: malloc failed\n");
+#endif
+        return NULL;
+    }
+
+    state->fileInterface = dbState->fileInterface;
+    state->colNum = colNum;
+    state->method = method;
+
+    op->state = state;
+    op->input = input;
+    op->schema = NULL;
+    op->recordBuffer = NULL;
+    op->init = initOrderBy;
+    op->next = nextOrderBy;
+    op->close = closeOrderBy;
+
+    return op;
+}
+
 /**
  * @brief	A private struct to hold the state of the aggregate operator
  */

@@ -6,7 +6,7 @@
  *
  */
 #ifndef WHICH_PROGRAM
-#define WHICH_PROGRAM 0
+#define WHICH_PROGRAM 3
 #endif
 
 #if WHICH_PROGRAM == 0
