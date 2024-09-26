@@ -342,7 +342,8 @@ int flash_minsort(
         // Store record in block (already done during call to next)        
         buf = (void *)(outputBuffer+count*es->record_size+es->headerSize);        
         count++;
-
+        printf("Key value: %d Value: %d", *((int32_t *) buf), *((int32_t *)(buf + 4)));
+        
         if (count == values_per_page)
         {   // Write block
             *((int32_t *) outputBuffer) = blockIndex;                             /* Block index */
