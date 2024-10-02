@@ -81,6 +81,27 @@
 #endif
 
 embedDBState* init_state();
+bool boolFunction1(const int* key, const void* data);
+bool boolFunction2(const int* key, const void* data);
+void callbackFunction(const int* key, const void* data);
+
+bool boolFunction1(const int* key, const void* data) {
+    if (*(uint32_t*)data < 5) {
+        return true;
+    }
+    return false;
+}
+
+bool boolFunction2(const int* key, const void* data) {
+    if (*(uint32_t*)data > 15) {
+        return true;
+    }
+    return false;
+}
+
+void callbackFunction(const int* key, const void* data) {
+    printf("This is the callbackFunction! Key: %d, Data: %d\n", *key, *(uint32_t*)data);
+}
 
 uint32_t embedDBExample() {
     uint32_t totalRecordsInserted = 0;
@@ -91,6 +112,9 @@ uint32_t embedDBExample() {
     embedDBState* state;
     state = init_state();
     embedDBPrintInit(state);
+
+    state->booleanFunction = boolFunction1;
+    state->callbackFunction = callbackFunction;
 
     // Inserting 10 fixed-length records
     printf("******************* For inserting 10 fixed-length records using embedDBPut() **********************\n");
@@ -117,57 +141,34 @@ uint32_t embedDBExample() {
         free(dataPtr);
     }
 
-    // Retrieving 10 fixed-length records
-    printf("******************* For retrieving %d fixed-length records using embedDBGet() *********************\n", totalRecordsToInsert);
-    for (uint32_t i = 0; i < totalRecordsToInsert; i++) {
-        // key for data retrieval
+    // Inserting 10 more fixed-length records
+    printf("******************* For inserting 10 more fixed-length records using embedDBPut() **********************\n");
+    state->booleanFunction = boolFunction2;
+    // iterate from 10 -> 20
+    for (uint32_t i = 10; i < 20; i++) {
+        // Initalize key (as they must be in ascending order)
         uint32_t key = i;
 
-        // data pointer for retrieval
-        uint32_t returnDataPtr[] = {0, 0, 0};
+        // calloc dataPtr in the heap
+        void* dataPtr = calloc(1, state->dataSize);
 
-        // query embedDB
-        embedDBGet(state, (void*)&key, (void*)returnDataPtr);
+        // set value to be inserted
+        *((uint32_t*)dataPtr) = i % 100;
 
-        // print result
-        printf("Returned key = %d data = %d\n", key, *returnDataPtr);
+        // perform insertion of key and data value. Record value of embedDBPut to ensure no errors.
+        int8_t result = embedDBPut(state, &key, dataPtr);
+        printf("Inserted key = %ld and data = %d\n", i, *((uint32_t*)dataPtr));
+        if (result != SUCCESS) {
+            printf("Error inserting fixed-length records\n");
+        }
+        totalRecordsInserted++;
+
+        // free dynamic memory
+        free(dataPtr);
     }
 
-    // Iterating over 10 fixed-length records
-    printf("******************* Iterating over %d fixed-length records using embedDBNext() ********************\n", 10);
-
-    // declare EmbedDB iterator.
-    embedDBIterator it;
-
-    // ensure that itKey is the same size as state->recordSize.
-    uint32_t* itKey;
-
-    // Allocate memory for itData matching the size of state->datasize.
-    uint32_t* itData[] = {0, 0, 0};
-
-    // specify min and max key to perform search on.
-    uint32_t minKey = 0;
-    uint32_t maxKey = 9;  // iterating over all records
-
-    // initalize buffer variables.
-    it.minKey = &minKey;
-    it.maxKey = &maxKey;
-    it.minData = NULL;
-    it.maxData = NULL;
-
-    // initialize
-    embedDBInitIterator(state, &it);
-
-    // while there are records to read.
-    while (embedDBNext(state, &it, (void**)&itKey, (void**)&itData)) {
-        printf("Iterated key = %d and data = %ld \n", itKey, *(long*)itData);
-    }
-
-    // flushing the 10 records from the fixed-length write buffer into non volitile storage
-    printf("******************* Flush EmbedDB()'s write buffers to storage ************************************\n");
-    embedDBFlush(state);
-    printf("Flush complete\n");
-
+    state->booleanFunction = NULL;
+    
     printf("******************* Insert 10 variable-length record **********************************************\n");
     for (uint32_t i = 0; i < 10; i++) {
         // init key
@@ -323,6 +324,7 @@ embedDBState* init_state() {
     state->buildBitmapFromRange = buildBitmapInt8FromRange;
     state->compareKey = int32Comparator;
     state->compareData = int32Comparator;
+
 
     // init embedDB
     size_t splineMaxError = 1;

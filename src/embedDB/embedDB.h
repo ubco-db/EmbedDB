@@ -44,6 +44,7 @@ extern "C" {
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdbool.h>
 
 #include "../spline/spline.h"
 
@@ -248,7 +249,10 @@ typedef struct {
     id_t bufferedIndexPageId;                                             /* Index page id currently in index read buffer */
     id_t bufferedVarPage;                                                 /* Variable page id currently in variable read buffer */
     uint8_t recordHasVarData;                                             /* Internal flag to signal that the record currently being written has var data */
+     bool (*booleanFunction)(const int *key, const void *entry);
+    void (*callbackFunction)(const int *key, const void *entry);
 } embedDBState;
+
 
 typedef struct {
     uint32_t nextDataPage; /* Next data page that the iterator should read */
