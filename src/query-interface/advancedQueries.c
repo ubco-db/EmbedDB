@@ -516,6 +516,7 @@ void closeOrderBy(embedDBOperator *op) {
     op->input = NULL;
     embedDBFreeSchema(&op->schema);
     
+    closeSort(((orderByInfo *)op->state)->fileIterator);
     free(((orderByInfo *)op->state)->readBuffer);
     free(((orderByInfo *)op->state)->fileIterator);
 

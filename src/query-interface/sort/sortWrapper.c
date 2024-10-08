@@ -2,12 +2,12 @@
 
 metrics_t initMetric();
 uint32_t loadRowData(orderByInfo *state, embedDBOperator *op, void *unsortedFile, uint16_t recordSize, uint8_t keySize, uint8_t keyCol);
-file_iterator_state_t *startSort(orderByInfo *state, void *unsortedFile, void *sortedFile, uint16_t recordSize, uint32_t count);
+file_iterator_state_t *startSorting(embedDBFileInterface *DESKTOP_FILE_INTERFACE, void *unsortedFile, void *sortedFile, uint16_t recordSize, uint32_t count);
 
 /**
- * @brief   
+ * @brief Begins the sorting operation using row data from previous operator
  * 
- * @param op 
+ * @param op The previous operator that will feed row data
  */
 void initSort(embedDBOperator* op) {
     orderByInfo *state = op->state;
@@ -33,31 +33,55 @@ void initSort(embedDBOperator* op) {
         return;
     }
 
-    uint32_t count;
+    // Write unsorted data
     uint16_t colOffset = getColOffsetFromSchema(op->schema, ((struct orderByInfo *)op->state)->colNum);
     uint16_t recordSize = getRecordSizeFromSchema(op->schema);
-    int8_t colSize = op->schema->columnSizes[((struct orderByInfo *)op->state)->colNum]; // TODO: check the sign of the column size
+    int8_t colSize = op->schema->columnSizes[((struct orderByInfo *)op->state)->colNum];
 
+    // A columns size will be negative if the column is signed
+    // and positive if value is unsigned
     if (colSize < 0) {
         colSize = -1 * colSize;
     }
 
-    // Output rows to file
-    count = loadRowData(state, op, unsortedFile, recordSize, colSize, colOffset);
+    uint32_t count = loadRowData(state, op, unsortedFile, recordSize, colSize, colOffset);
 
-    // Sort data
-    file_iterator_state_t *iteratorState = startSort(state, unsortedFile, sortedFile, recordSize, count);
+    file_iterator_state_t *iteratorState = startSorting(state->fileInterface, unsortedFile, sortedFile, recordSize, count);
+    iteratorState->file = sortedFile;
+    state->fileInterface->close(unsortedFile);
 
     if (iteratorState == NULL) {
         printf("ERROR: Failed to init iterator state");
     }
 
     state->fileIterator = iteratorState;
-
-    state->fileIterator->file = sortedFile;
     state->colSize = colSize;
 }
 
+/**
+ * @brief Adds header information and writes buffer to file 
+ * 
+ * @param buffer            The buffer that is written. Should be atleast the size of pageSize
+ * @param blockIndex        The block index
+ * @param numberOfValues    The the number of database rows stored in the page
+ * @param pageSize          The size of the page
+ * @param fileInterface     The interface used to write the file
+ * @param file              The file being written to
+ * @return int8_t 
+ */
+int8_t writePageWithHeader(void *buffer, int32_t blockIndex, int16_t numberOfValues, int16_t pageSize, embedDBFileInterface *fileInterface, void *file) {
+    memcpy(buffer, &blockIndex, sizeof(int32_t));
+    memcpy((char *)buffer + sizeof(uint32_t), &numberOfValues, sizeof(int16_t));
+    
+    fileInterface->write(buffer, blockIndex, pageSize, file);
+    
+    if (fileInterface->error(file)) {
+        printf("ERROR: SORT: Failed to write unsorted data");
+        return 1;
+    }
+
+    return 0;
+}
 
 /**
  * @brief               Writes row data from the input operator to a file
@@ -85,20 +109,13 @@ uint32_t loadRowData(orderByInfo *state, embedDBOperator *op, void *unsortedFile
 
     // Write row data to file
     while (exec(op->input)) {
-        // Write full page to file
-        if (count % valuesPerPage == 0 && count != 0) {
-            
-            memcpy(buffer, &blockIndex, sizeof(int32_t));
-            memcpy((char *)buffer + sizeof(uint32_t), &valuesPerPage, sizeof(int16_t));
-            
-            state->fileInterface->write(buffer, blockIndex, PAGE_SIZE, unsortedFile);
-            
-            if (state->fileInterface->error(unsortedFile)) {
-                printf("ERROR: SORT: Failed to write unsorted data");
+        // Write page to file when full
+        if (count % valuesPerPage == 0 && count != 0) {        
+            if (writePageWithHeader(buffer, blockIndex, valuesPerPage, PAGE_SIZE, state->fileInterface, unsortedFile)) {
                 free(buffer);
                 return 0;
             }
-
+            
             blockIndex++;
         }
 
@@ -115,20 +132,16 @@ uint32_t loadRowData(orderByInfo *state, embedDBOperator *op, void *unsortedFile
         memcpy((char *)buffer + rowOffset, op->input->recordBuffer + keyOffset, keySize);
         memcpy((char *)buffer + rowOffset + keySize, op->input->recordBuffer, recordSize);
 
-
-        // if (count > 25) // temp limit for debugging
+        // temp limit for debugging
+        // if (count > 25) 
             // break;
 
         count++;
     }
 
     // Write remaining records
-    memcpy(buffer, &blockIndex, sizeof(int32_t));
-    memcpy((char *)buffer + sizeof(uint32_t), &count, sizeof(int16_t));
-    state->fileInterface->write(buffer, blockIndex, BLOCK_HEADER_SIZE + count % valuesPerPage * (recordSize + keySize), unsortedFile);
-    
-    if (state->fileInterface->error(unsortedFile)) {
-        printf("ERROR: SORT: Failed to write unsorted data");
+    int16_t numRemainingRecords = count % valuesPerPage;
+    if(writePageWithHeader(buffer, blockIndex, numRemainingRecords, BLOCK_HEADER_SIZE + numRemainingRecords * (recordSize + keySize), state->fileInterface, unsortedFile)) {
         free(buffer);
         return 0;
     }
@@ -141,8 +154,17 @@ uint32_t loadRowData(orderByInfo *state, embedDBOperator *op, void *unsortedFile
     return count;
 }
 
-
-file_iterator_state_t *startSort(orderByInfo *state, void *unsortedFile, void *sortedFile, uint16_t recordSize, uint32_t count) {
+/**
+ * @brief The data given in the unsortedFile is sorted and stored in the sortedFile
+ * 
+ * @param fileInterface             The file interface            
+ * @param unsortedFile              The file that is loaded with row data
+ * @param sortedFile                An empty file
+ * @param recordSize                The size of the records
+ * @param count                     The total number of records stored in unsortedFile
+ * @return file_iterator_state_t*   An iterator that is used to retrieve the sorted records
+ */
+file_iterator_state_t *startSorting(embedDBFileInterface *fileInterface, void *unsortedFile, void *sortedFile, uint16_t recordSize, uint32_t count) {
     
     // Initialize external_sort_t structure
     external_sort_t es;
@@ -183,7 +205,7 @@ file_iterator_state_t *startSort(orderByInfo *state, void *unsortedFile, void *s
     iteratorState->recordsRead = 0;
     iteratorState->totalRecords = count; // Total records from the previous while loop
     iteratorState->recordSize = es.record_size;
-    iteratorState->fileInterface = state->fileInterface;
+    iteratorState->fileInterface = fileInterface;
     iteratorState->currentRecord = 0;
     iteratorState->recordsLeftInBlock = 0;
 
@@ -209,6 +231,13 @@ file_iterator_state_t *startSort(orderByInfo *state, void *unsortedFile, void *s
     return iteratorState;
 }
 
+/**
+ * @brief Reads the next record from the sorted file
+ * 
+ * @param state     The ORDER BY operator data
+ * @param buffer    A buffer that is the size of one record
+ * @return uint8_t  1: error or eof. 0: otherwise
+ */
 uint8_t readNextRecord(orderByInfo *state, void *buffer) {
     file_iterator_state_t *iteratorState = state->fileIterator;
     uint32_t recordPerPage = (PAGE_SIZE - BLOCK_HEADER_SIZE) / iteratorState->recordSize;
@@ -237,8 +266,9 @@ uint8_t readNextRecord(orderByInfo *state, void *buffer) {
     return 0;
 }
 
-void closeSort() {
-
+void closeSort(file_iterator_state_t *iteratorState) {
+    iteratorState->fileInterface->close(iteratorState->file);
+    iteratorState->file = NULL;
 }
 
 metrics_t initMetric() {

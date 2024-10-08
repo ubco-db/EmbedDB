@@ -20,6 +20,7 @@ typedef struct orderByInfo orderByInfo;
 
 void initSort(embedDBOperator *op);
 uint8_t readNextRecord(orderByInfo *state, void *buffer);
+void closeSort(file_iterator_state_t *iteratorState);
 
 typedef struct {
     uint32_t key;
