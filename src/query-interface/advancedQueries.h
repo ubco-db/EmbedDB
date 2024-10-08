@@ -129,6 +129,7 @@ typedef struct orderByInfo {
     int8_t colSize;
     int8_t method;
     
+    void *readBuffer;
     embedDBFileInterface *fileInterface;
     
     file_iterator_state_t *fileIterator;

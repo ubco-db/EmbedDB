@@ -59,21 +59,15 @@ void readPageMinSort(MinSortState *ms, int pageNum, external_sort_t *es, metrics
     file_iterator_state_t* is = (file_iterator_state_t*) ms->iteratorState;
     void * fp = is->file;
     
-    if (!is->fileInterface->read(ms->buffer, pageNum, es->page_size, fp)) {
-        printf("ERROR: SORT: read failed");
+    /* Read page into start of buffer */   
+    if (0 == is->fileInterface->read(ms->buffer, pageNum, es->page_size, fp)) {
+        printf("Failed to read block. HERE.\n"); 
     }
 
-
-    // FILE* fp = is->file;
-    
-    // /* Seek to page location in file */
-    // fseek(fp, pageNum*es->page_size, SEEK_SET);
-
-    // /* Read page into start of buffer */   
+    //fseek(fp, pageNum*es->page_size, SEEK_SET);
     // if (0 ==  fread(ms->buffer, es->page_size, 1, fp))
     // {	// printf("Failed to read block. HERE.\n");        
     // }
-    
     
     metric->num_reads++;
     
@@ -115,17 +109,22 @@ void init_MinSort(MinSortState* ms, external_sort_t *es, metrics_t *metric)
     ms->numBlocks         = es->num_pages;
     ms->records_per_block =  (es->page_size - es->headerSize) / es->record_size;
     j = (ms->memoryAvailable - 2 * SORT_KEY_SIZE - INT_SIZE) / SORT_KEY_SIZE;  
+    
+    #ifdef DEBUG
     printf("Memory overhead: %d  Max regions: %d\r\n",  2 * SORT_KEY_SIZE + INT_SIZE, j);
+    #endif
     ms->blocks_per_region = (unsigned int) ceil((float) ms->numBlocks / j );                      
     ms->numRegions        = (unsigned int) ceil((float) ms->numBlocks / ms->blocks_per_region);    
 
     // Memory allocation    
     // Allocate minimum index after block 2 (block 0 is input buffer, block 1 is output buffer)
     ms->min = (int*) ms->buffer+es->page_size*2;
-      
+    
+    #ifdef DEBUG
     printf("Page size: %d, Memory size: %d Record size: %d, Number of records: %lu, Number of blocks: %d, Blocks per region: %d  Regions: %d\r\n", 
                    es->page_size, ms->memoryAvailable, ms->record_size, ms->num_records, ms->numBlocks, ms->blocks_per_region, ms->numRegions);
-                    
+    #endif
+              
     for (i=0; i < ms->numRegions; i++)
         ms->min[i] = INT_MAX; 
            	
@@ -318,7 +317,9 @@ int flash_minsort(
         int8_t  (*compareFn)(void *a, void *b)
 )
 {
+    #ifdef DEBUG
     printf("*Flash Minsort*\n");
+    #endif
     clock_t start = clock();
   
     MinSortState ms;
@@ -332,31 +333,26 @@ int flash_minsort(
     int32_t blockIndex = 0;
     int16_t values_per_page = (es->page_size - es->headerSize) / es->record_size;
     char* outputBuffer = buffer+es->page_size;
-    test_record_t *buf;
-
-    file_iterator_state_t* is = (file_iterator_state_t*) ms.iteratorState;
+    //test_record_t *buf;
 
     // Write 
     while (next_MinSort(&ms, es, (char*) (outputBuffer+count*es->record_size+es->headerSize), metric) != NULL)
     {         
         // Store record in block (already done during call to next)        
-        buf = (void *)(outputBuffer+count*es->record_size+es->headerSize);        
+        // buf = (void *)(outputBuffer+count*es->record_size+es->headerSize);        
         count++;
-        printf("Key value: %d Value: %d", *((int32_t *) buf), *((int32_t *)(buf + 4)));
-        
+
         if (count == values_per_page)
         {   // Write block
             *((int32_t *) outputBuffer) = blockIndex;                             /* Block index */
             *((int16_t *) (outputBuffer + BLOCK_COUNT_OFFSET)) = count;            /* Block record count */
             count=0;
-           
-            if (is->fileInterface->write(outputBuffer, blockIndex, es->page_size, outputFile)) 
+            if (0 == ((file_iterator_state_t*)iteratorState)->fileInterface->write(outputBuffer, blockIndex, es->page_size, outputFile))
                 return 9;
-
             // if (0 == fwrite(outputBuffer, es->page_size, 1, outputFile))
-            //     return 9;
+                // return 9;
 
-        #ifdef DEBUG_OUTPUT
+        #ifdef DEBUG
             printf("Wrote output block. Block index: %d\n", blockIndex);
             for (int k = 0; k < values_per_page; k++)
             {
@@ -371,18 +367,19 @@ int flash_minsort(
     if (count > 0)
     {
         // Write last block        
-        *((int32_t *) buffer) = blockIndex;                             /* Block index */
-        *((int16_t *)(buffer + BLOCK_COUNT_OFFSET)) = count;            /* Block record count */
-        count=0;
-
-        if (is->fileInterface->write(outputBuffer, blockIndex, es->page_size, outputFile)) 
-            return 9;
-
+        *((int32_t *) outputBuffer) = blockIndex;                             /* Block index */
+        *((int16_t *)(outputBuffer + BLOCK_COUNT_OFFSET)) = count;            /* Block record count */
+        
+        if (0 == ((file_iterator_state_t*)iteratorState)->fileInterface->write(outputBuffer, blockIndex, es->page_size, outputFile))
+                return 9;
         // if (0 == fwrite(buffer, es->page_size, 1, outputFile))
-        //     return 9;
+            // return 9;
         blockIndex++;
+        count=0;
     }
-     
+    
+    ((file_iterator_state_t*)iteratorState)->fileInterface->flush(outputFile);
+
     close_MinSort(&ms, es);
 
     clock_t end = clock();     

@@ -40,7 +40,6 @@ typedef struct {
 	int totalRecords;	
     int currentRecord;
     int recordsLeftInBlock;
-    void *readBuffer;
     int recordSize;       
 
     embedDBFileInterface  *fileInterface; 
@@ -50,6 +49,7 @@ typedef struct {
 #define    BLOCK_HEADER_SIZE    sizeof(int32_t)+sizeof(int16_t)
 #define    BLOCK_ID_OFFSET      0
 #define    BLOCK_COUNT_OFFSET   sizeof(int32_t)
+#define    PAGE_SIZE            512
 
 
 #if defined(__cplusplus)

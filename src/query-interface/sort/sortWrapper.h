@@ -19,7 +19,7 @@ typedef struct embedDBOperator embedDBOperator;
 typedef struct orderByInfo orderByInfo;
 
 void initSort(embedDBOperator *op);
-uint8_t readNextRecord(file_iterator_state_t *state, void *buffer);
+uint8_t readNextRecord(orderByInfo *state, void *buffer);
 
 typedef struct {
     uint32_t key;

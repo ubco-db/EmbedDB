@@ -91,6 +91,16 @@ int8_t FILE_OPEN(void *file, uint8_t mode) {
     }
 }
 
+int8_t FILE_ERROR(void *file) {
+    FILE_INFO *fileInfo = (FILE_INFO *)file;
+    return ferror(fileInfo->file);
+}
+
+int8_t FILE_EOF(void *file) {
+    FILE_INFO *fileInfo = (FILE_INFO *)file;
+    return feof(fileInfo->file);
+}
+
 embedDBFileInterface *getFileInterface() {
     embedDBFileInterface *fileInterface = malloc(sizeof(embedDBFileInterface));
     fileInterface->close = FILE_CLOSE;
@@ -99,6 +109,8 @@ embedDBFileInterface *getFileInterface() {
     fileInterface->erase = FILE_ERASE;
     fileInterface->open = FILE_OPEN;
     fileInterface->flush = FILE_FLUSH;
+    fileInterface->error = FILE_ERROR;
+    fileInterface->eof = FILE_EOF;
     return fileInterface;
 }
 
@@ -110,5 +122,7 @@ embedDBFileInterface *getMockEraseFileInterface() {
     fileInterface->erase = MOCK_FILE_ERASE;
     fileInterface->open = FILE_OPEN;
     fileInterface->flush = FILE_FLUSH;
+    fileInterface->error = FILE_ERROR;
+    fileInterface->eof = FILE_EOF;
     return fileInterface;
 }

@@ -240,7 +240,7 @@ int advancedQueryExample() {
 
     /**
      * Order By:
-     * Find the top 10 highest temperature recordings
+     * Find the top 10 lowest temperature recordings
      */
     
     uint8_t limit = 10;
@@ -253,12 +253,9 @@ int advancedQueryExample() {
     embedDBOperator* scanOpOrderBy = createTableScanOperator(stateUWA, &it, baseSchema);
     uint8_t projColsOB[] = {0,1};
     embedDBOperator* projColsOrderBy = createProjectionOperator(scanOpOrderBy, 2, projColsOB);
-    //projColsOrderBy->init(projColsOrderBy);
-    //recordBuffer = (int32_t*)projColsOrderBy->recordBuffer;
-    
     embedDBOperator* orderByOp = createOrderByOperator(stateUWA, projColsOrderBy, 1, 1);
     orderByOp->init(orderByOp);
-    recordBuffer = (int32_t*)orderByOp->recordBuffer;
+    recordBuffer = orderByOp->recordBuffer;
     
     printf("\nOrder By Results:\n");
     printf("Time       | Temp\n");
@@ -272,11 +269,9 @@ int advancedQueryExample() {
         printf("%-10lu | %-4.1f\n", recordBuffer[0], recordBuffer[1] / 10.0);
     }
 
-    //projColsOrderBy->close(projColsOrderBy);
-    //embedDBFreeOperatorRecursive(&projColsOrderBy);
-
     orderByOp->close(orderByOp);
     embedDBFreeOperatorRecursive(&orderByOp);
+
 
 
     /**	Aggregate Count:

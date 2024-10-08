@@ -489,6 +489,8 @@ void initOrderBy(embedDBOperator *op) {
         }
     }
 
+    ((orderByInfo *)op->state)->readBuffer = malloc(PAGE_SIZE);
+
     initSort(op);
 
     return;
@@ -499,21 +501,24 @@ int8_t nextOrderBy(embedDBOperator *op) {
 #ifdef PRINT_ERRORS
         printf("ERROR: ORDER BY: NULL input operator\n");
 #endif
-        return -1;  
+        return 0;  
     }
 
-    if (readNextRecord(((orderByInfo *)op->state)->fileIterator, op->recordBuffer) != 0) {
-        return -1;
+    if (readNextRecord((orderByInfo *)op->state, op->recordBuffer) != 0) {
+        return 0;
     } 
 
-    return 0;
+    return 1;
 }
 
 void closeOrderBy(embedDBOperator *op) {
     op->input->close(op->input);
     op->input = NULL;
     embedDBFreeSchema(&op->schema);
-    // TODO: free state data
+    
+    free(((orderByInfo *)op->state)->readBuffer);
+    free(((orderByInfo *)op->state)->fileIterator);
+
     free(op->state);
     op->state = NULL;
     free(op->recordBuffer);

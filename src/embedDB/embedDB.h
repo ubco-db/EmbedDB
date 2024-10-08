@@ -193,6 +193,19 @@ typedef struct {
      * @return	1 for success and 0 for failure
      */
     int8_t (*flush)(void *file);
+
+    /**
+     * @brief Checks if the last operation causes an error
+     * @return  1 for error and 0 otherwise
+     */
+    int8_t (*error)(void *file);
+
+    /**
+     * @brief Checks if the last operation was an eof
+     * @return 1 for eof and 0 otherwise
+     */
+    int8_t (*eof)(void *file);
+    
 } embedDBFileInterface;
 
 typedef struct {
