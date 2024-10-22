@@ -83,17 +83,40 @@
 
 embedDBState* init_state();
 embedDBSchema* createSchema();
-void execOperator(embedDBState* state);
+float execOperator(embedDBState* state, int32_t timestamp);
 int8_t floatComparator(void* a, void* b);
 int32_t randomInt(int min, int max) {
     int randomIntInRange = (rand() % (max - min + 1)) + min;
     return randomIntInRange;
 }
 
+typedef struct {
+    embedDBState* state;
+} CallbackContext;
+
+bool avgGreaterThan(const int *key, void* context) {
+    CallbackContext* ctx = (CallbackContext*)context;
+    float avgTemp = execOperator(ctx->state, *key);
+    return avgTemp > 25;
+}
+
+void callback(const int *key, void* context) {
+    CallbackContext* ctx = (CallbackContext*)context;
+    float avgTemp = execOperator(ctx->state, *key);
+    printf("Average temperature is greater than 20: %f\n", avgTemp);
+}
+
 uint32_t embedDBExample() {
     embedDBState* state;
     state = init_state();
     embedDBPrintInit(state);
+
+    CallbackContext ctx = { .state = state };
+
+    state->booleanFunction = avgGreaterThan;
+    state->callbackFunction = callback;
+    state->callbackContext = &ctx;
+
     srand(time(NULL));
 
     for (int i = 0; i < 100; i++) {
@@ -117,9 +140,6 @@ uint32_t embedDBExample() {
         printf("from db: Timestamp: %d, Temperature: %d\n", timestamp, data);
     }
 
-
-    execOperator(state);
-
     printf("Example completed!\n");
     return 0;
 }
@@ -132,25 +152,17 @@ embedDBSchema* createSchema() {
     return schema;
 }
 
-int8_t floatComparator(void* a, void* b) {
-    float* fa = (float*) a;
-    float* fb = (float*) b;
-    if (*fa < *fb) {
-        return -1;
-    } else if (*fa > *fb) {
-        return 1;
-    } else {
-        return 0;
-    }
-}
-
 int8_t groupFunction(const void* lastRecord, const void* record) {
     return 1;
 }
 
-embedDBOperator* createOperator(embedDBState* state, void*** allocatedValues) {
+embedDBOperator* createOperator(embedDBState* state, void*** allocatedValues, int32_t timestamp) {
     embedDBIterator* it = (embedDBIterator*)malloc(sizeof(embedDBIterator));
-    uint32_t minKeyVal = 10220099-9;
+    uint32_t minKeyVal = timestamp-9;
+    if(minKeyVal < 10220000) {
+        printf("Timestamp out of bounds\n");
+        return NULL;
+    }
     it->minKey = &minKeyVal;
     it->maxKey = NULL;
     it->minData = NULL;
@@ -176,16 +188,18 @@ embedDBOperator* createOperator(embedDBState* state, void*** allocatedValues) {
     return aggOp;
 }
 
-void execOperator(embedDBState* state) {
+float execOperator(embedDBState* state, int32_t timestamp) {
     void** allocatedValues;
-    embedDBOperator* op = createOperator(state, &allocatedValues);
+    embedDBOperator* op = createOperator(state, &allocatedValues, timestamp);
+    if (op == NULL) {
+        return -1;
+    }
     void* recordBuffer = op->recordBuffer;
     float* C1 = (float*)((int8_t*)recordBuffer + 0);
     // Print as csv
-    while (exec(op)) {
-        printf("average temperature in the last 10 seconds: %f\n", *C1);
-    }
-    printf("\n");
+    exec(op);
+    float avgTemp = *C1;
+    printf("average temperature in the last 10 seconds: %f\n", avgTemp);
     op->close(op);
     embedDBFreeOperatorRecursive(&op);
     recordBuffer = NULL;
@@ -193,6 +207,7 @@ void execOperator(embedDBState* state) {
         free(allocatedValues[i]);
     }
     free(allocatedValues);
+    return avgTemp;
 }
 
 embedDBState* init_state() {

@@ -1123,8 +1123,8 @@ int8_t embedDBPut(embedDBState *state, void *key, void *data) {
         return writeTemporaryPage(state, state->buffer);
     }
     
-    if(state->booleanFunction != NULL && state->booleanFunction(key, data) && state->callbackFunction != NULL) {
-        state->callbackFunction(key, data);
+    if(state->booleanFunction != NULL && state->booleanFunction(key, state->callbackContext) && state->callbackFunction != NULL) {
+        state->callbackFunction(key, state->callbackContext);
     }
     return 0;
 }
