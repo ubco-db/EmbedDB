@@ -249,7 +249,7 @@ typedef struct {
     id_t bufferedIndexPageId;                                             /* Index page id currently in index read buffer */
     id_t bufferedVarPage;                                                 /* Variable page id currently in variable read buffer */
     uint8_t recordHasVarData;                                             /* Internal flag to signal that the record currently being written has var data */
-     bool (*booleanFunction)(const int *key, const void *entry);
+    bool (*booleanFunction)(const int *key, const void *entry);
     void (*callbackFunction)(const int *key, const void *entry);
 } embedDBState;
 

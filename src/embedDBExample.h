@@ -44,6 +44,7 @@
 #else
 #include "embedDB/embedDB.h"
 #include "embedDBUtility.h"
+#include "query-interface/advancedQueries.h"
 #endif
 
 /**
@@ -81,195 +82,120 @@
 #endif
 
 embedDBState* init_state();
-bool boolFunction1(const int* key, const void* data);
-bool boolFunction2(const int* key, const void* data);
-void callbackFunction(const int* key, const void* data);
-
-bool boolFunction1(const int* key, const void* data) {
-    if (*(uint32_t*)data < 5) {
-        return true;
-    }
-    return false;
-}
-
-bool boolFunction2(const int* key, const void* data) {
-    if (*(uint32_t*)data > 15) {
-        return true;
-    }
-    return false;
-}
-
-void callbackFunction(const int* key, const void* data) {
-    printf("This is the callbackFunction! Key: %d, Data: %d\n", *key, *(uint32_t*)data);
+embedDBSchema* createSchema();
+void execOperator(embedDBState* state);
+int8_t floatComparator(void* a, void* b);
+int32_t randomInt(int min, int max) {
+    int randomIntInRange = (rand() % (max - min + 1)) + min;
+    return randomIntInRange;
 }
 
 uint32_t embedDBExample() {
-    uint32_t totalRecordsInserted = 0;
-    uint32_t totalRecordsToInsert = 10;
-
-    printf("******************* Performing an example of EmbeDB with sequentially generated data **************\n");
-    // init state, see function for details.
     embedDBState* state;
     state = init_state();
     embedDBPrintInit(state);
+    srand(time(NULL));
 
-    state->booleanFunction = boolFunction1;
-    state->callbackFunction = callbackFunction;
-
-    // Inserting 10 fixed-length records
-    printf("******************* For inserting 10 fixed-length records using embedDBPut() **********************\n");
-    // iterate from 0 -> 10
-    for (uint32_t i = 0; i < totalRecordsToInsert; i++) {
-        // Initalize key (as they must be in ascending order)
-        uint32_t key = i;
-
+    for (int i = 0; i < 100; i++) {
+        uint32_t timestamp = 102220240000 + i; // Example timestamp
+        
         // calloc dataPtr in the heap
         void* dataPtr = calloc(1, state->dataSize);
 
         // set value to be inserted
-        *((uint32_t*)dataPtr) = i % 100;
-
-        // perform insertion of key and data value. Record value of embedDBPut to ensure no errors.
-        int8_t result = embedDBPut(state, &key, dataPtr);
-        printf("Inserted key = %ld and data = %d\n", i, *((uint32_t*)dataPtr));
-        if (result != SUCCESS) {
-            printf("Error inserting fixed-length records\n");
+        *((uint32_t*)dataPtr) = randomInt(15, 30);
+        int8_t result = embedDBPut(state, &timestamp, dataPtr);      
+        printf("Inserted: Timestamp: %lu, Temperature: %d\n", timestamp, *((uint32_t*)dataPtr));
+        if(result != SUCCESS) {
+            printf("Error inserting record\n");
         }
-        totalRecordsInserted++;
-
-        // free dynamic memory
         free(dataPtr);
-    }
-
-    // Inserting 10 more fixed-length records
-    printf("******************* For inserting 10 more fixed-length records using embedDBPut() **********************\n");
-    state->booleanFunction = boolFunction2;
-    // iterate from 10 -> 20
-    for (uint32_t i = 10; i < 20; i++) {
-        // Initalize key (as they must be in ascending order)
-        uint32_t key = i;
-
-        // calloc dataPtr in the heap
-        void* dataPtr = calloc(1, state->dataSize);
-
-        // set value to be inserted
-        *((uint32_t*)dataPtr) = i % 100;
-
-        // perform insertion of key and data value. Record value of embedDBPut to ensure no errors.
-        int8_t result = embedDBPut(state, &key, dataPtr);
-        printf("Inserted key = %ld and data = %d\n", i, *((uint32_t*)dataPtr));
-        if (result != SUCCESS) {
-            printf("Error inserting fixed-length records\n");
+        int32_t data = 0;
+        int32_t success = embedDBGet(state, (void*)&timestamp, (void*)&data);
+        if (success != SUCCESS) {
+            printf("Error getting record\n");
         }
-        totalRecordsInserted++;
-
-        // free dynamic memory
-        free(dataPtr);
+        printf("from db: Timestamp: %lu, Temperature: %d\n", timestamp, data);
     }
 
-    state->booleanFunction = NULL;
-    
-    printf("******************* Insert 10 variable-length record **********************************************\n");
-    for (uint32_t i = 0; i < 10; i++) {
-        // init key
-        uint32_t key = totalRecordsInserted;
 
-        // calloc dataPtr in the heap.
-        void* dataPtr = calloc(1, state->dataSize);
-
-        // set value to be inserted into embedDB.
-        *((uint32_t*)dataPtr) = totalRecordsInserted % 100;
-
-        // specify the length, in bytes.
-        uint32_t length = 12;
-
-        char str[] = "Hello World";  // ~ 12 bytes long including null terminator
-
-        // insert variable record
-        int8_t result = embedDBPutVar(state, (void*)&key, (void*)dataPtr, (void*)str, length);
-        if (result != SUCCESS) {
-            printf("Error inserting variable-length records\n");
-        }
-        printf("Inserted key = %d  fixed-length record= %d, variable-length record = %s\n", key, *((uint32_t*)dataPtr), str);
-        totalRecordsInserted++;
-        // free dynamic memory.
-        free(dataPtr);
-        dataPtr = NULL;
-    }
-
-    printf("******************* Retrieve a single variable-length record **************************************\n");
-
-    uint32_t key = 10;
-
-    // declare a varDataStream.
-    embedDBVarDataStream* varStream = NULL;
-
-    // allocate memory to read fixed data into.
-    char fixedRec[] = {0, 0, 0};
-
-    // allocate buffer to read variable record into.
-    uint32_t varRecSize = 12;  // This must be at least the same size of the variable record.
-    void* varRecBufPtr = malloc(varRecSize);
-
-    // retrieve fixed record and create a data stream.
-    embedDBGetVar(state, (void*)&key, (void*)fixedRec, &varStream);
-    printf("After calling EmbedDBGetVar()\n");
-    printf("Returned key = %d fixed length record data = %d\n", key, *fixedRec);
-
-    // read data from varStream.
-    if (varStream != NULL) {
-        uint32_t bytesRead;
-        // as long as there is bytes to read
-        while ((bytesRead = embedDBVarDataStreamRead(state, varStream, varRecBufPtr, varRecSize)) > 0) {
-            printf("After calling embedDBVarDataStreamRead()\n");
-            printf("Returned key = %d fixed-length record= %d, variable-length record = %s\n", key, *fixedRec, (char*)varRecBufPtr);
-            // printf("eek!\n");
-        }
-        free(varStream);
-        varStream = NULL;
-    }
-    free(varRecBufPtr);
-    varRecBufPtr = NULL;
-
-    printf("******************* Iterate over %d variable-length records ***************************************\n", 10);
-
-    // declare embedDB iterator
-    embedDBIterator varIt;
-    // Memory to store key and fixed data into.
-    uint32_t* itVarKey;
-    uint32_t varItData[] = {0, 0, 0};
-
-    uint32_t varMinKey = 10, varMaxKey = 19;
-    varIt.minKey = &varMinKey;
-    varIt.maxKey = &varMaxKey;
-    varIt.minData = NULL;
-    varIt.maxData = NULL;
-
-    embedDBVarDataStream* itVarStream = NULL;
-    // Choose any size. Must be at least the size of the variable record if you would like the entire record on each iteration.
-    uint32_t varBufSize = 12;
-    void* varDataBuffer = malloc(varBufSize);
-
-    embedDBInitIterator(state, &varIt);
-
-    while (embedDBNextVar(state, &varIt, &itVarKey, varItData, &itVarStream)) {
-        /* Process vardata if this record has it */
-        if (itVarStream != NULL) {
-            uint32_t numBytesRead = 0;
-            while ((numBytesRead = embedDBVarDataStreamRead(state, itVarStream, varDataBuffer, varBufSize)) > 0) {
-                printf("Iterated key = %d, fixed-length record= %d, variable-length record = %s\n", itVarKey, *varItData, (char*)varDataBuffer);
-            }
-            free(varStream);
-            varStream = NULL;
-        }
-    }
-
-    free(varDataBuffer);
-    varDataBuffer = NULL;
-    embedDBCloseIterator(&varIt);
+    //execOperator(state);
 
     printf("Example completed!\n");
     return 0;
+}
+
+embedDBSchema* createSchema() {
+    uint8_t numCols = 2;
+    int8_t colSizes[] = {8, 4};
+    int8_t colSignedness[] = {embedDB_COLUMN_UNSIGNED, embedDB_COLUMN_SIGNED};
+    embedDBSchema* schema = embedDBCreateSchema(numCols, colSizes, colSignedness);
+    return schema;
+}
+
+int8_t floatComparator(void* a, void* b) {
+    float* fa = (float*) a;
+    float* fb = (float*) b;
+    if (*fa < *fb) {
+        return -1;
+    } else if (*fa > *fb) {
+        return 1;
+    } else {
+        return 0;
+    }
+}
+
+int8_t groupFunction(const void* lastRecord, const void* record) {
+    return 1;
+}
+
+embedDBOperator* createOperator(embedDBState* state, void*** allocatedValues) {
+    embedDBIterator* it = (embedDBIterator*)malloc(sizeof(embedDBIterator));
+    uint64_t maxKeyVal = state->maxKey;
+    uint64_t minKeyVal = maxKeyVal - 5;
+    it->minKey = &minKeyVal;
+    it->maxKey = NULL;
+    it->minData = NULL;
+    it->maxData = NULL;
+    printf("Min key: %lu, Max key: %lu\n",  *(uint32_t*)it->minKey,  *(uint32_t*)it->maxKey);
+    embedDBInitIterator(state, it);
+
+    embedDBSchema* schema = createSchema();
+
+    embedDBOperator* scanOp = createTableScanOperator(state, it, schema);
+    embedDBAggregateFunc* avg0 = createAvgAggregate(1, 4);
+    embedDBAggregateFunc* aggFuncs = (embedDBAggregateFunc*)malloc(1*sizeof(embedDBAggregateFunc));
+    aggFuncs[0] = *avg0;
+    embedDBOperator* aggOp = createAggregateOperator(scanOp, groupFunction, aggFuncs, 1);
+    aggOp->init(aggOp);
+
+    embedDBFreeSchema(&schema);
+    free(avg0);
+
+    *allocatedValues = (void**)malloc(2 * sizeof(void*));
+    ((void**)*allocatedValues)[0] = it;
+    ((void**)*allocatedValues)[1] = aggFuncs;
+
+    return aggOp;
+}
+
+void execOperator(embedDBState* state) {
+    void** allocatedValues;
+    embedDBOperator* op = createOperator(state, &allocatedValues);
+    void* recordBuffer = op->recordBuffer;
+    float* C1 = (float*)((int8_t*)recordBuffer + 0);
+    // Print as csv
+    while (exec(op)) {
+        printf("%f\n", *C1);
+    }
+    printf("\n");
+    op->close(op);
+    embedDBFreeOperatorRecursive(&op);
+    recordBuffer = NULL;
+    for (int i = 0; i < 2; i++) {
+        free(allocatedValues[i]);
+    }
+    free(allocatedValues);
 }
 
 embedDBState* init_state() {
@@ -282,8 +208,8 @@ embedDBState* init_state() {
     }
     /* configure EmbedDB state variables */
     // for fixed-length records
-    state->keySize = 4;
-    state->dataSize = 8;
+    state->keySize = 8;
+    state->dataSize = 4;
 
     // for buffer(s)
     state->pageSize = 512;
@@ -322,7 +248,7 @@ embedDBState* init_state() {
     state->inBitmap = inBitmapInt8;
     state->updateBitmap = updateBitmapInt8;
     state->buildBitmapFromRange = buildBitmapInt8FromRange;
-    state->compareKey = int32Comparator;
+    state->compareKey = int64Comparator;
     state->compareData = int32Comparator;
 
 
