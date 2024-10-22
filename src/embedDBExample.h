@@ -97,7 +97,7 @@ uint32_t embedDBExample() {
     srand(time(NULL));
 
     for (int i = 0; i < 100; i++) {
-        uint32_t timestamp = 102220240000 + i; // Example timestamp
+        uint64_t timestamp = 102220240000 + i; // Example timestamp
         
         // calloc dataPtr in the heap
         void* dataPtr = calloc(1, state->dataSize);
@@ -105,7 +105,7 @@ uint32_t embedDBExample() {
         // set value to be inserted
         *((uint32_t*)dataPtr) = randomInt(15, 30);
         int8_t result = embedDBPut(state, &timestamp, dataPtr);      
-        printf("Inserted: Timestamp: %lu, Temperature: %d\n", timestamp, *((uint32_t*)dataPtr));
+        printf("Inserted: Timestamp: %llu, Temperature: %d\n", timestamp, *((uint32_t*)dataPtr));
         if(result != SUCCESS) {
             printf("Error inserting record\n");
         }
@@ -115,7 +115,7 @@ uint32_t embedDBExample() {
         if (success != SUCCESS) {
             printf("Error getting record\n");
         }
-        printf("from db: Timestamp: %lu, Temperature: %d\n", timestamp, data);
+        printf("from db: Timestamp: %llu, Temperature: %d\n", timestamp, data);
     }
 
 
