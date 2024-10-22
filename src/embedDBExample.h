@@ -97,7 +97,7 @@ uint32_t embedDBExample() {
     srand(time(NULL));
 
     for (int i = 0; i < 100; i++) {
-        uint64_t timestamp = 102220240000 + i; // Example timestamp
+        uint32_t timestamp = 10220000 + i; // Example timestamp
         
         // calloc dataPtr in the heap
         void* dataPtr = calloc(1, state->dataSize);
@@ -105,7 +105,6 @@ uint32_t embedDBExample() {
         // set value to be inserted
         *((uint32_t*)dataPtr) = randomInt(15, 30);
         int8_t result = embedDBPut(state, &timestamp, dataPtr);      
-        printf("Inserted: Timestamp: %llu, Temperature: %d\n", timestamp, *((uint32_t*)dataPtr));
         if(result != SUCCESS) {
             printf("Error inserting record\n");
         }
@@ -115,11 +114,11 @@ uint32_t embedDBExample() {
         if (success != SUCCESS) {
             printf("Error getting record\n");
         }
-        printf("from db: Timestamp: %llu, Temperature: %d\n", timestamp, data);
+        printf("from db: Timestamp: %d, Temperature: %d\n", timestamp, data);
     }
 
 
-    //execOperator(state);
+    execOperator(state);
 
     printf("Example completed!\n");
     return 0;
@@ -127,7 +126,7 @@ uint32_t embedDBExample() {
 
 embedDBSchema* createSchema() {
     uint8_t numCols = 2;
-    int8_t colSizes[] = {8, 4};
+    int8_t colSizes[] = {4, 4};
     int8_t colSignedness[] = {embedDB_COLUMN_UNSIGNED, embedDB_COLUMN_SIGNED};
     embedDBSchema* schema = embedDBCreateSchema(numCols, colSizes, colSignedness);
     return schema;
@@ -151,13 +150,11 @@ int8_t groupFunction(const void* lastRecord, const void* record) {
 
 embedDBOperator* createOperator(embedDBState* state, void*** allocatedValues) {
     embedDBIterator* it = (embedDBIterator*)malloc(sizeof(embedDBIterator));
-    uint64_t maxKeyVal = state->maxKey;
-    uint64_t minKeyVal = maxKeyVal - 5;
+    uint32_t minKeyVal = 10220099-9;
     it->minKey = &minKeyVal;
     it->maxKey = NULL;
     it->minData = NULL;
     it->maxData = NULL;
-    printf("Min key: %lu, Max key: %lu\n",  *(uint32_t*)it->minKey,  *(uint32_t*)it->maxKey);
     embedDBInitIterator(state, it);
 
     embedDBSchema* schema = createSchema();
@@ -186,7 +183,7 @@ void execOperator(embedDBState* state) {
     float* C1 = (float*)((int8_t*)recordBuffer + 0);
     // Print as csv
     while (exec(op)) {
-        printf("%f\n", *C1);
+        printf("average temperature in the last 10 seconds: %f\n", *C1);
     }
     printf("\n");
     op->close(op);
@@ -208,7 +205,7 @@ embedDBState* init_state() {
     }
     /* configure EmbedDB state variables */
     // for fixed-length records
-    state->keySize = 8;
+    state->keySize = 4;
     state->dataSize = 4;
 
     // for buffer(s)
@@ -248,7 +245,7 @@ embedDBState* init_state() {
     state->inBitmap = inBitmapInt8;
     state->updateBitmap = updateBitmapInt8;
     state->buildBitmapFromRange = buildBitmapInt8FromRange;
-    state->compareKey = int64Comparator;
+    state->compareKey = int32Comparator;
     state->compareData = int32Comparator;
 
 
