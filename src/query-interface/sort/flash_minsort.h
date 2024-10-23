@@ -102,8 +102,8 @@ typedef struct MinSortState
 } MinSortState;
 
 
-void  init_MinSort(MinSortState* ms, external_sort_t *es, metrics_t *metric);
-char* next_MinSort(MinSortState* ms, external_sort_t *es, void *tupleBuffer, metrics_t *metric);
+void  init_MinSort(MinSortState* ms, external_sort_t *es, metrics_t *metric, int8_t  (*compareFn)(void *a, void *b));
+char* next_MinSort(MinSortState* ms, external_sort_t *es, void *tupleBuffer, metrics_t *metric, int8_t  (*compareFn)(void *a, void *b));
 void close_MinSort(MinSortState* ms, external_sort_t *es);
 
 #if defined(__cplusplus)

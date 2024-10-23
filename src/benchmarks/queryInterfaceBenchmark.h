@@ -243,7 +243,7 @@ int advancedQueryExample() {
      * Find the top 10 lowest temperature recordings
      */
     
-    uint8_t limit = 10;
+    uint8_t limit = 100;
     it.minKey = NULL;
     it.maxKey = NULL;
     it.minData = NULL;
@@ -253,7 +253,7 @@ int advancedQueryExample() {
     embedDBOperator* scanOpOrderBy = createTableScanOperator(stateUWA, &it, baseSchema);
     uint8_t projColsOB[] = {0,1};
     embedDBOperator* projColsOrderBy = createProjectionOperator(scanOpOrderBy, 2, projColsOB);
-    embedDBOperator* orderByOp = createOrderByOperator(stateUWA, projColsOrderBy, 1, 1, 0);
+    embedDBOperator* orderByOp = createOrderByOperator(stateUWA, projColsOrderBy, 1, 0, 0);
     orderByOp->init(orderByOp);
     recordBuffer = orderByOp->recordBuffer;
     

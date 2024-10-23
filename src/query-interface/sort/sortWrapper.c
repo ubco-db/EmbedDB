@@ -220,7 +220,7 @@ file_iterator_state_t *startSorting(sortData *data, void *unsortedFile, void *so
 
     // Sort the data from unsortedFile and store it in sortedFile
     long result_file_ptr = 0;
-    int err = flash_minsort(iteratorState, tuple_buffer, sortedFile, buffer, buffer_max_pages * es.page_size, &es, &result_file_ptr, &metrics, NULL, data->reversed, data->sign);
+    int err = flash_minsort(iteratorState, tuple_buffer, sortedFile, buffer, buffer_max_pages * es.page_size, &es, &result_file_ptr, &metrics, merge_sort_int32_comparator, data->reversed, data->sign);
 
 #ifdef PRINT_ERRORS
     if (8 == err) {

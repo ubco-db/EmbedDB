@@ -90,7 +90,7 @@ int32_t getValue(MinSortState* ms, int recordNum, external_sort_t *es)
     return buf->key;	    
 }
 
-void init_MinSort(MinSortState* ms, external_sort_t *es, metrics_t *metric)
+void init_MinSort(MinSortState* ms, external_sort_t *es, metrics_t *metric, int8_t  (*compareFn)(void *a, void *b))
 {
      unsigned int i = 0, j = 0, val, regionIdx;    
 
@@ -125,24 +125,25 @@ void init_MinSort(MinSortState* ms, external_sort_t *es, metrics_t *metric)
                    es->page_size, ms->memoryAvailable, ms->record_size, ms->num_records, ms->numBlocks, ms->blocks_per_region, ms->numRegions);
     #endif
               
-    for (i=0; i < ms->numRegions; i++)
-        ms->min[i] = INT_MAX; 
-           	
+
     /* Scan data to populate the minimum in each region */
     for (i=0; i < ms->numBlocks; i++)
     {                                                                                         
         readPageMinSort(ms, i, es, metric);                
         regionIdx = i / ms->blocks_per_region;
-               
+        
+        // Set inital value to first read. 
+        ms->min[regionIdx] = getValue(ms, 0, es);
+
         /* Process first record in block */    		      
-        for (j=0; j < ms->records_per_block; j++)
+        for (j=1; j < ms->records_per_block; j++)
         {      
             if (((i * ms->records_per_block) + j) < ms->num_records)
             {               
                 val = getValue(ms, j, es);        
                 metric->num_compar++;
 
-                if (val < ms->min[regionIdx])                
+                if (compareFn(&val, &ms->min[regionIdx]) == -1)                
                     ms->min[regionIdx] = val;                                    
             }
             else                         
@@ -150,18 +151,20 @@ void init_MinSort(MinSortState* ms, external_sort_t *es, metrics_t *metric)
         }
     }
        
-     #ifdef DEBUG   
-        for (i=0; i < ms->numRegions; i++)
-            printf("Region: %d  Min: %d\r\n",i,ms->min[i]); 
-      #endif
-      
+    #ifdef DEBUG   
+    for (i=0; i < ms->numRegions; i++)
+        printf("Region: %d  Min: %d\r\n",i,ms->min[i]); 
+    #endif
+    
+
+
     ms->current = INT_MAX;
     ms->next    = INT_MAX; 
     ms->nextIdx = 0;       
     ms->lastBlockIdx = INT_MAX;
 }
 
-char* next_MinSort(MinSortState* ms, external_sort_t *es, void *tupleBuffer, metrics_t *metric)
+char* next_MinSort(MinSortState* ms, external_sort_t *es, void *tupleBuffer, metrics_t *metric, int8_t  (*compareFn)(void *a, void *b))
 {
     unsigned int i, curBlk, startBlk, dataVal;                                                     
     unsigned long int startIndex, k;
@@ -176,10 +179,11 @@ char* next_MinSort(MinSortState* ms, external_sort_t *es, void *tupleBuffer, met
         {
              metric->num_compar++;
 
-            if (ms->min[i] < ms->current)
-            {   ms->current = ms->min[i];
+            if (compareFn(&ms->min[i], &ms->current) == -1) {
+                ms->current = ms->min[i];
                 ms->regionIdx = i;
             }
+
         }        
         if (ms->regionIdx == INT_MAX)
             return NULL;    // Join complete - no more tuples	            		
@@ -202,8 +206,8 @@ char* next_MinSort(MinSortState* ms, external_sort_t *es, void *tupleBuffer, met
                     break;
             dataVal = getValue(ms,i, es); 
             metric->num_compar++;    
-                
-            if (dataVal == ms->current)                
+            
+            if (compareFn(&dataVal, &ms->current) == 0)           
             {   memcpy(tupleBuffer, &(ms->buffer[ms->record_size * i+es->headerSize]), ms->record_size);
                 metric->num_memcpys++;     
                 #ifdef DEBUG
@@ -215,12 +219,12 @@ char* next_MinSort(MinSortState* ms, external_sort_t *es, void *tupleBuffer, met
                 ms->tuplesOut++;                  
                 goto done;	// Found the record we are looking for
             } 
-            metric->num_compar++;    
-            if (dataVal > ms->current && dataVal < ms->next)
-            {
+            metric->num_compar++;
+            if (compareFn(&dataVal, &ms->current) == 1 && compareFn(&dataVal, &ms->next) == -1) {
                 ms->next = dataVal;
                 ms->nextIdx = 0;
             }
+
        }
     }           
 
@@ -240,12 +244,14 @@ done:
                 i = 0;               
            }                        
            
-           for ( ; i < ms->records_per_block; i++)
-           {    if (curBlk*ms->records_per_block + i >= ms->num_records)
+           for ( ; i < ms->records_per_block; i++){    
+                
+                if (curBlk*ms->records_per_block + i >= ms->num_records)
                     break;
                 dataVal = getValue(ms,i,es); 
-                metric->num_compar++;                    
-                if (dataVal == ms->current)                
+                metric->num_compar++;    
+
+                if (compareFn(&dataVal, &ms->current) == 0)                             
                 {   ms->nextIdx = k*ms->records_per_block+i;   
                     #ifdef DEBUG 
                         printf("Next tuple at: %d  k: %d  i: %d\r\n",ms->nextIdx,k,i); 
@@ -253,11 +259,12 @@ done:
                     goto done2;
                 } 
                 metric->num_compar++; 
-                if (dataVal > ms->current && dataVal < ms->next)
-                {
+
+                if (compareFn(&dataVal, &ms->current) > 0 && compareFn(&dataVal, &ms->next) < 0) {
                     ms->next = dataVal;
                     ms->nextIdx = 0;
                 }
+
            }
     }           
 
@@ -330,7 +337,7 @@ int flash_minsort(
     ms.memoryAvailable = bufferSizeInBytes;
     ms.num_records = ((file_iterator_state_t*) iteratorState)->totalRecords;
 
-    init_MinSort(&ms, es, metric);
+    init_MinSort(&ms, es, metric, compareFn);
     int16_t count = 0;  
     int32_t blockIndex = 0;
     int16_t values_per_page = (es->page_size - es->headerSize) / es->record_size;
@@ -338,7 +345,7 @@ int flash_minsort(
     //test_record_t *buf;
 
     // Write 
-    while (next_MinSort(&ms, es, (char*) (outputBuffer+count*es->record_size+es->headerSize), metric) != NULL)
+    while (next_MinSort(&ms, es, (char*) (outputBuffer+count*es->record_size+es->headerSize), metric, compareFn) != NULL)
     {         
         // Store record in block (already done during call to next)        
         // buf = (void *)(outputBuffer+count*es->record_size+es->headerSize);        
