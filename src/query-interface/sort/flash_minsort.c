@@ -50,9 +50,9 @@ This is no output sort with block headers and iterator input. Heap used when mov
 #include "in_memory_sort.h"
 #include "no_output_heap.h"
 
- // #define DEBUG 1
+// #define DEBUG 1
 // #define DEBUG_OUTPUT 1
- // #define DEBUG_READ 1
+// #define DEBUG_READ 1
 
 void readPageMinSort(MinSortState *ms, int pageNum, external_sort_t *es, metrics_t *metric)
 {
@@ -108,7 +108,7 @@ void init_MinSort(MinSortState* ms, external_sort_t *es, metrics_t *metric)
     ms->record_size       = es->record_size;    
     ms->numBlocks         = es->num_pages;
     ms->records_per_block =  (es->page_size - es->headerSize) / es->record_size;
-    j = (ms->memoryAvailable - 2 * SORT_KEY_SIZE - INT_SIZE) / SORT_KEY_SIZE;  
+    j = (ms->memoryAvailable - 2 * PAGE_SIZE - 2 * SORT_KEY_SIZE - INT_SIZE) / SORT_KEY_SIZE;  
     
     #ifdef DEBUG
     printf("Memory overhead: %d  Max regions: %d\r\n",  2 * SORT_KEY_SIZE + INT_SIZE, j);
@@ -118,7 +118,7 @@ void init_MinSort(MinSortState* ms, external_sort_t *es, metrics_t *metric)
 
     // Memory allocation    
     // Allocate minimum index after block 2 (block 0 is input buffer, block 1 is output buffer)
-    ms->min = (int*) ms->buffer+es->page_size*2;
+    ms->min = (uint32_t *) (ms->buffer+es->page_size*2);
     
     #ifdef DEBUG
     printf("Page size: %d, Memory size: %d Record size: %d, Number of records: %lu, Number of blocks: %d, Blocks per region: %d  Regions: %d\r\n", 
@@ -141,7 +141,7 @@ void init_MinSort(MinSortState* ms, external_sort_t *es, metrics_t *metric)
             {               
                 val = getValue(ms, j, es);        
                 metric->num_compar++;
-                             
+
                 if (val < ms->min[regionIdx])                
                     ms->min[regionIdx] = val;                                    
             }
@@ -314,7 +314,9 @@ int flash_minsort(
 		external_sort_t *es,
 		long    *resultFilePtr,
 		metrics_t *metric,
-        int8_t  (*compareFn)(void *a, void *b)
+        int8_t  (*compareFn)(void *a, void *b),
+        int8_t direction,
+        int8_t sign
 )
 {
     #ifdef DEBUG

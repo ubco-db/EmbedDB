@@ -489,7 +489,7 @@ void initOrderBy(embedDBOperator *op) {
         }
     }
 
-    ((orderByInfo *)op->state)->readBuffer = malloc(PAGE_SIZE);
+    ((sortData *)op->state)->readBuffer = malloc(PAGE_SIZE);
 
     initSort(op);
 
@@ -504,7 +504,7 @@ int8_t nextOrderBy(embedDBOperator *op) {
         return 0;  
     }
 
-    if (readNextRecord((orderByInfo *)op->state, op->recordBuffer) != 0) {
+    if (readNextRecord((sortData *)op->state, op->recordBuffer) != 0) {
         return 0;
     } 
 
@@ -516,9 +516,9 @@ void closeOrderBy(embedDBOperator *op) {
     op->input = NULL;
     embedDBFreeSchema(&op->schema);
     
-    closeSort(((orderByInfo *)op->state)->fileIterator);
-    free(((orderByInfo *)op->state)->readBuffer);
-    free(((orderByInfo *)op->state)->fileIterator);
+    closeSort(((sortData *)op->state)->fileIterator);
+    free(((sortData *)op->state)->readBuffer);
+    free(((sortData *)op->state)->fileIterator);
 
     free(op->state);
     op->state = NULL;
@@ -527,16 +527,17 @@ void closeOrderBy(embedDBOperator *op) {
 }
 
 /**
- * @brief Create an operator that will reorder records based on a given method
+ * @brief Create an operator that will reorder records based on a given direction
  * 
  * @param dbState       The database state
  * @param input         The operator that this operator can pull records from
  * @param colNum        The column that is being sorted on 
- * @param method        Ordering:
+ * @param reversed        Ordering:
  *                      0:      Asc
  *                      1:      Dec
+ * @param sign        The signed ness of the column being sorted
  */
-embedDBOperator* createOrderByOperator(embedDBState *dbState, embedDBOperator *input, int8_t colNum, int8_t method) {
+embedDBOperator* createOrderByOperator(embedDBState *dbState, embedDBOperator *input, int8_t colNum, int8_t reversed, int8_t sign) {
     if (input == NULL || dbState == NULL) {
 #ifdef PRINT_ERRORS
         printf("ERROR: ORDER BY: Input operator or database state is null\n");
@@ -545,7 +546,7 @@ embedDBOperator* createOrderByOperator(embedDBState *dbState, embedDBOperator *i
     }
 
     // Operator state
-    struct orderByInfo *state = malloc(sizeof(struct orderByInfo));
+    struct sortData *state = malloc(sizeof(struct sortData));
     embedDBOperator *op = malloc(sizeof(embedDBOperator));
     
     if (state == NULL || op == NULL) {
@@ -557,7 +558,8 @@ embedDBOperator* createOrderByOperator(embedDBState *dbState, embedDBOperator *i
 
     state->fileInterface = dbState->fileInterface;
     state->colNum = colNum;
-    state->method = method;
+    state->reversed = reversed;
+    state->sign = sign;
 
     op->state = state;
     op->input = input;

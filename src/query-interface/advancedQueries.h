@@ -124,16 +124,20 @@ typedef struct embedDBOperator {
     void* recordBuffer;
 } embedDBOperator;
 
-typedef struct orderByInfo {
+typedef struct sortData {
+    uint32_t count;
+    uint16_t recordSize;
     int8_t colNum;
-    int8_t colSize;
-    int8_t method;
-    
+    int8_t keyOffset;
+    int8_t keySize;
+    int8_t reversed;
+    int8_t sign;
+
     void *readBuffer;
     embedDBFileInterface *fileInterface;
     
     file_iterator_state_t *fileIterator;
-} orderByInfo;
+} sortData;
 
 /**
  * @brief	Extract a record from an operator
@@ -199,7 +203,7 @@ embedDBOperator* createKeyJoinOperator(embedDBOperator* input1, embedDBOperator*
  *                      0:      Asc
  *                      1:      Dec
  */
-embedDBOperator* createOrderByOperator(embedDBState *dbState, embedDBOperator *input, int8_t colNum, int8_t method);
+embedDBOperator* createOrderByOperator(embedDBState *dbState, embedDBOperator *input, int8_t colNum, int8_t method, int8_t sign);
 
 //////////////////////////////////
 // Prebuilt aggregate functions //

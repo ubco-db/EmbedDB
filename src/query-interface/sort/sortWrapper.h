@@ -16,10 +16,10 @@
 #define SORT_ORDER_LOCATION "sort_order.bin"
 
 typedef struct embedDBOperator embedDBOperator;
-typedef struct orderByInfo orderByInfo;
+typedef struct sortData sortData;
 
 void initSort(embedDBOperator *op);
-uint8_t readNextRecord(orderByInfo *state, void *buffer);
+uint8_t readNextRecord(sortData *state, void *buffer);
 void closeSort(file_iterator_state_t *iteratorState);
 
 typedef struct {
