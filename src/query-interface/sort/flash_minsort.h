@@ -73,30 +73,30 @@ typedef struct OpState
 */
 typedef struct MinSortState
 {
-    char* buffer;
-    unsigned int* min;
+    int8_t* buffer;
+    uint32_t* min;
     
-    unsigned int current;           // current smallest value
-    unsigned int next;              // keep track of next smallest value for next iteration
-    unsigned long int nextIdx; 
+    uint32_t current;           // current smallest value
+    uint32_t next;              // keep track of next smallest value for next iteration
+    uint64_t nextIdx; 
                        
-    unsigned int record_size;
-    unsigned long int num_records;
-    unsigned int numBlocks;        
-    unsigned int records_per_block;
-    unsigned int blocks_per_region;
-    unsigned int memoryAvailable;
-    unsigned int numRegions;          
-    unsigned int regionIdx;
-    unsigned int lastBlockIdx;    
+    uint32_t record_size;
+    uint64_t num_records;
+    uint32_t numBlocks;        
+    uint32_t records_per_block;
+    uint32_t blocks_per_region;
+    uint32_t memoryAvailable;
+    uint32_t numRegions;          
+    uint32_t regionIdx;
+    uint32_t lastBlockIdx;    
 
     void    *iteratorState;
 
     /* Statistics */
-    unsigned int blocksRead;
-    unsigned int tuplesRead;
-    unsigned int tuplesOut;
-    unsigned int bytesRead;    
+    uint32_t blocksRead;
+    uint32_t tuplesRead;
+    uint32_t tuplesOut;
+    uint32_t bytesRead;    
 } MinSortState;
 
 

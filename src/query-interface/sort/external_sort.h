@@ -31,16 +31,16 @@ typedef struct {
 
 typedef struct {
     int32_t key;
-    char	value[12];
+    int8_t	value[12];
 } test_record_t;
 
 typedef struct {
 	void *file;
-	int recordsRead;
-	int totalRecords;	
-    int currentRecord;
-    int recordsLeftInBlock;
-    int recordSize;       
+	int32_t recordsRead;
+	int32_t totalRecords;	
+    int32_t currentRecord;
+    int32_t recordsLeftInBlock;
+    int32_t recordSize;       
 
     embedDBFileInterface  *fileInterface; 
 } file_iterator_state_t;

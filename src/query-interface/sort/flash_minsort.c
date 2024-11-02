@@ -88,7 +88,7 @@ int32_t getValue(MinSortState *ms, int recordNum, external_sort_t *es) {
 }
 
 void init_MinSort(MinSortState *ms, external_sort_t *es, metrics_t *metric, int8_t (*compareFn)(void *a, void *b)) {
-    unsigned int i = 0, j = 0, val, regionIdx;
+    uint32_t i = 0, j = 0, val, regionIdx;
 
     /* Operator statistics */
     metric->num_reads = 0;
@@ -121,13 +121,17 @@ void init_MinSort(MinSortState *ms, external_sort_t *es, metrics_t *metric, int8
            es->page_size, ms->memoryAvailable, ms->record_size, ms->num_records, ms->numBlocks, ms->blocks_per_region, ms->numRegions);
 #endif
 
+    for (i = 0; i < ms->numRegions; i++) {
+        ms->min[i] = INT_MAX;
+    }
+
     /* Scan data to populate the minimum in each region */
     for (i = 0; i < ms->numBlocks; i++) {
         readPageMinSort(ms, i, es, metric);
         regionIdx = i / ms->blocks_per_region;
 
         // Set inital value to first read.
-        ms->min[regionIdx] = getValue(ms, 0, es);
+        // ms->min[regionIdx] = getValue(ms, 0, es);
 
         /* Process first record in block */
         for (j = 1; j < ms->records_per_block; j++) {
@@ -154,8 +158,8 @@ void init_MinSort(MinSortState *ms, external_sort_t *es, metrics_t *metric, int8
 }
 
 char *next_MinSort(MinSortState *ms, external_sort_t *es, void *tupleBuffer, metrics_t *metric, int8_t (*compareFn)(void *a, void *b)) {
-    unsigned int i, curBlk, startBlk, dataVal;
-    unsigned long int startIndex, k;
+    uint32_t i, curBlk, startBlk, dataVal;
+    uint64_t startIndex, k;
 
     // Find the block with the minimum tuple value - otherwise continue on with last block
     if (ms->nextIdx == 0) {  // Find new block as do not know location of next minimum tuple
@@ -297,8 +301,7 @@ int flash_minsort(
     external_sort_t *es,
     long *resultFilePtr,
     metrics_t *metric,
-    int8_t (*compareFn)(void *a, void *b)
-) {
+    int8_t (*compareFn)(void *a, void *b)) {
 #ifdef DEBUG
     printf("*Flash Minsort*\n");
 #endif
@@ -314,7 +317,7 @@ int flash_minsort(
     int16_t count = 0;
     int32_t blockIndex = 0;
     int16_t values_per_page = (es->page_size - es->headerSize) / es->record_size;
-    char *outputBuffer = buffer + es->page_size;
+    uint8_t *outputBuffer = buffer + es->page_size;
     // test_record_t *buf;
 
     // Write

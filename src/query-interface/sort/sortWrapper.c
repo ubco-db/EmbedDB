@@ -71,11 +71,11 @@ void initSort(embedDBOperator* op) {
  * @return int8_t 
  */
 int8_t writePageWithHeader(void *buffer, int32_t blockIndex, int16_t numberOfValues, int16_t pageSize, embedDBFileInterface *fileInterface, void *file) {
-    memcpy(buffer, &blockIndex, sizeof(int32_t));
-    memcpy((char *)buffer + sizeof(uint32_t), &numberOfValues, sizeof(int16_t));
+    memcpy((uint8_t *)buffer, &blockIndex, sizeof(int32_t));
+    memcpy((uint8_t *)buffer + sizeof(uint32_t), &numberOfValues, sizeof(int16_t));
     
-    fileInterface->write(buffer, blockIndex, pageSize, file);
-    
+    fileInterface->write(buffer, blockIndex, pageSize, file); 
+
     if (fileInterface->error(file)) {
         printf("ERROR: SORT: Failed to write unsorted data");
         return 1;
@@ -111,7 +111,9 @@ uint32_t loadRowData(sortData *data, embedDBOperator *op, void *unsortedFile) {
     // Write row data to file
     while (exec(op->input)) {
         // Write page to file when full
-        if (count % valuesPerPage == 0 && count != 0) {        
+        if (count % valuesPerPage == 0 && count != 0) {       
+
+
             if (writePageWithHeader(buffer, blockIndex, valuesPerPage, PAGE_SIZE, data->fileInterface, unsortedFile)) {
                 free(buffer);
                 buffer = NULL;
@@ -132,19 +134,19 @@ uint32_t loadRowData(sortData *data, embedDBOperator *op, void *unsortedFile) {
         }
 
         // Write key and data to buffer
-        memcpy((char *)buffer + rowOffset, op->input->recordBuffer + data->keyOffset, data->keySize);
-        memcpy((char *)buffer + rowOffset + data->keySize, op->input->recordBuffer, data->recordSize);
+        memcpy((uint8_t *)buffer + rowOffset, op->input->recordBuffer + data->keyOffset, data->keySize);
+        memcpy((uint8_t *)buffer + rowOffset + data->keySize, op->input->recordBuffer, data->recordSize);
         
         count++;
 
         // temp limit for debugging
-        // if (count >= 10) 
-        //     break;
+        // if (count >= 4096) 
+            // break;
     }
 
     // Write remaining records
     int16_t numRemainingRecords = count % valuesPerPage;
-    if(writePageWithHeader(buffer, blockIndex, numRemainingRecords, BLOCK_HEADER_SIZE + numRemainingRecords * (data->recordSize + data->keySize), data->fileInterface, unsortedFile)) {
+    if(writePageWithHeader(buffer, blockIndex, numRemainingRecords, PAGE_SIZE, data->fileInterface, unsortedFile)) {
         free(buffer);
         buffer = NULL;
         return 0;
