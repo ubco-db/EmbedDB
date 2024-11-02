@@ -54,9 +54,7 @@ int flash_minsort(
 		external_sort_t *es,
 		long    *resultFilePtr,
 		metrics_t *metric,
-        int8_t  (*compareFn)(void *a, void *b),
-        int8_t direction,
-        int8_t sign
+        int8_t  (*compareFn)(void *a, void *b)
 );
 
 /*
