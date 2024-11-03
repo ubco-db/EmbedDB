@@ -20,6 +20,9 @@
 #define SORT_KEY_SIZE       4
 #define INT_SIZE            4
 
+#define true 1
+#define false 0
+
 #if defined(__cplusplus)
 extern "C" {
 #endif
@@ -76,10 +79,19 @@ typedef struct MinSortState
     int8_t* buffer;
     uint32_t* min;
     
+    uint64_t nextIdx; 
     uint32_t current;           // current smallest value
     uint32_t next;              // keep track of next smallest value for next iteration
-    uint64_t nextIdx; 
-                       
+    uint32_t regionIdx;
+    uint32_t lastBlockIdx;   
+
+
+    int8_t current_initialized;
+    int8_t next_initialized;
+    int8_t regionIdx_initialized;
+    int8_t lastBlockIdx_initialized;
+    
+
     uint32_t record_size;
     uint64_t num_records;
     uint32_t numBlocks;        
@@ -87,8 +99,7 @@ typedef struct MinSortState
     uint32_t blocks_per_region;
     uint32_t memoryAvailable;
     uint32_t numRegions;          
-    uint32_t regionIdx;
-    uint32_t lastBlockIdx;    
+     
 
     void    *iteratorState;
 

@@ -121,9 +121,9 @@ void init_MinSort(MinSortState *ms, external_sort_t *es, metrics_t *metric, int8
            es->page_size, ms->memoryAvailable, ms->record_size, ms->num_records, ms->numBlocks, ms->blocks_per_region, ms->numRegions);
 #endif
 
-    for (i = 0; i < ms->numRegions; i++) {
-        ms->min[i] = INT_MAX;
-    }
+    // for (i = 0; i < ms->numRegions; i++) {
+        // ms->min[i] = INT_MAX;
+    // }
 
     /* Scan data to populate the minimum in each region */
     for (i = 0; i < ms->numBlocks; i++) {
@@ -131,7 +131,7 @@ void init_MinSort(MinSortState *ms, external_sort_t *es, metrics_t *metric, int8
         regionIdx = i / ms->blocks_per_region;
 
         // Set inital value to first read.
-        // ms->min[regionIdx] = getValue(ms, 0, es);
+        ms->min[regionIdx] = getValue(ms, 0, es);
 
         /* Process first record in block */
         for (j = 1; j < ms->records_per_block; j++) {
@@ -151,10 +151,15 @@ void init_MinSort(MinSortState *ms, external_sort_t *es, metrics_t *metric, int8
         printf("Region: %d  Min: %d\r\n", i, ms->min[i]);
 #endif
 
+
     ms->current = INT_MAX;
     ms->next = INT_MAX;
-    ms->nextIdx = 0;
     ms->lastBlockIdx = INT_MAX;
+
+    ms->nextIdx = 0;
+    ms->current_initialized = false;
+    ms->next_initialized = false;
+    ms->lastBlockIdx_initialized = false;
 }
 
 char *next_MinSort(MinSortState *ms, external_sort_t *es, void *tupleBuffer, metrics_t *metric, int8_t (*compareFn)(void *a, void *b)) {
@@ -163,13 +168,22 @@ char *next_MinSort(MinSortState *ms, external_sort_t *es, void *tupleBuffer, met
 
     // Find the block with the minimum tuple value - otherwise continue on with last block
     if (ms->nextIdx == 0) {  // Find new block as do not know location of next minimum tuple
+        
+        ms->current_initialized = false;
+        ms->regionIdx_initialized = false;
+        ms->next_initialized = false;
+          
         ms->current = INT_MAX;
         ms->regionIdx = INT_MAX;
         ms->next = INT_MAX;
+
+    
         for (i = 0; i < ms->numRegions; i++) {
             metric->num_compar++;
 
+            // If `ms->current` hasn't been set, initialize it with the first valid minimum found
             if (compareFn(&ms->min[i], &ms->current) == -1) {
+                ms->current_initialized = true;
                 ms->current = ms->min[i];
                 ms->regionIdx = i;
             }
@@ -301,7 +315,8 @@ int flash_minsort(
     external_sort_t *es,
     long *resultFilePtr,
     metrics_t *metric,
-    int8_t (*compareFn)(void *a, void *b)) {
+    int8_t (*compareFn)(void *a, void *b)
+) {
 #ifdef DEBUG
     printf("*Flash Minsort*\n");
 #endif
