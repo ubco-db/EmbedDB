@@ -81,12 +81,25 @@ float GetAvg(StreamingQuery *query, embedDBState *state, void *key) {
 
 embedDBOperator* createAvgOperator(StreamingQuery *query, embedDBState* state, void*** allocatedValues, void *key) {
     embedDBIterator* it = (embedDBIterator*)malloc(sizeof(embedDBIterator));
-    uint32_t minKeyVal = *(uint32_t*)key - (query->numLastEntries-1);
-    uint32_t *minKeyPtr = (uint32_t *)malloc(sizeof(uint32_t));
-    if (minKeyPtr != NULL) {
-        *minKeyPtr = minKeyVal;
-        it->minKey = minKeyPtr;
+    if(state->keySize == 4){
+        uint32_t minKeyVal = *(uint32_t*)key - (query->numLastEntries-1);
+        uint32_t *minKeyPtr = (uint32_t *)malloc(sizeof(uint32_t));
+        if (minKeyPtr != NULL) {
+            *minKeyPtr = minKeyVal;
+            it->minKey = minKeyPtr;
+        }
+    }else if(state->keySize == 8){
+        uint64_t minKeyVal = *(uint64_t*)key - (uint64_t)(query->numLastEntries-1);
+        uint64_t *minKeyPtr = (uint64_t *)malloc(sizeof(uint64_t));
+        if (minKeyPtr != NULL) {
+            *minKeyPtr = minKeyVal;
+            it->minKey = minKeyPtr;
+        }
+    }else{
+        printf("ERROR: Unsupported key size\n");
+        return NULL;
     }
+    
     it->maxKey = NULL;
     it->minData = NULL;
     it->maxData = NULL;

@@ -112,7 +112,7 @@ uint32_t embedDBExample() {
     srand(time(NULL));
 
     for (int i = 0; i < 100; i++) {
-        uint32_t timestamp = 202411 + i; // Example timestamp
+        uint64_t timestamp = 202411040000 + i; // Example timestamp
         
         // calloc dataPtr in the heap
         void* dataPtr = calloc(1, state->dataSize);
@@ -129,7 +129,7 @@ uint32_t embedDBExample() {
         if (success != SUCCESS) {
             printf("Error getting record\n");
         }
-        printf("from db: Timestamp: %d, Temperature: %d\n", timestamp, data);
+        printf("from db: Timestamp: %llu, Temperature: %d\n", timestamp, data);
     }
 
     printf("Example completed!\n");
@@ -141,7 +141,7 @@ uint32_t embedDBExample() {
 
 embedDBSchema* createSchema() {
     uint8_t numCols = 2;
-    int8_t colSizes[] = {4, 4};
+    int8_t colSizes[] = {8, 4};
     int8_t colSignedness[] = {embedDB_COLUMN_UNSIGNED, embedDB_COLUMN_SIGNED};
     embedDBSchema* schema = embedDBCreateSchema(numCols, colSizes, colSignedness);
     return schema;
@@ -158,7 +158,7 @@ embedDBState* init_state() {
     }
     /* configure EmbedDB state variables */
     // for fixed-length records
-    state->keySize = 4;
+    state->keySize = 8;
     state->dataSize = 4;
 
     // for buffer(s)
@@ -198,7 +198,7 @@ embedDBState* init_state() {
     state->inBitmap = inBitmapInt8;
     state->updateBitmap = updateBitmapInt8;
     state->buildBitmapFromRange = buildBitmapInt8FromRange;
-    state->compareKey = int32Comparator;
+    state->compareKey = int64Comparator;
     state->compareData = int32Comparator;
 
 
