@@ -245,7 +245,10 @@ int8_t int32Comparator(void *a, void *b) {
 }
 
 int8_t int64Comparator(void *a, void *b) {
-    int64_t result = *((int64_t *)a) - *((int64_t *)b);
+    int64_t i1, i2;
+    memcpy(&i1, a, sizeof(int64_t));
+    memcpy(&i2, b, sizeof(int64_t));
+    int64_t result = i1 - i2;
     if (result < 0)
         return -1;
     if (result > 0)

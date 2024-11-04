@@ -75,6 +75,7 @@
 #else
 
 #include "desktopFileInterface.h"
+#include "query-interface/streamingQueries.h"
 #define DATA_FILE_PATH "build/artifacts/dataFile.bin"
 #define INDEX_FILE_PATH "build/artifacts/indexFile.bin"
 #define VAR_DATA_FILE_PATH "build/artifacts/varFile.bin"
@@ -83,27 +84,13 @@
 
 embedDBState* init_state();
 embedDBSchema* createSchema();
-float execOperator(embedDBState* state, int32_t timestamp);
-int8_t floatComparator(void* a, void* b);
 int32_t randomInt(int min, int max) {
     int randomIntInRange = (rand() % (max - min + 1)) + min;
     return randomIntInRange;
 }
 
-typedef struct {
-    embedDBState* state;
-} CallbackContext;
-
-bool avgGreaterThan(const int *key, void* context) {
-    CallbackContext* ctx = (CallbackContext*)context;
-    float avgTemp = execOperator(ctx->state, *key);
-    return avgTemp > 25;
-}
-
-void callback(const int *key, void* context) {
-    CallbackContext* ctx = (CallbackContext*)context;
-    float avgTemp = execOperator(ctx->state, *key);
-    printf("Average temperature is greater than 20: %f\n", avgTemp);
+void callback(float data) {
+    printf("Average temperature is greater than 20: %f\n", data);
 }
 
 uint32_t embedDBExample() {
@@ -111,23 +98,28 @@ uint32_t embedDBExample() {
     state = init_state();
     embedDBPrintInit(state);
 
-    CallbackContext ctx = { .state = state };
+    embedDBSchema* schema = createSchema();
 
-    state->booleanFunction = avgGreaterThan;
-    state->callbackFunction = callback;
-    state->callbackContext = &ctx;
+    StreamingQuery *streamingQuery = createStreamingQuery(state, schema);
+    if (streamingQuery != NULL) {
+        streamingQuery->SQIF(streamingQuery, GET_AVG)
+                      ->is(streamingQuery, SELECT_GT, 20)
+                      ->forLast(streamingQuery, 10)
+                      ->then(streamingQuery, callback);
+
+    }
 
     srand(time(NULL));
 
     for (int i = 0; i < 100; i++) {
-        uint32_t timestamp = 10220000 + i; // Example timestamp
+        uint32_t timestamp = 202411 + i; // Example timestamp
         
         // calloc dataPtr in the heap
         void* dataPtr = calloc(1, state->dataSize);
 
         // set value to be inserted
         *((uint32_t*)dataPtr) = randomInt(15, 30);
-        int8_t result = embedDBPut(state, &timestamp, dataPtr);      
+        int8_t result = streamingQueryPut(streamingQuery, &timestamp, dataPtr);      
         if(result != SUCCESS) {
             printf("Error inserting record\n");
         }
@@ -141,6 +133,9 @@ uint32_t embedDBExample() {
     }
 
     printf("Example completed!\n");
+    
+    // Free the allocated memory
+    free(streamingQuery);
     return 0;
 }
 
@@ -152,63 +147,6 @@ embedDBSchema* createSchema() {
     return schema;
 }
 
-int8_t groupFunction(const void* lastRecord, const void* record) {
-    return 1;
-}
-
-embedDBOperator* createOperator(embedDBState* state, void*** allocatedValues, int32_t timestamp) {
-    embedDBIterator* it = (embedDBIterator*)malloc(sizeof(embedDBIterator));
-    uint32_t minKeyVal = timestamp-9;
-    if(minKeyVal < 10220000) {
-        printf("Timestamp out of bounds\n");
-        return NULL;
-    }
-    it->minKey = &minKeyVal;
-    it->maxKey = NULL;
-    it->minData = NULL;
-    it->maxData = NULL;
-    embedDBInitIterator(state, it);
-
-    embedDBSchema* schema = createSchema();
-
-    embedDBOperator* scanOp = createTableScanOperator(state, it, schema);
-    embedDBAggregateFunc* avg0 = createAvgAggregate(1, 4);
-    embedDBAggregateFunc* aggFuncs = (embedDBAggregateFunc*)malloc(1*sizeof(embedDBAggregateFunc));
-    aggFuncs[0] = *avg0;
-    embedDBOperator* aggOp = createAggregateOperator(scanOp, groupFunction, aggFuncs, 1);
-    aggOp->init(aggOp);
-
-    embedDBFreeSchema(&schema);
-    free(avg0);
-
-    *allocatedValues = (void**)malloc(2 * sizeof(void*));
-    ((void**)*allocatedValues)[0] = it;
-    ((void**)*allocatedValues)[1] = aggFuncs;
-
-    return aggOp;
-}
-
-float execOperator(embedDBState* state, int32_t timestamp) {
-    void** allocatedValues;
-    embedDBOperator* op = createOperator(state, &allocatedValues, timestamp);
-    if (op == NULL) {
-        return -1;
-    }
-    void* recordBuffer = op->recordBuffer;
-    float* C1 = (float*)((int8_t*)recordBuffer + 0);
-    // Print as csv
-    exec(op);
-    float avgTemp = *C1;
-    printf("average temperature in the last 10 seconds: %f\n", avgTemp);
-    op->close(op);
-    embedDBFreeOperatorRecursive(&op);
-    recordBuffer = NULL;
-    for (int i = 0; i < 2; i++) {
-        free(allocatedValues[i]);
-    }
-    free(allocatedValues);
-    return avgTemp;
-}
 
 embedDBState* init_state() {
     embedDBState* state = (embedDBState*)malloc(sizeof(embedDBState));
