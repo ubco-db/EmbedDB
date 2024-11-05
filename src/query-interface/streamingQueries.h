@@ -13,7 +13,8 @@
 typedef enum {
     GET_AVG,    /**< Get average value */
     GET_MAX,    /**< Get maximum value */
-    GET_MIN     /**< Get minimum value */
+    GET_MIN,     /**< Get minimum value */
+    GET_CUSTOM  /**< Perform custom query */
 } StreamingQueryType;
 
 /**
@@ -29,6 +30,13 @@ typedef enum {
     NotEqual                /**< Not equal operation */
 } SelectOperation;
 
+typedef enum {
+    INT32,
+    INT64,
+    FLOAT,
+    DOUBLE
+} CustomReturnType;
+
 /**
  * @struct StreamingQuery
  * @brief Struct representing a streaming query.
@@ -42,8 +50,11 @@ typedef struct StreamingQuery {
     SelectOperation operation;  /**< Selection operation */
     uint8_t colNum;             /**< Column number to preform query on*/
     void (*callback)(void* value);  /**< Callback function */
+    void* (*executeCustom)(struct StreamingQuery *query, void *key); /**< Execute custom query */
+    CustomReturnType returnType; /**< Return type of custom query */
 
     struct StreamingQuery* (*IF)(struct StreamingQuery *query, uint8_t colNum, StreamingQueryType type);
+    struct StreamingQuery* (*IFCustom)(struct StreamingQuery *query, uint8_t colNum, void* (*executeCustom)(struct StreamingQuery *query, void *key), CustomReturnType returnType);
     struct StreamingQuery* (*is)(struct StreamingQuery *query, SelectOperation operation, void* threshold);
     struct StreamingQuery* (*forLast)(struct StreamingQuery *query, uint32_t numLastEntries);
     struct StreamingQuery* (*then)(struct StreamingQuery *query, void (*callback)(void* value));
@@ -65,6 +76,16 @@ typedef int8_t (*Comparator)(void* value1, void* value2);
  * @return Pointer to the StreamingQuery.
  */
 StreamingQuery* IF(StreamingQuery *query, uint8_t colNum, StreamingQueryType type);
+
+/**
+ * @brief IF method for setting the column a custom query will be performed on.
+ * @param query Pointer to the StreamingQuery.
+ * @param colNum Column number to perform query on.
+ * @param executeCustom Custom query function.
+ * @param returnType Return type of the custom query.
+ * @return Pointer to the StreamingQuery.
+ */
+StreamingQuery* IFCustom(StreamingQuery *query, uint8_t colNum, void* (*executeCustom)(StreamingQuery *query, void *key), CustomReturnType returnType);
 
 /**
  * @brief is method for setting the selection operation and value to compare query result with.
@@ -207,6 +228,18 @@ void handleGetAvg(StreamingQuery* query, void* key);
  * @param key Pointer to the key for the current record.
  */
 void handleGetMinMax(StreamingQuery* query, void* key);
+
+/**
+ * @brief Handles a custom streaming query and executes the appropriate comparison based on the return type.
+ *
+ * @param query A pointer to the StreamingQuery structure containing the query details.
+ * @param key A pointer to the key used for executing the custom query.
+ *
+ * The function executes the custom query using the provided key and then performs a comparison
+ * based on the return type specified in the query. Supported return types include INT32, INT64,
+ * FLOAT, and DOUBLE. If the return type is unsupported, an error message is printed.
+ */
+void handleCustomQuery(StreamingQuery* query, void* key);
 
 
 

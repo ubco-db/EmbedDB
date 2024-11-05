@@ -6,6 +6,14 @@ StreamingQuery* IF(StreamingQuery *query, uint8_t colNum, StreamingQueryType typ
     return query;
 }
 
+StreamingQuery* IFCustom(StreamingQuery *query, uint8_t colNum, void* (*executeCustom)(StreamingQuery *query, void *key), CustomReturnType returnType) {
+    query->type = GET_CUSTOM;
+    query->colNum = colNum;
+    query->executeCustom = executeCustom;
+    query->returnType = returnType;
+    return query;
+}
+
 StreamingQuery* is(StreamingQuery *query, SelectOperation operation, void* threshold) {
     query->operation = operation;
     query->threshold = threshold;
@@ -28,6 +36,7 @@ StreamingQuery* createStreamingQuery(embedDBState *state, embedDBSchema *schema)
         query->state = state;
         query->schema = schema;
         query->IF = IF;
+        query->IFCustom = IFCustom;
         query->is = is;
         query->forLast = forLast;
         query->then = then;
@@ -50,6 +59,9 @@ int8_t streamingQueryPut(StreamingQuery *query, void *key, void *data) {
         case GET_MAX:
         case GET_MIN:
             handleGetMinMax(query, key);
+            break;
+        case GET_CUSTOM:
+            handleCustomQuery(query, key);
             break;
         default:
             printf("ERROR: Unsupported query type\n");
@@ -223,5 +235,25 @@ void handleGetMinMax(StreamingQuery* query, void* key) {
     } 
     else {
         printf("ERROR: Unsupported column size\n");
+    }
+}
+
+void handleCustomQuery(StreamingQuery* query, void* key) {
+    void* result = query->executeCustom(query, key);
+    switch(query->returnType) {
+        case INT32:
+            executeComparison(query, result, int32Comparator);
+            break;
+        case INT64:
+            executeComparison(query, result, int64Comparator);
+            break;
+        case FLOAT:
+            executeComparison(query, result, floatComparator);
+            break;
+        case DOUBLE:
+            executeComparison(query, result, doubleComparator);
+            break;
+        default:
+            printf("ERROR: Unsupported return type\n");
     }
 }

@@ -262,3 +262,10 @@ int8_t floatComparator(void *a, void *b) {
     memcpy(&f2, b, sizeof(float));
     return (f1 > f2) - (f1 < f2);
 }
+
+int8_t doubleComparator(void *a, void *b) {
+    double f1, f2;
+    memcpy(&f1, a, sizeof(double));
+    memcpy(&f2, b, sizeof(double));
+    return (f1 > f2) - (f1 < f2);
+}
