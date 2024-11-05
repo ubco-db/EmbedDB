@@ -102,8 +102,8 @@ uint32_t embedDBExample() {
 
     StreamingQuery *streamingQuery = createStreamingQuery(state, schema);
     if (streamingQuery != NULL) {
-        streamingQuery->SQIF(streamingQuery, GET_AVG)
-                      ->is(streamingQuery, SELECT_GT, 20)
+        streamingQuery->SQIF(streamingQuery, 1, GET_AVG)
+                      ->is(streamingQuery, GreaterThan, (void*)&(int){20})
                       ->forLast(streamingQuery, 10)
                       ->then(streamingQuery, callback);
 
