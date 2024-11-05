@@ -76,12 +76,13 @@ typedef struct OpState
 */
 typedef struct MinSortState
 {
-    int8_t* buffer;
-    uint32_t* min;
+    int8_t  *buffer;
+    int8_t    *min;
+    int8_t    *min_initialized;
     
     uint64_t nextIdx; 
-    uint32_t current;           // current smallest value
-    uint32_t next;              // keep track of next smallest value for next iteration
+    void    *current;           // current smallest value
+    void    *next;              // keep track of next smallest value for next iteration
     uint32_t regionIdx;
     uint32_t lastBlockIdx;   
 

@@ -1,6 +1,6 @@
 #include "sortWrapper.h"
 
-#define DEBUG
+// #define DEBUG
 
 metrics_t initMetric();
 uint32_t loadRowData(sortData *data, embedDBOperator *op, void *unsortedFile);
@@ -99,7 +99,7 @@ int8_t writePageWithHeader(void *buffer, int32_t blockIndex, int16_t numberOfVal
 uint32_t loadRowData(sortData *data, embedDBOperator *op, void *unsortedFile) {
     uint32_t count = 0;
     int32_t blockIndex = 0;
-    int16_t valuesPerPage = (PAGE_SIZE - BLOCK_HEADER_SIZE) / (data->recordSize + data->keySize);
+    int16_t valuesPerPage = (PAGE_SIZE - BLOCK_HEADER_SIZE) / data->recordSize;
 
     void *buffer = malloc(PAGE_SIZE);
 
@@ -124,24 +124,23 @@ uint32_t loadRowData(sortData *data, embedDBOperator *op, void *unsortedFile) {
         }
 
         // Offset of the data in the page
-        uint32_t rowOffset = (count % valuesPerPage * (data->recordSize + data->keySize)) + BLOCK_HEADER_SIZE;
+        uint32_t rowOffset = count % valuesPerPage * data->recordSize + BLOCK_HEADER_SIZE;
 
-        if (rowOffset + data->keySize + data->recordSize > PAGE_SIZE) {
+        if (rowOffset + data->recordSize > PAGE_SIZE) {
             printf("ERROR: SORT: error calculating row offset");
             free(buffer);
             buffer = NULL;
             return 0;
         }
 
-        // Write key and data to buffer
-        memcpy((uint8_t *)buffer + rowOffset, op->input->recordBuffer + data->keyOffset, data->keySize);
-        memcpy((uint8_t *)buffer + rowOffset + data->keySize, op->input->recordBuffer, data->recordSize);
+        // Write data to buffer
+        memcpy((uint8_t *)buffer + rowOffset, op->input->recordBuffer, data->recordSize);
         
         count++;
 
         // temp limit for debugging
-        // if (count >= 4096) 
-            // break;
+        if (count >= 10) 
+            break;
     }
 
     // Write remaining records
@@ -177,7 +176,8 @@ file_iterator_state_t *startSorting(sortData *data, void *unsortedFile, void *so
     external_sort_t es;
     es.key_size = sizeof(int32_t);
     es.value_size = data->recordSize;
-    es.record_size = data->recordSize + es.key_size;
+    es.record_size = data->recordSize;
+    es.key_offset = data->keyOffset;
     es.headerSize = BLOCK_HEADER_SIZE;
     es.page_size = PAGE_SIZE;
     es.num_pages = (uint32_t)(es.record_size * data->count) / es.page_size;
@@ -267,7 +267,7 @@ uint8_t readNextRecord(sortData *data, void *buffer) {
     }
 
     // Copy result
-    memcpy(buffer, data->readBuffer + BLOCK_HEADER_SIZE + SORT_KEY_SIZE + iteratorState->recordSize * (iteratorState->currentRecord % recordPerPage), iteratorState->recordSize - SORT_KEY_SIZE);
+    memcpy(buffer, data->readBuffer + BLOCK_HEADER_SIZE + iteratorState->recordSize * (iteratorState->currentRecord % recordPerPage), iteratorState->recordSize);
 
     #ifdef DEBUG
     printf("DEBUG: ROWDATA:\n");

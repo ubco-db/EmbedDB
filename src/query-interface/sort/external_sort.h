@@ -10,6 +10,7 @@ extern "C" {
 
 typedef struct {
     uint16_t	key_size;
+    uint16_t    key_offset;
     uint16_t	value_size;
     uint16_t	page_size;
     uint16_t	record_size;
