@@ -255,3 +255,10 @@ int8_t int64Comparator(void *a, void *b) {
         return 1;
     return 0;
 }
+
+int8_t floatComparator(void *a, void *b) {
+    float f1, f2;
+    memcpy(&f1, a, sizeof(float));
+    memcpy(&f2, b, sizeof(float));
+    return (f1 > f2) - (f1 < f2);
+}

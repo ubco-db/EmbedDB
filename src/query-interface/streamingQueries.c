@@ -1,6 +1,6 @@
 #include "streamingQueries.h"
 
-StreamingQuery* SQIF(StreamingQuery *query, uint8_t colNum, StreamingQueryType type) {
+StreamingQuery* IF(StreamingQuery *query, uint8_t colNum, StreamingQueryType type) {
     query->type = type;
     query->colNum = colNum;
     return query;
@@ -17,7 +17,7 @@ StreamingQuery* forLast(StreamingQuery *query, uint32_t numLastEntries) {
     return query;
 }
 
-StreamingQuery* then(StreamingQuery *query, void (*callback)(const float value)) {
+StreamingQuery* then(StreamingQuery *query, void (*callback)(void* value)) {
     query->callback = callback;
     return query;
 }
@@ -27,7 +27,7 @@ StreamingQuery* createStreamingQuery(embedDBState *state, embedDBSchema *schema)
     if (query != NULL) {
         query->state = state;
         query->schema = schema;
-        query->SQIF = SQIF;
+        query->IF = IF;
         query->is = is;
         query->forLast = forLast;
         query->then = then;
@@ -43,122 +43,13 @@ int8_t streamingQueryPut(StreamingQuery *query, void *key, void *data) {
         return result;
     }
 
-    switch(query->type) {
+    switch (query->type) {
         case GET_AVG:
-            float avg = GetAvg(query, query->state, key);
-            switch(query->operation) {
-                case GreaterThan:
-                    if (avg > *(float*)(query->threshold)) {
-                        query->callback(avg);
-                    }
-                    break;
-                case LessThan:
-                    if (avg < *(float*)(query->threshold)) {
-                        query->callback(avg);
-                    }
-                    break;
-                case GreaterThanOrEqual:
-                    if (avg >= *(float*)(query->threshold)) {
-                        query->callback(avg);
-                    }
-                    break;
-                case LessThanOrEqual:
-                    if (avg <= *(float*)(query->threshold)) {
-                        query->callback(avg);
-                    }
-                    break;
-                case Equal:
-                    if (avg == *(float*)(query->threshold)) {
-                        query->callback(avg);
-                    }
-                    break;
-                case NotEqual:
-                    if (avg != *(float*)(query->threshold)) {
-                        query->callback(avg);
-                    }
-                    break;
-                default:
-                    printf("ERROR: Unsupported operation\n");
-            }
+            handleGetAvg(query, key);
             break;
         case GET_MAX:
         case GET_MIN:
-            if(abs(query->schema->columnSizes[query->colNum]) == 4){
-                int32_t minmax = GetMinMax32(query, query->state, key);
-                switch(query->operation) {
-                    case GreaterThan:
-                        if (minmax > *(int32_t*)(query->threshold)) {
-                            query->callback(minmax);
-                        }
-                        break;
-                    case LessThan:
-                        if (minmax < *(int32_t*)(query->threshold)) {
-                            query->callback(minmax);
-                        }
-                        break;
-                    case GreaterThanOrEqual:
-                        if (minmax >= *(int32_t*)(query->threshold)) {
-                            query->callback(minmax);
-                        }
-                        break;
-                    case LessThanOrEqual:
-                        if (minmax <= *(int32_t*)(query->threshold)) {
-                            query->callback(minmax);
-                        }
-                        break;
-                    case Equal:
-                        if (minmax == *(int32_t*)(query->threshold)) {
-                            query->callback(minmax);
-                        }
-                        break;
-                    case NotEqual:
-                        if (minmax != *(int32_t*)(query->threshold)) {
-                            query->callback(minmax);
-                        }
-                        break;
-                    default:
-                        printf("ERROR: Unsupported operation\n");
-                }
-            }
-            else if(abs(query->schema->columnSizes[query->colNum]) == 8){
-                int64_t minmax = GetMinMax64(query, query->state, key);
-                switch(query->operation) {
-                    case GreaterThan:
-                        if (minmax > *(int64_t*)(query->threshold)) {
-                            query->callback(minmax);
-                        }
-                        break;
-                    case LessThan:
-                        if (minmax < *(int64_t*)(query->threshold)) {
-                            query->callback(minmax);
-                        }
-                        break;
-                    case GreaterThanOrEqual:
-                        if (minmax >= *(int64_t*)(query->threshold)) {
-                            query->callback(minmax);
-                        }
-                        break;
-                    case LessThanOrEqual:
-                        if (minmax <= *(int64_t*)(query->threshold)) {
-                            query->callback(minmax);
-                        }
-                        break;
-                    case Equal:
-                        if (minmax == *(int64_t*)(query->threshold)) {
-                            query->callback(minmax);
-                        }
-                        break;
-                    case NotEqual:
-                        if (minmax != *(int64_t*)(query->threshold)) {
-                            query->callback(minmax);
-                        }
-                        break;
-                    default:
-                        printf("ERROR: Unsupported operation\n");
-                }
-            }
-            else
-                printf("ERROR: Unsupported column size\n");
+            handleGetMinMax(query, key);
             break;
         default:
             printf("ERROR: Unsupported query type\n");
@@ -167,9 +58,9 @@ int8_t streamingQueryPut(StreamingQuery *query, void *key, void *data) {
     return result;
 }
 
-float GetAvg(StreamingQuery *query, embedDBState *state, void *key) {
+float GetAvg(StreamingQuery *query, void *key) {
     void** allocatedValues;
-    embedDBOperator* op = createOperator(query, state, &allocatedValues, key);
+    embedDBOperator* op = createOperator(query, &allocatedValues, key);
 
     void* recordBuffer = op->recordBuffer;
     float* C1 = (float*)((int8_t*)recordBuffer + 0);
@@ -186,9 +77,9 @@ float GetAvg(StreamingQuery *query, embedDBState *state, void *key) {
     return avg;
 }
 
-int32_t GetMinMax32(StreamingQuery *query, embedDBState *state, void *key) {
+int32_t GetMinMax32(StreamingQuery *query, void *key) {
     void** allocatedValues;
-    embedDBOperator* op = createOperator(query, state, &allocatedValues, key);
+    embedDBOperator* op = createOperator(query, &allocatedValues, key);
 
     void* recordBuffer = op->recordBuffer;
     int32_t* C1 = (int32_t*)((int8_t*)recordBuffer + 0);
@@ -205,9 +96,9 @@ int32_t GetMinMax32(StreamingQuery *query, embedDBState *state, void *key) {
     return minmax;
 }
 
-int64_t GetMinMax64(StreamingQuery *query, embedDBState *state, void *key) {
+int64_t GetMinMax64(StreamingQuery *query, void *key) {
     void** allocatedValues;
-    embedDBOperator* op = createOperator(query, state, &allocatedValues, key);
+    embedDBOperator* op = createOperator(query, &allocatedValues, key);
 
     void* recordBuffer = op->recordBuffer;
     int64_t* C1 = (int64_t*)((int8_t*)recordBuffer + 0);
@@ -224,16 +115,16 @@ int64_t GetMinMax64(StreamingQuery *query, embedDBState *state, void *key) {
     return minmax;
 }
 
-embedDBOperator* createOperator(StreamingQuery *query, embedDBState* state, void*** allocatedValues, void *key) {
+embedDBOperator* createOperator(StreamingQuery *query, void*** allocatedValues, void *key) {
     embedDBIterator* it = (embedDBIterator*)malloc(sizeof(embedDBIterator));
-    if(state->keySize == 4){
+    if(query->state->keySize == 4){
         uint32_t minKeyVal = *(uint32_t*)key - (query->numLastEntries-1);
         uint32_t *minKeyPtr = (uint32_t *)malloc(sizeof(uint32_t));
         if (minKeyPtr != NULL) {
             *minKeyPtr = minKeyVal;
             it->minKey = minKeyPtr;
         }
-    }else if(state->keySize == 8){
+    }else if(query->state->keySize == 8){
         uint64_t minKeyVal = *(uint64_t*)key - (uint64_t)(query->numLastEntries-1);
         uint64_t *minKeyPtr = (uint64_t *)malloc(sizeof(uint64_t));
         if (minKeyPtr != NULL) {
@@ -248,9 +139,9 @@ embedDBOperator* createOperator(StreamingQuery *query, embedDBState* state, void
     it->maxKey = NULL;
     it->minData = NULL;
     it->maxData = NULL;
-    embedDBInitIterator(state, it);
+    embedDBInitIterator(query->state, it);
 
-    embedDBOperator* scanOp = createTableScanOperator(state, it, query->schema);
+    embedDBOperator* scanOp = createTableScanOperator(query->state, it, query->schema);
 
     embedDBAggregateFunc* aggFunc = NULL;    
 
@@ -283,7 +174,54 @@ embedDBOperator* createOperator(StreamingQuery *query, embedDBState* state, void
 
 }
 
-
 int8_t groupFunction(const void* lastRecord, const void* record) {
     return 1;
+}
+
+void executeComparison(StreamingQuery* query, void *value, Comparator comparator) {
+    int8_t comparisonResult = comparator(value, query->threshold);
+
+    switch (query->operation) {
+        case GreaterThan:
+            if (comparisonResult > 0) query->callback(value);
+            break;
+        case LessThan:
+            if (comparisonResult < 0) query->callback(value);
+            break;
+        case GreaterThanOrEqual:
+            if (comparisonResult >= 0) query->callback(value);
+            break;
+        case LessThanOrEqual:
+            if (comparisonResult <= 0) query->callback(value);
+            break;
+        case Equal:
+            if (comparisonResult == 0) query->callback(value);
+            break;
+        case NotEqual:
+            if (comparisonResult != 0) query->callback(value);
+            break;
+        default:
+            printf("ERROR: Unsupported operation\n");
+    }
+}
+
+void handleGetAvg(StreamingQuery* query, void* key) {
+    float avg = GetAvg(query, key);
+    executeComparison(query, &avg, floatComparator);
+}
+
+void handleGetMinMax(StreamingQuery* query, void* key) {
+    int columnSize = abs(query->schema->columnSizes[query->colNum]);
+
+    if (columnSize == 4) { // 32-bit integer
+        int32_t minmax = GetMinMax32(query, key);
+        executeComparison(query, &minmax, int32Comparator);
+    } 
+    else if (columnSize == 8) { // 64-bit integer
+        int64_t minmax = GetMinMax64(query, key);
+        executeComparison(query, &minmax, int64Comparator);
+    } 
+    else {
+        printf("ERROR: Unsupported column size\n");
+    }
 }

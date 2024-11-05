@@ -89,8 +89,8 @@ int32_t randomInt(int min, int max) {
     return randomIntInRange;
 }
 
-void callback(float data) {
-    printf("Average temperature is greater than 20: %f\n", data);
+void callback(void* data) {
+    printf("Max temperature is greater than 20: %i\n", *(int32_t*)data);
 }
 
 uint32_t embedDBExample() {
@@ -102,7 +102,7 @@ uint32_t embedDBExample() {
 
     StreamingQuery *streamingQuery = createStreamingQuery(state, schema);
     if (streamingQuery != NULL) {
-        streamingQuery->SQIF(streamingQuery, 1, GET_AVG)
+        streamingQuery->IF(streamingQuery, 1, GET_MAX)
                       ->is(streamingQuery, GreaterThan, (void*)&(int){20})
                       ->forLast(streamingQuery, 10)
                       ->then(streamingQuery, callback);
