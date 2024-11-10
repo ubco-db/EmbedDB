@@ -253,7 +253,7 @@ int advancedQueryExample() {
     embedDBOperator* scanOpOrderBy = createTableScanOperator(stateUWA, &it, baseSchema);
     uint8_t projColsOB[] = {0,1};
     embedDBOperator* projColsOrderBy = createProjectionOperator(scanOpOrderBy, 2, projColsOB);
-    embedDBOperator* orderByOp = createOrderByOperator(stateUWA, projColsOrderBy, 1, 0, 0);
+    embedDBOperator* orderByOp = createOrderByOperator(stateUWA, projColsOrderBy, 1, merge_sort_int32_comparator_reverse);
     orderByOp->init(orderByOp);
     recordBuffer = orderByOp->recordBuffer;
     

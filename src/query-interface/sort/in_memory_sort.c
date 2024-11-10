@@ -38,6 +38,17 @@ merge_sort_int32_comparator(
     return 0;
 }
 
+int8_t
+merge_sort_int32_comparator_reverse(
+        void			*a,
+        void			*b
+) {
+	int32_t result = *((int32_t*)b) - *((int32_t*)a);
+	if(result < 0) return -1;
+	if(result > 0) return 1;
+    return 0;
+}
+
 void
 in_memory_swap(
 	void				*tmp_buffer,

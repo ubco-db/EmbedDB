@@ -532,12 +532,9 @@ void closeOrderBy(embedDBOperator *op) {
  * @param dbState       The database state
  * @param input         The operator that this operator can pull records from
  * @param colNum        The column that is being sorted on 
- * @param reversed        Ordering:
- *                      0:      Asc
- *                      1:      Dec
- * @param sign        The signed ness of the column being sorted
+ * @param compareFn     The function being used to make comparisons between row data     
  */
-embedDBOperator* createOrderByOperator(embedDBState *dbState, embedDBOperator *input, int8_t colNum, int8_t reversed, int8_t sign) {
+embedDBOperator* createOrderByOperator(embedDBState *dbState, embedDBOperator *input, int8_t colNum,  int8_t (*compareFn)(void *a, void *b)) {
     if (input == NULL || dbState == NULL) {
 #ifdef PRINT_ERRORS
         printf("ERROR: ORDER BY: Input operator or database state is null\n");
@@ -558,8 +555,7 @@ embedDBOperator* createOrderByOperator(embedDBState *dbState, embedDBOperator *i
 
     state->fileInterface = dbState->fileInterface;
     state->colNum = colNum;
-    state->reversed = reversed;
-    state->sign = sign;
+    state->compareFn = compareFn;
 
     op->state = state;
     op->input = input;

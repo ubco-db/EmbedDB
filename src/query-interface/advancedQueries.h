@@ -130,8 +130,7 @@ typedef struct sortData {
     int8_t colNum;
     int8_t keyOffset;
     int8_t keySize;
-    int8_t reversed;
-    int8_t sign;
+    int8_t (*compareFn)(void *a, void *b);
 
     void *readBuffer;
     embedDBFileInterface *fileInterface;
@@ -194,16 +193,14 @@ embedDBOperator* createAggregateOperator(embedDBOperator* input, int8_t (*groupf
 embedDBOperator* createKeyJoinOperator(embedDBOperator* input1, embedDBOperator* input2);
 
 /**
- * @brief Create an operator that will reorder records based on a given method
+ * @brief Create an operator that will reorder records based on a given direction
  * 
  * @param dbState       The database state
  * @param input         The operator that this operator can pull records from
  * @param colNum        The column that is being sorted on 
- * @param method        Ordering:
- *                      0:      Asc
- *                      1:      Dec
+ * @param compareFn     The function being used to make comparisons between row data     
  */
-embedDBOperator* createOrderByOperator(embedDBState *dbState, embedDBOperator *input, int8_t colNum, int8_t method, int8_t sign);
+embedDBOperator* createOrderByOperator(embedDBState *dbState, embedDBOperator *input, int8_t colNum,  int8_t (*compareFn)(void *a, void *b));
 
 //////////////////////////////////
 // Prebuilt aggregate functions //

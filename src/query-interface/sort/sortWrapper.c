@@ -139,12 +139,12 @@ uint32_t loadRowData(sortData *data, embedDBOperator *op, void *unsortedFile) {
         count++;
 
         // temp limit for debugging
-        if (count >= 10) 
-            break;
+        // if (count >= 128) 
+            // break;
     }
 
     // Write remaining records
-    int16_t numRemainingRecords = count % valuesPerPage;
+    int16_t numRemainingRecords = (count % valuesPerPage == 0 && count != 0) ? valuesPerPage : count % valuesPerPage;
     if(writePageWithHeader(buffer, blockIndex, numRemainingRecords, PAGE_SIZE, data->fileInterface, unsortedFile)) {
         free(buffer);
         buffer = NULL;
@@ -222,7 +222,7 @@ file_iterator_state_t *startSorting(sortData *data, void *unsortedFile, void *so
 
     // Sort the data from unsortedFile and store it in sortedFile
     long result_file_ptr = 0;
-    int err = flash_minsort(iteratorState, tuple_buffer, sortedFile, buffer, buffer_max_pages * es.page_size, &es, &result_file_ptr, &metrics, merge_sort_int32_comparator);
+    int err = flash_minsort(iteratorState, tuple_buffer, sortedFile, buffer, buffer_max_pages * es.page_size, &es, &result_file_ptr, &metrics, data->compareFn);
 
 #ifdef PRINT_ERRORS
     if (8 == err) {
