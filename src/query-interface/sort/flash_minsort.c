@@ -48,7 +48,6 @@ This is no output sort with block headers and iterator input. Heap used when mov
 #include <time.h>
 
 #include "in_memory_sort.h"
-#include "no_output_heap.h"
 
 // #define DEBUG 1
 // #define DEBUG_OUTPUT 1
@@ -65,13 +64,13 @@ void readPageMinSort(MinSortState *ms, int pageNum, external_sort_t *es, metrics
     file_iterator_state_t *is = (file_iterator_state_t *)ms->iteratorState;
     void *fp = is->file;
 
-    /* Read page into start of buffer */
+    // Read page into into the buffer
     if (0 == is->fileInterface->read(ms->buffer, pageNum, es->page_size, fp)) {
         printf("Failed to read block.\n");
     }
 
-    metric->num_reads++; // Increment read metrics
-    ms->blocksRead++; // Increment count of blocks read
+    metric->num_reads++;
+    ms->blocksRead++;
     ms->lastBlockIdx = pageNum;
 
 #ifdef DEBUG_READ

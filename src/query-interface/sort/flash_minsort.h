@@ -17,7 +17,6 @@
 #define BUFFER_OUTPUT_BLOCK_START_OFFSET  			0
 #define BUFFER_OUTPUT_BLOCK_START_RECORD_OFFSET 	BLOCK_HEADER_SIZE
 
-#define SORT_KEY_SIZE       4
 #define INT_SIZE            4
 
 #define true 1

@@ -80,8 +80,8 @@ uint32_t loadRowData(sortData *data, embedDBOperator *op, void *unsortedFile) {
         count++;
 
         // temp limit for debugging
-        // if (count >= 128) 
-            // break;
+        if (count >= 10) 
+            break;
     }
 
     // Write remaining records
