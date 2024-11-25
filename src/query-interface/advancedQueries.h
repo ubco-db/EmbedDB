@@ -134,7 +134,6 @@ typedef struct sortData {
 
     void *readBuffer;
     embedDBFileInterface *fileInterface;
-    
     file_iterator_state_t *fileIterator;
 } sortData;
 

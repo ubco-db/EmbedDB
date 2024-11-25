@@ -491,7 +491,7 @@ void initOrderBy(embedDBOperator *op) {
 
     ((sortData *)op->state)->readBuffer = malloc(PAGE_SIZE);
 
-    initSort(op);
+    prepareSort(op);
 
     return;
 }
@@ -535,9 +535,9 @@ void closeOrderBy(embedDBOperator *op) {
  * @param compareFn     The function being used to make comparisons between row data     
  */
 embedDBOperator* createOrderByOperator(embedDBState *dbState, embedDBOperator *input, int8_t colNum,  int8_t (*compareFn)(void *a, void *b)) {
-    if (input == NULL || dbState == NULL) {
+    if (input == NULL || dbState == NULL || compareFn == NULL || colNum < 0) {
 #ifdef PRINT_ERRORS
-        printf("ERROR: ORDER BY: Input operator or database state is null\n");
+        printf("ERROR: ORDER BY: Invalid Input data\n");
 #endif
         return NULL;  
     }
