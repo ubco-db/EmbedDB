@@ -80,7 +80,7 @@ uint32_t loadRowData(sortData *data, embedDBOperator *op, void *unsortedFile) {
         count++;
 
         // temp limit for debugging
-        if (count >= 10) 
+        if (count >= 200000) 
             break;
     }
 
@@ -176,14 +176,9 @@ file_iterator_state_t *startSort(sortData *data, void *unsortedFile, void *sorte
     es.key_offset = data->keyOffset;
     es.headerSize = BLOCK_HEADER_SIZE;
     es.page_size = PAGE_SIZE;
-    es.num_pages = (uint32_t)(es.record_size * data->count) / es.page_size;
+    es.num_pages = (uint32_t) ceil((float)data->count / ((es.page_size - es.headerSize) / es.record_size));
 
-    // Check for when record size is exactly page size
-    if (es.num_pages == 0 || es.num_pages % es.page_size != 0) {
-        es.num_pages++;
-    }
-
-    const int buffer_max_pages = 4; // Assume a buffer size of 4 pages 
+    const int buffer_max_pages = 32; 
     char *buffer = malloc(buffer_max_pages * es.page_size + es.record_size);
     char *tuple_buffer = buffer + es.page_size * buffer_max_pages;
 

@@ -243,7 +243,7 @@ int advancedQueryExample() {
      * Find the top 10 lowest temperature recordings
      */
     
-    uint8_t limit = 10;
+    uint8_t limit = 128;
     it.minKey = NULL;
     it.maxKey = NULL;
     it.minData = NULL;

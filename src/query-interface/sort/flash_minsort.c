@@ -243,6 +243,10 @@ char *next_MinSort(MinSortState *ms, external_sort_t *es, void *tupleBuffer, met
     for (k = startIndex / ms->records_per_block; k < ms->blocks_per_region; k++) {
         curBlk = startBlk + k;
         
+        if (curBlk > ms->numBlocks) {
+            break;
+        }
+
         // Read the current block into the buffer if it's not already loaded
         if (curBlk != ms->lastBlockIdx) {
             readPageMinSort(ms, curBlk, es, metric);
@@ -257,7 +261,6 @@ char *next_MinSort(MinSortState *ms, external_sort_t *es, void *tupleBuffer, met
             metric->num_compar++;
 
             // If the current record matches the minimum, copy it into the ouput buffer
-
             if (compareFn(dataVal, ms->current) == 0) {
                 memcpy(tupleBuffer, &(ms->buffer[ms->record_size * i + es->headerSize]), ms->record_size);
                 metric->num_memcpys++;
@@ -293,6 +296,10 @@ done:
     for (; k < ms->blocks_per_region; k++) {
         curBlk = startBlk + k;
         
+        if (curBlk > ms->numBlocks) {
+            break;
+        }
+
         // If the block is not already loaded, read it into the buffer
         if (curBlk != ms->lastBlockIdx) {
             readPageMinSort(ms, curBlk, es, metric);
