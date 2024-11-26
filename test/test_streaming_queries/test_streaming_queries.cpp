@@ -97,17 +97,27 @@ void tearDown(void) {
 
 }
 
+typedef struct {
+    int counter1;
+    int counter2;
+} CallbackContext;
+
 void test_streamingQueryPutWMaxEqual(void) {
     std::cout << "Running test_streamingQueryPut..." << std::endl;
-    StreamingQuery *query = createStreamingQuery(state, schema);
+    CallbackContext* context = (CallbackContext*)malloc(sizeof(CallbackContext));
+    context->counter1 = 0;
+    context->counter2 = 0;
+    StreamingQuery *query = createStreamingQuery(state, schema, context);
 
     int value = 5;
-    int counter = 0;
     query->IF(query, 1, GET_MAX)
         ->ofLast(query, 5)
         ->is(query, Equal, (void*)&value)
-        ->then(query, [](void* maximum, void* current) {
-            TEST_ASSERT_EQUAL_FLOAT_MESSAGE(5, *(int*)maximum, "Callback did not return correct value.");            
+        ->then(query, [](void* maximum, void* current, void* ctx) {
+            CallbackContext* context = (CallbackContext*)ctx;
+            context->counter1++;
+            context->counter2 += 2;
+            TEST_ASSERT_EQUAL_INT_MESSAGE(5, *(int*)maximum, "Callback did not return correct value.");            
     });
 
 
@@ -123,9 +133,12 @@ void test_streamingQueryPutWMaxEqual(void) {
         TEST_ASSERT_EQUAL_INT32(data[i], dataRetrieved);
     }
 
+    TEST_ASSERT_EQUAL_INT32(3, context->counter1);
+    TEST_ASSERT_EQUAL_INT32(6, context->counter2);
 
 
     free(query);
+    free(context);
     std::cout << "test_streamingQueryPut complete" << std::endl;
 }
 

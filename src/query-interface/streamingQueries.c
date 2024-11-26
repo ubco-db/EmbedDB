@@ -30,11 +30,12 @@ StreamingQuery* then(StreamingQuery *query, void (*callback)(void* aggregateValu
     return query;
 }
 
-StreamingQuery* createStreamingQuery(embedDBState *state, embedDBSchema *schema) {
+StreamingQuery* createStreamingQuery(embedDBState *state, embedDBSchema *schema, void* context) {
     StreamingQuery *query = (StreamingQuery*)malloc(sizeof(StreamingQuery));
     if (query != NULL) {
         query->state = state;
         query->schema = schema;
+        query->context = context;
         query->IF = IF;
         query->IFCustom = IFCustom;
         query->is = is;
@@ -195,22 +196,22 @@ void executeComparison(StreamingQuery* query, void *aggregateValue, Comparator c
 
     switch (query->operation) {
         case GreaterThan:
-            if (comparisonResult > 0) query->callback(aggregateValue, data);
+            if (comparisonResult > 0) query->callback(aggregateValue, data, query->context);
             break;
         case LessThan:
-            if (comparisonResult < 0) query->callback(aggregateValue, data);
+            if (comparisonResult < 0) query->callback(aggregateValue, data, query->context);
             break;
         case GreaterThanOrEqual:
-            if (comparisonResult >= 0) query->callback(aggregateValue, data);
+            if (comparisonResult >= 0) query->callback(aggregateValue, data, query->context);
             break;
         case LessThanOrEqual:
-            if (comparisonResult <= 0) query->callback(aggregateValue, data);
+            if (comparisonResult <= 0) query->callback(aggregateValue, data, query->context);
             break;
         case Equal:
-            if (comparisonResult == 0) query->callback(aggregateValue, data);
+            if (comparisonResult == 0) query->callback(aggregateValue, data, query->context);
             break;
         case NotEqual:
-            if (comparisonResult != 0) query->callback(aggregateValue, data);
+            if (comparisonResult != 0) query->callback(aggregateValue, data, query->context);
             break;
         default:
             printf("ERROR: Unsupported operation\n");

@@ -56,7 +56,8 @@ typedef struct StreamingQuery {
     StreamingQueryType type;    /**< Type of the streaming query */
     SelectOperation operation;  /**< Selection operation */
     uint8_t colNum;             /**< Column number to preform query on*/
-    void (*callback)(void* aggregateValue, void* currentValue);  /**< Callback function */
+    void* context;              /**< Context for callback function */
+    void* (*callback)(void* aggregateValue, void* currentValue, void* context);  /**< Callback function */
     void* (*executeCustom)(struct StreamingQuery *query, void *key); /**< Execute custom query */
     CustomReturnType returnType; /**< Return type of custom query */
 
@@ -64,7 +65,7 @@ typedef struct StreamingQuery {
     struct StreamingQuery* (*IFCustom)(struct StreamingQuery *query, uint8_t colNum, void* (*executeCustom)(struct StreamingQuery *query, void *key), CustomReturnType returnType);
     struct StreamingQuery* (*ofLast)(struct StreamingQuery *query, uint32_t numLastEntries);
     struct StreamingQuery* (*is)(struct StreamingQuery *query, SelectOperation operation, void* threshold);
-    struct StreamingQuery* (*then)(struct StreamingQuery *query, void (*callback)(void* aggregateValue, void* currentValue));
+    struct StreamingQuery* (*then)(struct StreamingQuery *query, void (*callback)(void* aggregateValue, void* currentValue, void* context));
 } StreamingQuery;
 
 /**
@@ -125,7 +126,7 @@ StreamingQuery* then(StreamingQuery *query, void (*callback)(void* aggregateValu
  * @param schema Pointer to the embedDBSchema.
  * @return Pointer to the newly created StreamingQuery.
  */
-StreamingQuery* createStreamingQuery(embedDBState *state, embedDBSchema *schema);
+StreamingQuery* createStreamingQuery(embedDBState *state, embedDBSchema *schema, void* context);
 
 /**
  * @brief Inserts a record, performs a query on that record and the last n specified records (numLastEntries), 
