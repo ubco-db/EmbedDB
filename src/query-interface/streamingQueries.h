@@ -1,10 +1,17 @@
-#ifndef EMBEDDB_STREAMING_QUERIES_H_
-#define EMBEDDB_STREAMING_QUERIES_H_
+#ifndef _STREAMINGQUERIES_H
+#define _STREAMINGQUERIES_H
+
+#if defined(__cplusplus)
+extern "C" {
+#endif
 
 #include "advancedQueries.h"
 #include <embedDB/embedDB.h>
 #include <embedDBUtility.h>
 #include <string.h>
+
+//TODO: Allow any number of parameters for callback function
+//TODO: Allow streamingPut to take in list of queries
 
 /**
  * @enum StreamingQueryType
@@ -242,5 +249,7 @@ void handleGetMinMax(StreamingQuery* query, void* key);
 void handleCustomQuery(StreamingQuery* query, void* key);
 
 
-
-#endif // EMBEDDB_STREAMING_QUERIES_H_
+#ifdef __cplusplus
+}
+#endif
+#endif // _STREAMINGQUERIES_H
