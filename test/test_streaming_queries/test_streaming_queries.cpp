@@ -107,17 +107,19 @@ void test_streamingQueryPutWMaxEqual(void) {
     CallbackContext* context = (CallbackContext*)malloc(sizeof(CallbackContext));
     context->counter1 = 0;
     context->counter2 = 0;
-    StreamingQuery *query = createStreamingQuery(state, schema, context);
+
+    StreamingQuery **queries = (StreamingQuery**)malloc(sizeof(StreamingQuery*));
+    queries[0] = createStreamingQuery(state, schema, context);
 
     int value = 5;
-    query->IF(query, 1, GET_MAX)
-        ->ofLast(query, 5)
-        ->is(query, Equal, (void*)&value)
-        ->then(query, [](void* maximum, void* current, void* ctx) {
-            CallbackContext* context = (CallbackContext*)ctx;
-            context->counter1++;
-            context->counter2 += 2;
-            TEST_ASSERT_EQUAL_INT_MESSAGE(5, *(int*)maximum, "Callback did not return correct value.");            
+    queries[0]->IF(queries[0], 1, GET_MAX)
+            ->ofLast(queries[0], 5)
+            ->is(queries[0], Equal, (void*)&value)
+            ->then(queries[0], [](void* maximum, void* current, void* ctx) {
+                CallbackContext* context = (CallbackContext*)ctx;
+                context->counter1++;
+                context->counter2 += 2;
+                TEST_ASSERT_EQUAL_INT_MESSAGE(5, *(int*)maximum, "Callback did not return correct value.");            
     });
 
 
@@ -126,7 +128,7 @@ void test_streamingQueryPutWMaxEqual(void) {
     for (int32_t i = 0; i < sizeof(data)/sizeof(data[0]); i++) {
 
         *((uint32_t*)dataPtr) = data[i];
-        streamingQueryPut(query, &i, dataPtr);
+        streamingQueryPut(queries, 1, &i, dataPtr);
 
         int32_t dataRetrieved = 0;
         embedDBGet(state, (void*)&i, (void*)&dataRetrieved);
@@ -137,7 +139,7 @@ void test_streamingQueryPutWMaxEqual(void) {
     TEST_ASSERT_EQUAL_INT32(6, context->counter2);
 
 
-    free(query);
+    free(queries);
     free(context);
     std::cout << "test_streamingQueryPut complete" << std::endl;
 }
