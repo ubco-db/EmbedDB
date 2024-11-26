@@ -105,15 +105,15 @@ void test_streamingQueryPutWMaxEqual(void) {
     int counter = 0;
     query->IF(query, 1, GET_MAX)
         ->is(query, Equal, (void*)&value)
-        ->forLast(query, 10)
-        ->then(query, [](void* val) {
-            TEST_ASSERT_EQUAL_FLOAT_MESSAGE(5, *(int*)val, "Callback did not return correct value.");            
+        ->forLast(query, 5)
+        ->then(query, [](void* maximum) {
+            TEST_ASSERT_EQUAL_FLOAT_MESSAGE(5, *(int*)maximum, "Callback did not return correct value.");            
     });
 
 
     int32_t data[] = {4,3,3,5,4,5};
     void* dataPtr = calloc(1, state->dataSize);
-    for (int32_t i = 0; i < 3; i++) {
+    for (int32_t i = 0; i < sizeof(data)/sizeof(data[0]); i++) {
 
         *((uint32_t*)dataPtr) = data[i];
         streamingQueryPut(query, &i, dataPtr);
