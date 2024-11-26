@@ -89,8 +89,8 @@ int32_t randomInt(int min, int max) {
     return randomIntInRange;
 }
 
-void callback(void* data) {
-    printf("Max temperature is greater than 20: %i\n", *(int32_t*)data);
+void callback(void* aggregateValue, void* currentValue) {
+    printf("Max temperature is greater than 20: Max: %i, Current: %i\n", *(int32_t*)aggregateValue, *(int32_t*)currentValue);
 }
 
 uint32_t embedDBExample() {
@@ -103,8 +103,8 @@ uint32_t embedDBExample() {
     StreamingQuery *streamingQuery = createStreamingQuery(state, schema);
     if (streamingQuery != NULL) {
         streamingQuery->IF(streamingQuery, 1, GET_MAX)
+                      ->ofLast(streamingQuery, 10)
                       ->is(streamingQuery, GreaterThan, (void*)&(int){20})
-                      ->forLast(streamingQuery, 10)
                       ->then(streamingQuery, callback);
 
     }

@@ -56,15 +56,15 @@ typedef struct StreamingQuery {
     StreamingQueryType type;    /**< Type of the streaming query */
     SelectOperation operation;  /**< Selection operation */
     uint8_t colNum;             /**< Column number to preform query on*/
-    void (*callback)(void* value);  /**< Callback function */
+    void (*callback)(void* aggregateValue, void* currentValue);  /**< Callback function */
     void* (*executeCustom)(struct StreamingQuery *query, void *key); /**< Execute custom query */
     CustomReturnType returnType; /**< Return type of custom query */
 
     struct StreamingQuery* (*IF)(struct StreamingQuery *query, uint8_t colNum, StreamingQueryType type);
     struct StreamingQuery* (*IFCustom)(struct StreamingQuery *query, uint8_t colNum, void* (*executeCustom)(struct StreamingQuery *query, void *key), CustomReturnType returnType);
+    struct StreamingQuery* (*ofLast)(struct StreamingQuery *query, uint32_t numLastEntries);
     struct StreamingQuery* (*is)(struct StreamingQuery *query, SelectOperation operation, void* threshold);
-    struct StreamingQuery* (*forLast)(struct StreamingQuery *query, uint32_t numLastEntries);
-    struct StreamingQuery* (*then)(struct StreamingQuery *query, void (*callback)(void* value));
+    struct StreamingQuery* (*then)(struct StreamingQuery *query, void (*callback)(void* aggregateValue, void* currentValue));
 } StreamingQuery;
 
 /**
@@ -104,7 +104,7 @@ StreamingQuery* IFCustom(StreamingQuery *query, uint8_t colNum, void* (*executeC
 StreamingQuery* is(StreamingQuery *query, SelectOperation operation, void* threshold);
 
 /**
- * @brief forLast method for setting the number of last entries to consider.
+ * @brief ofLast method for setting the number of last entries to consider.
  * @param query Pointer to the StreamingQuery.
  * @param numLastEntries Number of last entries.
  * @return Pointer to the StreamingQuery.
@@ -117,7 +117,7 @@ StreamingQuery* forLast(StreamingQuery *query, uint32_t numLastEntries);
  * @param callback Callback function.
  * @return Pointer to the StreamingQuery.
  */
-StreamingQuery* then(StreamingQuery *query, void (*callback)(void* value));
+StreamingQuery* then(StreamingQuery *query, void (*callback)(void* aggregateValue, void* currentValue));
 
 /**
  * @brief Creates a new StreamingQuery.
@@ -212,7 +212,7 @@ int8_t groupFunction(const void* lastRecord, const void* record);
  * @param value Pointer to the value to be compared.
  * @param comparator Function pointer to the comparator function.
  */
-void executeComparison(StreamingQuery* query, void *value, Comparator comparator);
+void executeComparison(StreamingQuery* query, void *value, Comparator comparator, void *data);
 
 /**
  * @brief Handles the average value retrieval and comparison for a streaming query.
@@ -223,7 +223,7 @@ void executeComparison(StreamingQuery* query, void *value, Comparator comparator
  * @param query Pointer to the StreamingQuery structure.
  * @param key Pointer to the key for the current record.
  */
-void handleGetAvg(StreamingQuery* query, void* key);
+void handleGetAvg(StreamingQuery* query, void* key, void *data);
 
 /**
  * @brief Handles the minimum or maximum value retrieval and comparison for a streaming query.
@@ -234,7 +234,7 @@ void handleGetAvg(StreamingQuery* query, void* key);
  * @param query Pointer to the StreamingQuery structure.
  * @param key Pointer to the key for the current record.
  */
-void handleGetMinMax(StreamingQuery* query, void* key);
+void handleGetMinMax(StreamingQuery* query, void* key, void *data);
 
 /**
  * @brief Handles a custom streaming query and executes the appropriate comparison based on the return type.
@@ -246,7 +246,7 @@ void handleGetMinMax(StreamingQuery* query, void* key);
  * based on the return type specified in the query. Supported return types include INT32, INT64,
  * FLOAT, and DOUBLE. If the return type is unsupported, an error message is printed.
  */
-void handleCustomQuery(StreamingQuery* query, void* key);
+void handleCustomQuery(StreamingQuery* query, void* key, void *data);
 
 
 #ifdef __cplusplus

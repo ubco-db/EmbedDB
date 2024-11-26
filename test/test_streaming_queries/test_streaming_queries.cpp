@@ -104,9 +104,9 @@ void test_streamingQueryPutWMaxEqual(void) {
     int value = 5;
     int counter = 0;
     query->IF(query, 1, GET_MAX)
+        ->ofLast(query, 5)
         ->is(query, Equal, (void*)&value)
-        ->forLast(query, 5)
-        ->then(query, [](void* maximum) {
+        ->then(query, [](void* maximum, void* current) {
             TEST_ASSERT_EQUAL_FLOAT_MESSAGE(5, *(int*)maximum, "Callback did not return correct value.");            
     });
 

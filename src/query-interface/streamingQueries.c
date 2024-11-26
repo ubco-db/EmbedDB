@@ -20,12 +20,12 @@ StreamingQuery* is(StreamingQuery *query, SelectOperation operation, void* thres
     return query;
 }
 
-StreamingQuery* forLast(StreamingQuery *query, uint32_t numLastEntries) {
+StreamingQuery* ofLast(StreamingQuery *query, uint32_t numLastEntries) {
     query->numLastEntries = numLastEntries;
     return query;
 }
 
-StreamingQuery* then(StreamingQuery *query, void (*callback)(void* value)) {
+StreamingQuery* then(StreamingQuery *query, void (*callback)(void* aggregateValue, void* currentValue)) {
     query->callback = callback;
     return query;
 }
@@ -38,7 +38,7 @@ StreamingQuery* createStreamingQuery(embedDBState *state, embedDBSchema *schema)
         query->IF = IF;
         query->IFCustom = IFCustom;
         query->is = is;
-        query->forLast = forLast;
+        query->ofLast = ofLast;
         query->then = then;
     }
     return query;
@@ -54,14 +54,14 @@ int8_t streamingQueryPut(StreamingQuery *query, void *key, void *data) {
 
     switch (query->type) {
         case GET_AVG:
-            handleGetAvg(query, key);
+            handleGetAvg(query, key, data);
             break;
         case GET_MAX:
         case GET_MIN:
-            handleGetMinMax(query, key);
+            handleGetMinMax(query, key, data);
             break;
         case GET_CUSTOM:
-            handleCustomQuery(query, key);
+            handleCustomQuery(query, key, data);
             break;
         default:
             printf("ERROR: Unsupported query type\n");
@@ -190,68 +190,68 @@ int8_t groupFunction(const void* lastRecord, const void* record) {
     return 1;
 }
 
-void executeComparison(StreamingQuery* query, void *value, Comparator comparator) {
-    int8_t comparisonResult = comparator(value, query->threshold);
+void executeComparison(StreamingQuery* query, void *aggregateValue, Comparator comparator, void *data) {
+    int8_t comparisonResult = comparator(aggregateValue, query->threshold);
 
     switch (query->operation) {
         case GreaterThan:
-            if (comparisonResult > 0) query->callback(value);
+            if (comparisonResult > 0) query->callback(aggregateValue, data);
             break;
         case LessThan:
-            if (comparisonResult < 0) query->callback(value);
+            if (comparisonResult < 0) query->callback(aggregateValue, data);
             break;
         case GreaterThanOrEqual:
-            if (comparisonResult >= 0) query->callback(value);
+            if (comparisonResult >= 0) query->callback(aggregateValue, data);
             break;
         case LessThanOrEqual:
-            if (comparisonResult <= 0) query->callback(value);
+            if (comparisonResult <= 0) query->callback(aggregateValue, data);
             break;
         case Equal:
-            if (comparisonResult == 0) query->callback(value);
+            if (comparisonResult == 0) query->callback(aggregateValue, data);
             break;
         case NotEqual:
-            if (comparisonResult != 0) query->callback(value);
+            if (comparisonResult != 0) query->callback(aggregateValue, data);
             break;
         default:
             printf("ERROR: Unsupported operation\n");
     }
 }
 
-void handleGetAvg(StreamingQuery* query, void* key) {
+void handleGetAvg(StreamingQuery* query, void* key, void *data) {
     float avg = GetAvg(query, key);
-    executeComparison(query, &avg, floatComparator);
+    executeComparison(query, &avg, floatComparator, data);
 }
 
-void handleGetMinMax(StreamingQuery* query, void* key) {
+void handleGetMinMax(StreamingQuery* query, void* key, void *data) {
     int columnSize = abs(query->schema->columnSizes[query->colNum]);
 
     if (columnSize == 4) { // 32-bit integer
         int32_t minmax = GetMinMax32(query, key);
-        executeComparison(query, &minmax, int32Comparator);
+        executeComparison(query, &minmax, int32Comparator, data);
     } 
     else if (columnSize == 8) { // 64-bit integer
         int64_t minmax = GetMinMax64(query, key);
-        executeComparison(query, &minmax, int64Comparator);
+        executeComparison(query, &minmax, int64Comparator, data);
     } 
     else {
         printf("ERROR: Unsupported column size\n");
     }
 }
 
-void handleCustomQuery(StreamingQuery* query, void* key) {
+void handleCustomQuery(StreamingQuery* query, void* key, void *data) {
     void* result = query->executeCustom(query, key);
     switch(query->returnType) {
         case INT32:
-            executeComparison(query, result, int32Comparator);
+            executeComparison(query, result, int32Comparator, data);
             break;
         case INT64:
-            executeComparison(query, result, int64Comparator);
+            executeComparison(query, result, int64Comparator, data);
             break;
         case FLOAT:
-            executeComparison(query, result, floatComparator);
+            executeComparison(query, result, floatComparator, data);
             break;
         case DOUBLE:
-            executeComparison(query, result, doubleComparator);
+            executeComparison(query, result, doubleComparator, data);
             break;
         default:
             printf("ERROR: Unsupported return type\n");
