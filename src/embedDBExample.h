@@ -89,8 +89,12 @@ int32_t randomInt(int min, int max) {
     return randomIntInRange;
 }
 
-void callback(void* aggregateValue, void* currentValue) {
-    printf("Max temperature is greater than 20: Max: %i, Current: %i\n", *(int32_t*)aggregateValue, *(int32_t*)currentValue);
+void GTcallback(void* aggregateValue, void* currentValue, void* context) {
+    printf("Max temperature is greater than 25: Max: %i, Current: %i\n", *(int32_t*)aggregateValue, *(int32_t*)currentValue);
+}
+
+void LTcallback(void* aggregateValue, void* currentValue, void* context) {
+    printf("Max temperature is less than 25: Max: %i, Current: %i\n", *(int32_t*)aggregateValue, *(int32_t*)currentValue);
 }
 
 uint32_t embedDBExample() {
@@ -100,15 +104,21 @@ uint32_t embedDBExample() {
 
     embedDBSchema* schema = createSchema();
 
-    StreamingQuery *streamingQuery = createStreamingQuery(state, schema);
-    if (streamingQuery != NULL) {
-        streamingQuery->IF(streamingQuery, 1, GET_MAX)
-                      ->ofLast(streamingQuery, 10)
-                      ->is(streamingQuery, GreaterThan, (void*)&(int){20})
-                      ->then(streamingQuery, callback);
+    StreamingQuery *streamingQueryGT = createStreamingQuery(state, schema, NULL);
+    streamingQueryGT->IF(streamingQueryGT, 1, GET_MAX)
+                    ->ofLast(streamingQueryGT, 10)
+                    ->is(streamingQueryGT, GreaterThan, (void*)&(int){25})
+                    ->then(streamingQueryGT, GTcallback);
 
-    }
+    StreamingQuery *streamingQueryLT = createStreamingQuery(state, schema, NULL);
+    streamingQueryLT->IF(streamingQueryLT, 1, GET_MAX)
+                    ->ofLast(streamingQueryLT, 10)
+                    ->is(streamingQueryLT, LessThan, (void*)&(int){25})
+                    ->then(streamingQueryLT, LTcallback);
 
+    StreamingQuery **queries = (StreamingQuery**)malloc(sizeof(StreamingQuery*));
+    queries[0] = streamingQueryGT;
+    queries[1] = streamingQueryLT;
     srand(time(NULL));
 
     for (int i = 0; i < 100; i++) {
@@ -119,7 +129,7 @@ uint32_t embedDBExample() {
 
         // set value to be inserted
         *((uint32_t*)dataPtr) = randomInt(15, 30);
-        int8_t result = streamingQueryPut(streamingQuery, &timestamp, dataPtr);      
+        int8_t result = streamingQueryPut(queries, 2, &timestamp, dataPtr);      
         if(result != SUCCESS) {
             printf("Error inserting record\n");
         }
@@ -135,7 +145,7 @@ uint32_t embedDBExample() {
     printf("Example completed!\n");
     
     // Free the allocated memory
-    free(streamingQuery);
+    free(queries);
     return 0;
 }
 

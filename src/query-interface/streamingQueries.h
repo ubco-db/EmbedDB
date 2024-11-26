@@ -57,7 +57,7 @@ typedef struct StreamingQuery {
     SelectOperation operation;  /**< Selection operation */
     uint8_t colNum;             /**< Column number to preform query on*/
     void* context;              /**< Context for callback function */
-    void* (*callback)(void* aggregateValue, void* currentValue, void* context);  /**< Callback function */
+    void (*callback)(void* aggregateValue, void* currentValue, void* context);  /**< Callback function */
     void* (*executeCustom)(struct StreamingQuery *query, void *key); /**< Execute custom query */
     CustomReturnType returnType; /**< Return type of custom query */
 
@@ -118,7 +118,7 @@ StreamingQuery* forLast(StreamingQuery *query, uint32_t numLastEntries);
  * @param callback Callback function.
  * @return Pointer to the StreamingQuery.
  */
-StreamingQuery* then(StreamingQuery *query, void (*callback)(void* aggregateValue, void* currentValue));
+StreamingQuery* then(StreamingQuery *query, void (*callback)(void* aggregateValue, void* currentValue, void* context));
 
 /**
  * @brief Creates a new StreamingQuery.
@@ -136,7 +136,7 @@ StreamingQuery* createStreamingQuery(embedDBState *state, embedDBSchema *schema,
  * @param data Pointer to the data.
  * @return Result of the insertion operation (0 or 1).
  */
-int8_t streamingQueryPut(StreamingQuery *query, void *key, void *data);
+int8_t streamingQueryPut(StreamingQuery **queries, size_t queryCount, void *key, void *data);
 
 /**
  * @brief Gets the average value of last n specified records (numLastEntries) including current value.

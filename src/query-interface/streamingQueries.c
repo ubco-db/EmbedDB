@@ -25,7 +25,7 @@ StreamingQuery* ofLast(StreamingQuery *query, uint32_t numLastEntries) {
     return query;
 }
 
-StreamingQuery* then(StreamingQuery *query, void (*callback)(void* aggregateValue, void* currentValue)) {
+StreamingQuery* then(StreamingQuery *query, void (*callback)(void* aggregateValue, void* currentValue, void* context)) {
     query->callback = callback;
     return query;
 }
@@ -46,26 +46,37 @@ StreamingQuery* createStreamingQuery(embedDBState *state, embedDBSchema *schema,
 }
 
 
-int8_t streamingQueryPut(StreamingQuery *query, void *key, void *data) {
-    int8_t result = embedDBPut(query->state, key, data);
+int8_t streamingQueryPut(StreamingQuery **queries, size_t queryCount, void *key, void *data) {
+    //if all query states are not the same return error
+    for (int i = 0; i < queryCount; i++) {
+        if (queries[i]->state != queries[0]->state) {
+            printf("ERROR: All query states must be the same\n");
+            return -1;
+        }
+    }
+
+    int8_t result = embedDBPut(queries[0]->state, key, data);
     if (result != 0) {
         printf("Error inserting record\n");
         return result;
     }
 
-    switch (query->type) {
-        case GET_AVG:
-            handleGetAvg(query, key, data);
-            break;
-        case GET_MAX:
-        case GET_MIN:
-            handleGetMinMax(query, key, data);
-            break;
-        case GET_CUSTOM:
-            handleCustomQuery(query, key, data);
-            break;
-        default:
-            printf("ERROR: Unsupported query type\n");
+    for (int i = 0; i < queryCount; i++) {
+        switch (queries[i]->type) {
+            case GET_AVG:
+                handleGetAvg(queries[i], key, data);
+                break;
+            case GET_MAX:
+            case GET_MIN:
+                handleGetMinMax(queries[i], key, data);
+                break;
+            case GET_CUSTOM:
+                handleCustomQuery(queries[i], key, data);
+                break;
+            default:
+                printf("ERROR: Unsupported query type\n");
+        }
+    
     }
 
     return result;
