@@ -100,6 +100,7 @@ void tearDown(void) {
 typedef struct {
     int counter1;
     int counter2;
+    double array[];
 } CallbackContext;
 
 void test_MaxEqual(void) {
@@ -146,8 +147,9 @@ void test_MaxEqual(void) {
 
 void test_MinGreaterThan(void) {
     std::cout << "Running test_MinGreaterThan..." << std::endl;
-    CallbackContext* context = (CallbackContext*)malloc(sizeof(CallbackContext));
+    CallbackContext* context = (CallbackContext*)malloc(sizeof(CallbackContext) + sizeof(double) * 30);
     context->counter1 = 0;
+    context->counter2 = 0;
 
     StreamingQuery **queries = (StreamingQuery**)malloc(sizeof(StreamingQuery*));
     queries[0] = createStreamingQuery(state, schema, context);
@@ -267,91 +269,84 @@ void test_MultipleQueries(void) {
     std::cout << "test_MultipleQueries complete" << std::endl;
 }
 
+void* GetWeightedAverage(StreamingQuery *query, void *key) {
+    double lambda = log(2) / 5.0;
+    int currentKey = *(int*)key;
+    int slidingWindowStart = currentKey - (query->numLastEntries-1);
 
-embedDBOperator* createMinOperator(StreamingQuery *query, void*** allocatedValues, void *key) {
-    embedDBIterator* it = (embedDBIterator*)malloc(sizeof(embedDBIterator));
-    uint32_t minKeyVal = *(uint32_t*)key - (query->numLastEntries-1);
-    uint32_t *minKeyPtr = (uint32_t *)malloc(sizeof(uint32_t));
-    if (minKeyPtr != NULL) {
-        *minKeyPtr = minKeyVal;
-        it->minKey = minKeyPtr;
+    double totalWeight = 0;
+    double weightedSum = 0;
+
+    for (int key = slidingWindowStart; key <= currentKey; key++) {
+        int32_t record = 0;
+        int8_t result = embedDBGet(state, (void*)&key, (void*)&record);
+        if(result != 0) { 
+            continue;
+        }
+        TEST_ASSERT_EQUAL_INT32(key%2,0); //test day is inserted every 2 seconds i.e. timestamp (key) is even
+        int timeDifference = currentKey - key;
+        double weight = (query->numLastEntries - 1) - timeDifference; // Linear decay 
+        if (weight < 0) weight = 0;
+        
+        weightedSum += record * weight;
+        totalWeight += weight;
     }
-    
-    it->maxKey = NULL;
-    it->minData = NULL;
-    it->maxData = NULL;
-    embedDBInitIterator(query->state, it);
 
-    embedDBOperator* scanOp = createTableScanOperator(query->state, it, query->schema);
-
-    embedDBAggregateFunc* aggFunc = NULL;    
-    aggFunc = createMinAggregate(query->colNum, query->schema->columnSizes[query->colNum]);
-
-    embedDBAggregateFunc* aggFuncs = (embedDBAggregateFunc*)malloc(1*sizeof(embedDBAggregateFunc));
-    aggFuncs[0] = *aggFunc;
-    embedDBOperator* aggOp = createAggregateOperator(scanOp, groupFunction, aggFuncs, 1);
-    aggOp->init(aggOp);
-
-    free(aggFunc);
-
-    *allocatedValues = (void**)malloc(2 * sizeof(void*));
-    ((void**)*allocatedValues)[0] = it;
-    ((void**)*allocatedValues)[1] = aggFuncs;
-
-    return aggOp;
-
-}
-
-void* GetMin(StreamingQuery *query, void *key) {
-    void** allocatedValues;
-    embedDBOperator* op = createMinOperator(query, &allocatedValues, key);
-
-    void* recordBuffer = op->recordBuffer;
-    exec(op);
-    int32_t* minmax = (int32_t*)malloc(sizeof(int32_t));
-    *minmax = *(int32_t*)((int8_t*)recordBuffer + 0);
-    op->close(op);
-    embedDBFreeOperatorRecursive(&op);
-    recordBuffer = NULL;
-    for (int i = 0; i < 2; i++) {
-        free(allocatedValues[i]);
-    }
-    free(allocatedValues);
-    return (void*)minmax;
+    double* weightedAverage = (double*)malloc(sizeof(double));
+    *weightedAverage = weightedSum / totalWeight;
+    printf("Weighted Average at %is: %f\n", *(int*)key, *weightedAverage);
+    return (void*)weightedAverage;
 }
 
 
  void test_CustomQuery(void) {
     std::cout << "Running test_CustomQuery..." << std::endl;
-    CallbackContext* context = (CallbackContext*)malloc(sizeof(CallbackContext));
+    CallbackContext* context = (CallbackContext*)malloc(sizeof(CallbackContext) + sizeof(double) * 30);
     context->counter1 = 0;
+
+
+    int32_t data[] = {21,20,22,23,24,23,25,26,27,26};
+    double weighted_averages[] = {
+        21.00,  // at 2 seconds
+        ((7*21) + (9*20)) / (7.0 + 9),  // at 4 seconds
+        ((5*21)+(7*20)+(9*22))/(5.0+7+9),  // at 6 seconds
+        ((3*21)+(5*20)+(7*22)+(9*23))/(3.0+5+7+9),  // at 8 seconds
+        ((1*21)+(3*20)+(5*22)+(7*23)+(9*24))/(1.0+3+5+7+9),  // at 10 seconds
+        ((1*20)+(3*22)+(5*23)+(7*24)+(9*23))/(1.0+3+5+7+9),  // at 12 seconds
+        ((1*22)+(3*23)+(5*24)+(7*23)+(9*25))/(1.0+3+5+7+9),  // at 14 seconds
+        ((1*23)+(3*24)+(5*23)+(7*25)+(9*26))/(1.0+3+5+7+9),  // at 16 seconds
+        ((1*24)+(3*23)+(5*25)+(7*26)+(9*27))/(1.0+3+5+7+9),  // at 18 seconds
+        ((1*23)+(3*25)+(5*26)+(7*27)+(9*26))/(1.0+3+5+7+9),  // at 20 seconds
+    };
+
+    for (int i = 0; i < 10; i++) {
+        context->array[i] = weighted_averages[i];
+    }
 
     StreamingQuery **queries = (StreamingQuery**)malloc(sizeof(StreamingQuery*));
     queries[0] = createStreamingQuery(state, schema, context);
     
-    int value = 10;
-    queries[0]->IFCustom(queries[0], 1, GetMin, INT32)
-            ->ofLast(queries[0], 1)
+    int value = 0; //ensure callback is called everytime
+    queries[0]->IFCustom(queries[0], 1, GetWeightedAverage, DOUBLE)
+            ->ofLast(queries[0], 10) // last 10 seconds
             ->is(queries[0], GreaterThanOrEqual, (void*)&value)
             ->then(queries[0], [](void* result, void* current, void* ctx) {
                 CallbackContext* context = (CallbackContext*)ctx;
+                TEST_ASSERT_EQUAL_FLOAT(context->array[context->counter1], *(double*)result);
                 context->counter1++;
-                TEST_ASSERT_TRUE(*(int*)result >= 10);
-                TEST_ASSERT_TRUE(*(int*)current >= 10);
     });
-
-    int32_t data[] = {8, 9, 10, 11, 12};
     void* dataPtr = calloc(1, state->dataSize);
-    for (int32_t i = 0; i < sizeof(data)/sizeof(data[0]); i++) {
-        *((uint32_t*)dataPtr) = data[i];
+    int j = 0;
+    for (int32_t i = 2; i < 22; i+=2) {
+        *((uint32_t*)dataPtr) = data[j++];
         streamingQueryPut(queries, 1, &i, dataPtr);
 
         int32_t dataRetrieved = 0;
         embedDBGet(state, (void*)&i, (void*)&dataRetrieved);
-        TEST_ASSERT_EQUAL_INT32(data[i], dataRetrieved);
+        TEST_ASSERT_EQUAL_INT32(data[j-1], dataRetrieved);
     }
 
-    TEST_ASSERT_EQUAL_INT32(3, context->counter1);
+    TEST_ASSERT_EQUAL_INT32(10, context->counter1);
 
     free(queries);
     free(context);
