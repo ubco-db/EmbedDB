@@ -1,5 +1,5 @@
-#include <math.h>
-#include <string.h>
+#include <cmath>
+#include <cstring>
 #include <iostream>
 
 #ifdef DIST
@@ -45,6 +45,7 @@
 embedDBState *state;
 embedDBSchema *schema;
 
+// This function sets up the EmbedDB state and schema for testing.
 void setUpEmbedDB(void) {
 
     // Initialize the embedDB state
@@ -85,6 +86,7 @@ void setUpEmbedDB(void) {
     TEST_ASSERT_NOT_NULL_MESSAGE(schema, "Failed to create schema.");
 }
 
+// The tearDown function is used to clean up resources and reset the state after each test.
 void tearDown(void) {
     embedDBClose(state);
     tearDownFile(state->dataFile);
@@ -219,6 +221,8 @@ void test_AvgLessThanOrEqual(void) {
     std::cout << "test_AvgLessThanOrEqual complete" << std::endl;
 }
 
+// This function tests the execution of multiple streaming queries in a row.
+// It verifies that each query correctly processes the data and triggers the appropriate callbacks.
 void test_MultipleQueries(void) {
     std::cout << "Running test_MultipleQueries..." << std::endl;
     CallbackContext* context1 = (CallbackContext*)malloc(sizeof(CallbackContext));
@@ -297,8 +301,10 @@ void* GetWeightedAverage(StreamingQuery *query, void *key) {
     printf("Weighted Average at %is: %f\n", *(int*)key, *weightedAverage);
     return (void*)weightedAverage;
 }
-
-
+// The test_CustomQuery function tests a custom streaming query that calculates a weighted average
+// over a sliding window of the last 10 seconds and verifies the results against expected values.
+// It also stores the weighted average in a context variable and uses it in a subsequent query to compare
+// the average of the last 10 seconds with the weighted average.
  void test_CustomQuery(void) {
     std::cout << "Running test_CustomQuery..." << std::endl;
     CallbackContext* context = (CallbackContext*)malloc(sizeof(CallbackContext) + 10 * sizeof(float));
@@ -333,9 +339,10 @@ void* GetWeightedAverage(StreamingQuery *query, void *key) {
                 CallbackContext* context = (CallbackContext*)ctx;
                 TEST_ASSERT_EQUAL_FLOAT(context->array[context->int1], *(float*)result);
                 context->int1++;
-                context->float1 = *(float*)result;
+                context->float1 = *(float*)result; //store weighted average for next query
     });
 
+    // Second query to compare the average of the last 10 seconds with the weighted average
     queries[1] = createStreamingQuery(state, schema, context);
     queries[1]->IF(queries[1], 1, GET_AVG)
             ->ofLast(queries[1], 10)
