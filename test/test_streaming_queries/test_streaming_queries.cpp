@@ -98,16 +98,17 @@ void tearDown(void) {
 }
 
 typedef struct {
-    int counter1;
-    int counter2;
-    double array[];
+    int int1;
+    int int2;
+    float array[10];
+    float float1;
 } CallbackContext;
 
 void test_MaxEqual(void) {
     std::cout << "Running test_MaxEqual..." << std::endl;
     CallbackContext* context = (CallbackContext*)malloc(sizeof(CallbackContext));
-    context->counter1 = 0;
-    context->counter2 = 0;
+    context->int1 = 0;
+    context->int2 = 0;
 
     StreamingQuery **queries = (StreamingQuery**)malloc(sizeof(StreamingQuery*));
     queries[0] = createStreamingQuery(state, schema, context);
@@ -118,8 +119,8 @@ void test_MaxEqual(void) {
             ->is(queries[0], Equal, (void*)&value)
             ->then(queries[0], [](void* maximum, void* current, void* ctx) {
                 CallbackContext* context = (CallbackContext*)ctx;
-                context->counter1++;
-                context->counter2 += 2;
+                context->int1++;
+                context->int2 += 2;
                 TEST_ASSERT_EQUAL_INT_MESSAGE(5, *(int*)maximum, "Callback did not return correct value.");            
     });
 
@@ -136,8 +137,8 @@ void test_MaxEqual(void) {
         TEST_ASSERT_EQUAL_INT32(data[i], dataRetrieved);
     }
 
-    TEST_ASSERT_EQUAL_INT32(3, context->counter1);
-    TEST_ASSERT_EQUAL_INT32(6, context->counter2);
+    TEST_ASSERT_EQUAL_INT32(3, context->int1);
+    TEST_ASSERT_EQUAL_INT32(6, context->int2);
 
 
     free(queries);
@@ -147,9 +148,9 @@ void test_MaxEqual(void) {
 
 void test_MinGreaterThan(void) {
     std::cout << "Running test_MinGreaterThan..." << std::endl;
-    CallbackContext* context = (CallbackContext*)malloc(sizeof(CallbackContext) + sizeof(double) * 30);
-    context->counter1 = 0;
-    context->counter2 = 0;
+    CallbackContext* context = (CallbackContext*)malloc(sizeof(CallbackContext));
+    context->int1 = 0;
+    context->int2 = 0;
 
     StreamingQuery **queries = (StreamingQuery**)malloc(sizeof(StreamingQuery*));
     queries[0] = createStreamingQuery(state, schema, context);
@@ -160,7 +161,7 @@ void test_MinGreaterThan(void) {
             ->is(queries[0], GreaterThan, (void*)&value)
             ->then(queries[0], [](void* minimum, void* current, void* ctx) {
                 CallbackContext* context = (CallbackContext*)ctx;
-                context->counter1++;
+                context->int1++;
                 TEST_ASSERT_TRUE(*(int*)minimum > 2);
     });
 
@@ -175,7 +176,7 @@ void test_MinGreaterThan(void) {
         TEST_ASSERT_EQUAL_INT32(data[i], dataRetrieved);
     }
 
-    TEST_ASSERT_EQUAL_INT32(1, context->counter1);
+    TEST_ASSERT_EQUAL_INT32(1, context->int1);
 
     free(queries);
     free(context);
@@ -185,7 +186,7 @@ void test_MinGreaterThan(void) {
 void test_AvgLessThanOrEqual(void) {
     std::cout << "Running test_AvgLessThanOrEqual..." << std::endl;
     CallbackContext* context = (CallbackContext*)malloc(sizeof(CallbackContext));
-    context->counter1 = 0;
+    context->int1 = 0;
 
     StreamingQuery **queries = (StreamingQuery**)malloc(sizeof(StreamingQuery*));
     queries[0] = createStreamingQuery(state, schema, context);
@@ -196,7 +197,7 @@ void test_AvgLessThanOrEqual(void) {
             ->is(queries[0], LessThanOrEqual, (void*)&value)
             ->then(queries[0], [](void* average, void* current, void* ctx) {
                 CallbackContext* context = (CallbackContext*)ctx;
-                context->counter1++;
+                context->int1++;
                 TEST_ASSERT_TRUE(*(float*)average <= 3.5);
     });
 
@@ -211,7 +212,7 @@ void test_AvgLessThanOrEqual(void) {
         TEST_ASSERT_EQUAL_INT32(data[i], dataRetrieved);
     }
 
-    TEST_ASSERT_EQUAL_INT32(4, context->counter1);
+    TEST_ASSERT_EQUAL_INT32(4, context->int1);
 
     free(queries);
     free(context);
@@ -221,9 +222,9 @@ void test_AvgLessThanOrEqual(void) {
 void test_MultipleQueries(void) {
     std::cout << "Running test_MultipleQueries..." << std::endl;
     CallbackContext* context1 = (CallbackContext*)malloc(sizeof(CallbackContext));
-    context1->counter1 = 0;
+    context1->int1 = 0;
     CallbackContext* context2 = (CallbackContext*)malloc(sizeof(CallbackContext));
-    context2->counter1 = 0;
+    context2->int1 = 0;
 
     StreamingQuery **queries = (StreamingQuery**)malloc(2 * sizeof(StreamingQuery*));
     queries[0] = createStreamingQuery(state, schema, context1);
@@ -235,7 +236,7 @@ void test_MultipleQueries(void) {
             ->is(queries[0], Equal, (void*)&value1)
             ->then(queries[0], [](void* maximum, void* current, void* ctx) {
                 CallbackContext* context = (CallbackContext*)ctx;
-                context->counter1++;
+                context->int1++;
                 TEST_ASSERT_EQUAL_INT_MESSAGE(5, *(int*)maximum, "Callback did not return correct value.");
     });
 
@@ -245,7 +246,7 @@ void test_MultipleQueries(void) {
             ->is(queries[1], GreaterThan, (void*)&value2)
             ->then(queries[1], [](void* minimum, void* current, void* ctx) {
                 CallbackContext* context = (CallbackContext*)ctx;
-                context->counter1++;
+                context->int1++;
                 TEST_ASSERT_TRUE(*(int*)minimum > 2);
     });
 
@@ -260,8 +261,8 @@ void test_MultipleQueries(void) {
         TEST_ASSERT_EQUAL_INT32(data[i], dataRetrieved);
     }
 
-    TEST_ASSERT_EQUAL_INT32(3, context1->counter1);
-    TEST_ASSERT_EQUAL_INT32(1, context2->counter1);
+    TEST_ASSERT_EQUAL_INT32(3, context1->int1);
+    TEST_ASSERT_EQUAL_INT32(1, context2->int1);
 
     free(queries);
     free(context1);
@@ -270,12 +271,11 @@ void test_MultipleQueries(void) {
 }
 
 void* GetWeightedAverage(StreamingQuery *query, void *key) {
-    double lambda = log(2) / 5.0;
     int currentKey = *(int*)key;
     int slidingWindowStart = currentKey - (query->numLastEntries-1);
 
-    double totalWeight = 0;
-    double weightedSum = 0;
+    float totalWeight = 0;
+    float weightedSum = 0;
 
     for (int key = slidingWindowStart; key <= currentKey; key++) {
         int32_t record = 0;
@@ -283,16 +283,16 @@ void* GetWeightedAverage(StreamingQuery *query, void *key) {
         if(result != 0) { 
             continue;
         }
-        TEST_ASSERT_EQUAL_INT32(key%2,0); //test day is inserted every 2 seconds i.e. timestamp (key) is even
+        TEST_ASSERT_EQUAL_INT32(key%2,0); //test data is inserted every 2 seconds i.e. timestamp (key) is even
         int timeDifference = currentKey - key;
-        double weight = (query->numLastEntries - 1) - timeDifference; // Linear decay 
+        float weight = (query->numLastEntries - 1) - timeDifference; // Linear decay 
         if (weight < 0) weight = 0;
         
         weightedSum += record * weight;
         totalWeight += weight;
     }
 
-    double* weightedAverage = (double*)malloc(sizeof(double));
+    float* weightedAverage = (float*)malloc(sizeof(float));
     *weightedAverage = weightedSum / totalWeight;
     printf("Weighted Average at %is: %f\n", *(int*)key, *weightedAverage);
     return (void*)weightedAverage;
@@ -301,12 +301,11 @@ void* GetWeightedAverage(StreamingQuery *query, void *key) {
 
  void test_CustomQuery(void) {
     std::cout << "Running test_CustomQuery..." << std::endl;
-    CallbackContext* context = (CallbackContext*)malloc(sizeof(CallbackContext) + sizeof(double) * 30);
-    context->counter1 = 0;
-
+    CallbackContext* context = (CallbackContext*)malloc(sizeof(CallbackContext) + 10 * sizeof(float));
+    context->int1 = 0;
 
     int32_t data[] = {21,20,22,23,24,23,25,26,27,26};
-    double weighted_averages[] = {
+    float weighted_averages[] = {
         21.00,  // at 2 seconds
         ((7*21) + (9*20)) / (7.0 + 9),  // at 4 seconds
         ((5*21)+(7*20)+(9*22))/(5.0+7+9),  // at 6 seconds
@@ -323,30 +322,43 @@ void* GetWeightedAverage(StreamingQuery *query, void *key) {
         context->array[i] = weighted_averages[i];
     }
 
-    StreamingQuery **queries = (StreamingQuery**)malloc(sizeof(StreamingQuery*));
+    StreamingQuery **queries = (StreamingQuery**)malloc(2*sizeof(StreamingQuery*));
     queries[0] = createStreamingQuery(state, schema, context);
     
     int value = 0; //ensure callback is called everytime
-    queries[0]->IFCustom(queries[0], 1, GetWeightedAverage, DOUBLE)
+    queries[0]->IFCustom(queries[0], 1, GetWeightedAverage, FLOAT)
             ->ofLast(queries[0], 10) // last 10 seconds
             ->is(queries[0], GreaterThanOrEqual, (void*)&value)
             ->then(queries[0], [](void* result, void* current, void* ctx) {
                 CallbackContext* context = (CallbackContext*)ctx;
-                TEST_ASSERT_EQUAL_FLOAT(context->array[context->counter1], *(double*)result);
-                context->counter1++;
+                TEST_ASSERT_EQUAL_FLOAT(context->array[context->int1], *(float*)result);
+                context->int1++;
+                context->float1 = *(float*)result;
     });
+
+    queries[1] = createStreamingQuery(state, schema, context);
+    queries[1]->IF(queries[1], 1, GET_AVG)
+            ->ofLast(queries[1], 10)
+            ->is(queries[1], LessThanOrEqual, (void*)&(context->float1))
+            ->then(queries[1], [](void* result, void* current, void* ctx) {
+                CallbackContext* context = (CallbackContext*)ctx;
+                TEST_ASSERT_TRUE(*(float*)result <= context->array[context->int1 - 1]);
+                printf("Average of last 10 seconds at %is: %f, weighted average is: %f\n", context->int1*2, *(float*)result, (context->float1));
+
+    });
+
     void* dataPtr = calloc(1, state->dataSize);
     int j = 0;
     for (int32_t i = 2; i < 22; i+=2) {
         *((uint32_t*)dataPtr) = data[j++];
-        streamingQueryPut(queries, 1, &i, dataPtr);
+        streamingQueryPut(queries, 2, &i, dataPtr);
 
         int32_t dataRetrieved = 0;
         embedDBGet(state, (void*)&i, (void*)&dataRetrieved);
         TEST_ASSERT_EQUAL_INT32(data[j-1], dataRetrieved);
     }
 
-    TEST_ASSERT_EQUAL_INT32(10, context->counter1);
+    TEST_ASSERT_EQUAL_INT32(10, context->int1);
 
     free(queries);
     free(context);
