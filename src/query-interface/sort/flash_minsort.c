@@ -127,12 +127,13 @@ void init_MinSort(MinSortState *ms, external_sort_t *es, metrics_t *metric, int8
     ms->tuplesOut = 0;
     ms->bytesRead = 0;
 
-    ms->record_size = es->record_size;
-    ms->numBlocks = es->num_pages;
+    ms->record_size       = es->record_size;
+    ms->numBlocks         = es->num_pages;
     ms->records_per_block = (es->page_size - es->headerSize) / es->record_size;
     j = (ms->memoryAvailable - 2 * es->page_size - 2 * es->key_size - INT_SIZE) / (es->key_size + sizeof(uint8_t));
+    printf("Memory overhead: %d  Max regions: %d\r\n",  2 * es->key_size + INT_SIZE, j);
     ms->blocks_per_region = (uint32_t)ceil((float)ms->numBlocks / j);
-    ms->numRegions = (uint32_t)ceil((float)ms->numBlocks / ms->blocks_per_region);
+    ms->numRegions        = (uint32_t)ceil((float)ms->numBlocks / ms->blocks_per_region);
 
     /* Memory allocation for min values per region */
     // Allocate minimum index after block 2 (block 0 is input buffer, block 1 is output buffer)

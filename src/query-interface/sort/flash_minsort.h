@@ -18,6 +18,7 @@
 #define BUFFER_OUTPUT_BLOCK_START_RECORD_OFFSET 	BLOCK_HEADER_SIZE
 
 #define INT_SIZE            4
+#define INT_MAX             0xFFFFFFFF
 
 #define true 1
 #define false 0

@@ -80,7 +80,7 @@ uint32_t loadRowData(sortData *data, embedDBOperator *op, void *unsortedFile) {
         count++;
 
         // temp limit for debugging
-        if (count >= 200000) 
+        if (count >= 16) 
             break;
     }
 
@@ -111,6 +111,9 @@ void prepareSort(embedDBOperator* op) {
     data->keyOffset = getColOffsetFromSchema(op->schema, data->colNum);
     data->recordSize = getRecordSizeFromSchema(op->schema);
     data->keySize = op->schema->columnSizes[data->colNum];
+
+    data->recordSize = 256;
+    data->keySize = 252;
 
     // A columns size will be negative if the column is signed
     // and positive if value is unsigned
@@ -170,7 +173,7 @@ file_iterator_state_t *startSort(sortData *data, void *unsortedFile, void *sorte
 
     // Initialize external_sort_t structure
     external_sort_t es;
-    es.key_size = sizeof(int32_t);
+    es.key_size = data->keySize;
     es.value_size = data->recordSize;
     es.record_size = data->recordSize;
     es.key_offset = data->keyOffset;
@@ -178,7 +181,7 @@ file_iterator_state_t *startSort(sortData *data, void *unsortedFile, void *sorte
     es.page_size = PAGE_SIZE;
     es.num_pages = (uint32_t) ceil((float)data->count / ((es.page_size - es.headerSize) / es.record_size));
 
-    const int buffer_max_pages = 32; 
+    const int buffer_max_pages = 4; 
     char *buffer = malloc(buffer_max_pages * es.page_size + es.record_size);
     char *tuple_buffer = buffer + es.page_size * buffer_max_pages;
 
