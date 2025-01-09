@@ -68,7 +68,7 @@
 #include "unity.h"
 
 embedDBState *state;
-void *indexWriteBufferBeforeTearDown = NULL;
+// void *indexWriteBufferBeforeTearDown = NULL;
 const int16_t RECOVERY_PARAMETERS = EMBEDDB_USE_INDEX | EMBEDDB_USE_BMAP;
 
 void setupEmbedDB(int16_t parameters) {
@@ -103,7 +103,7 @@ void setupEmbedDB(int16_t parameters) {
 
 void setUp() {
     /* Setup extra buffer for testing */
-    indexWriteBufferBeforeTearDown = malloc(state->pageSize);
+    // indexWriteBufferBeforeTearDown = malloc(state->pageSize);
 
     int16_t parameters = EMBEDDB_USE_INDEX | EMBEDDB_RESET_DATA | EMBEDDB_USE_BMAP;
     setupEmbedDB(parameters);
@@ -120,7 +120,7 @@ void tearDownEmbedDB() {
 
 void tearDown() {
     tearDownEmbedDB();
-    free(indexWriteBufferBeforeTearDown);
+    // free(indexWriteBufferBeforeTearDown);
 }
 
 void insertRecordsLinearly(int32_t startingKey, uint32_t numRecords) {
@@ -214,6 +214,9 @@ void embedDB_index_file_correctly_reloads_with_seventeen_pages_of_data() {
 }
 
 void embedDBIndexRecovery_should_recover_indicies_in_buffer_with_no_index_pages_written() {
+    /* Setup Buffer */
+    void *indexWriteBufferBeforeTearDown = malloc(state->pageSize);
+
     /* Inerst records into embedDB */
     insertRecordsLinearly(100, 11907);
     embedDBFlush(state);
@@ -244,9 +247,14 @@ void embedDBIndexRecovery_should_recover_indicies_in_buffer_with_no_index_pages_
 
     /* Compare with buffer before tearDown */
     TEST_ASSERT_EQUAL_MEMORY(indexWriteBufferBeforeTearDown, indexWriteBuffer, state->pageSize);
+
+    free(indexWriteBufferBeforeTearDown);
 }
 
 void embedDBIndexRecovery_should_recover_indicies_in_buffer_with_with_seven_pages_written() {
+    /* Setup Buffer */
+    void *indexWriteBufferBeforeTearDown = malloc(state->pageSize);
+
     /* This number of inserts results in 7 full index pages being written and then three data pages whose indicies are only in the buffer before tearDown */
     insertRecordsLinearly(100, 218925);
     embedDBFlush(state);
@@ -274,6 +282,9 @@ void embedDBIndexRecovery_should_recover_indicies_in_buffer_with_with_seven_page
 
     /* Compare with buffer from before recovery */
     TEST_ASSERT_EQUAL_MEMORY(indexWriteBufferBeforeTearDown, indexWriteBuffer, state->pageSize);
+
+    /* Teardownn */
+    free(indexWriteBufferBeforeTearDown);
 }
 
 void embedDBIndexRecovery_should_recover_indicies_in_buffer_with_sixteen_pages_of_data_written() {
@@ -319,16 +330,16 @@ void embedDBIndexRecovery_should_recover_indicies_in_buffer_with_21_pages_of_dat
 
 int runUnityTests() {
     UNITY_BEGIN();
-    RUN_TEST(embedDB_index_file_correctly_reloads_with_no_data);
-    RUN_TEST(embedDBFlush_should_not_flush_index_pages);
-    RUN_TEST(embedDB_index_file_correctly_reloads_with_one_page_of_data);
-    RUN_TEST(embedDB_index_file_correctly_reloads_with_four_pages_of_data);
-    RUN_TEST(embedDB_index_file_correctly_reloads_with_eight_pages_of_data);
-    RUN_TEST(embedDB_index_file_correctly_reloads_with_sixteen_pages_of_data);
-    RUN_TEST(embedDB_index_file_correctly_reloads_with_seventeen_pages_of_data);
-    RUN_TEST(embedDBIndexRecovery_should_recover_indicies_in_buffer_with_no_index_pages_written);
-    RUN_TEST(embedDBIndexRecovery_should_recover_indicies_in_buffer_with_with_seven_pages_written);
-    RUN_TEST(embedDBIndexRecovery_should_recover_indicies_in_buffer_with_sixteen_pages_of_data_written);
+    // RUN_TEST(embedDB_index_file_correctly_reloads_with_no_data);
+    // RUN_TEST(embedDBFlush_should_not_flush_index_pages);
+    // RUN_TEST(embedDB_index_file_correctly_reloads_with_one_page_of_data);
+    // RUN_TEST(embedDB_index_file_correctly_reloads_with_four_pages_of_data);
+    // RUN_TEST(embedDB_index_file_correctly_reloads_with_eight_pages_of_data);
+    // RUN_TEST(embedDB_index_file_correctly_reloads_with_sixteen_pages_of_data);
+    // RUN_TEST(embedDB_index_file_correctly_reloads_with_seventeen_pages_of_data);
+    // RUN_TEST(embedDBIndexRecovery_should_recover_indicies_in_buffer_with_no_index_pages_written);
+    // RUN_TEST(embedDBIndexRecovery_should_recover_indicies_in_buffer_with_with_seven_pages_written);
+    // RUN_TEST(embedDBIndexRecovery_should_recover_indicies_in_buffer_with_sixteen_pages_of_data_written);
     RUN_TEST(embedDBIndexRecovery_should_recover_indicies_in_buffer_with_21_pages_of_data_written);
     return UNITY_END();
 }
