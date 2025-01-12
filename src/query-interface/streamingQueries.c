@@ -25,6 +25,12 @@ StreamingQuery* ofLast(StreamingQuery *query, uint32_t numLastEntries) {
     return query;
 }
 
+StreamingQuery* where(StreamingQuery *query, void* minData, void* maxData) {
+    query->minData = minData;
+    query->maxData = maxData;
+    return query;
+}
+
 StreamingQuery* then(StreamingQuery *query, void (*callback)(void* aggregateValue, void* currentValue, void* context)) {
     query->callback = callback;
     return query;
@@ -33,6 +39,8 @@ StreamingQuery* then(StreamingQuery *query, void (*callback)(void* aggregateValu
 StreamingQuery* createStreamingQuery(embedDBState *state, embedDBSchema *schema, void* context) {
     StreamingQuery *query = (StreamingQuery*)malloc(sizeof(StreamingQuery));
     if (query != NULL) {
+        query->minData = NULL; // Default to no min data
+        query->maxData = NULL; // Default to no max data
         query->state = state;
         query->schema = schema;
         query->context = context;
@@ -40,6 +48,7 @@ StreamingQuery* createStreamingQuery(embedDBState *state, embedDBSchema *schema,
         query->IFCustom = IFCustom;
         query->is = is;
         query->ofLast = ofLast;
+        query->where = where;
         query->then = then;
     }
     return query;
@@ -153,8 +162,8 @@ embedDBOperator* createOperator(StreamingQuery *query, void*** allocatedValues, 
     }
     
     it->maxKey = NULL;
-    it->minData = NULL;
-    it->maxData = NULL;
+    it->minData = query->minData;
+    it->maxData = query->maxData;
     embedDBInitIterator(query->state, it);
 
     embedDBOperator* scanOp = createTableScanOperator(query->state, it, query->schema);

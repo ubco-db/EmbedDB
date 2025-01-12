@@ -61,9 +61,13 @@ typedef struct StreamingQuery {
     void* (*executeCustom)(struct StreamingQuery *query, void *key); /**< Execute custom query */
     CustomReturnType returnType; /**< Return type of custom query */
 
+    void* minData;              /**< Minimum data value */
+    void* maxData;              /**< Maximum data value */
+
     struct StreamingQuery* (*IF)(struct StreamingQuery *query, uint8_t colNum, StreamingQueryType type);
     struct StreamingQuery* (*IFCustom)(struct StreamingQuery *query, uint8_t colNum, void* (*executeCustom)(struct StreamingQuery *query, void *key), CustomReturnType returnType);
     struct StreamingQuery* (*ofLast)(struct StreamingQuery *query, uint32_t numLastEntries);
+    struct StreamingQuery* (*where)(struct StreamingQuery *query, void* minData, void* maxData);
     struct StreamingQuery* (*is)(struct StreamingQuery *query, SelectOperation operation, void* threshold);
     struct StreamingQuery* (*then)(struct StreamingQuery *query, void (*callback)(void* aggregateValue, void* currentValue, void* context));
 } StreamingQuery;
@@ -111,6 +115,14 @@ StreamingQuery* is(StreamingQuery *query, SelectOperation operation, void* thres
  * @return Pointer to the StreamingQuery.
  */
 StreamingQuery* forLast(StreamingQuery *query, uint32_t numLastEntries);
+
+/**
+ * @brief where method for setting the range of values to consider.
+ * @param query Pointer to the StreamingQuery.
+ * @param minData minimum value considered.
+ * @param maxData maximum value considered.
+ */
+StreamingQuery* where(StreamingQuery *query, void* minData, void* maxData);
 
 /**
  * @brief then method for setting the callback function.

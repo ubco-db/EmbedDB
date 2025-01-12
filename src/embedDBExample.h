@@ -113,6 +113,7 @@ uint32_t embedDBExample() {
     StreamingQuery *streamingQueryLT = createStreamingQuery(state, schema, NULL);
     streamingQueryLT->IF(streamingQueryLT, 1, GET_MAX)
                     ->ofLast(streamingQueryLT, 10)
+                    ->where(streamingQueryLT, NULL, (void*)&(int){24})
                     ->is(streamingQueryLT, LessThan, (void*)&(int){25})
                     ->then(streamingQueryLT, LTcallback);
 

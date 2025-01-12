@@ -372,7 +372,37 @@ void* GetWeightedAverage(StreamingQuery *query, void *key) {
     std::cout << "test_CustomQuery complete" << std::endl;
 }
 
+void test_whereClause(void){
+    std::cout << "Running test_whereClause..." << std::endl;
+    CallbackContext* context = (CallbackContext*)malloc(sizeof(CallbackContext));
+    context->int1 = 0;
 
+    StreamingQuery **queries = (StreamingQuery**)malloc(sizeof(StreamingQuery*));
+    queries[0] = createStreamingQuery(state, schema, context);
+
+    int value = 0;
+    int minData = 3;
+    queries[0]->IF(queries[0], 1, GET_MIN)
+            ->ofLast(queries[0], 4)
+            ->where(queries[0], (void*)&minData, NULL)
+            ->is(queries[0], GreaterThan, (void*)&value)
+            ->then(queries[0], [](void* mini, void* current, void* ctx) {
+                CallbackContext* context = (CallbackContext*)ctx;
+                context->int1 = *(int*)mini;
+                TEST_ASSERT_TRUE(*(int*)mini > 2);
+    });
+
+    int32_t data[] = {2, 3, 4, 5, 6};
+    void* dataPtr = calloc(1, state->dataSize);
+    for (int32_t i = 0; i < sizeof(data)/sizeof(data[0]); i++) {
+        *((uint32_t*)dataPtr) = data[i];
+        streamingQueryPut(queries, 1, &i, dataPtr);
+
+        int32_t dataRetrieved = 0;
+        embedDBGet(state, (void*)&i, (void*)&dataRetrieved);
+        TEST_ASSERT_EQUAL_INT32(data[i], dataRetrieved);
+    }
+}
 
 int runUnityTests(void) {
     UNITY_BEGIN();
@@ -381,6 +411,7 @@ int runUnityTests(void) {
     RUN_TEST(test_AvgLessThanOrEqual);
     RUN_TEST(test_MultipleQueries);
     RUN_TEST(test_CustomQuery);
+    RUN_TEST(test_whereClause);
     return UNITY_END();
 }
 
