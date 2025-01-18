@@ -2,9 +2,9 @@
 #define ADAPTIVE_SORT_H
 
 #if defined(ARDUINO)
-#include "../../../../serial/serial_c_iface.h"
-#include "../../../../file/kv_stdio_intercept.h"
-#include "../../../../file/sd_stdio_c_iface.h"
+#include "serial_c_iface.h"
+#include "file/kv_stdio_intercept.h"
+#include "file/sd_stdio_c_iface.h"
 #endif
 
 #include <stdint.h>
@@ -55,7 +55,7 @@ int adaptive_sort(
         int     (*iterator)(void *state, void* buffer, external_sort_t *es),
         void    *iteratorState,
 	void    *tupleBuffer,
-        FILE    *outputFile,		
+        ION_FILE *outputFile,		
 	char    *buffer,        
 	int     bufferSizeInBlocks,
 	external_sort_t *es,

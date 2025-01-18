@@ -2,7 +2,7 @@
 /**
 @file		flash_minsort_sublist.c
 @author		Ramon Lawrence
-@brief		Flash MinSort (Cossentine/Lawrence 2010) for flash sorting with no writes.
+@brief		Flash Minsort designed to handle regions that are sorted sublists.
 @copyright	Copyright 2020
 			The University of British Columbia,
 			IonDB Project Contributors (see AUTHORS.md)
@@ -38,13 +38,13 @@
 #include <stdlib.h>
 #include <stdint.h>
 #include <string.h>
+#include <limits.h>
 
 #include <time.h>
 #include <math.h>
 
 #include "flash_minsort_sublist.h"
 #include "in_memory_sort.h"
-#include "no_output_heap.h"
 
 /*
 #define DEBUG 1
@@ -52,24 +52,27 @@
 #define DEBUG_READ 1
 */
 
-#define INT_MAX             0xFFFFFFFF
-
-
 void readPage_sublist(MinSortStateSublist *ms, int pageNum, external_sort_t *es, metrics_t *metric)
 {
     file_iterator_state_t* is = (file_iterator_state_t*) ms->iteratorState;
     void* fp = is->file;
     
-    if (0 == is->fileInterface->read(ms->buffer, pageNum, es->page_size, fp)) {
-        printf("Failed to read block.\n");
+    unsigned long int offset = ms->fileOffset;
+    offset += pageNum*es->page_size;
+
+    /* Seek to page location in file */
+    fseek(fp, offset, SEEK_SET);
+
+    /* Read page into start of buffer */   
+    if (0 ==  fread(ms->buffer, es->page_size, 1, fp))
+    {	printf("Failed to read block: %d Offset: %lu\n", pageNum, offset);        
     }
     
-    metric->num_reads++;
+    metric->num_reads++;    
     ms->blocksRead++;     
     ms->lastBlockIdx = pageNum;   
-
     #ifdef DEBUG_READ
-        printf("Reading block: %d\r\n",pageNum);        
+        printf("Reading block: %d Offset: %lu\n",pageNum, offset);        
         for (int k = 0; k < 31; k++)
         {
             test_record_t *buf = (void *)(ms->buffer + es->headerSize + k * es->record_size);
@@ -78,18 +81,18 @@ void readPage_sublist(MinSortStateSublist *ms, int pageNum, external_sort_t *es,
     #endif
 }
 
-int32_t getBlockId(MinSortStateSublist *ms)
+inline int32_t getBlockId(MinSortStateSublist *ms)
 {
     return *((int32_t *) (ms->buffer));    
 }
 
-int16_t getNumRecordsBlock(MinSortStateSublist *ms)
+inline int16_t getNumRecordsBlock(MinSortStateSublist *ms)
 {
     return *((int16_t *) (ms->buffer + BLOCK_COUNT_OFFSET));    
 }
 
 /* Returns a value of a tuple given a record number in a block (that has been previously buffered) */
-int32_t getValue_sublist(MinSortStateSublist* ms, int recordNum, external_sort_t *es)
+inline int32_t getValue_sublist(MinSortStateSublist* ms, int recordNum, external_sort_t *es)
 {      
     test_record_t *buf = (test_record_t*) (ms->buffer+es->headerSize+recordNum*es->record_size);
     return buf->key;	    
@@ -97,16 +100,9 @@ int32_t getValue_sublist(MinSortStateSublist* ms, int recordNum, external_sort_t
 
 void init_MinSort_sublist(MinSortStateSublist* ms, external_sort_t *es, metrics_t *metric)
 {
-    uint32_t i = 0, j = 0, regionIdx;    
-    void *val;
+     unsigned int i = 0, j = 0, val, regionIdx=0;    
 
-
-    /* Operator statistics */
-    metric->num_reads = 0;
-    metric->num_compar = 0;
-    metric->num_writes = 0;
-    metric->num_memcpys = 0;
-
+    /* Operator statistics */    
     ms->blocksRead    = 0;
     ms->tuplesRead    = 0;
     ms->tuplesOut     = 0; 
@@ -114,26 +110,22 @@ void init_MinSort_sublist(MinSortStateSublist* ms, external_sort_t *es, metrics_
             
     ms->record_size       = es->record_size;    
     ms->numBlocks         = es->num_pages;
-    ms->records_per_block =  (es->page_size - es->headerSize) / es->record_size;
-    j = (ms->memoryAvailable - 2 * SORT_KEY_SIZE - INT_SIZE) / SORT_KEY_SIZE;  // TODO: Fix this
-    printf("Memory overhead: %d  Max regions: %d\r\n",  2 * SORT_KEY_SIZE + INT_SIZE, j);
-    ms->blocks_per_region = (uint32_t) ceil((float) ms->numBlocks / j );                      
-   // ms->numRegions        = (unsigned int) ceil((float) ms->numBlocks / ms->blocks_per_region);    
-    // numRegions is determined previously based on number of sublists
 
+    // Ignoring small variable overhead
+    // j = (ms->memoryAvailable - 2 * SORT_KEY_SIZE - INT_SIZE) / SORT_KEY_SIZE;  
+    j = (ms->memoryAvailable) / SORT_KEY_SIZE;  
+    printf("Memory overhead: %d  Max regions: %d\r\n",  2 * SORT_KEY_SIZE + INT_SIZE, j);                         
+   
     // Memory allocation    
-    // Allocate minimum index after block 2 (block 0 is input buffer, block 1 is output buffer)
+    // Allocate minimum index in separate memory space (block 0 is input buffer, block 1 is output buffer)
+    // Block 1 as output buffer is not being counted in this case,
     // TODO: Challenge with this as if given only 2 buffers then have no room for minimum index. Creating separate allocated arrays for now.
     // Note: Assuming MinSort does need actually count the output buffer for its use as it can produce records in iterator format and does not need an output buffer for this.
     ms->min = malloc(ms->numRegions*sizeof(int));
-    ms->offset = malloc(ms->numRegions*sizeof(long));  
-
-#ifdef DEBUG  
-    printf("Page size: %d, Memory size: %d Record size: %d, Number of records: %lu, Number of blocks: %d, Blocks per region: %d  Regions: %d\r\n", 
-                   es->page_size, ms->memoryAvailable, ms->record_size, ms->num_records, ms->numBlocks, ms->blocks_per_region, ms->numRegions);
-#endif
-
-    /* Initialize each region’s minimum value */
+    ms->offset = malloc(ms->numRegions*sizeof(long));     
+    printf("Page size: %d, Memory size: %d Record size: %d, Number of records: %lu, Number of blocks: %d, Regions: %d\r\n", 
+                   es->page_size, ms->memoryAvailable, ms->record_size, ms->num_records, ms->numBlocks, ms->numRegions);
+                    
     for (i=0; i < ms->numRegions; i++)
         ms->min[i] = INT_MAX; 
     regionIdx = ms->numRegions-1;
@@ -147,24 +139,41 @@ void init_MinSort_sublist(MinSortStateSublist* ms, external_sort_t *es, metrics_
     {
         readPage_sublist(ms, lastBlock, es, metric);     
         int numBlocksSublist = *(int32_t*) &ms->buffer[0];       /* Retrieve block id (indexed from 0) to compute count of blocks in sublist */
-
+        #if DEBUG
+        printf("Read block: %d",lastBlock);
+        printf(" Num: %d\n", numBlocksSublist);
+          
+        for (int k = 0; k < 31; k++)
+        {
+            test_record_t *buf = (void *)(ms->buffer + es->headerSize + k * es->record_size);
+            printf("%d: Record: %d\n", k, buf->key);
+        }
+        #endif
         lastBlock = lastBlock - numBlocksSublist;
         readPage_sublist(ms, lastBlock, es, metric);                         
         
         val = getValue_sublist(ms, 0, es);    
         ms->min[regionIdx] = val;
-        ms->offset[regionIdx] = lastBlock*es->page_size+es->headerSize;
+        ms->offset[regionIdx] = lastBlock*es->page_size+es->headerSize+ms->fileOffset;
         #if DEBUG
-        printf("New region minimum. Index: %d  Min: %d  Offset: %d\n", regionIdx,  ms->min[regionIdx], ms->offset[regionIdx]);
+        printf("New min. Index: %d", regionIdx);
+        printf(" Min: %u", ms->min[regionIdx]);
+        printf(" Offset: %lu\n", ms->offset[regionIdx]);
         #endif
         regionIdx--;
         lastBlock--;
     }
        
-#ifdef DEBUG   
-    for (i=0; i < ms->numRegions; i++)
-        printf("Region: %d  Min: %d Offset: %d\r\n",i,ms->min[i], ms->offset[i]); 
-#endif
+    #ifdef DEBUG   
+        printf("Region summary\n");
+        for (i=0; i < ms->numRegions; i++)
+        { 
+            printf("Reg: %d",i); 
+            printf(" Min: %u", ms->min[i]);
+            printf(" Offset: %lu\n", ms->offset[i]);
+        }
+           
+    #endif
       
     ms->current = INT_MAX;
     ms->next    = INT_MAX; 
@@ -174,8 +183,8 @@ void init_MinSort_sublist(MinSortStateSublist* ms, external_sort_t *es, metrics_
 
 char* next_MinSort_sublist(MinSortStateSublist* ms, external_sort_t *es, void *tupleBuffer, metrics_t *metric)
 {
-    uint32_t i, curBlk, startBlk, dataVal;                                                     
-    uint64_t startIndex, k;
+    unsigned int i, curBlk;                                                     
+    unsigned long int startIndex;
                  
     // Find the block with the minimum tuple value - otherwise continue on with last block            
     if (ms->nextIdx == 0)
@@ -292,7 +301,7 @@ void close_MinSort_sublist(MinSortStateSublist* ms, external_sort_t *es)
 int flash_minsort_sublist(
         void    *iteratorState,
 		void    *tupleBuffer,
-        FILE    *outputFile,		
+        void    *outputFile,		
 		char    *buffer,        
 		int     bufferSizeInBytes,
 		external_sort_t *es,
@@ -302,28 +311,27 @@ int flash_minsort_sublist(
         long    numSubList
 )
 {
-    printf("*Flash Minsort (sorted sublist version)*\n");
-    clock_t start = clock();
-  
+    printf("*Flash Minsort (sorted sublist version)*\n");       
+
     MinSortStateSublist ms;
     ms.buffer = buffer;
     ms.iteratorState = iteratorState;
     ms.memoryAvailable = bufferSizeInBytes;
     ms.num_records = ((file_iterator_state_t*) iteratorState)->totalRecords;
     ms.numRegions = numSubList;
+    ms.fileOffset = *resultFilePtr;
 
     init_MinSort_sublist(&ms, es, metric);
     int16_t count = 0;  
     int32_t blockIndex = 0;
     int16_t values_per_page = (es->page_size - es->headerSize) / es->record_size;
-    char* outputBuffer = buffer+es->page_size;
-    test_record_t *buf;
+    char* outputBuffer = buffer+es->page_size;    
+    unsigned long lastWritePos = ms.fileOffset +   es->num_pages * es->page_size;     
 
     // Write 
     while (next_MinSort_sublist(&ms, es, (char*) (outputBuffer+count*es->record_size+es->headerSize), metric) != NULL)
     {         
-        // Store record in block (already done during call to next)        
-        buf = (void *)(outputBuffer+count*es->record_size+es->headerSize);        
+        // Store record in block (already done during call to next)                
         count++;
 
         if (count == values_per_page)
@@ -332,11 +340,19 @@ int flash_minsort_sublist(
             *((int16_t *) (outputBuffer + BLOCK_COUNT_OFFSET)) = count;            /* Block record count */
             count=0;
             
-            // Force seek to end of file as outputFile is also inputFile and have been readin git
-            fseek(outputFile, 0, SEEK_END);
+            // Force seek to end of file as outputFile is also inputFile and have been reading it
+            fseek(outputFile, lastWritePos, SEEK_SET);
+            // fseek(outputFile, 0, SEEK_END);
+
             if (0 == fwrite(outputBuffer, es->page_size, 1, outputFile))
                 return 9;
-
+            lastWritePos += es->page_size;
+             metric->num_writes += 1;
+/*
+printf("Loc2: %lu\n", ftell(outputFile));
+             if (blockIndex % 16 == 0)
+                printf("Last write pos: %lu Block: %d\n", lastWritePos, blockIndex);
+                */
         #ifdef DEBUG_OUTPUT
             printf("Wrote output block. Block index: %d\n", blockIndex);
             for (int k = 0; k < values_per_page; k++)
@@ -351,6 +367,8 @@ int flash_minsort_sublist(
 
     if (count > 0)
     {
+        fseek(outputFile, lastWritePos, SEEK_SET);
+        metric->num_writes += 1;
         // Write last block        
         *((int32_t *) buffer) = blockIndex;                             /* Block index */
         *((int16_t *)(buffer + BLOCK_COUNT_OFFSET)) = count;            /* Block record count */
@@ -360,11 +378,11 @@ int flash_minsort_sublist(
             return 9;
     }
      
-    close_MinSort_sublist(&ms, es);
-
-    clock_t end = clock();     
+    close_MinSort_sublist(&ms, es);   
 
     *resultFilePtr = 0;
+    free(ms.min);
+    free(ms.offset);
 
 //    printf("Complete. Comparisons: %d  MemCopies: %d  TransferIn: %d  TransferOut: %d TransferOther: %d\n", metric->num_compar, metric->num_memcpys, numShiftIntoOutput, numShiftOutOutput, numShiftOtherBlock);
 

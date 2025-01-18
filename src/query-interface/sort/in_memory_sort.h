@@ -21,12 +21,8 @@ in_memory_sort(
 /**
  * Compares two records based on an integer key. Uses a and b as pointers to start of record. Assumes key is at start of record.
  */
-int8_t merge_sort_int32_comparator(
-        void			*a,
-        void			*b
-); 
-
-int8_t merge_sort_int32_comparator_reverse(
+int8_t
+merge_sort_int32_comparator(
         void			*a,
         void			*b
 ); 
@@ -35,4 +31,4 @@ int8_t merge_sort_int32_comparator_reverse(
 }
 #endif
 
-#endif
+#endif /* IN_MEMORY_SORT_H_ */
