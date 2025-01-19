@@ -40,10 +40,10 @@ merge_sort_int32_comparator(
 
 void
 in_memory_swap(
-	void				*tmp_buffer,
-	int					value_size,
-	char*			a,
-	char*			b
+	void		*tmp_buffer,
+	int			value_size,
+	char*		a,
+	char*		b
 ) {
 	memcpy(tmp_buffer, a, value_size);
 	memcpy(a, b, value_size);
@@ -54,6 +54,7 @@ void*
 in_memory_quick_sort_partition(
 	void *tmp_buffer,
 	int value_size,
+	int key_offset,
 	int8_t (*compare_fcn)(void* a, void* b),
 	char* low,
 	char* high
@@ -65,11 +66,11 @@ in_memory_quick_sort_partition(
 	while (1) {
 		do {
 			upper_bound -= value_size;
-		} while (compare_fcn(upper_bound, pivot) > 0);
+		} while (compare_fcn(upper_bound + key_offset, pivot + key_offset) > 0);
 
 		do {
 			lower_bound += value_size;
-		} while (compare_fcn(lower_bound, pivot) < 0);
+		} while (compare_fcn(lower_bound + key_offset, pivot + key_offset) < 0);
 
 		if (lower_bound < upper_bound) {
 			in_memory_swap(tmp_buffer, value_size, lower_bound, upper_bound);
@@ -85,15 +86,16 @@ in_memory_quick_sort_helper(
 	void *tmp_buffer,
 	uint32_t num_values,
 	int value_size,
+	int key_offset,
 	int8_t (*compare_fcn)(void* a, void* b),
 	char* low,
 	char* high
 ) {
 	if (low < high) {
-		char* pivot = in_memory_quick_sort_partition(tmp_buffer, value_size, compare_fcn, low, high);
+		char* pivot = (char *)in_memory_quick_sort_partition(tmp_buffer, value_size, key_offset, compare_fcn, low, high);
 
-		in_memory_quick_sort_helper(tmp_buffer, num_values, value_size, compare_fcn, low, pivot);
-		in_memory_quick_sort_helper(tmp_buffer, num_values, value_size, compare_fcn, pivot + value_size, high);
+		in_memory_quick_sort_helper(tmp_buffer, num_values, value_size, key_offset, compare_fcn, low, pivot);
+		in_memory_quick_sort_helper(tmp_buffer, num_values, value_size, key_offset, compare_fcn, pivot + value_size, high);
 	}
 }
 
@@ -102,6 +104,7 @@ in_memory_quick_sort(
 	void *data,
 	uint32_t num_values,
 	int value_size,
+	int key_offset,
 	int8_t (*compare_fcn)(void* a, void* b)
 ) {
 	void* tmp_buffer = malloc(value_size);
@@ -109,28 +112,9 @@ in_memory_quick_sort(
 
 	/*void* low = data*/
 	char* high = (char*)data + (num_values-1)*value_size;
-	in_memory_quick_sort_helper(tmp_buffer, num_values, value_size, compare_fcn, (char*)data, high);
+	in_memory_quick_sort_helper(tmp_buffer, num_values, value_size, key_offset, compare_fcn, (char*)data, high);
 
 	free(tmp_buffer);
 
 	return 0;
-}
-
-int
-in_memory_sort(
-	void *data,
-	uint32_t num_values,
-	int value_size,
-	int8_t (*compare_fcn)(void* a, void* b),
-	int sort_algorithm
-) {
-	int err = 0;
-	switch (sort_algorithm) {
-		case 1: {
-			err = in_memory_quick_sort(data, num_values, value_size, compare_fcn);
-			break;
-		}
-	}
-
-	return err;
 }

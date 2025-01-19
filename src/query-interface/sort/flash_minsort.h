@@ -1,5 +1,5 @@
-#if !defined(NO_OUTPUT_BUFFER_SORT_BLOCK_HEAP_H)
-#define NO_OUTPUT_BUFFER_BLOCK_HEAP_H
+#ifndef FLASH_MINSORT_H
+#define FLASH_MINSORT_H
 
 #if defined(ARDUINO)
 #include "../../../../serial/serial_c_iface.h"
@@ -18,7 +18,6 @@
 #define BUFFER_OUTPUT_BLOCK_START_RECORD_OFFSET 	BLOCK_HEADER_SIZE
 
 #define INT_SIZE            4
-#define INT_MAX             0xFFFFFFFF
 
 #define true 1
 #define false 0

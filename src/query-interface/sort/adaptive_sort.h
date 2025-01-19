@@ -55,7 +55,7 @@ int adaptive_sort(
         int     (*iterator)(void *state, void* buffer, external_sort_t *es),
         void    *iteratorState,
 	void    *tupleBuffer,
-        ION_FILE *outputFile,		
+        void    *outputFile,		
 	char    *buffer,        
 	int     bufferSizeInBlocks,
 	external_sort_t *es,

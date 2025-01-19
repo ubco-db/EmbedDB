@@ -65,14 +65,14 @@ void heapify(   char* buffer,
 
         //find if left or right is smallest
         metric->num_compar++;
-        if (right < size && es->compare_fcn(buffer + right*es->record_size, buffer + left*es->record_size) < 0)
+        if (right < size && es->compare_fcn(buffer + right*es->record_size + es->key_offset, buffer + left*es->record_size + es->key_offset) < 0)
             smallest = right;
         else
             smallest = left;
 
         //is input tuple the smallest
         metric->num_compar++;
-        if (es->compare_fcn(input_tuple, buffer + smallest*es->record_size) < 0)
+        if (es->compare_fcn(input_tuple + es->key_offset, buffer + smallest*es->record_size + es->key_offset) < 0)
             break;
 
         //Perform shift
@@ -100,7 +100,7 @@ void shiftUp(char* buffer,
         parent = (idx - 1) / 2;
 
         metric->num_compar++;
-        if (es->compare_fcn(input_tuple, buffer + parent*es->record_size) >= 0) {
+        if (es->compare_fcn(input_tuple, buffer + parent*es->record_size + es->key_offset) >= 0) {
             break;
         }
         metric->num_memcpys++;
@@ -133,14 +133,14 @@ void heapify_rev(   char* buffer,
 
         //find if left or right is smallest
         metric->num_compar++;
-        if (right < size && es->compare_fcn(buffer - right*es->record_size, buffer - left*es->record_size) < 0)
+        if (right < size && es->compare_fcn(buffer - right*es->record_size + es->key_offset, buffer - left*es->record_size + es->key_offset) < 0)
             smallest = right;
         else
             smallest = left;
 
         //is input tuple the smallest
         metric->num_compar++;
-        if (es->compare_fcn(input_tuple, buffer - smallest*es->record_size) < 0)
+        if (es->compare_fcn(input_tuple + es->key_offset, buffer - smallest*es->record_size + es->key_offset) < 0)
             break;
 
         //Perform shift
@@ -169,7 +169,7 @@ void shiftUp_rev(char* buffer,
         parent = (idx - 1) / 2;
 
         metric->num_compar++;
-        if (es->compare_fcn(input_tuple, buffer - parent*es->record_size) >= 0) {
+        if (es->compare_fcn(input_tuple + es->key_offset, buffer - parent*es->record_size + es->key_offset) >= 0) {
             break;
         }
         metric->num_memcpys++;

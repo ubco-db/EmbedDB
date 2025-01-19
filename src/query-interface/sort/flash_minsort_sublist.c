@@ -81,18 +81,18 @@ void readPage_sublist(MinSortStateSublist *ms, int pageNum, external_sort_t *es,
     #endif
 }
 
-inline int32_t getBlockId(MinSortStateSublist *ms)
+int32_t getBlockId(MinSortStateSublist *ms)
 {
     return *((int32_t *) (ms->buffer));    
 }
 
-inline int16_t getNumRecordsBlock(MinSortStateSublist *ms)
+int16_t getNumRecordsBlock(MinSortStateSublist *ms)
 {
     return *((int16_t *) (ms->buffer + BLOCK_COUNT_OFFSET));    
 }
 
 /* Returns a value of a tuple given a record number in a block (that has been previously buffered) */
-inline int32_t getValue_sublist(MinSortStateSublist* ms, int recordNum, external_sort_t *es)
+int32_t getValue_sublist(MinSortStateSublist* ms, int recordNum, external_sort_t *es)
 {      
     test_record_t *buf = (test_record_t*) (ms->buffer+es->headerSize+recordNum*es->record_size);
     return buf->key;	    

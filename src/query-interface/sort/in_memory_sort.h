@@ -10,12 +10,12 @@ extern "C" {
 // #include <alloca.h>
 
 int
-in_memory_sort(
+in_memory_quick_sort(
 	void *data,
 	uint32_t num_values,
 	int value_size,
-	int8_t (*compare_fcn)(void* a, void* b),
-	int sort_algorithm
+	int key_offset,
+	int8_t (*compare_fcn)(void* a, void* b)
 );
 
 /**

@@ -1,4 +1,4 @@
-#if !defined(FLASH_MINSORT_SUBLIST_H)
+#ifndef FLASH_MINSORT_SUBLIST_H
 #define FLASH_MINSORT_SUBLIST_H
 
 #if defined(ARDUINO)
@@ -44,7 +44,7 @@ extern "C" {
 int flash_minsort_sublist(
         void    *iteratorState,
 		void    *tupleBuffer,
-        ION_FILE *outputFile,		
+        void  *outputFile,		
 		char    *buffer,        
 		int     bufferSizeInBytes,
 		external_sort_t *es,

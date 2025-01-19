@@ -131,7 +131,6 @@ int adaptive_sort(
 )
 {
     printf("Adaptive sort with Replacement Selection for Run Generation\n");
-	unsigned long startMillis = millis();
     
     int16_t     tuplesPerPage = (es->page_size - es->headerSize) / es->record_size;	
 	long        lastWritePos = 0;	
@@ -300,7 +299,7 @@ int adaptive_sort(
             if (recordsRead > 1)
             {
                 metric->num_reads += 1;        
-                in_memory_sort(buffer + es->headerSize, (uint32_t)recordsRead, es->record_size, es->compare_fcn, 1);
+                in_memory_quick_sort(buffer + es->headerSize, (uint32_t)recordsRead, es->record_size, es->key_offset, es->compare_fcn);
             }       
             else if (heapSize < tuplesPerPage)  /* May have enough records currently in heap to continue last block. TODO: Does this make sense? It will add to last run before starting new one.*/
             {   /* Move everything in list in to heap */
@@ -465,8 +464,6 @@ int adaptive_sort(
     
         // free(lastOutputKey);
         numSublist = metric->num_runs;
-        unsigned long endMillis = millis();
-        metric->genTime = ((double) (endMillis - startMillis));
         printf("Gen time: %d\n", metric->genTime);
 
         /* Track number of distinct values per sublist */       
@@ -564,7 +561,6 @@ int adaptive_sort(
             if (numSublist >= 32 && numSublist <= 64)// && avgDistinct/10 < 32)
             {   // Switch to MinSort to finish off
                 printf("Finishing sort with MinSort with sorted sublists\n");
-                printf("Elapsed time: %lu\n", millis()-startMillis);
                 ((file_iterator_state_t*) iteratorState)->file = outputFile;    
                 // *resultFilePtr = lastMergeStart;   
                 fflush(outputFile);
@@ -572,7 +568,6 @@ int adaptive_sort(
                 flash_minsort_sublist(iteratorState, tupleBuffer, outputFile, buffer, bufferSizeBytes, es, resultFilePtr, metric, compareFn, numSublist);
                 lastMergeStart = lastMergeEnd;
                 *resultFilePtr = lastMergeStart;               
-                printf("Elapsed time: %lu\n", millis()-startMillis);
                 break;
             }
 
@@ -582,7 +577,6 @@ int adaptive_sort(
             }
 
             printf("Pass number: %u  Comparisons: %lu  MemCopies: %lu  TransferIn: %lu  TransferOut: %lu TransferOther: %lu Other: %lu\n", passNumber, metric->num_compar, metric->num_memcpys, numShiftIntoOutput, numShiftOutOutput, numShiftOtherBlock, other);
-            printf("Elapsed time: %lu\n", millis()-startMillis);
             passNumber++;
 
             /* perform a merge */
