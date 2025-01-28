@@ -7,12 +7,12 @@
 #include "external_sort.h"
 #include "in_memory_sort.h"
 #include "flash_minsort.h"
+#include "adaptive_sort.h"
 
 #include <string.h>
 #include <desktopFileInterface.h>
 
 #define SORT_DATA_LOCATION "sort_data.bin"
-#define SORT_TEMP_LOCATION "sort_temp.bin"
 #define SORT_ORDER_LOCATION "sort_order.bin"
 
 typedef struct embedDBOperator embedDBOperator;

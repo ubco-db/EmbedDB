@@ -53,6 +53,8 @@ This is no output sort with block headers and iterator input. Heap used when mov
 // #define DEBUG_OUTPUT 1
 // #define DEBUG_READ 1
 
+#define INT_MAX 0xFFFFFFFF
+
 /**
  * Reads a page from the source file into memory.
  * @param ms Pointer to the MinSortState structure holding sorting state.

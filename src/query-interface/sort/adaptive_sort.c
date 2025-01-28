@@ -50,12 +50,12 @@
 #include "in_memory_sort.h"
 #include "no_output_heap.h"
 
-/*
-  #define     DEBUG         1
-  #define     DEBUG_OUTPUT  1  
-  #define     DEBUG_READ    1
-  #define     DEBUG_HEAP    0
-*/
+
+#define     DEBUG         1
+// #define     DEBUG_OUTPUT  1  
+// #define     DEBUG_READ    1
+// #define     DEBUG_HEAP    0
+
 
 /**
  * Prints the contents of the heap. Used for debugging.
@@ -116,7 +116,7 @@ void print_heap(char* buffer,  int32_t heap_start_offset, int heap_size, int lis
                 (writes over twice as expensive) then value is 25.
 */
 int adaptive_sort(
-    int     (*iterator)(void *state, void* buffer, external_sort_t *es),
+    uint8_t     (*iterator)(void *state, void* buffer),
     void    *iteratorState,
 	void    *tupleBuffer,
     void    *outputFile,		
@@ -130,7 +130,9 @@ int adaptive_sort(
     int8_t  writeToReadRatio
 )
 {
+    #ifdef DEBUG 
     printf("Adaptive sort with Replacement Selection for Run Generation\n");
+    #endif
     
     int16_t     tuplesPerPage = (es->page_size - es->headerSize) / es->record_size;	
 	long        lastWritePos = 0;	
@@ -145,10 +147,13 @@ int adaptive_sort(
     uint8_t  numDistinctInRun = 0;          /* Number of distinct values in current run */
 
  
-    int optimistic = 0;
+    int optimistic = 1;
     if (optimistic)
-    {   // Do FLASH MinSort init first
+    {   
+        // Do FLASH MinSort init first
+        #ifdef DEBUG
         printf("*Optimistic*\n");    
+        #endif
   
         MinSortState ms;
         ms.buffer = buffer;
@@ -159,40 +164,76 @@ int adaptive_sort(
         init_MinSort(&ms, es, metric, compareFn);
         avgDistinct = 16;        
 
-        printf("Adaptive calculation.\n");
         int16_t numPasses = (int) ceil(log(es->num_pages/bufferSizeInBlocks)/log(bufferSizeInBlocks));
         int32_t nobSortCost = numPasses *(10 + writeToReadRatio)/10;    
+        
+        #ifdef DEBUG
+        printf("Adaptive calculation.\n");
         printf("NOB sort cost. # runs: %d", numSublist);
         printf(" # passes: %d cost: %d\n", numPasses, nobSortCost);
         printf("MinSort cost. Num sublists: %d ", numSublist);
         printf(" Avg. distinct/sublist: %d\n", avgDistinct/10);
+        #endif
+        
 
         if (avgDistinct < nobSortCost)
-        // if (0)
+        // if (true)
         {
+            #ifdef DEBUG
             printf("Performing MinSort Optimistic\n");            
+            #endif
+            
             int16_t count = 0;  
             int32_t blockIndex = 0;
             int16_t values_per_page = (es->page_size - es->headerSize) / es->record_size;
             char* outputBuffer = buffer+es->page_size;    
 
-            // Write 
+            // Main sorting loop for min sort: fetches and writes sorted records in blocks
             while (next_MinSort(&ms, es, (char*) (outputBuffer+count*es->record_size+es->headerSize), metric, compareFn) != NULL)
             {         
                 // Store record in block (already done during call to next)        
                 // buf = (void *)(outputBuffer+count*es->record_size+es->headerSize);        
                 count++;
 
+                // When a block is full, write it to the output file
                 if (count == values_per_page)
-                {   // Write block
-                    *((int32_t *) outputBuffer) = blockIndex;                             /* Block index */
-                    *((int16_t *) (outputBuffer + BLOCK_COUNT_OFFSET)) = count;            /* Block record count */
-                    count=0;
-                    // Force seek to end of file as outputFile is also inputFile and have been reading it
-                    fseek(outputFile, 0, SEEK_END);
-                    if (0 == fwrite(outputBuffer, es->page_size, 1, outputFile))
-                        return 9;
+                {   
+                    *((int32_t *) outputBuffer) = blockIndex;                       /* Block index */
+                    *((int16_t *) (outputBuffer + BLOCK_COUNT_OFFSET)) = count;     /* Block record count */
+                    
+                    // Write block to the ouput file
+                    if (0 == ((file_iterator_state_t *)iteratorState)->fileInterface->write(outputBuffer, blockIndex, es->page_size, outputFile)) {
+                        return 9; // Return error code if writing to the output file fails
+                    }
 
+                    count=0;            /* Reset count for the next block */
+                    blockIndex++;       /* Update to next block id */           
+
+
+                    #ifdef DEBUG_OUTPUT
+                        printf("Wrote output block. Block index: %d\n", blockIndex);
+                        for (int k = 0; k < values_per_page; k++)
+                        {
+                            test_record_t *buf = (void *)(outputBuffer + es->headerSize + k * es->record_size);
+                            printf("%d: Output Record: %d\n", k, buf->key);
+                        }
+                    #endif
+                }       
+            }
+
+            // Write last block if there are remaining records
+            if (count > 0)
+            {  
+                *((int32_t *) outputBuffer) = blockIndex;                             /* Block index */
+                *((int16_t *)(outputBuffer + BLOCK_COUNT_OFFSET)) = count;            /* Block record count */
+                
+                if (0 == ((file_iterator_state_t *)iteratorState)->fileInterface->write(outputBuffer, blockIndex, es->page_size, outputFile)) {
+                    return 9; // Return error code if writing to the output file fails
+                }
+
+                count=0;            /* Reset count for the next block */
+                blockIndex++;       /* Update to next block id */ 
+                
                 #ifdef DEBUG_OUTPUT
                     printf("Wrote output block. Block index: %d\n", blockIndex);
                     for (int k = 0; k < values_per_page; k++)
@@ -201,20 +242,6 @@ int adaptive_sort(
                         printf("%d: Output Record: %d\n", k, buf->key);
                     }
                 #endif
-                    blockIndex++;
-                }       
-            }
-
-            if (count > 0)
-            {
-                // Write last block   
-                fseek(outputFile, 0, SEEK_END);     
-                *((int32_t *) buffer) = blockIndex;                             /* Block index */
-                *((int16_t *)(buffer + BLOCK_COUNT_OFFSET)) = count;            /* Block record count */
-                count=0;
-                blockIndex++;                 
-                if (0 == fwrite(buffer, es->page_size, 1, outputFile))
-                    return 9;
             }
              
             close_MinSort(&ms, es);  
@@ -225,8 +252,7 @@ int adaptive_sort(
         else
         {
             optimistic = 0;
-            /* Position at start of file */
-            fseek(((file_iterator_state_t*) iteratorState)->file, 0, SEEK_SET);
+            // TODO: Reset reads to start of the file (Iterator state?)
         }        
     }
     

@@ -214,9 +214,13 @@ file_iterator_state_t *startSort(sortData *data, void *unsortedFile, void *sorte
     // Metrics
     metrics_t metrics = initMetric();
 
-    // Sort the data from unsortedFile and store it in sortedFile
     long result_file_ptr = 0;
-    int err = flash_minsort(iteratorState, tuple_buffer, sortedFile, buffer, buffer_max_pages * es.page_size, &es, &result_file_ptr, &metrics, data->compareFn);
+    int8_t runGenOnly = false; // Run full sort operation
+    int8_t writeReadRatio = 19; // 1.97 * 10 => 19
+
+    // Sort the data from unsortedFile and store it in sortedFile
+    // int err = flash_minsort(iteratorState, tuple_buffer, sortedFile, buffer, buffer_max_pages * es.page_size, &es, &result_file_ptr, &metrics, data->compareFn);
+    int err = adaptive_sort(NULL, iteratorState, tuple_buffer, sortedFile, buffer, buffer_max_pages, &es, &result_file_ptr, &metrics, data->compareFn, runGenOnly, writeReadRatio);
 
 #ifdef PRINT_ERRORS
     if (8 == err) {
@@ -276,6 +280,44 @@ uint8_t readNextRecord(sortData *data, void *buffer) {
     #endif
 
     return 0;
+}
+
+/**
+ * Iterates through records in a file returning NULL when no more records.
+ */
+int fileRecordIterator(void* state, void* buffer, external_sort_t *es)
+{    
+    file_iterator_state_t* fileState = (file_iterator_state_t*) state;    
+    if (fileState->recordsRead >= fileState->totalRecords)
+        return 0;
+
+    /* Check if records left in block */
+    if (fileState->recordsLeftInBlock == 0)
+    {   /* Return next block */
+        if (0 ==  fread(fileState->readBuffer, es->page_size, 1, fileState->file))
+        {	printf("Failed to read block.\n");        
+        }
+        /* Get number of records in block */
+        fileState->recordsLeftInBlock =  *((int16_t *) (fileState->readBuffer + (uint32_t) BLOCK_COUNT_OFFSET));
+        fileState->currentRecord = 0;
+/*        
+        printf("Reading block: %d\r\n",fileState->recordsRead/31);        
+        for (int k = 0; k < 31; k++)
+        {
+            test_record_t *buf = (void *)(fileState->readBuffer + es->headerSize + k * es->record_size);
+            printf("%d: Record: %d\n", k, buf->key);
+        }
+*/        
+    }
+
+    /* Return next record in block */
+    fileState->recordsRead++;
+    fileState->recordsLeftInBlock--;
+    fileState->currentRecord++;
+
+    /* Copy record from read buffer into tuple buffer */
+    memcpy(buffer, fileState->readBuffer+es->headerSize+fileState->currentRecord*es->record_size, (size_t) es->record_size);
+    return 1;
 }
 
 void closeSort(file_iterator_state_t *iteratorState) {

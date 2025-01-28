@@ -52,7 +52,7 @@ extern "C" {
                 (writes over twice as expensive) then value is 25.
 */
 int adaptive_sort(
-        int     (*iterator)(void *state, void* buffer, external_sort_t *es),
+        int     (*iterator)(void *state, void* buffer),
         void    *iteratorState,
 	void    *tupleBuffer,
         void    *outputFile,		
