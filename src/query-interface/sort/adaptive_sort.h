@@ -52,18 +52,19 @@ extern "C" {
                 (writes over twice as expensive) then value is 25.
 */
 int adaptive_sort(
-        int     (*iterator)(void *state, void* buffer),
-        void    *iteratorState,
-	void    *tupleBuffer,
-        void    *outputFile,		
-	char    *buffer,        
-	int     bufferSizeInBlocks,
-	external_sort_t *es,
-	long    *resultFilePtr,
-	metrics_t *metric,
-        int8_t  (*compareFn)(void *a, void *b),
-        int8_t  runGenOnly,
-        int8_t  writeToReadRatio
+    uint8_t     (*iterator)(void *state, void* buffer),
+    void    *iteratorState,
+    void    *tupleBuffer,
+    void    *outputFile,		
+    char    *buffer,        
+    int     bufferSizeInBlocks,
+    external_sort_t *es,
+    long    *resultFilePtr,
+    metrics_t *metric,
+    int8_t  (*compareFn)(void *a, void *b),
+    int8_t  runGenOnly,
+    int8_t  writeToReadRatio,
+    void *sortData
 );
 
 #if defined(__cplusplus)

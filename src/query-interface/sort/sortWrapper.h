@@ -78,7 +78,7 @@ void prepareSort(embedDBOperator *op);
  * @param buffer    A buffer that is the size of one record
  * @return uint8_t  0: if read was successful. other wise none zero
  */
-uint8_t readNextRecord(sortData *state, void *buffer);
+uint8_t readNextRecord(void *state, void *buffer);
 
 void closeSort(file_iterator_state_t *iteratorState);
 

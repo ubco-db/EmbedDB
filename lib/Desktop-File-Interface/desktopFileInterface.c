@@ -101,6 +101,27 @@ int8_t FILE_EOF(void *file) {
     return feof(fileInfo->file);
 }
 
+int8_t FILE_READ_REL(void *buffer, uint32_t size, uint32_t n, void *file) {
+    FILE_INFO *fileInfo = (FILE_INFO *)file;
+    return fread(buffer, size, n, fileInfo->file);
+}
+
+int8_t FILE_WRITE_REL(void *buffer, uint32_t size, uint32_t n, void *file) {
+    FILE_INFO *fileInfo = (FILE_INFO *)file;
+    return fwrite(buffer, size, n, fileInfo->file);
+}
+
+int8_t FILE_SEEK(uint32_t n, void *file) {
+    FILE_INFO *fileInfo = (FILE_INFO *)file;
+    return fseek(fileInfo->file, n, SEEK_SET);
+}
+
+int32_t FILE_TELL(void *file) {
+    FILE_INFO *fileInfo = (FILE_INFO *)file;
+    return ftell(fileInfo->file);
+}
+
+
 embedDBFileInterface *getFileInterface() {
     embedDBFileInterface *fileInterface = malloc(sizeof(embedDBFileInterface));
     fileInterface->close = FILE_CLOSE;
@@ -111,6 +132,10 @@ embedDBFileInterface *getFileInterface() {
     fileInterface->flush = FILE_FLUSH;
     fileInterface->error = FILE_ERROR;
     fileInterface->eof = FILE_EOF;
+    fileInterface->readRel = FILE_READ_REL;
+    fileInterface->writeRel = FILE_WRITE_REL;
+    fileInterface->seek = FILE_SEEK;
+    fileInterface->tell = FILE_TELL;
     return fileInterface;
 }
 
@@ -124,5 +149,9 @@ embedDBFileInterface *getMockEraseFileInterface() {
     fileInterface->flush = FILE_FLUSH;
     fileInterface->error = FILE_ERROR;
     fileInterface->eof = FILE_EOF;
+    fileInterface->readRel = FILE_READ_REL;
+    fileInterface->writeRel = FILE_WRITE_REL;
+    fileInterface->seek = FILE_SEEK;
+    fileInterface->tell = FILE_TELL;
     return fileInterface;
 }
