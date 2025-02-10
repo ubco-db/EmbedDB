@@ -80,7 +80,7 @@ uint32_t loadRowData(sortData *data, embedDBOperator *op, void *unsortedFile) {
         count++;
 
         // temp limit for debugging
-        if (count >= 128) 
+        if (count >= 504) 
             break;
     }
 
@@ -232,6 +232,10 @@ file_iterator_state_t *startSort(sortData *data, void *unsortedFile, void *sorte
     }
 #endif
     
+    // Reset file iterator
+    iteratorState->recordsRead = 0;
+    iteratorState->currentRecord = 0;
+
     // Clean up
     free(buffer);
     buffer = NULL;

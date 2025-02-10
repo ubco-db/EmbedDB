@@ -493,6 +493,8 @@ void initOrderBy(embedDBOperator *op) {
 
     prepareSort(op);
 
+    
+
     return;
 }
 

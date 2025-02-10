@@ -1,0 +1,19 @@
+63 records (1 page)
+    - Optimistic -> Pessmistic
+    - Heap not full
+    - Single sublist (No merge phase required)
+
+126 records (2 pages)
+    - Optimistic -> Pessmistic
+    - Heap not full
+    - Single sublist (No merge phase required)
+    - Working
+
+252 records (4 pages)
+    - Optimistic -> Pessmistic
+    - Single sublist (No Merge)
+    - Working 
+
+504 records (8 pages)
+    - Optimistic -> Pessmistic
+    - Finish using NOBS

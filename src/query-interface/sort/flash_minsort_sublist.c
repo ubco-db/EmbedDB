@@ -56,21 +56,16 @@ void readPage_sublist(MinSortStateSublist *ms, int pageNum, external_sort_t *es,
 {
     file_iterator_state_t* is = (file_iterator_state_t*) ms->iteratorState;
     void* fp = is->file;
-    
-    unsigned long int offset = ms->fileOffset;
-    offset += pageNum*es->page_size;
 
-    /* Seek to page location in file */
-    fseek(fp, offset, SEEK_SET);
-
-    /* Read page into start of buffer */   
-    if (0 ==  fread(ms->buffer, es->page_size, 1, fp))
-    {	printf("Failed to read block: %d Offset: %lu\n", pageNum, offset);        
+    // Read page into the buffer
+    if (0 == is->fileInterface->read(ms->buffer, pageNum, es->page_size, fp)) {
+        printf("MINSORT SUBLIST: Failed to read block.\n");
     }
     
     metric->num_reads++;    
     ms->blocksRead++;     
     ms->lastBlockIdx = pageNum;   
+    
     #ifdef DEBUG_READ
         printf("Reading block: %d Offset: %lu\n",pageNum, offset);        
         for (int k = 0; k < 31; k++)
@@ -339,13 +334,15 @@ int flash_minsort_sublist(
             *((int32_t *) outputBuffer) = blockIndex;                             /* Block index */
             *((int16_t *) (outputBuffer + BLOCK_COUNT_OFFSET)) = count;            /* Block record count */
             count=0;
-            
-            // Force seek to end of file as outputFile is also inputFile and have been reading it
-            fseek(outputFile, lastWritePos, SEEK_SET);
-            // fseek(outputFile, 0, SEEK_END);
 
-            if (0 == fwrite(outputBuffer, es->page_size, 1, outputFile))
-                return 9;
+            // Force seek to end of file as outputFile is also inputFile and have been reading it
+            ((file_iterator_state_t *)iteratorState)->fileInterface->seek(lastWritePos, outputFile);
+            // Write the block to the output file using the file interface's write method
+            if (0 == ((file_iterator_state_t *)iteratorState)->fileInterface->writeRel(outputBuffer, es->page_size, 1, outputFile)) {
+                return 9; // Return error code if writing to the output file fails
+            }
+
+
             lastWritePos += es->page_size;
              metric->num_writes += 1;
 /*
@@ -365,19 +362,26 @@ printf("Loc2: %lu\n", ftell(outputFile));
         }       
     }
 
+    // Write the last block if there are remaining
     if (count > 0)
     {
-        fseek(outputFile, lastWritePos, SEEK_SET);
-        metric->num_writes += 1;
-        // Write last block        
+        // fseek(outputFile, lastWritePos, SEEK_SET);
+        ((file_iterator_state_t *)iteratorState)->fileInterface->seek(lastWritePos, outputFile);
+
         *((int32_t *) buffer) = blockIndex;                             /* Block index */
         *((int16_t *)(buffer + BLOCK_COUNT_OFFSET)) = count;            /* Block record count */
-        count=0;
+       
+        if (0 == ((file_iterator_state_t *)iteratorState)->fileInterface->write(outputBuffer, es->page_size, 1, outputFile)) {
+            return 9; // Return error code if writing to the output file fails
+        }
+
+        metric->num_writes += 1;
         blockIndex++;
-        if (0 == fwrite(buffer, es->page_size, 1, outputFile))
-            return 9;
+        count=0;
     }
-     
+    
+    ((file_iterator_state_t *)iteratorState)->fileInterface->flush(outputFile);
+
     close_MinSort_sublist(&ms, es);   
 
     *resultFilePtr = 0;

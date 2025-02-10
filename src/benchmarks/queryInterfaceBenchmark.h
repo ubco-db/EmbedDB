@@ -243,7 +243,7 @@ int advancedQueryExample() {
      * Find the top 10 lowest temperature recordings
      */
     
-    uint8_t limit = 128;
+    uint32_t limit = 1024;
     it.minKey = NULL;
     it.maxKey = NULL;
     it.minData = NULL;
@@ -258,15 +258,15 @@ int advancedQueryExample() {
     recordBuffer = orderByOp->recordBuffer;
     
     printf("\nOrder By Results:\n");
-    printf("Time       | Temp\n");
-    printf("-----------+------\n");
-    for (uint8_t i = 0; i < limit; i++) {
+    printf("ID   | Time       | Temp\n");
+    printf("-----+------------+------\n");
+    for (uint32_t i = 0; i < limit; i++) {
         if (!exec(orderByOp)) {
             "[No more rows to return]";
             break;
         }
         
-        printf("%-10lu | %-4.1f\n", recordBuffer[0], ((uint32_t)recordBuffer[1]) / 10.0);
+        printf("%4d | %-10lu | %-4.1f\n", i, recordBuffer[0], ((uint32_t)recordBuffer[1]) / 10.0);
     }
 
     orderByOp->close(orderByOp);

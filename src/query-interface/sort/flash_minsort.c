@@ -66,9 +66,9 @@ void readPageMinSort(MinSortState *ms, int pageNum, external_sort_t *es, metrics
     file_iterator_state_t *is = (file_iterator_state_t *)ms->iteratorState;
     void *fp = is->file;
 
-    // Read page into into the buffer
+    // Read page into the buffer
     if (0 == is->fileInterface->read(ms->buffer, pageNum, es->page_size, fp)) {
-        printf("Failed to read block.\n");
+        printf("MINSORT: Failed to read block.\n");
     }
 
     metric->num_reads++;
