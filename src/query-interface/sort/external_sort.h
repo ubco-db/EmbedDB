@@ -41,7 +41,8 @@ typedef struct {
 	int32_t totalRecords;	
     int32_t currentRecord;
     int32_t recordsLeftInBlock;
-    int32_t recordSize;       
+    int32_t recordSize;      
+    long resultFile; 
 
     embedDBFileInterface  *fileInterface; 
 } file_iterator_state_t;

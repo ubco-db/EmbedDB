@@ -51,9 +51,9 @@
 #include "no_output_heap.h"
 
 
-#define     DEBUG         1
-#define     DEBUG_OUTPUT  1
-#define     DEBUG_READ    1
+// #define     DEBUG         1
+// #define     DEBUG_OUTPUT  1
+// #define     DEBUG_READ    1
 // #define     DEBUG_HEAP    0
 
 
@@ -645,7 +645,6 @@ int adaptive_sort(
 
                 currentBlockId = 0;
                 /* 
-                Find first block of each run.
                 Note: Reading from file to find block offsets of each sublist is ONLY required as not storing these offsets in memory.
                 This code also makes sure the "smallest" sublist is in output block (0) as this results in fewest swaps (especially for sorted input).
                 Since sublists are scanned from back of previous run, it alternates on each pass what sublist read will be smaller. 
@@ -656,7 +655,9 @@ int adaptive_sort(
                 when determining the starting point of the sublist. The first block is not read at this point. That happens later in the code.
                 
                 Consider checking last record instead as they may be better for the random case when sublists are not the same size in blocks.
-                */            
+                */  
+
+                // Find fist block of each run          
                 for (i = 0; i < sublistsInRun; i++) 
                 {
                     /* Read last block of sublist into buffer */
@@ -703,7 +704,7 @@ int adaptive_sort(
                                 printf("Swapping in buffer 0. Current key: %d  New key: %d\n", *(uint32_t *)(buffer0Rec + es->key_offset), *(uint32_t *)(currentRec + es->key_offset));
                                 #endif
                                 // Perform swap
-                                sublsBlkPos[i] = sublsFilePtr[0];           /* Note: Using subls_blk_pos[i] as a temp variable during swap */
+                                sublsBlkPos[i] = sublsFilePtr[0];           /* Note: Using subls_blk_pos[i] as a temp variable during swap */ // TODO: Update swap to not be variable length
                                 sublsFilePtr[0] = sublsFilePtr[i];
                                 sublsFilePtr[i] = sublsBlkPos[i];
                                 sublsBlkPos[i] = blocksInSublist[i];
@@ -743,7 +744,7 @@ int adaptive_sort(
                                     *((int16_t *) (buffer + i * es->page_size + BLOCK_COUNT_OFFSET)), *(uint32_t *)(firstRec + es->key_offset), *(uint32_t *)(lastRec + es->key_offset)); 
                     #endif
                     // Initialize record1 to start of each block and record2 to empty
-                    record1[i] = i * es->page_size + es->headerSize;
+                    record1[i] = i * es->page_size + es->headerSize; // TODO: Does this need to be update to use key offset
                     record2[i] = -1;
                 }          
 
@@ -754,20 +755,21 @@ int adaptive_sort(
                     resultBlock	                    = -1;
                     isRecord2			            = 0;                  
                 
-                    /* Find first sublist with valid data record */
+                    // Find first sublist with valid data record
                     i = 0;
                     while (record1[i] == -1 && i < sublistsInRun) 
                         i++;
 
                     
-                    if (i < sublistsInRun)
-                    {   /* Found a sublist with a valid data record */
+                    // Find a sublist with a valid data record
+                    if (i < sublistsInRun) {   
+                        // record found
                         resultRecOffset = record1[i];
                         resultBlock = i;
                         i++;
                     }
 
-                    /* Go through rest of sublists looking for a smaller record */
+                    // Go through rest of sublists looking for a smaller record
                     for ( ; i < sublistsInRun; i++) 
                     {
                         if (record1[i] == -1) 
@@ -783,9 +785,8 @@ int adaptive_sort(
                         }
                     }
 
-                    /* Find smallest value of last block, it might be scattered amongst other blocks 
-                    Note: For loop code is assuming OUTPUT_BLOCK_ID is 0. Otherwise, i should start at 0 not 1 and must check if i == OUTPUT_BLOCK_ID.
-                    */
+                    // Find smallest value of last block, it might be scattered amongst other blocks 
+                    // Note: For loop code is assuming OUTPUT_BLOCK_ID is 0. Otherwise, i should start at 0 not 1 and must check if i == OUTPUT_BLOCK_ID.
                     for (i = 1; i < sublistsInRun; i++) 
                     {                
                         if (record2[i] == -1)
@@ -805,9 +806,11 @@ int adaptive_sort(
                         }
                     }
 
-                    if (resultBlock == -1) break; /* No records left to merge */
-
-                    /* increment record2 to next position of output block. record2 is where the next record to output will be placed */
+                    // Check if a record has been found
+                    if (resultBlock == -1) break;
+                    
+                    // Record has been found
+                    // Increment record2 to next position of output block. record2 is where the next record to output will be placed 
                     if (record2[OUTPUT_BLOCK_ID] == -1) 
                         record2[OUTPUT_BLOCK_ID] = BUFFER_OUTPUT_BLOCK_START_RECORD_OFFSET;                
                     else 
@@ -914,9 +917,9 @@ int adaptive_sort(
                         if (isRecord2 == 0) 
                             record1[resultBlock] += es->record_size;                    
                     } /* end if smallestblock != output block */
-                    else 
+                    else /* The smallest value is already in output block, move it from record1 to record2 */
                     {
-                        /* The smallest value is already in output block, move it from record1 to record2 */
+                        
                         if (record2[resultBlock] != record1[resultBlock]) 
                         {
                             metric->num_memcpys++;
@@ -1178,7 +1181,7 @@ int adaptive_sort(
                         }
                     }
 
-                    /* read in next block of sublist (output block) */
+                    // read in next block of sublist (output block)
                     if (outputIsEmpty && (-1 != sublsBlkPos[OUTPUT_BLOCK_ID])) 
                     {
                         /* check if we are finished with output blocks associated sublist */

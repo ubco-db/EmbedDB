@@ -111,7 +111,7 @@ void prepareSort(embedDBOperator* op) {
     data->keyOffset = getColOffsetFromSchema(op->schema, data->colNum);
     data->recordSize = getRecordSizeFromSchema(op->schema);
     data->keySize = op->schema->columnSizes[data->colNum];
-    
+
     // A columns size will be negative if the column is signed
     // and positive if value is unsigned
     if (data->keySize < 0) {
@@ -207,6 +207,7 @@ file_iterator_state_t *startSort(sortData *data, void *unsortedFile, void *sorte
     iteratorState->fileInterface = data->fileInterface;
     iteratorState->currentRecord = 0;
     iteratorState->recordsLeftInBlock = 0;
+    iteratorState->resultFile = 0;
 
     data->fileIterator = iteratorState;
 
@@ -220,6 +221,9 @@ file_iterator_state_t *startSort(sortData *data, void *unsortedFile, void *sorte
     // Sort the data from unsortedFile and store it in sortedFile
     // int err = flash_minsort(iteratorState, tuple_buffer, sortedFile, buffer, buffer_max_pages * es.page_size, &es, &result_file_ptr, &metrics, data->compareFn);
     int err = adaptive_sort(readNextRecord, iteratorState, tuple_buffer, sortedFile, buffer, buffer_max_pages, &es, &result_file_ptr, &metrics, data->compareFn, runGenOnly, writeReadRatio, data);
+    
+    iteratorState->resultFile = result_file_ptr;
+
 
 #ifdef PRINT_ERRORS
     if (8 == err) {
@@ -259,7 +263,8 @@ uint8_t readNextRecord(void *data, void *buffer) {
 
     // Read next page if current buffer is empty
     if (iteratorState->currentRecord % recordPerPage == 0 || iteratorState->recordsRead == 0) {
-        ((sortData *)data)->fileInterface->read(((sortData *)data)->readBuffer, iteratorState->currentRecord / recordPerPage, PAGE_SIZE, iteratorState->file);
+        iteratorState->fileInterface->seek(iteratorState->currentRecord / recordPerPage * PAGE_SIZE + iteratorState->resultFile, iteratorState->file);
+        iteratorState->fileInterface->readRel(((sortData *)data)->readBuffer, PAGE_SIZE, 1, iteratorState->file);
         
         if (((sortData *)data)->fileInterface->error(iteratorState->file)) {
             printf("ERROR: SORT: next record read failed");
