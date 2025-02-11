@@ -80,7 +80,7 @@ uint32_t loadRowData(sortData *data, embedDBOperator *op, void *unsortedFile) {
         count++;
 
         // temp limit for debugging
-        if (count >= 252) 
+        if (count >= 1000) 
             break;
     }
 
@@ -111,8 +111,7 @@ void prepareSort(embedDBOperator* op) {
     data->keyOffset = getColOffsetFromSchema(op->schema, data->colNum);
     data->recordSize = getRecordSizeFromSchema(op->schema);
     data->keySize = op->schema->columnSizes[data->colNum];
-
-
+    
     // A columns size will be negative if the column is signed
     // and positive if value is unsigned
     if (data->keySize < 0) {

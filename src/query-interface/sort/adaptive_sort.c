@@ -269,7 +269,7 @@ int adaptive_sort(
         int8_t haveOutputKey       = 0;
         int32_t sublistSize        = 0;                 /* size in blocks */
         int32_t outputCount        = 0;                 /* number of values in output block */
-        int32_t recordsLeft        = recordsRead;       /* number of records in buffer */
+        int32_t recordsLeft        = 0;       /* number of records in buffer */
         void *heapVal, *inputVal;
 
 
@@ -301,7 +301,7 @@ int adaptive_sort(
         }
 
         // Read each block and sort
-        while (recordsLeft > 0)
+        while (recordsLeft != 0)
         {
             recordsRead = 0;
 
@@ -359,7 +359,6 @@ int adaptive_sort(
             // Swap output records into output buffer from heap if smaller than records currently there. (I/O block is id zero)
             for(i = 0; i < tuplesPerPage; i++) {
                 
-            
                 if (recordsRead == 0) {                   
                     // Check if there are any records left
                     if (recordsLeft <= 0)
@@ -418,8 +417,9 @@ int adaptive_sort(
                 */
                 if ((es->compare_fcn(heapVal+es->key_offset, inputVal+es->key_offset) < 0 
                     && (haveOutputKey==0 || es->compare_fcn(heapVal+es->key_offset, lastOutputKey+es->key_offset) >= 0))
-                    || (haveOutputKey && es->compare_fcn(inputVal+es->key_offset, lastOutputKey+es->key_offset) < 0))
-                {
+                    || (haveOutputKey && es->compare_fcn(inputVal+es->key_offset, lastOutputKey+es->key_offset) < 0)
+                    ){
+                    
                     // Use the heap value
                     memcpy(tupleBuffer, buffer + es->headerSize + i*es->record_size, es->record_size);              /* Input tuple into buffer */
                     memcpy(buffer + es->headerSize + i*es->record_size, buffer+heapStartOffset, es->record_size);   /* Heap into input/output block */                
@@ -447,13 +447,11 @@ int adaptive_sort(
                         // Put value into the heap
                         heapify_rev(buffer + heapStartOffset, tupleBuffer, heapSize, es, metric);
                     }
-                }
-                else
-                {
+                } else {
                     // Determine if the value is different than the last one to estimate the number of distinct values
                     metric->num_compar++;
                     if (numDistinctInRun < 255 && haveOutputKey) {   
-                        // Value is different =
+                        // Value is different
                         metric->num_compar++;
                         if (es->compare_fcn(lastOutputKey+es->key_offset, inputVal+es->key_offset) < 0)
                             numDistinctInRun++;
@@ -467,7 +465,8 @@ int adaptive_sort(
                 #ifdef DEBUG_HEAP 
                     print_heap(buffer, heapStartOffset, heapSize, listSize, es); 
                 #endif
-                if(recordsLeft == 0) break;
+                if(recordsLeft == 0) 
+                    break;
             }
 
             // Add Page Headers
@@ -482,7 +481,7 @@ int adaptive_sort(
             if (((file_iterator_state_t *) iteratorState)->fileInterface->error(outputFile)){
                 // File read error
                 free(lastOutputKey);
-                return 10;
+                return 9;
             } 
 
             #ifdef DEBUG_OUTPUT
