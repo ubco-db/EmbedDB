@@ -70,7 +70,6 @@
 
 #define DATA_FILE_PATH "dataFile.bin"
 #define INDEX_FILE_PATH "indexFile.bin"
-#define VAR_DATA_FILE_PATH "varFile.bin"
 
 #else
 
@@ -78,7 +77,6 @@
 #include "query-interface/streamingQueries.h"
 #define DATA_FILE_PATH "build/artifacts/dataFile.bin"
 #define INDEX_FILE_PATH "build/artifacts/indexFile.bin"
-#define VAR_DATA_FILE_PATH "build/artifacts/varFile.bin"
 
 #endif
 
@@ -189,21 +187,19 @@ embedDBState* init_state() {
     // address storage characteristics
     state->numDataPages = 1000;
     state->numIndexPages = 48;
-    state->numVarPages = 76;
     state->eraseSizeInPages = 4;
 
     if (STORAGE_TYPE == 1) {
         printf("Dataflash storage is not currently supported in this example. Proceeding using SD storage.\n");
     }
 
-    char dataPath[] = DATA_FILE_PATH, indexPath[] = INDEX_FILE_PATH, varPath[] = VAR_DATA_FILE_PATH;
+    char dataPath[] = DATA_FILE_PATH, indexPath[] = INDEX_FILE_PATH;
     state->fileInterface = getFileInterface();
     state->dataFile = setupFile(dataPath);
     state->indexFile = setupFile(indexPath);
-    state->varFile = setupFile(varPath);
 
     // enable parameters
-    state->parameters = EMBEDDB_USE_BMAP | EMBEDDB_USE_INDEX | EMBEDDB_USE_VDATA | EMBEDDB_RESET_DATA;
+    state->parameters = EMBEDDB_USE_BMAP | EMBEDDB_USE_INDEX  | EMBEDDB_RESET_DATA;
 
     // Setup for data and bitmap comparison functions */
     state->inBitmap = inBitmapInt8;
