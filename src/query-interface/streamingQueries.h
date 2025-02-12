@@ -38,10 +38,10 @@ typedef enum {
 } SelectOperation;
 
 typedef enum {
-    INT32,
-    INT64,
-    FLOAT,
-    DOUBLE
+    DBINT32,
+    DBINT64,
+    DBFLOAT,
+    DBDOUBLE
 } CustomReturnType;
 
 /**
@@ -256,8 +256,8 @@ void handleGetMinMax(StreamingQuery* query, void* key, void *data);
  * @param key A pointer to the key used for executing the custom query.
  *
  * The function executes the custom query using the provided key and then performs a comparison
- * based on the return type specified in the query. Supported return types include INT32, INT64,
- * FLOAT, and DOUBLE. If the return type is unsupported, an error message is printed.
+ * based on the return type specified in the query. Supported return types include DBINT32, DBINT64,
+ * DBFLOAT, and DBDOUBLE. If the return type is unsupported, an error message is printed.
  */
 void handleCustomQuery(StreamingQuery* query, void* key, void *data);
 

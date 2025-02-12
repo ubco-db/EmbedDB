@@ -332,7 +332,7 @@ void* GetWeightedAverage(StreamingQuery *query, void *key) {
     queries[0] = createStreamingQuery(state, schema, context);
     
     int value = 0; //ensure callback is called everytime
-    queries[0]->IFCustom(queries[0], 1, GetWeightedAverage, FLOAT)
+    queries[0]->IFCustom(queries[0], 1, GetWeightedAverage, DBFLOAT)
             ->ofLast(queries[0], 10) // last 10 seconds
             ->is(queries[0], GreaterThanOrEqual, (void*)&value)
             ->then(queries[0], [](void* result, void* current, void* ctx) {

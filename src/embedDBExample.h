@@ -88,7 +88,7 @@ int32_t randomInt(int min, int max) {
 }
 
 void GTcallback(void* aggregateValue, void* currentValue, void* context) {
-    printf("Max temperature is greater than 25: Max: %i, Current: %i\n", *(int32_t*)aggregateValue, *(int32_t*)currentValue);
+    printf("avg temperature is greater than 25: avg: %f, Current: %i\n", *(float*)aggregateValue, *(int32_t*)currentValue);
 }
 
 void LTcallback(void* aggregateValue, void* currentValue, void* context) {
@@ -103,24 +103,16 @@ uint32_t embedDBExample() {
     embedDBSchema* schema = createSchema();
 
     StreamingQuery *streamingQueryGT = createStreamingQuery(state, schema, NULL);
-    streamingQueryGT->IF(streamingQueryGT, 1, GET_MAX)
-                    ->ofLast(streamingQueryGT, 10)
-                    ->is(streamingQueryGT, GreaterThan, (void*)&(int){25})
+    streamingQueryGT->IF(streamingQueryGT, 1, GET_AVG)
+                    ->ofLast(streamingQueryGT, 5000)
+                    ->is(streamingQueryGT, GreaterThan, (void*)&(float){22.5})
                     ->then(streamingQueryGT, GTcallback);
-
-    StreamingQuery *streamingQueryLT = createStreamingQuery(state, schema, NULL);
-    streamingQueryLT->IF(streamingQueryLT, 1, GET_MAX)
-                    ->ofLast(streamingQueryLT, 10)
-                    ->where(streamingQueryLT, NULL, (void*)&(int){24})
-                    ->is(streamingQueryLT, LessThan, (void*)&(int){25})
-                    ->then(streamingQueryLT, LTcallback);
 
     StreamingQuery **queries = (StreamingQuery**)malloc(sizeof(StreamingQuery*));
     queries[0] = streamingQueryGT;
-    queries[1] = streamingQueryLT;
     srand(time(NULL));
 
-    for (int i = 0; i < 100; i++) {
+    for (int i = 0; i < 10000; i++) {
         uint64_t timestamp = 202411040000 + i; // Example timestamp
         
         // calloc dataPtr in the heap
@@ -128,7 +120,7 @@ uint32_t embedDBExample() {
 
         // set value to be inserted
         *((uint32_t*)dataPtr) = randomInt(15, 30);
-        int8_t result = streamingQueryPut(queries, 2, &timestamp, dataPtr);      
+        int8_t result = streamingQueryPut(queries, 1, &timestamp, dataPtr);      
         if(result != SUCCESS) {
             printf("Error inserting record\n");
         }

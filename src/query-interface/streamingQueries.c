@@ -254,16 +254,16 @@ void handleGetMinMax(StreamingQuery* query, void* key, void *data) {
 void handleCustomQuery(StreamingQuery* query, void* key, void *data) {
     void* result = query->executeCustom(query, key);
     switch(query->returnType) {
-        case INT32:
+        case DBINT32:
             executeComparison(query, result, int32Comparator, data);
             break;
-        case INT64:
+        case DBINT64:
             executeComparison(query, result, int64Comparator, data);
             break;
-        case FLOAT:
+        case DBFLOAT:
             executeComparison(query, result, floatComparator, data);
             break;
-        case DOUBLE:
+        case DBDOUBLE:
             executeComparison(query, result, doubleComparator, data);
             break;
         default:

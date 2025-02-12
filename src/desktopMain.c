@@ -6,7 +6,7 @@
  *
  */
 #ifndef WHICH_PROGRAM
-#define WHICH_PROGRAM 0
+#define WHICH_PROGRAM 4
 #endif
 
 #if WHICH_PROGRAM == 0
@@ -17,6 +17,8 @@
 #include "benchmarks/variableDataBenchmark.h"
 #elif WHICH_PROGRAM == 3
 #include "benchmarks/queryInterfaceBenchmark.h"
+#elif WHICH_PROGRAM == 4
+#include "benchmarks/streamingQueryBenchmark.h"
 #endif
 
 int main() {
@@ -28,6 +30,8 @@ int main() {
     return test_vardata();
 #elif WHICH_PROGRAM == 3
     return advancedQueryExample();
+#elif WHICH_PROGRAM == 4
+    return streamingQueryBenchmark();
 #endif
 }
 
