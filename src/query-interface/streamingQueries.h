@@ -49,7 +49,7 @@ typedef enum {
  * @brief Struct representing a streaming query.
  */
 typedef struct StreamingQuery {
-    uint32_t numLastEntries;    /**< Number of last entries to consider */
+    void* numLastEntries;    /**< Number of last entries to consider */
     void* threshold;            /**< Threshold value for comparison */
     embedDBSchema *schema;      /**< Schema of the database */
     embedDBState *state;        /**< State of the database */
@@ -66,7 +66,7 @@ typedef struct StreamingQuery {
 
     struct StreamingQuery* (*IF)(struct StreamingQuery *query, uint8_t colNum, StreamingQueryType type);
     struct StreamingQuery* (*IFCustom)(struct StreamingQuery *query, uint8_t colNum, void* (*executeCustom)(struct StreamingQuery *query, void *key), CustomReturnType returnType);
-    struct StreamingQuery* (*ofLast)(struct StreamingQuery *query, uint32_t numLastEntries);
+    struct StreamingQuery* (*ofLast)(struct StreamingQuery *query, void* numLastEntries);
     struct StreamingQuery* (*where)(struct StreamingQuery *query, void* minData, void* maxData);
     struct StreamingQuery* (*is)(struct StreamingQuery *query, SelectOperation operation, void* threshold);
     struct StreamingQuery* (*then)(struct StreamingQuery *query, void (*callback)(void* aggregateValue, void* currentValue, void* context));
@@ -114,7 +114,7 @@ StreamingQuery* is(StreamingQuery *query, SelectOperation operation, void* thres
  * @param numLastEntries Number of last entries.
  * @return Pointer to the StreamingQuery.
  */
-StreamingQuery* forLast(StreamingQuery *query, uint32_t numLastEntries);
+StreamingQuery* forLast(StreamingQuery *query, void* numLastEntries);
 
 /**
  * @brief where method for setting the range of values to consider.

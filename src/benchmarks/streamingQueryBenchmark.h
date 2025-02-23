@@ -60,13 +60,6 @@ uint64_t get_nanoseconds() {
     return (uint64_t)ts.tv_sec * 1e9 + ts.tv_nsec;
 }
 
-uint64_t getMilliseconds() {
-    LARGE_INTEGER freq, count;
-    QueryPerformanceFrequency(&freq);
-    QueryPerformanceCounter(&count);
-    return (count.QuadPart * 1000) / freq.QuadPart;
-}
-
 int32_t randomInt(int min, int max) {
     int randomIntInRange = (rand() % (max - min + 1)) + min;
     return randomIntInRange;
@@ -76,7 +69,7 @@ int32_t randomInt(int min, int max) {
 void GTcallback(void* aggregateValue, void* currentValue, void* context) {
     FILE* perfLog = (FILE*)context;
     uint64_t callbackTime = get_nanoseconds();
-    fprintf(perfLog, "%llu,CALLBACK,Avg: %f, Current: %i\n", callbackTime, *(float*)aggregateValue, *(int32_t*)currentValue);
+    fprintf(perfLog, "%llu,CALLBACK,%f\n", callbackTime, *(float*)aggregateValue);
 }
 
 uint32_t streamingQueryBenchmark() {
@@ -87,8 +80,8 @@ uint32_t streamingQueryBenchmark() {
     // Create streaming query
     StreamingQuery *streamingQueryGT = createStreamingQuery(state, schema, NULL);
     streamingQueryGT->IF(streamingQueryGT, 1, GET_AVG)
-                    ->ofLast(streamingQueryGT, 5000)  // 5-second window
-                    ->is(streamingQueryGT, GreaterThan, (void*)&(float){25})
+                    ->ofLast(streamingQueryGT, (void*)&(uint32_t){1000})  // 1-second window
+                    ->is(streamingQueryGT, GreaterThan, (void*)&(float){25.07})
                     ->then(streamingQueryGT, GTcallback);
 
     StreamingQuery **queries = (StreamingQuery**)malloc(sizeof(StreamingQuery*));
@@ -97,15 +90,16 @@ uint32_t streamingQueryBenchmark() {
 
     // Open performance log file
     FILE* perfLog = fopen("C:/Users/richa/OneDrive/Documents/influxdb/embeddb_perf.csv", "w");
-    fprintf(perfLog, "timestamp,event,temperature,insert_time,alert_triggered\n");
+    fprintf(perfLog, "timestamp,event,temperature,insert_time\n");
 
     // Set callback context to the log file
     streamingQueryGT->context = perfLog;
-
-    uint64_t startTime = get_nanoseconds();
     timeBeginPeriod(1);
+
+    uint32_t j = 0;
+    // Insert without active query first
     for (int i = 0; i < NUM_INSERTIONS; i++) {
-        uint64_t timestamp = getMilliseconds();  // Example timestamp
+        uint64_t timestamp = get_nanoseconds();
         int32_t temperature = randomInt(15, 35);  // Random temperature between 15°C and 30°C
 
         LARGE_INTEGER start, end, freq;
@@ -114,23 +108,47 @@ uint32_t streamingQueryBenchmark() {
 
         void* dataPtr = malloc(state->dataSize);
         *((int32_t*)dataPtr) = temperature;
-        int8_t result = streamingQueryPut(queries, 1, &timestamp, dataPtr);
+        int8_t result = embedDBPut(state, &j, dataPtr);
         
         QueryPerformanceCounter(&end);
-        double insertTime = (double)(end.QuadPart - start.QuadPart) / freq.QuadPart * 1000;
+        int insertTime = (double)(end.QuadPart - start.QuadPart) / freq.QuadPart * 1e9;  // Convert to nanoseconds
 
         // Log insertion event
-        fprintf(perfLog, "%llu,INSERT,%i,%f,%d\n", timestamp, temperature, insertTime, result == SUCCESS ? 1 : 0);
+        //fprintf(perfLog, "%llu,INSERT,%i,%i\n", timestamp, temperature, insertTime);
         free(dataPtr);
+        //Sleep(INTERVAL);  // Insert every 1 ms
+        j++;
+    }
 
-        Sleep(INTERVAL);  // Insert every 1 ms
+
+    uint64_t startTime = get_nanoseconds();
+    for (int i = 0; i < NUM_INSERTIONS/5; i++) {
+        uint64_t timestamp = get_nanoseconds();
+        int32_t temperature = randomInt(15, 35);  // Random temperature between 15°C and 30°C
+
+        LARGE_INTEGER start, end, freq;
+        QueryPerformanceFrequency(&freq);
+        QueryPerformanceCounter(&start);
+
+        void* dataPtr = malloc(state->dataSize);
+        *((int32_t*)dataPtr) = temperature;
+        int8_t result = streamingQueryPut(queries, 1, &j, dataPtr);
+        
+        QueryPerformanceCounter(&end);
+        int insertTime = (double)(end.QuadPart - start.QuadPart) / freq.QuadPart * 1e9;  // Convert to nanoseconds
+
+        // Log insertion event
+        fprintf(perfLog, "%llu,INSERT,%i,%i\n", timestamp, temperature, insertTime);
+        free(dataPtr);
+        j++;
+        //Sleep(INTERVAL);  // Insert every 1 ms
     }
     timeEndPeriod(1);
     uint64_t endTime = get_nanoseconds();
 
     // Calculate throughput
     double totalTime = (double)(endTime - startTime) / 1e9;  // Convert to seconds
-    double throughput = NUM_INSERTIONS / totalTime;
+    double throughput = (NUM_INSERTIONS/5) / totalTime;
     printf("Throughput: %f insertions/second\n", throughput);
 
     // Clean up
@@ -141,7 +159,7 @@ uint32_t streamingQueryBenchmark() {
 
 embedDBSchema* createSchema() {
     uint8_t numCols = 2;
-    int8_t colSizes[] = {8, 4};
+    int8_t colSizes[] = {4, 4};
     int8_t colSignedness[] = {embedDB_COLUMN_UNSIGNED, embedDB_COLUMN_SIGNED};
     embedDBSchema* schema = embedDBCreateSchema(numCols, colSizes, colSignedness);
     return schema;
@@ -158,7 +176,7 @@ embedDBState* init_state() {
     }
     /* configure EmbedDB state variables */
     // for fixed-length records
-    state->keySize = 8;
+    state->keySize = 4;
     state->dataSize = 4;
 
     // for buffer(s)
@@ -197,8 +215,8 @@ embedDBState* init_state() {
     state->inBitmap = inBitmapInt8;
     state->updateBitmap = updateBitmapInt8;
     state->buildBitmapFromRange = buildBitmapInt8FromRange;
-    state->compareKey = int64Comparator;
-    state->compareData = floatComparator;
+    state->compareKey = int32Comparator;
+    state->compareData = int32Comparator;
 
 
     // init embedDB

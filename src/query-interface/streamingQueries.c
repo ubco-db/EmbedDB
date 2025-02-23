@@ -20,7 +20,7 @@ StreamingQuery* is(StreamingQuery *query, SelectOperation operation, void* thres
     return query;
 }
 
-StreamingQuery* ofLast(StreamingQuery *query, uint32_t numLastEntries) {
+StreamingQuery* ofLast(StreamingQuery *query, void* numLastEntries) {
     query->numLastEntries = numLastEntries;
     return query;
 }
@@ -143,7 +143,7 @@ int64_t GetMinMax64(StreamingQuery *query, void *key) {
 embedDBOperator* createOperator(StreamingQuery *query, void*** allocatedValues, void *key) {
     embedDBIterator* it = (embedDBIterator*)malloc(sizeof(embedDBIterator));
     if(query->state->keySize == 4){
-        uint32_t minKeyVal = *(uint32_t*)key - (query->numLastEntries-1);
+        uint32_t minKeyVal = *(uint32_t*)key - ((uint32_t)query->numLastEntries - 1);
         uint32_t *minKeyPtr = (uint32_t *)malloc(sizeof(uint32_t));
         if (minKeyPtr != NULL) {
             *minKeyPtr = minKeyVal;
