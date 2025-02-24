@@ -87,10 +87,11 @@ int16_t getNumRecordsBlock(MinSortStateSublist *ms)
 }
 
 /* Returns a value of a tuple given a record number in a block (that has been previously buffered) */
-int32_t getValue_sublist(MinSortStateSublist* ms, int recordNum, external_sort_t *es)
+uint32_t getValue_sublist(MinSortStateSublist* ms, int recordNum, external_sort_t *es)
 {      
-    test_record_t *buf = (test_record_t*) (ms->buffer+es->headerSize+recordNum*es->record_size);
-    return buf->key;	    
+    // test_record_t *buf = (test_record_t*) (ms->buffer+es->headerSize+recordNum*es->record_size);
+    // return buf->key;	    
+    return *(uint32_t *) (ms->buffer+es->headerSize+recordNum*es->record_size+es->key_offset);
 }
 
 void init_MinSort_sublist(MinSortStateSublist* ms, external_sort_t *es, metrics_t *metric)
@@ -133,7 +134,7 @@ void init_MinSort_sublist(MinSortStateSublist* ms, external_sort_t *es, metrics_
     while (lastBlock >= 0)
     {
         readPage_sublist(ms, lastBlock, es, metric);     
-        int numBlocksSublist = *(int32_t*) &ms->buffer[0];       /* Retrieve block id (indexed from 0) to compute count of blocks in sublist */
+        int numBlocksSublist = *(int32_t*) ms->buffer;       /* Retrieve block id (indexed from 0) to compute count of blocks in sublist */
         #if DEBUG
         printf("Read block: %d",lastBlock);
         printf(" Num: %d\n", numBlocksSublist);

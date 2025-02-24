@@ -380,7 +380,7 @@ int adaptive_sort(
                 inputVal = buffer+es->headerSize + i*es->record_size;          
 
                 // Check if can use heap value or input value
-                if (haveOutputKey && (es->compare_fcn(heapVal+es->key_offset, lastOutputKey+es->key_offset) < 0 || 0 >= heapSize) && es->compare_fcn(inputVal+es->key_offset, lastOutputKey+es->key_offset) < 0)
+                if (haveOutputKey && (es->compare_fcn(heapVal+es->key_offset, lastOutputKey+es->key_offset) < 0 || heapSize <= 0) && es->compare_fcn(inputVal+es->key_offset, lastOutputKey+es->key_offset) < 0)
                 {
                     // Start a new sublist (as cannot use heap value or input value)
                     numSublist++;
@@ -744,7 +744,7 @@ int adaptive_sort(
                                     *((int16_t *) (buffer + i * es->page_size + BLOCK_COUNT_OFFSET)), *(uint32_t *)(firstRec + es->key_offset), *(uint32_t *)(lastRec + es->key_offset)); 
                     #endif
                     // Initialize record1 to start of each block and record2 to empty
-                    record1[i] = i * es->page_size + es->headerSize; // TODO: Does this need to be update to use key offset
+                    record1[i] = i * es->page_size + es->headerSize;
                     record2[i] = -1;
                 }          
 
