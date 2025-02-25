@@ -227,6 +227,51 @@ void test_AvgLessThanOrEqual(void) {
     std::cout << "test_AvgLessThanOrEqual complete" << std::endl;
 }
 
+void test_AvgLessThanOrEqual_Float(void) {
+    std::cout << "Running test_AvgLessThanOrEqual_Float..." << std::endl;
+
+    schema->columnTypes[1] = embedDB_COLUMN_FLOAT;
+
+    CallbackContext* context = (CallbackContext*)malloc(sizeof(CallbackContext));
+    context->int1 = 0;
+
+    StreamingQuery **queries = (StreamingQuery**)malloc(sizeof(StreamingQuery*));
+    queries[0] = createStreamingQuery(state, schema, context);
+
+    float value = 3.75f; // Comparison threshold
+    int numLast = 4; // Number of last values to calculate AVG
+    queries[0]->IF(queries[0], 1, GET_AVG)
+            ->ofLast(queries[0], (void*)&numLast)
+            ->is(queries[0], LessThanOrEqual, (void*)&value)
+            ->then(queries[0], [](void* average, void* current, void* ctx) {
+                CallbackContext* context = (CallbackContext*)ctx;
+                context->int1++;
+                float avg = *(float*)average;
+                TEST_ASSERT_TRUE(avg <= 3.75f);
+                std::cout << "Computed Average: " << avg << std::endl;
+    });
+
+    // Using float values with decimals
+    float data[] = {2.1f, 3.3f, 4.7f, 3.8f, 5.5f, 2.9f};
+    void* dataPtr = calloc(1, state->dataSize);
+    for (int32_t i = 0; i < sizeof(data)/sizeof(data[0]); i++) {
+        *((float*)dataPtr) = data[i];  // Store float values
+        streamingQueryPut(queries, 1, &i, dataPtr);
+
+        float dataRetrieved = 0.0f;
+        embedDBGet(state, (void*)&i, (void*)&dataRetrieved);
+        TEST_ASSERT_EQUAL_FLOAT(data[i], dataRetrieved);
+    }
+
+    // Verify that the callback was triggered the expected number of times
+    TEST_ASSERT_EQUAL_INT32(4, context->int1);
+
+    free(queries);
+    free(context);
+    free(dataPtr);
+    std::cout << "test_AvgLessThanOrEqual_Float complete" << std::endl;
+}
+
 // This function tests the execution of multiple streaming queries in a row.
 // It verifies that each query correctly processes the data and triggers the appropriate callbacks.
 void test_MultipleQueries(void) {
@@ -419,6 +464,7 @@ int runUnityTests(void) {
     RUN_TEST(test_MaxEqual);
     RUN_TEST(test_MinGreaterThan);
     RUN_TEST(test_AvgLessThanOrEqual);
+    RUN_TEST(test_AvgLessThanOrEqual_Float);
     RUN_TEST(test_MultipleQueries);
     RUN_TEST(test_CustomQuery);
     RUN_TEST(test_whereClause);
