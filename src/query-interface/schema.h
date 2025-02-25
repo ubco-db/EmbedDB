@@ -46,12 +46,22 @@ extern "C" {
 #define embedDB_COLUMN_UNSIGNED 1
 #define embedDB_IS_COL_SIGNED(colSize) (colSize < 0 ? 1 : 0)
 
+typedef enum {
+    embedDB_COLUMN_INT32 = 0,
+    embedDB_COLUMN_UINT32 = 1,
+    embedDB_COLUMN_INT64 = 2,
+    embedDB_COLUMN_UINT64 = 3,
+    embedDB_COLUMN_FLOAT = 4,
+    embedDB_COLUMN_DOUBLE = 5
+} ColumnType;
+
 /**
  * @brief	A struct to desribe the number and sizes of attributes contained in the data of a embedDB table
  */
 typedef struct {
     uint8_t numCols;      // The number of columns in the table
     int8_t* columnSizes;  // A list of the sizes, in bytes, of each column. Negative numbers indicate signed columns while positive indicate an unsigned column
+    ColumnType* columnTypes; // A list of the types of each column
 } embedDBSchema;
 
 /**
@@ -59,8 +69,9 @@ typedef struct {
  * @param	numCols			The total number of key & data columns in table
  * @param	colSizes		An array with the size of each column. Max size is 127
  * @param	colSignedness	An array describing if the data in the column is signed or unsigned. Use the defined constants embedDB_COLUMNN_SIGNED or embedDB_COLUMN_UNSIGNED
+ * @param   colTypes        An array describing the type of the column. Use the ColumnType enum
  */
-embedDBSchema* embedDBCreateSchema(uint8_t numCols, int8_t* colSizes, int8_t* colSignedness);
+embedDBSchema* embedDBCreateSchema(uint8_t numCols, int8_t* colSizes, int8_t* colSignedness, ColumnType* colTypes);
 
 /**
  * @brief	Free a schema. Sets the schema pointer to NULL.

@@ -101,18 +101,18 @@ uint32_t embedDBExample() {
     embedDBPrintInit(state);
 
     embedDBSchema* schema = createSchema();
-
+    int numLast = 5;
     StreamingQuery *streamingQueryGT = createStreamingQuery(state, schema, NULL);
     streamingQueryGT->IF(streamingQueryGT, 1, GET_AVG)
-                    ->ofLast(streamingQueryGT, 5000)
-                    ->is(streamingQueryGT, GreaterThan, (void*)&(float){22.5})
+                    ->ofLast(streamingQueryGT, (void*)&numLast)
+                    ->is(streamingQueryGT, GreaterThan, (void*)&(float){10.5})
                     ->then(streamingQueryGT, GTcallback);
 
     StreamingQuery **queries = (StreamingQuery**)malloc(sizeof(StreamingQuery*));
     queries[0] = streamingQueryGT;
     srand(time(NULL));
 
-    for (int i = 0; i < 10000; i++) {
+    for (int i = 0; i < 100; i++) {
         uint64_t timestamp = 202411040000 + i; // Example timestamp
         
         // calloc dataPtr in the heap
@@ -144,7 +144,8 @@ embedDBSchema* createSchema() {
     uint8_t numCols = 2;
     int8_t colSizes[] = {8, 4};
     int8_t colSignedness[] = {embedDB_COLUMN_UNSIGNED, embedDB_COLUMN_SIGNED};
-    embedDBSchema* schema = embedDBCreateSchema(numCols, colSizes, colSignedness);
+    ColumnType colTypes[] = {embedDB_COLUMN_UINT64, embedDB_COLUMN_INT32};
+    embedDBSchema* schema = embedDBCreateSchema(numCols, colSizes, colSignedness, colTypes);
     return schema;
 }
 

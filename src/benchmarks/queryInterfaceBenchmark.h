@@ -159,7 +159,8 @@ int advancedQueryExample() {
 
     int8_t colSizes[] = {4, 4, 4, 4};
     int8_t colSignedness[] = {embedDB_COLUMN_UNSIGNED, embedDB_COLUMN_SIGNED, embedDB_COLUMN_SIGNED, embedDB_COLUMN_SIGNED};
-    embedDBSchema* baseSchema = embedDBCreateSchema(4, colSizes, colSignedness);
+    ColumnType colTypes[] = {embedDB_COLUMN_UINT32, embedDB_COLUMN_INT32, embedDB_COLUMN_INT32, embedDB_COLUMN_INT32};
+    embedDBSchema* baseSchema = embedDBCreateSchema(4, colSizes, colSignedness, colTypes);
 
     // Insert data
     const char datafileName[] = "data/uwa500K.bin";

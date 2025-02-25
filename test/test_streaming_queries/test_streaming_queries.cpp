@@ -82,7 +82,8 @@ void setUpEmbedDB(void) {
     // Initialize schema
     int8_t colSizes[] = {4, 4};
     int8_t colSignedness[] = {embedDB_COLUMN_UNSIGNED, embedDB_COLUMN_SIGNED};
-    schema = embedDBCreateSchema(2, colSizes, colSignedness);
+    ColumnType colTypes[] = {embedDB_COLUMN_UINT32, embedDB_COLUMN_INT32};
+    schema = embedDBCreateSchema(2, colSizes, colSignedness, colTypes);
     TEST_ASSERT_NOT_NULL_MESSAGE(schema, "Failed to create schema.");
 }
 
@@ -108,16 +109,18 @@ typedef struct {
 
 void test_MaxEqual(void) {
     std::cout << "Running test_MaxEqual..." << std::endl;
+    
     CallbackContext* context = (CallbackContext*)malloc(sizeof(CallbackContext));
     context->int1 = 0;
     context->int2 = 0;
-
+    
     StreamingQuery **queries = (StreamingQuery**)malloc(sizeof(StreamingQuery*));
     queries[0] = createStreamingQuery(state, schema, context);
 
     int value = 5;
+    int numLast = 5;
     queries[0]->IF(queries[0], 1, GET_MAX)
-            ->ofLast(queries[0], 5)
+            ->ofLast(queries[0], (void*)&numLast)
             ->is(queries[0], Equal, (void*)&value)
             ->then(queries[0], [](void* maximum, void* current, void* ctx) {
                 CallbackContext* context = (CallbackContext*)ctx;
@@ -158,8 +161,9 @@ void test_MinGreaterThan(void) {
     queries[0] = createStreamingQuery(state, schema, context);
 
     int value = 2;
+    int numLast = 3;
     queries[0]->IF(queries[0], 1, GET_MIN)
-            ->ofLast(queries[0], 3)
+            ->ofLast(queries[0], (void*)&numLast)
             ->is(queries[0], GreaterThan, (void*)&value)
             ->then(queries[0], [](void* minimum, void* current, void* ctx) {
                 CallbackContext* context = (CallbackContext*)ctx;
@@ -194,13 +198,15 @@ void test_AvgLessThanOrEqual(void) {
     queries[0] = createStreamingQuery(state, schema, context);
 
     float value = 3.5;
+    int numLast = 4;
     queries[0]->IF(queries[0], 1, GET_AVG)
-            ->ofLast(queries[0], 4)
+            ->ofLast(queries[0], (void*)&numLast)
             ->is(queries[0], LessThanOrEqual, (void*)&value)
             ->then(queries[0], [](void* average, void* current, void* ctx) {
                 CallbackContext* context = (CallbackContext*)ctx;
                 context->int1++;
                 TEST_ASSERT_TRUE(*(float*)average <= 3.5);
+                std::cout << "Average: " << *(float*)average << std::endl;
     });
 
     int32_t data[] = {2, 3, 4, 5, 6};
@@ -235,8 +241,9 @@ void test_MultipleQueries(void) {
     queries[1] = createStreamingQuery(state, schema, context2);
 
     int value1 = 5;
+    int numLast = 5;
     queries[0]->IF(queries[0], 1, GET_MAX)
-            ->ofLast(queries[0], 5)
+            ->ofLast(queries[0], (void*)&numLast)
             ->is(queries[0], Equal, (void*)&value1)
             ->then(queries[0], [](void* maximum, void* current, void* ctx) {
                 CallbackContext* context = (CallbackContext*)ctx;
@@ -245,8 +252,9 @@ void test_MultipleQueries(void) {
     });
 
     int value2 = 2;
+    int numLast2 = 3;
     queries[1]->IF(queries[1], 1, GET_MIN)
-            ->ofLast(queries[1], 3)
+            ->ofLast(queries[1], (void*)&numLast2)
             ->is(queries[1], GreaterThan, (void*)&value2)
             ->then(queries[1], [](void* minimum, void* current, void* ctx) {
                 CallbackContext* context = (CallbackContext*)ctx;
@@ -276,7 +284,7 @@ void test_MultipleQueries(void) {
 
 void* GetWeightedAverage(StreamingQuery *query, void *key) {
     int currentKey = *(int*)key;
-    int slidingWindowStart = currentKey - (query->numLastEntries-1);
+    int slidingWindowStart = currentKey - (*(uint32_t*)query->numLastEntries - 1);
 
     float totalWeight = 0;
     float weightedSum = 0;
@@ -289,7 +297,7 @@ void* GetWeightedAverage(StreamingQuery *query, void *key) {
         }
         TEST_ASSERT_EQUAL_INT32(key%2,0); //test data is inserted every 2 seconds i.e. timestamp (key) is even
         int timeDifference = currentKey - key;
-        float weight = (query->numLastEntries - 1) - timeDifference; // Linear decay 
+        float weight = (*(uint32_t*)query->numLastEntries - 1) - timeDifference; // Linear decay 
         if (weight < 0) weight = 0;
         
         weightedSum += record * weight;
@@ -332,8 +340,9 @@ void* GetWeightedAverage(StreamingQuery *query, void *key) {
     queries[0] = createStreamingQuery(state, schema, context);
     
     int value = 0; //ensure callback is called everytime
+    int numLast = 10;
     queries[0]->IFCustom(queries[0], 1, GetWeightedAverage, DBFLOAT)
-            ->ofLast(queries[0], 10) // last 10 seconds
+            ->ofLast(queries[0], (void*)&numLast) // last 10 seconds
             ->is(queries[0], GreaterThanOrEqual, (void*)&value)
             ->then(queries[0], [](void* result, void* current, void* ctx) {
                 CallbackContext* context = (CallbackContext*)ctx;
@@ -345,7 +354,7 @@ void* GetWeightedAverage(StreamingQuery *query, void *key) {
     // Second query to compare the average of the last 10 seconds with the weighted average
     queries[1] = createStreamingQuery(state, schema, context);
     queries[1]->IF(queries[1], 1, GET_AVG)
-            ->ofLast(queries[1], 10)
+            ->ofLast(queries[1], (void*)&numLast)
             ->is(queries[1], LessThanOrEqual, (void*)&(context->float1))
             ->then(queries[1], [](void* result, void* current, void* ctx) {
                 CallbackContext* context = (CallbackContext*)ctx;
@@ -382,8 +391,9 @@ void test_whereClause(void){
 
     int value = 0;
     int minData = 3;
+    int numLast = 4;
     queries[0]->IF(queries[0], 1, GET_MIN)
-            ->ofLast(queries[0], 4)
+            ->ofLast(queries[0], (void*)&numLast)
             ->where(queries[0], (void*)&minData, NULL)
             ->is(queries[0], GreaterThan, (void*)&value)
             ->then(queries[0], [](void* mini, void* current, void* ctx) {

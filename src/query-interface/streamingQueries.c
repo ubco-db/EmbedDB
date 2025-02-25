@@ -42,7 +42,7 @@ StreamingQuery* createStreamingQuery(embedDBState *state, embedDBSchema *schema,
         query->minData = NULL; // Default to no min data
         query->maxData = NULL; // Default to no max data
         query->state = state;
-        query->schema = schema;
+        query->schema = copySchema(schema);
         query->context = context;
         query->IF = IF;
         query->IFCustom = IFCustom;
@@ -143,14 +143,14 @@ int64_t GetMinMax64(StreamingQuery *query, void *key) {
 embedDBOperator* createOperator(StreamingQuery *query, void*** allocatedValues, void *key) {
     embedDBIterator* it = (embedDBIterator*)malloc(sizeof(embedDBIterator));
     if(query->state->keySize == 4){
-        uint32_t minKeyVal = *(uint32_t*)key - ((uint32_t)query->numLastEntries - 1);
+        uint32_t minKeyVal = *(uint32_t*)key - (*(uint32_t*)query->numLastEntries - 1);
         uint32_t *minKeyPtr = (uint32_t *)malloc(sizeof(uint32_t));
         if (minKeyPtr != NULL) {
             *minKeyPtr = minKeyVal;
             it->minKey = minKeyPtr;
         }
     }else if(query->state->keySize == 8){
-        uint64_t minKeyVal = *(uint64_t*)key - (uint64_t)(query->numLastEntries-1);
+        uint64_t minKeyVal = *(uint64_t*)key - (*(uint32_t*)query->numLastEntries - 1);
         uint64_t *minKeyPtr = (uint64_t *)malloc(sizeof(uint64_t));
         if (minKeyPtr != NULL) {
             *minKeyPtr = minKeyVal;

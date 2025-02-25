@@ -161,7 +161,8 @@ embedDBSchema* createSchema() {
     uint8_t numCols = 2;
     int8_t colSizes[] = {4, 4};
     int8_t colSignedness[] = {embedDB_COLUMN_UNSIGNED, embedDB_COLUMN_SIGNED};
-    embedDBSchema* schema = embedDBCreateSchema(numCols, colSizes, colSignedness);
+    ColumnType colTypes[] = {embedDB_COLUMN_UINT32, embedDB_COLUMN_INT32};
+    embedDBSchema* schema = embedDBCreateSchema(numCols, colSizes, colSignedness, colTypes);
     return schema;
 }
 
