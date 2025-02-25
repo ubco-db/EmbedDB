@@ -243,7 +243,7 @@ int adaptive_sort(
              
             close_MinSort(&ms, es);  
 
-            resultFilePtr = 0;
+            *resultFilePtr = 0;
             return 0;
         }
         else
@@ -510,12 +510,11 @@ int adaptive_sort(
     } /* end pessmistic */
 
     // No merge phase necessary
-    if (numSublist == 1) {	
-        
+    if (numSublist == 1) {
         ((file_iterator_state_t *) iteratorState)->fileInterface->flush(outputFile);
-		*resultFilePtr = 0;
-		return 0;
-	}
+	*resultFilePtr = 0;
+	return 0;
+    }
 
     // Run generation phase only (DEBUG)
     if (runGenOnly)
@@ -554,12 +553,12 @@ int adaptive_sort(
             flash_minsort_sublist(iteratorState, tupleBuffer, outputFile, buffer, bufferSizeBytes, es, resultFilePtr, metric, compareFn, numSublist);
             *resultFilePtr = lastWritePos;
         } else {   
-            // Use normal version of minsort. Do not have enought space to index a value per sublist. Assumes data is not sorted in each region
+            // Use normal version of minsort. Do not have enough space to index a value per sublist. Assumes data is not sorted in each region
             printf("Performing MinSort\n");
             ((file_iterator_state_t*) iteratorState)->file = outputFile;
             flash_minsort(iteratorState, tupleBuffer, outputFile, buffer, bufferSizeBytes, es, resultFilePtr, metric, compareFn);
-            *resultFilePtr = lastWritePos;
-        }                    
+            *resultFilePtr = 0;
+        }
     } else {
         /*                                   */
         /*    No Output Buffer Sort Merge    */ 
