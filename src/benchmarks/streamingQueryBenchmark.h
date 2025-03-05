@@ -46,8 +46,7 @@
 
 #endif
 
-#define NUM_INSERTIONS 10000 // Run for 10 seconds
-#define INTERVAL 1 //Insert every 1 ms
+#define NUM_INSERTIONS 2000
 
 embedDBState* init_state();
 embedDBSchema* createSchema();
@@ -58,11 +57,6 @@ uint64_t get_nanoseconds() {
     struct timespec ts;
     clock_gettime(CLOCK_MONOTONIC, &ts);
     return (uint64_t)ts.tv_sec * 1e9 + ts.tv_nsec;
-}
-
-int32_t randomInt(int min, int max) {
-    int randomIntInRange = (rand() % (max - min + 1)) + min;
-    return randomIntInRange;
 }
 
 // Callback function for streaming query
@@ -80,8 +74,8 @@ uint32_t streamingQueryBenchmark() {
     // Create streaming query
     StreamingQuery *streamingQueryGT = createStreamingQuery(state, schema, NULL);
     streamingQueryGT->IF(streamingQueryGT, 1, GET_AVG)
-                    ->ofLast(streamingQueryGT, (void*)&(uint32_t){1000})  // 1-second window
-                    ->is(streamingQueryGT, GreaterThan, (void*)&(float){25.07})
+                    ->ofLast(streamingQueryGT, (void*)&(uint32_t){1000}) 
+                    ->is(streamingQueryGT, GreaterThan, (void*)&(float){0})
                     ->then(streamingQueryGT, GTcallback);
 
     StreamingQuery **queries = (StreamingQuery**)malloc(sizeof(StreamingQuery*));
@@ -100,55 +94,54 @@ uint32_t streamingQueryBenchmark() {
     // Insert without active query first
     for (int i = 0; i < NUM_INSERTIONS; i++) {
         uint64_t timestamp = get_nanoseconds();
-        int32_t temperature = randomInt(15, 35);  // Random temperature between 15°C and 30°C
+        float temperature = 15 + (float)rand() / RAND_MAX * 15;  // Random temperature between 15°C and 30°C
 
         LARGE_INTEGER start, end, freq;
         QueryPerformanceFrequency(&freq);
         QueryPerformanceCounter(&start);
 
         void* dataPtr = malloc(state->dataSize);
-        *((int32_t*)dataPtr) = temperature;
+        *((float*)dataPtr) = temperature;
         int8_t result = embedDBPut(state, &j, dataPtr);
         
         QueryPerformanceCounter(&end);
         int insertTime = (double)(end.QuadPart - start.QuadPart) / freq.QuadPart * 1e9;  // Convert to nanoseconds
 
         // Log insertion event
-        //fprintf(perfLog, "%llu,INSERT,%i,%i\n", timestamp, temperature, insertTime);
+        fprintf(perfLog, "%llu,INSERT,%f,%i\n", timestamp, temperature, insertTime);
         free(dataPtr);
-        //Sleep(INTERVAL);  // Insert every 1 ms
         j++;
     }
 
 
     uint64_t startTime = get_nanoseconds();
-    for (int i = 0; i < NUM_INSERTIONS/5; i++) {
+    for (int i = 0; i < NUM_INSERTIONS; i++) {
         uint64_t timestamp = get_nanoseconds();
-        int32_t temperature = randomInt(15, 35);  // Random temperature between 15°C and 30°C
+        float temperature = 15 + (float)rand() / RAND_MAX * 15;  // Random temperature between 15°C and 30°C
 
         LARGE_INTEGER start, end, freq;
         QueryPerformanceFrequency(&freq);
         QueryPerformanceCounter(&start);
 
         void* dataPtr = malloc(state->dataSize);
-        *((int32_t*)dataPtr) = temperature;
-        int8_t result = streamingQueryPut(queries, 1, &j, dataPtr);
+        *((float*)dataPtr) = temperature;
+        //using j instead of timestamp ensures same number of records queried each time independent of changing insert speed
+        int8_t result = streamingQueryPut(queries, 1, &j, dataPtr); 
         
         QueryPerformanceCounter(&end);
         int insertTime = (double)(end.QuadPart - start.QuadPart) / freq.QuadPart * 1e9;  // Convert to nanoseconds
 
         // Log insertion event
-        fprintf(perfLog, "%llu,INSERT,%i,%i\n", timestamp, temperature, insertTime);
+        fprintf(perfLog, "%llu,INSERT,%f,%i\n", timestamp, temperature, insertTime);
         free(dataPtr);
         j++;
-        //Sleep(INTERVAL);  // Insert every 1 ms
     }
     timeEndPeriod(1);
     uint64_t endTime = get_nanoseconds();
 
     // Calculate throughput
     double totalTime = (double)(endTime - startTime) / 1e9;  // Convert to seconds
-    double throughput = (NUM_INSERTIONS/5) / totalTime;
+    double throughput = NUM_INSERTIONS / totalTime;
     printf("Throughput: %f insertions/second\n", throughput);
 
     // Clean up
@@ -161,7 +154,7 @@ embedDBSchema* createSchema() {
     uint8_t numCols = 2;
     int8_t colSizes[] = {4, 4};
     int8_t colSignedness[] = {embedDB_COLUMN_UNSIGNED, embedDB_COLUMN_SIGNED};
-    ColumnType colTypes[] = {embedDB_COLUMN_UINT32, embedDB_COLUMN_INT32};
+    ColumnType colTypes[] = {embedDB_COLUMN_UINT32, embedDB_COLUMN_FLOAT};
     embedDBSchema* schema = embedDBCreateSchema(numCols, colSizes, colSignedness, colTypes);
     return schema;
 }
