@@ -66,6 +66,66 @@ void GTcallback(void* aggregateValue, void* currentValue, void* context) {
     fprintf(perfLog, "%llu,CALLBACK,%f\n", callbackTime, *(float*)aggregateValue);
 }
 
+
+
+int8_t groupFunctionLocal(const void* lastRecord, const void* record) {
+    return 1;
+}
+
+embedDBOperator* createOperatorLocal(embedDBState* state, embedDBSchema* schema, void*** allocatedValues, uint32_t key) {
+    embedDBIterator* it = (embedDBIterator*)malloc(sizeof(embedDBIterator));
+    uint32_t minKeyVal = key - (1000 - 1);
+    uint32_t *minKeyPtr = (uint32_t *)malloc(sizeof(uint32_t));
+    *minKeyPtr = minKeyVal;
+    it->minKey = minKeyPtr;
+    
+    it->maxKey = NULL;
+    it->minData = NULL;
+    it->maxData = NULL;
+    embedDBInitIterator(state, it);
+
+    embedDBOperator* scanOp = createTableScanOperator(state, it, schema);
+
+    embedDBAggregateFunc* aggFunc = NULL;    
+    aggFunc = createAvgAggregate(1, 4);
+
+    embedDBAggregateFunc* aggFuncs = (embedDBAggregateFunc*)malloc(1*sizeof(embedDBAggregateFunc));
+    aggFuncs[0] = *aggFunc;
+    embedDBOperator* aggOp = createAggregateOperator(scanOp, groupFunctionLocal, aggFuncs, 1);
+    aggOp->init(aggOp);
+
+    free(aggFunc);
+
+    *allocatedValues = (void**)malloc(2 * sizeof(void*));
+    ((void**)*allocatedValues)[0] = it;
+    ((void**)*allocatedValues)[1] = aggFuncs;
+    ((void**)*allocatedValues)[2] = minKeyPtr;
+
+    return aggOp;
+
+}
+
+void GetAvgLocal(embedDBState* state, embedDBSchema* schema, uint32_t key, float currentVal, void* context) {
+    void** allocatedValues;
+    embedDBOperator* op = createOperatorLocal(state, schema, &allocatedValues, key);
+
+    void* recordBuffer = op->recordBuffer;
+    float* C1 = (float*)((int8_t*)recordBuffer + 0);
+    // Print as csv
+    exec(op);
+    float avg = *C1;
+    op->close(op);
+    embedDBFreeOperatorRecursive(&op);
+    recordBuffer = NULL;
+    for (int i = 0; i < 3; i++) {
+        free(allocatedValues[i]);
+    }
+    free(allocatedValues);
+    if(avg > 0){
+        GTcallback(&avg, &currentVal, context);
+    }
+}
+
 uint32_t streamingQueryBenchmark() {
     embedDBState* state = init_state();
     embedDBPrintInit(state);
@@ -83,11 +143,14 @@ uint32_t streamingQueryBenchmark() {
     srand(12345);  // Fixed seed for reproducibility
 
     // Open performance log file
-    FILE* perfLog = fopen("C:/Users/richa/OneDrive/Documents/influxdb/embeddb_perf.csv", "w");
-    fprintf(perfLog, "timestamp,event,temperature,insert_time\n");
+    //FILE* perfLog = fopen("C:/Users/richa/OneDrive/Documents/influxdb/embeddb_perf.csv", "w");
+    FILE* advancedPerfLog = fopen("C:/Users/richa/OneDrive/Documents/influxdb/embeddb_advanced_perf.csv", "w");
+
+    fprintf(advancedPerfLog, "timestamp,event,temperature,latency\n");
+    //fprintf(perfLog, "timestamp,event,temperature,latency\n");
 
     // Set callback context to the log file
-    streamingQueryGT->context = perfLog;
+    //streamingQueryGT->context = perfLog;
     timeBeginPeriod(1);
 
     uint32_t j = 0;
@@ -108,7 +171,9 @@ uint32_t streamingQueryBenchmark() {
         int insertTime = (double)(end.QuadPart - start.QuadPart) / freq.QuadPart * 1e9;  // Convert to nanoseconds
 
         // Log insertion event
-        fprintf(perfLog, "%llu,INSERT,%f,%i\n", timestamp, temperature, insertTime);
+        fprintf(advancedPerfLog, "%llu,INSERT,%f,%i\n", timestamp, temperature, insertTime);
+        //fprintf(perfLog, "%llu,INSERT,%f,%i\n", timestamp, temperature, insertTime);
+
         free(dataPtr);
         j++;
     }
@@ -120,19 +185,28 @@ uint32_t streamingQueryBenchmark() {
         float temperature = 15 + (float)rand() / RAND_MAX * 15;  // Random temperature between 15°C and 30°C
 
         LARGE_INTEGER start, end, freq;
-        QueryPerformanceFrequency(&freq);
-        QueryPerformanceCounter(&start);
+        // QueryPerformanceFrequency(&freq);
+        // QueryPerformanceCounter(&start);
 
         void* dataPtr = malloc(state->dataSize);
         *((float*)dataPtr) = temperature;
         //using j instead of timestamp ensures same number of records queried each time independent of changing insert speed
-        int8_t result = streamingQueryPut(queries, 1, &j, dataPtr); 
+        //int8_t result = streamingQueryPut(queries, 1, &j, dataPtr);
+
+        int8_t result = embedDBPut(state, &j, dataPtr); 
+        
+        QueryPerformanceFrequency(&freq);
+        QueryPerformanceCounter(&start);
+        GetAvgLocal(state, schema, j, temperature, advancedPerfLog);
+
         
         QueryPerformanceCounter(&end);
         int insertTime = (double)(end.QuadPart - start.QuadPart) / freq.QuadPart * 1e9;  // Convert to nanoseconds
 
         // Log insertion event
-        fprintf(perfLog, "%llu,INSERT,%f,%i\n", timestamp, temperature, insertTime);
+        fprintf(advancedPerfLog, "%llu,INSERT,%f,%i\n", timestamp, temperature, insertTime);
+        //fprintf(perfLog, "%llu,INSERT,%f,%i\n", timestamp, temperature, insertTime);
+
         free(dataPtr);
         j++;
     }
@@ -145,7 +219,8 @@ uint32_t streamingQueryBenchmark() {
     printf("Throughput: %f insertions/second\n", throughput);
 
     // Clean up
-    fclose(perfLog);
+    //fclose(perfLog);
+    fclose(advancedPerfLog);
     free(queries);
     return 0;
 }

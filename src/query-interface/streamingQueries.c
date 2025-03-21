@@ -150,7 +150,7 @@ embedDBOperator* createOperator(StreamingQuery *query, void*** allocatedValues, 
             it->minKey = minKeyPtr;
         }
     }else if(query->state->keySize == 8){
-        uint64_t minKeyVal = *(uint64_t*)key - (*(uint32_t*)query->numLastEntries - 1);
+        uint64_t minKeyVal = *(uint64_t*)key - (*(uint64_t*)query->numLastEntries - 1);
         uint64_t *minKeyPtr = (uint64_t *)malloc(sizeof(uint64_t));
         if (minKeyPtr != NULL) {
             *minKeyPtr = minKeyVal;
