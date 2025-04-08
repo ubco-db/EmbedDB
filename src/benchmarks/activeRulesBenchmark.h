@@ -132,25 +132,27 @@ uint32_t activeRulesBenchmark() {
     embedDBSchema* schema = createSchema();
 
     // Create active rule
-    activeRule *activeRuleGT = createActiveRule(state, schema, NULL);
+    activeRule *activeRuleGT = createActiveRule(schema, NULL);
     activeRuleGT->IF(activeRuleGT, 1, GET_AVG)
                     ->ofLast(activeRuleGT, (void*)&(uint32_t){1000}) 
                     ->is(activeRuleGT, GreaterThan, (void*)&(float){0})
                     ->then(activeRuleGT, GTcallback);
 
-    activeRule **queries = (activeRule**)malloc(sizeof(activeRule*));
-    queries[0] = activeRuleGT;
+    state->rules = (activeRule**)malloc(sizeof(activeRule*));
+    state->rules[0] = activeRuleGT;
+    state->numRules = 1;
+    state->rules[0]->enabled = false; // Disable the rule for initial insertions
     srand(12345);  // Fixed seed for reproducibility
 
     // Open performance log file
-    //FILE* perfLog = fopen("C:/Users/richa/OneDrive/Documents/influxdb/embeddb_perf.csv", "w");
-    FILE* advancedPerfLog = fopen("C:/Users/richa/OneDrive/Documents/influxdb/embeddb_advanced_perf.csv", "w");
+    FILE* perfLog = fopen("C:/Users/richa/OneDrive/Documents/influxdb/embeddb_perf_new.csv", "w");
+    //FILE* advancedPerfLog = fopen("C:/Users/richa/OneDrive/Documents/influxdb/embeddb_advanced_perf.csv", "w");
 
-    fprintf(advancedPerfLog, "timestamp,event,temperature,latency\n");
-    //fprintf(perfLog, "timestamp,event,temperature,latency\n");
+    //fprintf(advancedPerfLog, "timestamp,event,temperature,latency\n");
+    fprintf(perfLog, "timestamp,event,temperature,latency\n");
 
     // Set callback context to the log file
-    //activeRuleGT->context = perfLog;
+    state->rules[0]->context = perfLog;
     timeBeginPeriod(1);
 
     uint32_t j = 0;
@@ -171,41 +173,41 @@ uint32_t activeRulesBenchmark() {
         int insertTime = (double)(end.QuadPart - start.QuadPart) / freq.QuadPart * 1e9;  // Convert to nanoseconds
 
         // Log insertion event
-        fprintf(advancedPerfLog, "%llu,INSERT,%f,%i\n", timestamp, temperature, insertTime);
-        //fprintf(perfLog, "%llu,INSERT,%f,%i\n", timestamp, temperature, insertTime);
+        //fprintf(advancedPerfLog, "%llu,INSERT,%f,%i\n", timestamp, temperature, insertTime);
+        fprintf(perfLog, "%llu,INSERT,%f,%i\n", timestamp, temperature, insertTime);
 
         free(dataPtr);
         j++;
     }
 
 
+    state->rules[0]->enabled = true; // Enable the rule for subsequent insertions
     uint64_t startTime = get_nanoseconds();
     for (int i = 0; i < NUM_INSERTIONS; i++) {
         uint64_t timestamp = get_nanoseconds();
         float temperature = 15 + (float)rand() / RAND_MAX * 15;  // Random temperature between 15°C and 30°C
 
         LARGE_INTEGER start, end, freq;
-        // QueryPerformanceFrequency(&freq);
-        // QueryPerformanceCounter(&start);
+        QueryPerformanceFrequency(&freq);
+        QueryPerformanceCounter(&start);
 
         void* dataPtr = malloc(state->dataSize);
         *((float*)dataPtr) = temperature;
         //using j instead of timestamp ensures same number of records queried each time independent of changing insert speed
-        //int8_t result = executeRules(queries, 1, &j, dataPtr);
 
         int8_t result = embedDBPut(state, &j, dataPtr); 
         
-        QueryPerformanceFrequency(&freq);
-        QueryPerformanceCounter(&start);
-        GetAvgLocal(state, schema, j, temperature, advancedPerfLog);
+        // QueryPerformanceFrequency(&freq);
+        // QueryPerformanceCounter(&start);
+        // GetAvgLocal(state, schema, j, temperature, advancedPerfLog);
 
         
         QueryPerformanceCounter(&end);
         int insertTime = (double)(end.QuadPart - start.QuadPart) / freq.QuadPart * 1e9;  // Convert to nanoseconds
 
         // Log insertion event
-        fprintf(advancedPerfLog, "%llu,INSERT,%f,%i\n", timestamp, temperature, insertTime);
-        //fprintf(perfLog, "%llu,INSERT,%f,%i\n", timestamp, temperature, insertTime);
+        //fprintf(advancedPerfLog, "%llu,INSERT,%f,%i\n", timestamp, temperature, insertTime);
+        fprintf(perfLog, "%llu,INSERT,%f,%i\n", timestamp, temperature, insertTime);
 
         free(dataPtr);
         j++;
@@ -219,9 +221,8 @@ uint32_t activeRulesBenchmark() {
     printf("Throughput: %f insertions/second\n", throughput);
 
     // Clean up
-    //fclose(perfLog);
-    fclose(advancedPerfLog);
-    free(queries);
+    fclose(perfLog);
+    //fclose(advancedPerfLog);
     return 0;
 }
 
