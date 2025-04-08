@@ -7,7 +7,7 @@
 #else
 #include "embedDB/embedDB.h"
 #include "embedDBUtility.h"
-#include "query-interface/streamingQueries.h"
+#include "query-interface/activeRules.h"
 #endif
 
 #if defined(MEMBOARD)
@@ -114,8 +114,8 @@ void test_MaxEqual(void) {
     context->int1 = 0;
     context->int2 = 0;
     
-    StreamingQuery **queries = (StreamingQuery**)malloc(sizeof(StreamingQuery*));
-    queries[0] = createStreamingQuery(state, schema, context);
+    ActiveRule **queries = (ActiveRule**)malloc(sizeof(ActiveRule*));
+    queries[0] = createActiveRule(state, schema, context);
 
     int value = 5;
     int numLast = 5;
@@ -135,7 +135,7 @@ void test_MaxEqual(void) {
     for (int32_t i = 0; i < sizeof(data)/sizeof(data[0]); i++) {
 
         *((uint32_t*)dataPtr) = data[i];
-        streamingQueryPut(queries, 1, &i, dataPtr);
+        activeRulePut(queries, 1, &i, dataPtr);
 
         int32_t dataRetrieved = 0;
         embedDBGet(state, (void*)&i, (void*)&dataRetrieved);
@@ -157,8 +157,8 @@ void test_MinGreaterThan(void) {
     context->int1 = 0;
     context->int2 = 0;
 
-    StreamingQuery **queries = (StreamingQuery**)malloc(sizeof(StreamingQuery*));
-    queries[0] = createStreamingQuery(state, schema, context);
+    ActiveRule **queries = (ActiveRule**)malloc(sizeof(ActiveRule*));
+    queries[0] = createActiveRule(state, schema, context);
 
     int value = 2;
     int numLast = 3;
@@ -175,7 +175,7 @@ void test_MinGreaterThan(void) {
     void* dataPtr = calloc(1, state->dataSize);
     for (int32_t i = 0; i < sizeof(data)/sizeof(data[0]); i++) {
         *((uint32_t*)dataPtr) = data[i];
-        streamingQueryPut(queries, 1, &i, dataPtr);
+        activeRulePut(queries, 1, &i, dataPtr);
 
         int32_t dataRetrieved = 0;
         embedDBGet(state, (void*)&i, (void*)&dataRetrieved);
@@ -194,8 +194,8 @@ void test_AvgLessThanOrEqual(void) {
     CallbackContext* context = (CallbackContext*)malloc(sizeof(CallbackContext));
     context->int1 = 0;
 
-    StreamingQuery **queries = (StreamingQuery**)malloc(sizeof(StreamingQuery*));
-    queries[0] = createStreamingQuery(state, schema, context);
+    ActiveRule **queries = (ActiveRule**)malloc(sizeof(ActiveRule*));
+    queries[0] = createActiveRule(state, schema, context);
 
     float value = 3.5;
     int numLast = 4;
@@ -213,7 +213,7 @@ void test_AvgLessThanOrEqual(void) {
     void* dataPtr = calloc(1, state->dataSize);
     for (int32_t i = 0; i < sizeof(data)/sizeof(data[0]); i++) {
         *((uint32_t*)dataPtr) = data[i];
-        streamingQueryPut(queries, 1, &i, dataPtr);
+        activeRulePut(queries, 1, &i, dataPtr);
 
         int32_t dataRetrieved = 0;
         embedDBGet(state, (void*)&i, (void*)&dataRetrieved);
@@ -235,8 +235,8 @@ void test_AvgLessThanOrEqual_Float(void) {
     CallbackContext* context = (CallbackContext*)malloc(sizeof(CallbackContext));
     context->int1 = 0;
 
-    StreamingQuery **queries = (StreamingQuery**)malloc(sizeof(StreamingQuery*));
-    queries[0] = createStreamingQuery(state, schema, context);
+    ActiveRule **queries = (ActiveRule**)malloc(sizeof(ActiveRule*));
+    queries[0] = createActiveRule(state, schema, context);
 
     float value = 3.75f; // Comparison threshold
     int numLast = 4; // Number of last values to calculate AVG
@@ -256,7 +256,7 @@ void test_AvgLessThanOrEqual_Float(void) {
     void* dataPtr = calloc(1, state->dataSize);
     for (int32_t i = 0; i < sizeof(data)/sizeof(data[0]); i++) {
         *((float*)dataPtr) = data[i];  // Store float values
-        streamingQueryPut(queries, 1, &i, dataPtr);
+        activeRulePut(queries, 1, &i, dataPtr);
 
         float dataRetrieved = 0.0f;
         embedDBGet(state, (void*)&i, (void*)&dataRetrieved);
@@ -272,7 +272,7 @@ void test_AvgLessThanOrEqual_Float(void) {
     std::cout << "test_AvgLessThanOrEqual_Float complete" << std::endl;
 }
 
-// This function tests the execution of multiple streaming queries in a row.
+// This function tests the execution of multiple active rules in a row.
 // It verifies that each query correctly processes the data and triggers the appropriate callbacks.
 void test_MultipleQueries(void) {
     std::cout << "Running test_MultipleQueries..." << std::endl;
@@ -281,9 +281,9 @@ void test_MultipleQueries(void) {
     CallbackContext* context2 = (CallbackContext*)malloc(sizeof(CallbackContext));
     context2->int1 = 0;
 
-    StreamingQuery **queries = (StreamingQuery**)malloc(2 * sizeof(StreamingQuery*));
-    queries[0] = createStreamingQuery(state, schema, context1);
-    queries[1] = createStreamingQuery(state, schema, context2);
+    ActiveRule **queries = (ActiveRule**)malloc(2 * sizeof(ActiveRule*));
+    queries[0] = createActiveRule(state, schema, context1);
+    queries[1] = createActiveRule(state, schema, context2);
 
     int value1 = 5;
     int numLast = 5;
@@ -311,7 +311,7 @@ void test_MultipleQueries(void) {
     void* dataPtr = calloc(1, state->dataSize);
     for (int32_t i = 0; i < sizeof(data)/sizeof(data[0]); i++) {
         *((uint32_t*)dataPtr) = data[i];
-        streamingQueryPut(queries, 2, &i, dataPtr);
+        activeRulePut(queries, 2, &i, dataPtr);
 
         int32_t dataRetrieved = 0;
         embedDBGet(state, (void*)&i, (void*)&dataRetrieved);
@@ -327,7 +327,7 @@ void test_MultipleQueries(void) {
     std::cout << "test_MultipleQueries complete" << std::endl;
 }
 
-void* GetWeightedAverage(StreamingQuery *query, void *key) {
+void* GetWeightedAverage(ActiveRule *query, void *key) {
     int currentKey = *(int*)key;
     int slidingWindowStart = currentKey - (*(uint32_t*)query->numLastEntries - 1);
 
@@ -354,7 +354,7 @@ void* GetWeightedAverage(StreamingQuery *query, void *key) {
     printf("Weighted Average at %is: %f\n", *(int*)key, *weightedAverage);
     return (void*)weightedAverage;
 }
-// The test_CustomQuery function tests a custom streaming query that calculates a weighted average
+// The test_CustomQuery function tests a custom active rule that calculates a weighted average
 // over a sliding window of the last 10 seconds and verifies the results against expected values.
 // It also stores the weighted average in a context variable and uses it in a subsequent query to compare
 // the average of the last 10 seconds with the weighted average.
@@ -381,8 +381,8 @@ void* GetWeightedAverage(StreamingQuery *query, void *key) {
         context->array[i] = weighted_averages[i];
     }
 
-    StreamingQuery **queries = (StreamingQuery**)malloc(2*sizeof(StreamingQuery*));
-    queries[0] = createStreamingQuery(state, schema, context);
+    ActiveRule **queries = (ActiveRule**)malloc(2*sizeof(ActiveRule*));
+    queries[0] = createActiveRule(state, schema, context);
     
     int value = 0; //ensure callback is called everytime
     int numLast = 10;
@@ -397,7 +397,7 @@ void* GetWeightedAverage(StreamingQuery *query, void *key) {
     });
 
     // Second query to compare the average of the last 10 seconds with the weighted average
-    queries[1] = createStreamingQuery(state, schema, context);
+    queries[1] = createActiveRule(state, schema, context);
     queries[1]->IF(queries[1], 1, GET_AVG)
             ->ofLast(queries[1], (void*)&numLast)
             ->is(queries[1], LessThanOrEqual, (void*)&(context->float1))
@@ -412,7 +412,7 @@ void* GetWeightedAverage(StreamingQuery *query, void *key) {
     int j = 0;
     for (int32_t i = 2; i < 22; i+=2) {
         *((uint32_t*)dataPtr) = data[j++];
-        streamingQueryPut(queries, 2, &i, dataPtr);
+        activeRulePut(queries, 2, &i, dataPtr);
 
         int32_t dataRetrieved = 0;
         embedDBGet(state, (void*)&i, (void*)&dataRetrieved);
@@ -431,8 +431,8 @@ void test_whereClause(void){
     CallbackContext* context = (CallbackContext*)malloc(sizeof(CallbackContext));
     context->int1 = 0;
 
-    StreamingQuery **queries = (StreamingQuery**)malloc(sizeof(StreamingQuery*));
-    queries[0] = createStreamingQuery(state, schema, context);
+    ActiveRule **queries = (ActiveRule**)malloc(sizeof(ActiveRule*));
+    queries[0] = createActiveRule(state, schema, context);
 
     int value = 0;
     int minData = 3;
@@ -451,7 +451,7 @@ void test_whereClause(void){
     void* dataPtr = calloc(1, state->dataSize);
     for (int32_t i = 0; i < sizeof(data)/sizeof(data[0]); i++) {
         *((uint32_t*)dataPtr) = data[i];
-        streamingQueryPut(queries, 1, &i, dataPtr);
+        activeRulePut(queries, 1, &i, dataPtr);
 
         int32_t dataRetrieved = 0;
         embedDBGet(state, (void*)&i, (void*)&dataRetrieved);

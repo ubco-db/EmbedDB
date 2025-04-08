@@ -204,6 +204,8 @@ typedef struct {
     int8_t (*flush)(void *file);
 } embedDBFileInterface;
 
+struct activeRule;
+
 typedef struct {
     void *dataFile;                                                       /* File for storing data records. */
     void *indexFile;                                                      /* File for storing index records. */
@@ -257,6 +259,8 @@ typedef struct {
     id_t bufferedIndexPageId;                                             /* Index page id currently in index read buffer */
     id_t bufferedVarPage;                                                 /* Variable page id currently in variable read buffer */
     uint8_t recordHasVarData;                                             /* Internal flag to signal that the record currently being written has var data */
+    struct activeRule** rules;                                          /* Array of active rules */
+    uint32_t numRules;                                                    /* Number of active rules */
 } embedDBState;
 
 

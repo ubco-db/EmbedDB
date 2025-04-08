@@ -18,7 +18,7 @@
 #elif WHICH_PROGRAM == 3
 #include "benchmarks/queryInterfaceBenchmark.h"
 #elif WHICH_PROGRAM == 4
-#include "benchmarks/streamingQueryBenchmark.h"
+#include "benchmarks/activeRulesBenchmark.h"
 #endif
 
 int main() {
@@ -31,7 +31,7 @@ int main() {
 #elif WHICH_PROGRAM == 3
     return advancedQueryExample();
 #elif WHICH_PROGRAM == 4
-    return streamingQueryBenchmark();
+    return activeRulesBenchmark();
 #endif
 }
 

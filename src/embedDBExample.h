@@ -74,7 +74,7 @@
 #else
 
 #include "desktopFileInterface.h"
-#include "query-interface/streamingQueries.h"
+#include "query-interface/activeRules.h"
 #define DATA_FILE_PATH "build/artifacts/dataFile.bin"
 #define INDEX_FILE_PATH "build/artifacts/indexFile.bin"
 
@@ -102,14 +102,15 @@ uint32_t embedDBExample() {
 
     embedDBSchema* schema = createSchema();
     int numLast = 5;
-    StreamingQuery *streamingQueryGT = createStreamingQuery(state, schema, NULL);
-    streamingQueryGT->IF(streamingQueryGT, 1, GET_AVG)
-                    ->ofLast(streamingQueryGT, (void*)&numLast)
-                    ->is(streamingQueryGT, GreaterThan, (void*)&(float){10.5})
-                    ->then(streamingQueryGT, GTcallback);
+    activeRule *activeRuleGT = createActiveRule(schema, NULL);
+    activeRuleGT->IF(activeRuleGT, 1, GET_AVG)
+                    ->ofLast(activeRuleGT, (void*)&numLast)
+                    ->is(activeRuleGT, GreaterThan, (void*)&(float){10.5})
+                    ->then(activeRuleGT, GTcallback);
 
-    StreamingQuery **queries = (StreamingQuery**)malloc(sizeof(StreamingQuery*));
-    queries[0] = streamingQueryGT;
+    state->rules = (activeRule**)malloc(sizeof(activeRule*));
+    state->rules[0] = activeRuleGT;
+    state->numRules = 1;
     srand(time(NULL));
 
     for (int i = 0; i < 100; i++) {
@@ -120,7 +121,7 @@ uint32_t embedDBExample() {
 
         // set value to be inserted
         *((uint32_t*)dataPtr) = randomInt(15, 30);
-        int8_t result = streamingQueryPut(queries, 1, &timestamp, dataPtr);      
+        int8_t result = embedDBPut(state, &timestamp, dataPtr);      
         if(result != SUCCESS) {
             printf("Error inserting record\n");
         }
@@ -134,9 +135,6 @@ uint32_t embedDBExample() {
     }
 
     printf("Example completed!\n");
-    
-    // Free the allocated memory
-    free(queries);
     return 0;
 }
 

@@ -40,7 +40,7 @@
 #else
 
 #include "desktopFileInterface.h"
-#include "query-interface/streamingQueries.h"
+#include "query-interface/activeRules.h"
 #define DATA_PATH "build/artifacts/dataFile.bin"
 #define INDEX_PATH "build/artifacts/indexFile.bin"
 
@@ -59,7 +59,7 @@ uint64_t get_nanoseconds() {
     return (uint64_t)ts.tv_sec * 1e9 + ts.tv_nsec;
 }
 
-// Callback function for streaming query
+// Callback function for active rule
 void GTcallback(void* aggregateValue, void* currentValue, void* context) {
     FILE* perfLog = (FILE*)context;
     uint64_t callbackTime = get_nanoseconds();
@@ -126,20 +126,20 @@ void GetAvgLocal(embedDBState* state, embedDBSchema* schema, uint32_t key, float
     }
 }
 
-uint32_t streamingQueryBenchmark() {
+uint32_t activeRulesBenchmark() {
     embedDBState* state = init_state();
     embedDBPrintInit(state);
     embedDBSchema* schema = createSchema();
 
-    // Create streaming query
-    StreamingQuery *streamingQueryGT = createStreamingQuery(state, schema, NULL);
-    streamingQueryGT->IF(streamingQueryGT, 1, GET_AVG)
-                    ->ofLast(streamingQueryGT, (void*)&(uint32_t){1000}) 
-                    ->is(streamingQueryGT, GreaterThan, (void*)&(float){0})
-                    ->then(streamingQueryGT, GTcallback);
+    // Create active rule
+    activeRule *activeRuleGT = createActiveRule(state, schema, NULL);
+    activeRuleGT->IF(activeRuleGT, 1, GET_AVG)
+                    ->ofLast(activeRuleGT, (void*)&(uint32_t){1000}) 
+                    ->is(activeRuleGT, GreaterThan, (void*)&(float){0})
+                    ->then(activeRuleGT, GTcallback);
 
-    StreamingQuery **queries = (StreamingQuery**)malloc(sizeof(StreamingQuery*));
-    queries[0] = streamingQueryGT;
+    activeRule **queries = (activeRule**)malloc(sizeof(activeRule*));
+    queries[0] = activeRuleGT;
     srand(12345);  // Fixed seed for reproducibility
 
     // Open performance log file
@@ -150,7 +150,7 @@ uint32_t streamingQueryBenchmark() {
     //fprintf(perfLog, "timestamp,event,temperature,latency\n");
 
     // Set callback context to the log file
-    //streamingQueryGT->context = perfLog;
+    //activeRuleGT->context = perfLog;
     timeBeginPeriod(1);
 
     uint32_t j = 0;
@@ -191,7 +191,7 @@ uint32_t streamingQueryBenchmark() {
         void* dataPtr = malloc(state->dataSize);
         *((float*)dataPtr) = temperature;
         //using j instead of timestamp ensures same number of records queried each time independent of changing insert speed
-        //int8_t result = streamingQueryPut(queries, 1, &j, dataPtr);
+        //int8_t result = executeRules(queries, 1, &j, dataPtr);
 
         int8_t result = embedDBPut(state, &j, dataPtr); 
         

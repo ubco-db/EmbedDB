@@ -1,21 +1,21 @@
-# Streaming Queries in EmbedDB
+# Active Rules in EmbedDB
 
-### Streaming Queries Overview
-Streaming queries are used to dynamically monitor and act on data based on specific conditions. Each time new data is added, the system checks if the defined criteria are met and triggers a callback function if they are. 
+### Active Rules Overview
+Active rules are used to dynamically monitor and act on data based on specific conditions. Each time new data is added, the system checks if the defined criteria are met and triggers a callback function if they are. 
 
 ---
 
-### How to Create a Streaming Query
-To define a streaming query, use the following code structure:
+### How to Create a Active Rule
+To define a active rule, use the following code structure:
 
 ```cpp
-StreamingQuery* query = createStreamingQuery(state, schema, context);
+ActiveRule* query = createActiveRule(state, schema, context);
 query->IF(query, columnNumber, GET_AVG)
      ->ofLast(query, numLastEntries)
      ->is(query, conditionOperation, &threshold)
      ->then(query, callbackFunction);
 
-streamingQueryPut(queries, numQueries, &key, dataPtr);
+activeRulePut(queries, numQueries, &key, dataPtr);
 ```
 
 #### Parameters:
@@ -51,7 +51,7 @@ CallbackContext* context = (CallbackContext*)malloc(sizeof(CallbackContext));
 ### Custom Aggregate Queries
 For custom logic, use the `IFCustom` method to define your own aggregate operation. Example:
 ```cpp
-void* GetWeightedAverage(StreamingQuery* query, void* key) {
+void* GetWeightedAverage(ActiveRule* query, void* key) {
     int currentKey = *(int*)key;
     int slidingWindowStart = currentKey - (query->numLastEntries - 1);
 
@@ -127,13 +127,13 @@ You can chain queries by sharing context variables between them. For example:
 ### Example Workflow
 1. Define your schema, state, and context.
 2. Create and configure your queries.
-3. Push data using `streamingQueryPut`.
+3. Push data using `activeRulePut`.
 
 Example:
 ```cpp
 for (int32_t i = 2; i < 22; i += 2) {
     *((uint32_t*)dataPtr) = data[j++];
-    streamingQueryPut(queries, 2, &i, dataPtr);
+    activeRulePut(queries, 2, &i, dataPtr);
 }
 ```
 
@@ -149,10 +149,10 @@ SELECT AVG(column) FROM table WHERE key BETWEEN currentKey - (numLastEntries - 1
 ```
 
 #### Conversion
-To perform an average aggregation on a column with a condition, use the `GET_AVG` type in `streamingQueries`.
+To perform an average aggregation on a column with a condition, use the `GET_AVG` type in `activeRules`.
 
 ```cpp
-StreamingQuery* query = createStreamingQuery(state, schema, context);
+ActiveRule* query = createActiveRule(state, schema, context);
 query->IF(query, columnNumber, GET_AVG)
     ->ofLast(query, numLastEntries)
     ->is(query, GreaterThanOrEqual, &threshold)
@@ -171,7 +171,7 @@ SELECT custom_aggregation(column) FROM table WHERE key BETWEEN currentKey - (num
 For custom aggregations, use the `GET_CUSTOM` type and provide a custom execution function.
 
 ```cpp
-StreamingQuery* query = createStreamingQuery(state, schema, context);
+ActiveRule* query = createActiveRule(state, schema, context);
 query->IFCustom(query, columnNumber, custom_aggregation, returnType)
     ->ofLast(query, numLastEntries)
     ->is(query, GreaterThanOrEqual, &threshold)
@@ -188,7 +188,7 @@ SELECT aggregate1(columnNumber1), aggregate2(columnNumber2) FROM table WHERE key
 ```
 
 #### Conversion
-To perform multiple queries, create multiple `StreamingQuery` objects and execute them sequentially.
+To perform multiple queries, create multiple `ActiveRule` objects and execute them sequentially.
 
 ```cpp
 typedef struct {
@@ -196,7 +196,7 @@ typedef struct {
     float agg1Result;
 } CallbackContext;
 
-void* aggregate1(StreamingQuery* query, void* key){
+void* aggregate1(ActiveRule* query, void* key){
     //Some aggregate function
     CallbackContext* context = (CallbackContext*)(query->context);
     context->agg1GTEThreshold1 = true; //set to false before comparison with threshold
@@ -206,10 +206,10 @@ void* aggregate1(StreamingQuery* query, void* key){
 int main(){
     //Allocate memory for queries & context
     CallbackContext* context = (CallbackContext*)malloc(sizeof(CallbackContext));
-    StreamingQuery **queries = (StreamingQuery**)malloc(2*sizeof(StreamingQuery*));
+    ActiveRule **queries = (ActiveRule**)malloc(2*sizeof(ActiveRule*));
 
     //Set up queries
-    StreamingQuery* queries[0] = createStreamingQuery(state, schema, context);
+    ActiveRule* queries[0] = createActiveRule(state, schema, context);
     queries[0]->IFCustom(queries[0], columnNumber1, aggregate1, FLOAT)
         ->ofLast(queries[0], numLastEntries)
         ->is(queries[0], GreaterThanOrEqual, &threshold1)
@@ -219,7 +219,7 @@ int main(){
             context->agg1Result = *(float*)aggValue;
     });
 
-    StreamingQuery* queries[1] = createStreamingQuery(state, schema, context);
+    ActiveRule* queries[1] = createActiveRule(state, schema, context);
     queries[1]->IFCustom(queries[1], columnNumber2, aggregate1, FLOAT)
         ->ofLast(queries[1], numLastEntries)
         ->is(queries[1], LessThanOrEqual, &threshold2)
@@ -231,7 +231,7 @@ int main(){
         });
 
     //Insert data
-    streamingQueryPut(queries, 2, &key, dataPtr);
+    activeRulePut(queries, 2, &key, dataPtr);
 }
 ```
 
@@ -260,11 +260,11 @@ Same as the [Multiple Queries](#4-multiple-queries) code but use the schema and 
 
 ### 2. Group By
 
-By creating a custom aggregate function with the aide of [advancedQueries' Group By function](advancedQueries.md), creating a streaming query with a Group By clause should be possible.
+By creating a custom aggregate function with the aide of [advancedQueries' Group By function](advancedQueries.md), creating an active rule with a Group By clause should be possible.
 
 ### 3. COUNT
 
-Use [advancedQueries](advancedQueries.md) to create a custom function to count the number rows matching a chosen criteria. Create a custom `streamingQuery` with the function and chosen key range.
+Use [advancedQueries](advancedQueries.md) to create a custom function to count the number rows matching a chosen criteria. Create a custom `activeRule` with the function and chosen key range.
 
 ## Unsupported SQL Queries
 
@@ -272,4 +272,4 @@ Use [advancedQueries](advancedQueries.md) to create a custom function to count t
 EmbedDB does not support the SQL `LIMIT` function that returns a certain number of rows. EmbedDB only supports queries on rows withing a key range.
 
 # Conclusion
-In general, if a query can be created with the aide of `advancedQueries`, it can be turned into a streaming query over a key range using `streamingQueries`. 
+In general, if a query can be created with the aide of `advancedQueries`, it can be turned into a active rule over a key range using `activeRules`. 

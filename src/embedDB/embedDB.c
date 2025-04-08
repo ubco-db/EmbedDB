@@ -43,6 +43,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
+#include "query-interface/activeRules.h"
 
 #if defined(ARDUINO)
 #include "serial_c_iface.h"
@@ -1122,6 +1123,11 @@ int8_t embedDBPut(embedDBState *state, void *key, void *data) {
         }
         return writeTemporaryPage(state, state->buffer);
     }
+       
+    if(state->rules[0] != NULL){
+        executeRules(state, key, data);
+    }
+
     return 0;
 }
 
