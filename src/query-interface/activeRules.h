@@ -10,12 +10,9 @@ extern "C" {
 #include <embedDBUtility.h>
 #include <string.h>
 
-//TODO: Allow any number of parameters for callback function
-//TODO: Allow streamingPut to take in list of queries
-
 /**
  * @enum ActiveQueryType
- * @brief Enum representing the type of streaming rule.
+ * @brief Enum representing the type of active rule.
  */
 typedef enum {
     GET_AVG,    /**< Get average value */
@@ -46,13 +43,13 @@ typedef enum {
 
 /**
  * @struct activeRule
- * @brief Struct representing a streaming rule.
+ * @brief Struct representing a active rule.
  */
 typedef struct activeRule {
     void* numLastEntries;    /**< Number of last entries to consider */
     void* threshold;            /**< Threshold value for comparison */
     embedDBSchema *schema;      /**< Schema of the database */
-    ActiveQueryType type;    /**< Type of the streaming rule */
+    ActiveQueryType type;    /**< Type of the active rule */
     SelectOperation operation;  /**< Selection operation */
     uint8_t colNum;             /**< Column number to preform rule on*/
     void* context;              /**< Context for callback function */
@@ -85,7 +82,7 @@ typedef int8_t (*Comparator)(void* value1, void* value2);
  * @brief IF method for setting the column the rule will perform on and the type of rule
  * @param rule Pointer to the activeRule.
  * @param colNum Column number to perform rule on.
- * @param type Type of the streaming rule (Avg, max, min, custom).
+ * @param type Type of the active rule (Avg, max, min, custom).
  * @return Pointer to the activeRule.
  */
 activeRule* IF(activeRule *rule, uint8_t colNum, ActiveQueryType type);
@@ -154,7 +151,7 @@ void executeRules(embedDBState *state, void *key, void *data);
 /**
  * @brief Gets the average value of last n specified records (numLastEntries) including current value.
  *
- * This function creates an operator for the given streaming rule and key, executes the operator,
+ * This function creates an operator for the given active rule and key, executes the operator,
  * and retrieves the average value from the result. It then cleans up the allocated resources
  * and returns the retrieved value.
  *
@@ -167,7 +164,7 @@ float GetAvg(embedDBState *state, activeRule *rule, void *key);
 /**
  * @brief Gets the minimum or maximum 32-bit integer value of last n specified records (numLastEntries) including current value.
  *
- * This function creates an operator for the given streaming rule and key, executes the operator,
+ * This function creates an operator for the given active rule and key, executes the operator,
  * and retrieves the minimum or maximum value from the result. It then cleans up the allocated resources
  * and returns the retrieved value.
  *
@@ -180,7 +177,7 @@ int32_t GetMinMax32(embedDBState *state, activeRule *rule, void *key);
 /**
  * @brief Gets the minimum or maximum 64-bit integer value of last n specified records (numLastEntries) including current value.
  *
- * This function creates an operator for the given streaming rule and key, executes the operator,
+ * This function creates an operator for the given active rule and key, executes the operator,
  * and retrieves the minimum or maximum value from the result. It then cleans up the allocated resources
  * and returns the retrieved value.
  *
@@ -191,7 +188,7 @@ int32_t GetMinMax32(embedDBState *state, activeRule *rule, void *key);
 int64_t GetMinMax64(embedDBState *state, activeRule *rule, void *key);
 
 /**
- * @brief Creates an operator for executing a streaming rule.
+ * @brief Creates an operator for executing a active rule.
  *
  * This function initializes an iterator and sets up the necessary
  * aggregate function based on the rule type. It supports queries
@@ -216,7 +213,7 @@ embedDBOperator* createOperator(embedDBState *state, activeRule *rule, void*** a
 int8_t groupFunction(const void* lastRecord, const void* record);
 
 /**
- * @brief Executes a comparison operation for a streaming rule.
+ * @brief Executes a comparison operation for a active rule.
  *
  * This function performs a comparison between a given value and the rule's threshold
  * using the specified comparator function. Depending on the result of the comparison,
@@ -229,7 +226,7 @@ int8_t groupFunction(const void* lastRecord, const void* record);
 void executeComparison(activeRule* rule, void *value, Comparator comparator, void *data);
 
 /**
- * @brief Handles the average value retrieval and comparison for a streaming rule.
+ * @brief Handles the average value retrieval and comparison for a active rule.
  *
  * This function retrieves the average value for the last n specified records (numLastEntries) including current value and
  * performs a comparison using the executeComparison function.
@@ -240,7 +237,7 @@ void executeComparison(activeRule* rule, void *value, Comparator comparator, voi
 void handleGetAvg(embedDBState *state, activeRule* rule, void* key, void *data);
 
 /**
- * @brief Handles the minimum or maximum value retrieval and comparison for a streaming rule.
+ * @brief Handles the minimum or maximum value retrieval and comparison for a active rule.
  *
  * This function retrieves the minimum or maximum value of the last n specified records (numLastEntries) including current value 
  * performs a comparison using the executeComparison function.
@@ -251,7 +248,7 @@ void handleGetAvg(embedDBState *state, activeRule* rule, void* key, void *data);
 void handleGetMinMax(embedDBState *state, activeRule* rule, void* key, void *data);
 
 /**
- * @brief Handles a custom streaming rule and executes the appropriate comparison based on the return type.
+ * @brief Handles a custom active rule and executes the appropriate comparison based on the return type.
  *
  * @param rule A pointer to the activeRule structure containing the rule details.
  * @param key A pointer to the key used for executing the custom rule.

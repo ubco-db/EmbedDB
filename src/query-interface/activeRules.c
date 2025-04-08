@@ -59,6 +59,9 @@ activeRule* createActiveRule(embedDBSchema *schema, void* context) {
 
 void executeRules(embedDBState* state, void *key, void *data) {
     for (int i = 0; i < state->numRules; i++) {
+        if(state->rules[i]->enabled == false) {
+            continue; // Skip disabled rules
+        }
         switch (state->rules[i]->type) {
             case GET_AVG:
                 handleGetAvg(state, state->rules[i], key, data);

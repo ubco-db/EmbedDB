@@ -114,28 +114,28 @@ void test_MaxEqual(void) {
     context->int1 = 0;
     context->int2 = 0;
     
-    ActiveRule **queries = (ActiveRule**)malloc(sizeof(ActiveRule*));
-    queries[0] = createActiveRule(state, schema, context);
+    state->rules = (activeRule**)malloc(sizeof(activeRule*));
+    state->rules[0] = createActiveRule(schema, context);
 
     int value = 5;
     int numLast = 5;
-    queries[0]->IF(queries[0], 1, GET_MAX)
-            ->ofLast(queries[0], (void*)&numLast)
-            ->is(queries[0], Equal, (void*)&value)
-            ->then(queries[0], [](void* maximum, void* current, void* ctx) {
+    state->rules[0]->IF(state->rules[0], 1, GET_MAX)
+            ->ofLast(state->rules[0], (void*)&numLast)
+            ->is(state->rules[0], Equal, (void*)&value)
+            ->then(state->rules[0], [](void* maximum, void* current, void* ctx) {
                 CallbackContext* context = (CallbackContext*)ctx;
                 context->int1++;
                 context->int2 += 2;
                 TEST_ASSERT_EQUAL_INT_MESSAGE(5, *(int*)maximum, "Callback did not return correct value.");            
     });
-
+    state->numRules = 1;
 
     int32_t data[] = {4,3,3,5,4,5};
     void* dataPtr = calloc(1, state->dataSize);
     for (int32_t i = 0; i < sizeof(data)/sizeof(data[0]); i++) {
 
         *((uint32_t*)dataPtr) = data[i];
-        activeRulePut(queries, 1, &i, dataPtr);
+        embedDBPut(state, &i, dataPtr);
 
         int32_t dataRetrieved = 0;
         embedDBGet(state, (void*)&i, (void*)&dataRetrieved);
@@ -146,7 +146,7 @@ void test_MaxEqual(void) {
     TEST_ASSERT_EQUAL_INT32(6, context->int2);
 
 
-    free(queries);
+    
     free(context);
     std::cout << "test_MaxEqual complete" << std::endl;
 }
@@ -157,25 +157,26 @@ void test_MinGreaterThan(void) {
     context->int1 = 0;
     context->int2 = 0;
 
-    ActiveRule **queries = (ActiveRule**)malloc(sizeof(ActiveRule*));
-    queries[0] = createActiveRule(state, schema, context);
+    state->rules = (activeRule**)malloc(sizeof(activeRule*));
+    state->rules[0] = createActiveRule(schema, context);
 
     int value = 2;
     int numLast = 3;
-    queries[0]->IF(queries[0], 1, GET_MIN)
-            ->ofLast(queries[0], (void*)&numLast)
-            ->is(queries[0], GreaterThan, (void*)&value)
-            ->then(queries[0], [](void* minimum, void* current, void* ctx) {
+    state->rules[0]->IF(state->rules[0], 1, GET_MIN)
+            ->ofLast(state->rules[0], (void*)&numLast)
+            ->is(state->rules[0], GreaterThan, (void*)&value)
+            ->then(state->rules[0], [](void* minimum, void* current, void* ctx) {
                 CallbackContext* context = (CallbackContext*)ctx;
                 context->int1++;
                 TEST_ASSERT_TRUE(*(int*)minimum > 2);
     });
+    state->numRules = 1;
 
     int32_t data[] = {1, 2, 3, 4, 5};
     void* dataPtr = calloc(1, state->dataSize);
     for (int32_t i = 0; i < sizeof(data)/sizeof(data[0]); i++) {
         *((uint32_t*)dataPtr) = data[i];
-        activeRulePut(queries, 1, &i, dataPtr);
+        embedDBPut(state, &i, dataPtr);
 
         int32_t dataRetrieved = 0;
         embedDBGet(state, (void*)&i, (void*)&dataRetrieved);
@@ -184,7 +185,7 @@ void test_MinGreaterThan(void) {
 
     TEST_ASSERT_EQUAL_INT32(1, context->int1);
 
-    free(queries);
+    
     free(context);
     std::cout << "test_MinGreaterThan complete" << std::endl;
 }
@@ -194,26 +195,27 @@ void test_AvgLessThanOrEqual(void) {
     CallbackContext* context = (CallbackContext*)malloc(sizeof(CallbackContext));
     context->int1 = 0;
 
-    ActiveRule **queries = (ActiveRule**)malloc(sizeof(ActiveRule*));
-    queries[0] = createActiveRule(state, schema, context);
+    state->rules = (activeRule**)malloc(sizeof(activeRule*));
+    state->rules[0] = createActiveRule(schema, context);
 
     float value = 3.5;
     int numLast = 4;
-    queries[0]->IF(queries[0], 1, GET_AVG)
-            ->ofLast(queries[0], (void*)&numLast)
-            ->is(queries[0], LessThanOrEqual, (void*)&value)
-            ->then(queries[0], [](void* average, void* current, void* ctx) {
+    state->rules[0]->IF(state->rules[0], 1, GET_AVG)
+            ->ofLast(state->rules[0], (void*)&numLast)
+            ->is(state->rules[0], LessThanOrEqual, (void*)&value)
+            ->then(state->rules[0], [](void* average, void* current, void* ctx) {
                 CallbackContext* context = (CallbackContext*)ctx;
                 context->int1++;
                 TEST_ASSERT_TRUE(*(float*)average <= 3.5);
                 std::cout << "Average: " << *(float*)average << std::endl;
     });
+    state->numRules = 1;
 
     int32_t data[] = {2, 3, 4, 5, 6};
     void* dataPtr = calloc(1, state->dataSize);
     for (int32_t i = 0; i < sizeof(data)/sizeof(data[0]); i++) {
         *((uint32_t*)dataPtr) = data[i];
-        activeRulePut(queries, 1, &i, dataPtr);
+        embedDBPut(state, &i, dataPtr);
 
         int32_t dataRetrieved = 0;
         embedDBGet(state, (void*)&i, (void*)&dataRetrieved);
@@ -222,7 +224,7 @@ void test_AvgLessThanOrEqual(void) {
 
     TEST_ASSERT_EQUAL_INT32(4, context->int1);
 
-    free(queries);
+    
     free(context);
     std::cout << "test_AvgLessThanOrEqual complete" << std::endl;
 }
@@ -235,28 +237,29 @@ void test_AvgLessThanOrEqual_Float(void) {
     CallbackContext* context = (CallbackContext*)malloc(sizeof(CallbackContext));
     context->int1 = 0;
 
-    ActiveRule **queries = (ActiveRule**)malloc(sizeof(ActiveRule*));
-    queries[0] = createActiveRule(state, schema, context);
+    state->rules = (activeRule**)malloc(sizeof(activeRule*));
+    state->rules[0] = createActiveRule(schema, context);
 
     float value = 3.75f; // Comparison threshold
     int numLast = 4; // Number of last values to calculate AVG
-    queries[0]->IF(queries[0], 1, GET_AVG)
-            ->ofLast(queries[0], (void*)&numLast)
-            ->is(queries[0], LessThanOrEqual, (void*)&value)
-            ->then(queries[0], [](void* average, void* current, void* ctx) {
+    state->rules[0]->IF(state->rules[0], 1, GET_AVG)
+            ->ofLast(state->rules[0], (void*)&numLast)
+            ->is(state->rules[0], LessThanOrEqual, (void*)&value)
+            ->then(state->rules[0], [](void* average, void* current, void* ctx) {
                 CallbackContext* context = (CallbackContext*)ctx;
                 context->int1++;
                 float avg = *(float*)average;
                 TEST_ASSERT_TRUE(avg <= 3.75f);
                 std::cout << "Computed Average: " << avg << std::endl;
     });
+    state->numRules = 1;
 
     // Using float values with decimals
     float data[] = {2.1f, 3.3f, 4.7f, 3.8f, 5.5f, 2.9f};
     void* dataPtr = calloc(1, state->dataSize);
     for (int32_t i = 0; i < sizeof(data)/sizeof(data[0]); i++) {
         *((float*)dataPtr) = data[i];  // Store float values
-        activeRulePut(queries, 1, &i, dataPtr);
+        embedDBPut(state, &i, dataPtr);
 
         float dataRetrieved = 0.0f;
         embedDBGet(state, (void*)&i, (void*)&dataRetrieved);
@@ -266,14 +269,14 @@ void test_AvgLessThanOrEqual_Float(void) {
     // Verify that the callback was triggered the expected number of times
     TEST_ASSERT_EQUAL_INT32(4, context->int1);
 
-    free(queries);
+    
     free(context);
     free(dataPtr);
     std::cout << "test_AvgLessThanOrEqual_Float complete" << std::endl;
 }
 
 // This function tests the execution of multiple active rules in a row.
-// It verifies that each query correctly processes the data and triggers the appropriate callbacks.
+// It verifies that each rule correctly processes the data and triggers the appropriate callbacks.
 void test_MultipleQueries(void) {
     std::cout << "Running test_MultipleQueries..." << std::endl;
     CallbackContext* context1 = (CallbackContext*)malloc(sizeof(CallbackContext));
@@ -281,16 +284,16 @@ void test_MultipleQueries(void) {
     CallbackContext* context2 = (CallbackContext*)malloc(sizeof(CallbackContext));
     context2->int1 = 0;
 
-    ActiveRule **queries = (ActiveRule**)malloc(2 * sizeof(ActiveRule*));
-    queries[0] = createActiveRule(state, schema, context1);
-    queries[1] = createActiveRule(state, schema, context2);
+    state->rules = (activeRule**)malloc(2 * sizeof(activeRule*));
+    state->rules[0] = createActiveRule(schema, context1);
+    state->rules[1] = createActiveRule(schema, context2);
 
     int value1 = 5;
     int numLast = 5;
-    queries[0]->IF(queries[0], 1, GET_MAX)
-            ->ofLast(queries[0], (void*)&numLast)
-            ->is(queries[0], Equal, (void*)&value1)
-            ->then(queries[0], [](void* maximum, void* current, void* ctx) {
+    state->rules[0]->IF(state->rules[0], 1, GET_MAX)
+            ->ofLast(state->rules[0], (void*)&numLast)
+            ->is(state->rules[0], Equal, (void*)&value1)
+            ->then(state->rules[0], [](void* maximum, void* current, void* ctx) {
                 CallbackContext* context = (CallbackContext*)ctx;
                 context->int1++;
                 TEST_ASSERT_EQUAL_INT_MESSAGE(5, *(int*)maximum, "Callback did not return correct value.");
@@ -298,20 +301,21 @@ void test_MultipleQueries(void) {
 
     int value2 = 2;
     int numLast2 = 3;
-    queries[1]->IF(queries[1], 1, GET_MIN)
-            ->ofLast(queries[1], (void*)&numLast2)
-            ->is(queries[1], GreaterThan, (void*)&value2)
-            ->then(queries[1], [](void* minimum, void* current, void* ctx) {
+    state->rules[1]->IF(state->rules[1], 1, GET_MIN)
+            ->ofLast(state->rules[1], (void*)&numLast2)
+            ->is(state->rules[1], GreaterThan, (void*)&value2)
+            ->then(state->rules[1], [](void* minimum, void* current, void* ctx) {
                 CallbackContext* context = (CallbackContext*)ctx;
                 context->int1++;
                 TEST_ASSERT_TRUE(*(int*)minimum > 2);
     });
+    state->numRules = 2;
 
     int32_t data[] = {1, -1, 2, 5, 4, 5};
     void* dataPtr = calloc(1, state->dataSize);
     for (int32_t i = 0; i < sizeof(data)/sizeof(data[0]); i++) {
         *((uint32_t*)dataPtr) = data[i];
-        activeRulePut(queries, 2, &i, dataPtr);
+        embedDBPut(state, &i, dataPtr);
 
         int32_t dataRetrieved = 0;
         embedDBGet(state, (void*)&i, (void*)&dataRetrieved);
@@ -321,15 +325,15 @@ void test_MultipleQueries(void) {
     TEST_ASSERT_EQUAL_INT32(3, context1->int1);
     TEST_ASSERT_EQUAL_INT32(1, context2->int1);
 
-    free(queries);
+    
     free(context1);
     free(context2);
     std::cout << "test_MultipleQueries complete" << std::endl;
 }
 
-void* GetWeightedAverage(ActiveRule *query, void *key) {
+void* GetWeightedAverage(activeRule *rule, void *key) {
     int currentKey = *(int*)key;
-    int slidingWindowStart = currentKey - (*(uint32_t*)query->numLastEntries - 1);
+    int slidingWindowStart = currentKey - (*(uint32_t*)rule->numLastEntries - 1);
 
     float totalWeight = 0;
     float weightedSum = 0;
@@ -342,7 +346,7 @@ void* GetWeightedAverage(ActiveRule *query, void *key) {
         }
         TEST_ASSERT_EQUAL_INT32(key%2,0); //test data is inserted every 2 seconds i.e. timestamp (key) is even
         int timeDifference = currentKey - key;
-        float weight = (*(uint32_t*)query->numLastEntries - 1) - timeDifference; // Linear decay 
+        float weight = (*(uint32_t*)rule->numLastEntries - 1) - timeDifference; // Linear decay 
         if (weight < 0) weight = 0;
         
         weightedSum += record * weight;
@@ -356,7 +360,7 @@ void* GetWeightedAverage(ActiveRule *query, void *key) {
 }
 // The test_CustomQuery function tests a custom active rule that calculates a weighted average
 // over a sliding window of the last 10 seconds and verifies the results against expected values.
-// It also stores the weighted average in a context variable and uses it in a subsequent query to compare
+// It also stores the weighted average in a context variable and uses it in a subsequent rule to compare
 // the average of the last 10 seconds with the weighted average.
  void test_CustomQuery(void) {
     std::cout << "Running test_CustomQuery..." << std::endl;
@@ -381,38 +385,39 @@ void* GetWeightedAverage(ActiveRule *query, void *key) {
         context->array[i] = weighted_averages[i];
     }
 
-    ActiveRule **queries = (ActiveRule**)malloc(2*sizeof(ActiveRule*));
-    queries[0] = createActiveRule(state, schema, context);
+    state->rules = (activeRule**)malloc(2*sizeof(activeRule*));
+    state->rules[0] = createActiveRule(schema, context);
     
     int value = 0; //ensure callback is called everytime
     int numLast = 10;
-    queries[0]->IFCustom(queries[0], 1, GetWeightedAverage, DBFLOAT)
-            ->ofLast(queries[0], (void*)&numLast) // last 10 seconds
-            ->is(queries[0], GreaterThanOrEqual, (void*)&value)
-            ->then(queries[0], [](void* result, void* current, void* ctx) {
+    state->rules[0]->IFCustom(state->rules[0], 1, GetWeightedAverage, DBFLOAT)
+            ->ofLast(state->rules[0], (void*)&numLast) // last 10 seconds
+            ->is(state->rules[0], GreaterThanOrEqual, (void*)&value)
+            ->then(state->rules[0], [](void* result, void* current, void* ctx) {
                 CallbackContext* context = (CallbackContext*)ctx;
                 TEST_ASSERT_EQUAL_FLOAT(context->array[context->int1], *(float*)result);
                 context->int1++;
-                context->float1 = *(float*)result; //store weighted average for next query
+                context->float1 = *(float*)result; //store weighted average for next rule
     });
 
-    // Second query to compare the average of the last 10 seconds with the weighted average
-    queries[1] = createActiveRule(state, schema, context);
-    queries[1]->IF(queries[1], 1, GET_AVG)
-            ->ofLast(queries[1], (void*)&numLast)
-            ->is(queries[1], LessThanOrEqual, (void*)&(context->float1))
-            ->then(queries[1], [](void* result, void* current, void* ctx) {
+    // Second rule to compare the average of the last 10 seconds with the weighted average
+    state->rules[1] = createActiveRule(schema, context);
+    state->rules[1]->IF(state->rules[1], 1, GET_AVG)
+            ->ofLast(state->rules[1], (void*)&numLast)
+            ->is(state->rules[1], LessThanOrEqual, (void*)&(context->float1))
+            ->then(state->rules[1], [](void* result, void* current, void* ctx) {
                 CallbackContext* context = (CallbackContext*)ctx;
                 TEST_ASSERT_TRUE(*(float*)result <= context->array[context->int1 - 1]);
                 printf("Average of last 10 seconds at %is: %f, weighted average is: %f\n", context->int1*2, *(float*)result, (context->float1));
 
     });
+    state->numRules = 2;
 
     void* dataPtr = calloc(1, state->dataSize);
     int j = 0;
     for (int32_t i = 2; i < 22; i+=2) {
         *((uint32_t*)dataPtr) = data[j++];
-        activeRulePut(queries, 2, &i, dataPtr);
+        embedDBPut(state, &i, dataPtr);
 
         int32_t dataRetrieved = 0;
         embedDBGet(state, (void*)&i, (void*)&dataRetrieved);
@@ -421,7 +426,7 @@ void* GetWeightedAverage(ActiveRule *query, void *key) {
 
     TEST_ASSERT_EQUAL_INT32(10, context->int1);
 
-    free(queries);
+    
     free(context);
     std::cout << "test_CustomQuery complete" << std::endl;
 }
@@ -431,27 +436,27 @@ void test_whereClause(void){
     CallbackContext* context = (CallbackContext*)malloc(sizeof(CallbackContext));
     context->int1 = 0;
 
-    ActiveRule **queries = (ActiveRule**)malloc(sizeof(ActiveRule*));
-    queries[0] = createActiveRule(state, schema, context);
+    state->rules = (activeRule**)malloc(sizeof(activeRule*));
+    state->rules[0] = createActiveRule(schema, context);
 
     int value = 0;
     int minData = 3;
     int numLast = 4;
-    queries[0]->IF(queries[0], 1, GET_MIN)
-            ->ofLast(queries[0], (void*)&numLast)
-            ->where(queries[0], (void*)&minData, NULL)
-            ->is(queries[0], GreaterThan, (void*)&value)
-            ->then(queries[0], [](void* mini, void* current, void* ctx) {
+    state->rules[0]->IF(state->rules[0], 1, GET_MIN)
+            ->ofLast(state->rules[0], (void*)&numLast)
+            ->where(state->rules[0], (void*)&minData, NULL)
+            ->is(state->rules[0], GreaterThan, (void*)&value)
+            ->then(state->rules[0], [](void* mini, void* current, void* ctx) {
                 CallbackContext* context = (CallbackContext*)ctx;
                 context->int1 = *(int*)mini;
                 TEST_ASSERT_TRUE(*(int*)mini > 2);
     });
-
+    state->numRules = 1;
     int32_t data[] = {2, 3, 4, 5, 6};
     void* dataPtr = calloc(1, state->dataSize);
     for (int32_t i = 0; i < sizeof(data)/sizeof(data[0]); i++) {
         *((uint32_t*)dataPtr) = data[i];
-        activeRulePut(queries, 1, &i, dataPtr);
+        embedDBPut(state, &i, dataPtr);
 
         int32_t dataRetrieved = 0;
         embedDBGet(state, (void*)&i, (void*)&dataRetrieved);
