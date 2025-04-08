@@ -50,12 +50,10 @@
 #include "in_memory_sort.h"
 #include "no_output_heap.h"
 
-
 // #define     DEBUG         1
 // #define     DEBUG_OUTPUT  1
 // #define     DEBUG_READ    1
 // #define     DEBUG_HEAP    0
-
 
 /**
  * Prints the contents of the heap. Used for debugging.
@@ -265,7 +263,7 @@ int adaptive_sort(
         int32_t heapStartOffset = bufferSizeInBlocks*es->page_size - es->record_size;
         int32_t listSize        = 0; 
         
-        void *lastOutputKey;                            /* Pointer to memory storing value of last key output */
+        void *lastOutputKey = malloc(es->record_size);                            /* Pointer to memory storing value of last key output */
         int8_t haveOutputKey       = 0;
         int32_t sublistSize        = 0;                 /* size in blocks */
         int32_t outputCount        = 0;                 /* number of values in output block */
@@ -437,7 +435,8 @@ int adaptive_sort(
                         if (es->compare_fcn(lastOutputKey+es->key_offset, inputVal+es->key_offset) < 0)
                             numDistinctInRun++;
                     }
-                    lastOutputKey = inputVal;             
+                    // lastOutputKey = inputVal;
+                    memcpy(lastOutputKey, inputVal, es->record_size);             
 
                     // Find somewhere to put the input value
                     if(es->compare_fcn(tupleBuffer+es->key_offset, lastOutputKey+es->key_offset) < 0){
@@ -464,7 +463,9 @@ int adaptive_sort(
                             numDistinctInRun++;
                     }              
                     // Use the newly read value. don't move it, it's in proper place.            
-                    lastOutputKey = inputVal;       // Update the last key output                  
+                    // lastOutputKey = inputVal;       // Update the last key output      
+                    memcpy(lastOutputKey, inputVal, es->record_size);             
+            
                 }
                 haveOutputKey = 1;
                 outputCount++;
@@ -480,13 +481,15 @@ int adaptive_sort(
             *((int32_t *) buffer) = sublistSize;
             *((int16_t *) (buffer + BLOCK_COUNT_OFFSET)) = (int8_t)outputCount;        
             memcpy(tupleBuffer, buffer+(outputCount-1)*es->record_size+es->headerSize, es->key_size);
-            lastOutputKey = tupleBuffer;
+            // lastOutputKey = tupleBuffer;
+            memcpy(lastOutputKey, tupleBuffer, es->record_size);             
+
 
             // Store the last key output temporarily in tuple buffer as once write out then read new block it would be gone
             // Write the output block
             ((file_iterator_state_t *) iteratorState)->fileInterface->writeRel(buffer, PAGE_SIZE, 1, outputFile);
             if (((file_iterator_state_t *) iteratorState)->fileInterface->error(outputFile)){
-                // File read error
+                // File write error
                 free(lastOutputKey);
                 return 9;
             } 

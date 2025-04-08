@@ -14,6 +14,9 @@
 #define SORT_KEY_SIZE       4
 #define INT_SIZE            4
 
+#define true 1
+#define false 0
+
 #if defined(__cplusplus)
 extern "C" {
 #endif
@@ -57,12 +60,17 @@ int flash_minsort_sublist(
 typedef struct MinSortStateSublist
 {
     char* buffer;
-    unsigned int* min;
+    uint8_t *min;
+    uint8_t *min_set;
     unsigned long* offset;
 
-    unsigned int current;           // current smallest value
-    unsigned int next;              // keep track of next smallest value for next iteration
+    uint8_t *current;           // current smallest value
+    uint8_t *next;              // keep track of next smallest value for next iteration
     unsigned long int nextIdx; 
+    uint8_t current_set;
+    uint8_t next_set;
+    uint8_t nextIdx_set;
+
                        
     unsigned int record_size;
     unsigned long int num_records;
@@ -72,6 +80,8 @@ typedef struct MinSortStateSublist
     unsigned int regionIdx;
     unsigned int lastBlockIdx;    
     unsigned long fileOffset;
+    uint8_t lastBlockIdx_set;
+    uint8_t regionIdx_set;
     
     void    *iteratorState;    
 

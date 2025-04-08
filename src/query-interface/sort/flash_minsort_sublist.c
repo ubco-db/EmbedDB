@@ -87,16 +87,16 @@ int16_t getNumRecordsBlock(MinSortStateSublist *ms)
 }
 
 /* Returns a value of a tuple given a record number in a block (that has been previously buffered) */
-uint32_t getValue_sublist(MinSortStateSublist* ms, int recordNum, external_sort_t *es)
+void *getTuple_sublist(MinSortStateSublist* ms, int recordNum, external_sort_t *es)
 {      
     // test_record_t *buf = (test_record_t*) (ms->buffer+es->headerSize+recordNum*es->record_size);
     // return buf->key;	    
-    return *(uint32_t *) (ms->buffer+es->headerSize+recordNum*es->record_size+es->key_offset);
+    return (void *) (ms->buffer+es->headerSize+recordNum*es->record_size);
 }
 
 void init_MinSort_sublist(MinSortStateSublist* ms, external_sort_t *es, metrics_t *metric)
 {
-     unsigned int i = 0, j = 0, val, regionIdx=0;    
+    unsigned int i = 0, j = 0, regionIdx=0;
 
     /* Operator statistics */    
     ms->blocksRead    = 0;
@@ -109,7 +109,7 @@ void init_MinSort_sublist(MinSortStateSublist* ms, external_sort_t *es, metrics_
 
     // Ignoring small variable overhead
     // j = (ms->memoryAvailable - 2 * SORT_KEY_SIZE - INT_SIZE) / SORT_KEY_SIZE;  
-    j = (ms->memoryAvailable) / SORT_KEY_SIZE;  
+    j = (ms->memoryAvailable) / (SORT_KEY_SIZE + sizeof(uint8_t));  
     printf("Memory overhead: %d  Max regions: %d\r\n",  2 * SORT_KEY_SIZE + INT_SIZE, j);                         
    
     // Memory allocation    
@@ -117,13 +117,17 @@ void init_MinSort_sublist(MinSortStateSublist* ms, external_sort_t *es, metrics_
     // Block 1 as output buffer is not being counted in this case,
     // TODO: Challenge with this as if given only 2 buffers then have no room for minimum index. Creating separate allocated arrays for now.
     // Note: Assuming MinSort does need actually count the output buffer for its use as it can produce records in iterator format and does not need an output buffer for this.
-    ms->min = malloc(ms->numRegions*sizeof(int));
+    ms->current = malloc(es->record_size);
+    ms->next = malloc(es->record_size);
+    
+    ms->min = malloc(ms->numRegions*es->record_size);
+    ms->min_set = malloc(ms->numRegions*sizeof(uint8_t));
     ms->offset = malloc(ms->numRegions*sizeof(long));     
     printf("Page size: %d, Memory size: %d Record size: %d, Number of records: %lu, Number of blocks: %d, Regions: %d\r\n", 
                    es->page_size, ms->memoryAvailable, ms->record_size, ms->num_records, ms->numBlocks, ms->numRegions);
                     
     for (i=0; i < ms->numRegions; i++)
-        ms->min[i] = INT_MAX; 
+        ms->min_set[i] = false; 
     regionIdx = ms->numRegions-1;
 
     /* Scan data to populate the minimum in each region */
@@ -136,8 +140,6 @@ void init_MinSort_sublist(MinSortStateSublist* ms, external_sort_t *es, metrics_
         readPage_sublist(ms, lastBlock, es, metric);     
         int numBlocksSublist = *(int32_t*) ms->buffer;       /* Retrieve block id (indexed from 0) to compute count of blocks in sublist */
         
-        if (numBlocksSublist == 0) 
-            numBlocksSublist = 4;
  
         #if DEBUG
         printf("Read block: %d",lastBlock);
@@ -152,8 +154,10 @@ void init_MinSort_sublist(MinSortStateSublist* ms, external_sort_t *es, metrics_
         lastBlock = lastBlock - numBlocksSublist;
         readPage_sublist(ms, lastBlock, es, metric);                         
         
-        val = getValue_sublist(ms, 0, es);    
-        ms->min[regionIdx] = val;
+        // val = getTuple_sublist(ms, 0, es);
+        // ms->min[regionIdx] = val;
+        memcpy(ms->min+es->record_size*regionIdx, getTuple_sublist(ms, 0, es), es->value_size);
+        ms->min_set[regionIdx] = true;
         ms->offset[regionIdx] = lastBlock*es->page_size+es->headerSize+ms->fileOffset;
         #if DEBUG
         printf("New min. Index: %d", regionIdx);
@@ -175,33 +179,48 @@ void init_MinSort_sublist(MinSortStateSublist* ms, external_sort_t *es, metrics_
            
     #endif
       
-    ms->current = INT_MAX;
-    ms->next    = INT_MAX; 
+    // ms->current = INT_MAX;
+    // ms->next    = INT_MAX; 
+    // ms->lastBlockIdx = INT_MAX;
+    ms->current_set = false;
+    ms->next_set = false;
+    ms->lastBlockIdx_set = false;
     ms->nextIdx = 0;       
-    ms->lastBlockIdx = INT_MAX;
 }
 
 char* next_MinSort_sublist(MinSortStateSublist* ms, external_sort_t *es, void *tupleBuffer, metrics_t *metric)
 {
     unsigned int i, curBlk;                                                     
     unsigned long int startIndex;
-                 
+    
+
+
     // Find the block with the minimum tuple value - otherwise continue on with last block            
     if (ms->nextIdx == 0)
-    {    // Find new block as do not know location of next minimum tuple
-        ms->current = INT_MAX;
-        ms->regionIdx = INT_MAX; 
-        ms->next = INT_MAX; 
+    {    
+        // Find new block as do not know location of next minimum tuple
+        ms->current_set = false;
+        ms->regionIdx_set = false;
+        ms->next_set = false;
+
         for (i=0; i < ms->numRegions; i++)
         {
              metric->num_compar++;
 
-            if (ms->min[i] < ms->current)
-            {   ms->current = ms->min[i];
+            // if (ms->min[i] < ms->current)
+            // {   ms->current = ms->min[i];
+            //     ms->regionIdx = i;
+            // }
+            
+            // If min is set update current if current is not set or min is less than current
+            if (ms->min_set[i] && (!ms->current_set || es->compare_fcn(ms->min+i*es->record_size+es->key_offset, ms->current+es->key_offset) < 0)) {
+                memcpy(ms->current, ms->min+i*es->record_size, es->record_size);
                 ms->regionIdx = i;
+                ms->regionIdx_set = true;
+                ms->current_set = true;
             }
         }        
-        if (ms->regionIdx == INT_MAX)
+        if (!ms->regionIdx_set)
             return NULL;    // Join complete - no more tuples	            		
             
         // Determine current block and record index for next smallest value based on file offset
@@ -220,7 +239,7 @@ char* next_MinSort_sublist(MinSortStateSublist* ms, external_sort_t *es, void *t
         i = ms->nextIdx;
     }    
 
-    memcpy(tupleBuffer, &(ms->buffer[ms->record_size * i+es->headerSize]), ms->record_size);
+    memcpy(tupleBuffer, ms->buffer + ms->record_size * i+es->headerSize, ms->record_size);
     metric->num_memcpys++;                   
 
     #ifdef DEBUG
@@ -233,29 +252,36 @@ char* next_MinSort_sublist(MinSortStateSublist* ms, external_sort_t *es, void *t
     i++;
     ms->nextIdx = 0;  
 
-    if (i >= getNumRecordsBlock(ms))
-    {   // Advance to next block
+    if (i >= getNumRecordsBlock(ms)){   
+        // Advance to next block
         i = 0;
         int32_t currentBlockId = getBlockId(ms);
         curBlk++;
         readPage_sublist(ms, curBlk, es, metric);   
-        if (currentBlockId >= getBlockId(ms))
-        {   // Transitioned to a block in a new sublist
+        if (currentBlockId >= getBlockId(ms)) {   
+            // Transitioned to a block in a new sublist
+            // ms->min[ms->regionIdx] = INT_MAX;
             ms->offset[ms->regionIdx] = -1;
-            ms->min[ms->regionIdx] = INT_MAX;
-        }
-        else
-        {
+            ms->min_set[ms->regionIdx] = false;
+        } else {
+            // ms->min[ms->regionIdx] = getTuple_sublist(ms,0,es);  
             ms->offset[ms->regionIdx] = curBlk*es->page_size+es->headerSize;
-            ms->min[ms->regionIdx] = getValue_sublist(ms,0,es);    
+            memcpy(ms->min+es->record_size*ms->regionIdx, getTuple_sublist(ms,0,es), es->value_size);
+            ms->min_set[ms->regionIdx] = true;
         }        
-    }
-    else
-    {
+    } else {
+
+        // ms->min[ms->regionIdx] = getTuple_sublist(ms,i,es); 
         ms->offset[ms->regionIdx] += es->record_size;
-        ms->min[ms->regionIdx] = getValue_sublist(ms,i,es); 
-        if (ms->min[ms->regionIdx]  == ms->current)                
-            ms->nextIdx = i; 	
+        memcpy(ms->min+es->record_size*ms->regionIdx, getTuple_sublist(ms,i,es), es->value_size);
+        ms->min_set[ms->regionIdx] = true;
+
+        // Current tuple is set and each to min tuple
+        if (ms->current_set && es->compare_fcn(ms->min+i*es->record_size+es->key_offset, ms->current+es->key_offset) == 0) {
+            ms->nextIdx = i;
+        }
+        // if (ms->min[ms->regionIdx]  == ms->current)                
+        //     ms->nextIdx = i; 	
     }       
    
     #ifdef DEBUG	
@@ -392,6 +418,8 @@ printf("Loc2: %lu\n", ftell(outputFile));
     *resultFilePtr = 0;
     free(ms.min);
     free(ms.offset);
+    free(ms.current);
+    free(ms.next);
 
 //    printf("Complete. Comparisons: %d  MemCopies: %d  TransferIn: %d  TransferOut: %d TransferOther: %d\n", metric->num_compar, metric->num_memcpys, numShiftIntoOutput, numShiftOutOutput, numShiftOtherBlock);
 

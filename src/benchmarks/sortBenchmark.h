@@ -95,7 +95,7 @@ int sortQueryBenchmark() {
 
     // Perform sort runs with different numbers of values
     int32_t num_values[] = {100, 1000, 10000, 100000, -1};
-    for (int i = 0; i < 5; i++) {
+    for (int i = 0; i < 1; i++) {
 
         // Repeat each run for consistency
         for (int j = 0; j < 1; j++) {
