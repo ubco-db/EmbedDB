@@ -359,6 +359,7 @@ int adaptive_sort(
             // Swap output records into output buffer from heap if smaller than records currently there. (I/O block is id zero)
             for(i = 0; i < tuplesPerPage; i++) {
                 
+                // Check if we've read all records from the current page
                 if (recordsRead == 0) {                   
                     // Check if there are any records left
                     if (recordsLeft <= 0)
@@ -378,8 +379,9 @@ int adaptive_sort(
 
                 heapVal = buffer+heapStartOffset;
                 inputVal = buffer+es->headerSize + i*es->record_size;          
-
-                // Check if can use heap value or input value
+          
+                // Check if both heap top and current input value are smaller than the last output key
+                // This indicates we need to start a new sorted sublist
                 if (haveOutputKey && (es->compare_fcn(heapVal+es->key_offset, lastOutputKey+es->key_offset) < 0 || heapSize <= 0) && es->compare_fcn(inputVal+es->key_offset, lastOutputKey+es->key_offset) < 0)
                 {
                     // Start a new sublist (as cannot use heap value or input value)
@@ -410,10 +412,14 @@ int adaptive_sort(
                 }
 
                 /* 
-                    Use the heap value if:
-                        heap value is less than input value AND 
-                        heap value is NOT larger than last output key OR
-                        Input value is invalid
+                * Decide whether to use the heap value or input value for the current output position.
+                * Use the heap value if:
+                *   1. Heap value is less than input value AND
+                *   2. Either:
+                *      a. We haven't output any values yet, OR
+                *      b. Heap value is greater than or equal to last output key (maintains sort order)
+                *   OR
+                *   3. The input value would break sort order (is smaller than last output key)
                 */
                 if ((es->compare_fcn(heapVal+es->key_offset, inputVal+es->key_offset) < 0 
                     && (haveOutputKey==0 || es->compare_fcn(heapVal+es->key_offset, lastOutputKey+es->key_offset) >= 0))
@@ -448,7 +454,8 @@ int adaptive_sort(
                         heapify_rev(buffer + heapStartOffset, tupleBuffer, heapSize, es, metric);
                     }
                 } else {
-                    // Determine if the value is different than the last one to estimate the number of distinct values
+                    // Use the input value since it's smaller or equal to heap value and maintains sort order
+                    // Track if this is a new distinct value for statistics
                     metric->num_compar++;
                     if (numDistinctInRun < 255 && haveOutputKey) {   
                         // Value is different

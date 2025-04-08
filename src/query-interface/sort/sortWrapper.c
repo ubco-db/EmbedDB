@@ -11,9 +11,9 @@
  * @param file              The file being written to
  * @return int8_t 
  */
-int8_t writePageWithHeader(void *buffer, int32_t blockIndex, int16_t numberOfValues, int16_t pageSize, embedDBFileInterface *fileInterface, void *file) {
-    memcpy((uint8_t *)buffer, &blockIndex, sizeof(int32_t));
-    memcpy((uint8_t *)buffer + sizeof(uint32_t), &numberOfValues, sizeof(int16_t));
+int8_t writePageWithHeader(void *buffer, const uint32_t blockIndex, const uint32_t numberOfValues, const uint32_t pageSize, const embedDBFileInterface *fileInterface, void *file) {
+    memcpy(buffer, &blockIndex, sizeof(int32_t));
+    memcpy(buffer + sizeof(uint32_t), &numberOfValues, sizeof(int16_t));
     
     fileInterface->write(buffer, blockIndex, pageSize, file); 
 
@@ -54,7 +54,6 @@ uint32_t loadRowData(sortData *data, embedDBOperator *op, void *unsortedFile) {
         // Write page to file when full
         if (count % valuesPerPage == 0 && count != 0) {       
 
-
             if (writePageWithHeader(buffer, blockIndex, valuesPerPage, PAGE_SIZE, data->fileInterface, unsortedFile)) {
                 free(buffer);
                 buffer = NULL;
@@ -80,12 +79,12 @@ uint32_t loadRowData(sortData *data, embedDBOperator *op, void *unsortedFile) {
         count++;
 
         // temp limit for debugging
-        if (count >= 10000)
+        if (data->tupleLimit != -1 && count >= data->tupleLimit)
             break;
     }
 
     // Write remaining records
-    int16_t numRemainingRecords = (count % valuesPerPage == 0 && count != 0) ? valuesPerPage : count % valuesPerPage;
+    uint32_t numRemainingRecords = (count % valuesPerPage == 0 && count != 0) ? valuesPerPage : count % valuesPerPage;
     if(writePageWithHeader(buffer, blockIndex, numRemainingRecords, PAGE_SIZE, data->fileInterface, unsortedFile)) {
         free(buffer);
         buffer = NULL;

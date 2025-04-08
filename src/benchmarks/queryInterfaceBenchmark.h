@@ -388,7 +388,7 @@ int advancedQueryExample() {
 
     // Prepare sea table
     embedDBOperator* scan4_2 = createTableScanOperator(stateSEA, &it2, baseSchema);
-    scan4_2->init(scan4_2);
+    scan4_2-int32_t*>init(scan4_2);
 
     // Join tables
     embedDBOperator* join4 = createKeyJoinOperator(shift4_1, scan4_2);

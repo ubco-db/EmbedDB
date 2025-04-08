@@ -131,6 +131,7 @@ typedef struct sortData {
     int8_t keyOffset;
     int8_t keySize;
     int8_t (*compareFn)(void *a, void *b);
+    int32_t tupleLimit;
 
     void *readBuffer;
     embedDBFileInterface *fileInterface;
@@ -199,7 +200,7 @@ embedDBOperator* createKeyJoinOperator(embedDBOperator* input1, embedDBOperator*
  * @param colNum        The column that is being sorted on 
  * @param compareFn     The function being used to make comparisons between row data     
  */
-embedDBOperator* createOrderByOperator(embedDBState *dbState, embedDBOperator *input, int8_t colNum,  int8_t (*compareFn)(void *a, void *b));
+embedDBOperator* createOrderByOperator(embedDBState *dbState, embedDBOperator *input, int8_t colNum, int32_t limit,  int8_t (*compareFn)(void *a, void *b));
 
 //////////////////////////////////
 // Prebuilt aggregate functions //

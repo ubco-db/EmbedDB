@@ -536,7 +536,7 @@ void closeOrderBy(embedDBOperator *op) {
  * @param colNum        The column that is being sorted on 
  * @param compareFn     The function being used to make comparisons between row data     
  */
-embedDBOperator* createOrderByOperator(embedDBState *dbState, embedDBOperator *input, int8_t colNum,  int8_t (*compareFn)(void *a, void *b)) {
+embedDBOperator* createOrderByOperator(embedDBState *dbState, embedDBOperator *input, int8_t colNum, int32_t limit,  int8_t (*compareFn)(void *a, void *b)) {
     if (input == NULL || dbState == NULL || compareFn == NULL || colNum < 0) {
 #ifdef PRINT_ERRORS
         printf("ERROR: ORDER BY: Invalid Input data\n");
@@ -558,6 +558,7 @@ embedDBOperator* createOrderByOperator(embedDBState *dbState, embedDBOperator *i
     state->fileInterface = dbState->fileInterface;
     state->colNum = colNum;
     state->compareFn = compareFn;
+    state->tupleLimit = limit;
 
     op->state = state;
     op->input = input;

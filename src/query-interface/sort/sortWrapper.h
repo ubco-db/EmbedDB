@@ -51,18 +51,6 @@ uint32_t loadRowData(sortData *data, embedDBOperator *op, void *unsortedFile);
  */
 file_iterator_state_t *startSort(sortData *data, void *unsortedFile, void *sortedFile);
 
-/**
- * @brief Adds header information and writes buffer to file 
- * 
- * @param buffer            The buffer that is written. Should be atleast the size of pageSize
- * @param blockIndex        The block index
- * @param numberOfValues    The the number of database rows stored in the page
- * @param pageSize          The size of the page
- * @param fileInterface     The interface used to write the file
- * @param file              The file being written to
- * @return int8_t 
- */
-int8_t writePageWithHeader(void *buffer, int32_t blockIndex, int16_t numberOfValues, int16_t pageSize, embedDBFileInterface *fileInterface, void *file);
 
 /**
  * @brief Begins the sorting operation using row data from previous operator

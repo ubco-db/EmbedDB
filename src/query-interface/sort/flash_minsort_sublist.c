@@ -135,6 +135,10 @@ void init_MinSort_sublist(MinSortStateSublist* ms, external_sort_t *es, metrics_
     {
         readPage_sublist(ms, lastBlock, es, metric);     
         int numBlocksSublist = *(int32_t*) ms->buffer;       /* Retrieve block id (indexed from 0) to compute count of blocks in sublist */
+        
+        if (numBlocksSublist == 0) 
+            numBlocksSublist = 4;
+ 
         #if DEBUG
         printf("Read block: %d",lastBlock);
         printf(" Num: %d\n", numBlocksSublist);
