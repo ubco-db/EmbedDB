@@ -6,16 +6,22 @@ Active rules are used to dynamically monitor and act on data based on specific c
 ---
 
 ### How to Create a Active Rule
-To define a active rule, use the following code structure:
+To define an active rule, use the following code structure:
 
 ```cpp
-ActiveRule* query = createActiveRule(state, schema, context);
-query->IF(query, columnNumber, GET_AVG)
-     ->ofLast(query, numLastEntries)
-     ->is(query, conditionOperation, &threshold)
-     ->then(query, callbackFunction);
+activeRule* rule = createActiveRule(schema, context);
+rule->IF(rule, columnNumber, GET_AVG)
+     ->ofLast(rule, numLastEntries)
+     ->is(rule, conditionOperation, &threshold)
+     ->then(rule, callbackFunction);
 
-activeRulePut(queries, numQueries, &key, dataPtr);
+state->rules = (activeRule**)malloc(sizeof(activeRule*));
+state->rules[0] = rule;
+state->numRules = 1;
+
+\\ To disable a rule:
+state->rules[0]->enabled = false;
+
 ```
 
 #### Parameters:
@@ -45,15 +51,16 @@ CallbackContext* context = (CallbackContext*)malloc(sizeof(CallbackContext));
    - `Equal`, `NotEqual`
 5. **`threshold`**: The comparison value for the condition. The type must match the aggregate result (e.g., `float` for `GET_AVG`).
 6. **`callbackFunction`**: A user-defined function triggered when the condition is met.
+7. **`enabled `** signifies whether the rule should be executed or not.
 
 ---
 
 ### Custom Aggregate Queries
 For custom logic, use the `IFCustom` method to define your own aggregate operation. Example:
 ```cpp
-void* GetWeightedAverage(ActiveRule* query, void* key) {
+void* GetWeightedAverage(activeRule* rule, void* key) {
     int currentKey = *(int*)key;
-    int slidingWindowStart = currentKey - (query->numLastEntries - 1);
+    int slidingWindowStart = currentKey - (rule->numLastEntries - 1);
 
     float totalWeight = 0;
     float weightedSum = 0;
@@ -63,7 +70,7 @@ void* GetWeightedAverage(ActiveRule* query, void* key) {
         if (embedDBGet(state, (void*)&k, (void*)&record) != 0) {
             continue;
         }
-        float weight = query->numLastEntries - 1 - (currentKey - k);  // Linear decay
+        float weight = rule->numLastEntries - 1 - (currentKey - k);  // Linear decay
         if (weight > 0) {
             weightedSum += record * weight;
             totalWeight += weight;
@@ -78,10 +85,10 @@ void* GetWeightedAverage(ActiveRule* query, void* key) {
 
 To integrate this aggregate function:
 ```cpp
-query->IFCustom(query, columnNumber, GetWeightedAverage, FLOAT)
-     ->ofLast(query, 10)
-     ->is(query, GreaterThan, (void*)&threshold)
-     ->then(query, callbackFunction);
+rule->IFCustom(rule, columnNumber, GetWeightedAverage, FLOAT)
+     ->ofLast(rule, 10)
+     ->is(rule, GreaterThan, (void*)&threshold)
+     ->then(rule, callbackFunction);
 ```
 
 ---
@@ -106,38 +113,43 @@ void callbackFunction(void* aggregateValue, void* currentValue, void* ctx) {
 You can chain queries by sharing context variables between them. For example:
 
 *Assuming for this example your keys are timestamps in seconds*
-1. Query 1 calculates a weighted average over the last 10 seconds and stores it in `float1` according to above callback function. By carefully choosing the `is` method conditions you can ensure the callback function is always called ensuring the `float1` is always updated with the most recent weighted average:
+1. Rule 1 calculates a weighted average over the last 10 seconds and stores it in `float1` according to above callback function. By carefully choosing the `is` method conditions you can ensure the callback function is always called ensuring the `float1` is always updated with the most recent weighted average:
     ```cpp
-    queries[0]->IFCustom(queries[0], 1, GetWeightedAverage, FLOAT)
-               ->ofLast(queries[0], 10)
-               ->is(queries[0], GreaterThanOrEqual, (void*)&value)
-               ->then(queries[0], callbackFunction);
+    rules[0]->IFCustom(rules[0], 1, GetWeightedAverage, FLOAT)
+        ->ofLast(rules[0], 10)
+        ->is(rules[0], GreaterThanOrEqual, (void*)&value)
+        ->then(rules[0], callbackFunction);
     ```
 
-2. Query 2 compares this weighted average with the average of the last 10 seconds and calls a different function if the weighted average is less than or equal to the average:
+2. Rule 2 compares this weighted average with the average of the last 10 seconds and calls a different function if the weighted average is less than or equal to the average:
     ```cpp
-    queries[1]->IF(queries[1], 1, GET_AVG)
-               ->ofLast(queries[1], 10)
-               ->is(queries[1], LessThanOrEqual, (void*)&(context->float1))
-               ->then(queries[1], anotherCallbackFunction);
+    rules[1]->IF(rules[1], 1, GET_AVG)
+               ->ofLast(rules[1], 10)
+               ->is(rules[1], LessThanOrEqual, (void*)&(context->float1))
+               ->then(rules[1], anotherCallbackFunction);
     ```
 
 ---
 
 ### Example Workflow
 1. Define your schema, state, and context.
-2. Create and configure your queries.
-3. Push data using `activeRulePut`.
+2. Create and configure your rule.
+3. Initialize the embedDBState's rules and add your rule.
+4. Set the number of rules in the state.
+5. Push data using `embedDBPut`.
 
 Example:
 ```cpp
+state->rules = (activeRule**)malloc(2 * sizeof(activeRule*));
+state->rules = rules;
+state->numRules = 2;
 for (int32_t i = 2; i < 22; i += 2) {
     *((uint32_t*)dataPtr) = data[j++];
-    activeRulePut(queries, 2, &i, dataPtr);
+    embedDBPut(state, &i, dataPtr);
 }
 ```
 
-Each time data is pushed, all queries are evaluated (in the order they are inserted into the `queries` array) against the new data, and any matching conditions trigger their respective callbacks.
+Each time data is pushed, all enabled queries are evaluated (in the order they are inserted into the `queries` array) against the new data, and any matching conditions trigger their respective callbacks.
 
 ## Generalized SQL Queries and Their Conversion
 
@@ -184,11 +196,11 @@ Again, `GreaterThanOrEqual` could be replaced by `LessThanOrEqual`, `GreaterThan
 
 #### SQL Query
 ```sql
-SELECT aggregate1(columnNumber1), aggregate2(columnNumber2) FROM table WHERE key BETWEEN currentKey - (numLastEntries - 1) AND currentKey HAVING aggregate1(columnNumber1) >= threshold1 AND aggregate2(columnNumber2) <= threshold2;
+SELECT aggregate1(columnNumber), aggregate2(columnNumber) FROM table WHERE key BETWEEN currentKey - (numLastEntries - 1) AND currentKey HAVING aggregate1(columnNumber) >= threshold1 AND aggregate2(columnNumber) <= threshold2;
 ```
 
 #### Conversion
-To perform multiple queries, create multiple `ActiveRule` objects and execute them sequentially.
+To perform multiple queries, create multiple `activeRule` objects and execute them sequentially.
 
 ```cpp
 typedef struct {
@@ -196,79 +208,64 @@ typedef struct {
     float agg1Result;
 } CallbackContext;
 
-void* aggregate1(ActiveRule* query, void* key){
+void* aggregate1(activeRule* rule, void* key){
     //Some aggregate function
-    CallbackContext* context = (CallbackContext*)(query->context);
-    context->agg1GTEThreshold1 = true; //set to false before comparison with threshold
+
+    //reset agg1GTEThreshold1 to false for every new query so that it can be set to true only when the result >= threshold1
+    CallbackContext* context = (CallbackContext*)(rule->context);
+    context->agg1GTEThreshold1 = false; 
+
     return (void*)result;
 }
 
 int main(){
     //Allocate memory for queries & context
     CallbackContext* context = (CallbackContext*)malloc(sizeof(CallbackContext));
-    ActiveRule **queries = (ActiveRule**)malloc(2*sizeof(ActiveRule*));
+    state->rules = (activeRule**)malloc(2*sizeof(activeRule*));
 
     //Set up queries
-    ActiveRule* queries[0] = createActiveRule(state, schema, context);
-    queries[0]->IFCustom(queries[0], columnNumber1, aggregate1, FLOAT)
-        ->ofLast(queries[0], numLastEntries)
-        ->is(queries[0], GreaterThanOrEqual, &threshold1)
-        ->then(queries[0], [](void* aggValue, void* currentValue, void* ctx){
+    activeRule* rule1 = createActiveRule(state, schema, context);
+    rule1->IFCustom(rule1, columnNumber, aggregate1, FLOAT)
+        ->ofLast(rule1, numLastEntries)
+        ->is(rule1, GreaterThanOrEqual, &threshold1)
+        ->then(rule1, [](void* aggValue, void* currentValue, void* ctx){
             CallbackContext* context = (CallbackContext*)ctx;
-            context->agg1GTEThreshold1 = true;
-            context->agg1Result = *(float*)aggValue;
+            context->agg1GTEThreshold1 = true; //result >= threshold1
+            context->agg1Result = *(float*)aggValue; //result
     });
 
-    ActiveRule* queries[1] = createActiveRule(state, schema, context);
-    queries[1]->IFCustom(queries[1], columnNumber2, aggregate1, FLOAT)
-        ->ofLast(queries[1], numLastEntries)
-        ->is(queries[1], LessThanOrEqual, &threshold2)
-        ->then(queries[1], [](void* aggValue, void* currentValue, void* ctx){
+    activeRule* rule2 = createActiveRule(schema, context);
+    rule2->IFCustom(rule2, columnNumber, aggregate1, FLOAT)
+        ->ofLast(rule2, numLastEntries)
+        ->is(rule2, LessThanOrEqual, &threshold2)
+        ->then(rule2, [](void* aggValue, void* currentValue, void* ctx){
             CallbackContext* context = (CallbackContext*)ctx;
             if(context->agg1GTEThreshold1){
                 //whatever you want to do if aggregate1(columnNumber1) >= threshold1 and aggregate2(columnNumber2) <= threshold2
             }
         });
+    state->rules[0] = rule1;
+    state->rules[1] = rule2;
+    state->numRules = 2;
 
     //Insert data
-    activeRulePut(queries, 2, &key, dataPtr);
+    embedDBPut(state, &key, dataPtr);
 }
 ```
 
-## Untested but should work
+## Untested but should work 
 
-### 1. Queries Across Tables
-
-#### SQL Query
-
-```sql
-SELECT 
-    aggregate1(table1.columnNumber1), 
-    aggregate2(table2.columnNumber1)
-FROM 
-    table1, table2
-WHERE 
-    table1.key BETWEEN currentKey - (numLastEntries - 1) AND currentKey
-    AND table2.key BETWEEN currentKey - (numLastEntries - 1) AND currentKey
-HAVING 
-    aggregate1(table1.columnNumber1) >= threshold1 
-    AND aggregate2(table2.columnNumber1) <= threshold2;
-```
-
-#### Conversion
-Same as the [Multiple Queries](#4-multiple-queries) code but use the schema and state for `table1` in the first query and the schema and state for `table2` in the second query. Note that the first state is the one used to insert data so ensure the state you want to insert data into is used in the first query. 
-
-### 2. Group By
+### 1. Group By
 
 By creating a custom aggregate function with the aide of [advancedQueries' Group By function](advancedQueries.md), creating an active rule with a Group By clause should be possible.
 
-### 3. COUNT
+### 2. COUNT
 
 Use [advancedQueries](advancedQueries.md) to create a custom function to count the number rows matching a chosen criteria. Create a custom `activeRule` with the function and chosen key range.
 
 ## Unsupported SQL Queries
 
-### 4. LIMIT Queries
+### 3. LIMIT Queries
 EmbedDB does not support the SQL `LIMIT` function that returns a certain number of rows. EmbedDB only supports queries on rows withing a key range.
 
 # Conclusion
