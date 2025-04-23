@@ -3,3 +3,6 @@
 .idea/
 __pycache__/
 build/
+
+sort_data.bin
+sort_order.bin

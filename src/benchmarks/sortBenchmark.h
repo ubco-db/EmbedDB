@@ -119,22 +119,22 @@ int sortQueryBenchmark() {
         }
     }
 
-    // printf("\nSort followed by Projection\n");
-    // // Perform sort runs with different numbers of values
-    // for (int i = 0; i < 5; i++) {
-    //     printf("%d values:\n", num_values[i]);
+    printf("\nSort followed by Projection\n");
+    // Perform sort runs with different numbers of values
+    for (int i = 0; i < 5; i++) {
+        printf("%d values:\n", num_values[i]);
 
-    //     // Repeat each run for consistency
-    //     for (int j = 0; j < 1; j++) {
-    //         clock_gettime(CLOCK_MONOTONIC, &start_time);
+        // Repeat each run for consistency
+        for (int j = 0; j < 1; j++) {
+            clock_gettime(CLOCK_MONOTONIC, &start_time);
 
-    //         sort_order_first(num_values[i],stateUWA,baseSchema);
+            sort_order_first(num_values[i],stateUWA,baseSchema);
 
-    //         clock_gettime(CLOCK_MONOTONIC, &end_time);
-    //         double elapsed_ms = time_diff_ms(start_time, end_time);
-    //         printf("\tElapsed time: %.3f ms\n", elapsed_ms);
-    //     }
-    // }
+            clock_gettime(CLOCK_MONOTONIC, &end_time);
+            double elapsed_ms = time_diff_ms(start_time, end_time);
+            printf("\tElapsed time: %.3f ms\n", elapsed_ms);
+        }
+    }
 
     // Close embedDB
     embedDBClose(stateUWA);
