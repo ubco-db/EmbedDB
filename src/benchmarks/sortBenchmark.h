@@ -47,7 +47,13 @@
 #endif
 
 void insertData(embedDBState* state, const char* filename);
-void sortRun(int32_t numValues, embedDBState* stateUWA, embedDBSchema* baseSchema);
+void sort_order_last(int32_t numValues, embedDBState* stateUWA, embedDBSchema* baseSchema);
+void sort_order_first(int32_t numValues, embedDBState* stateUWA, embedDBSchema* baseSchema);
+
+double time_diff_ms(struct timespec start, struct timespec end) {
+    return (end.tv_sec - start.tv_sec) * 1000.0 +
+           (end.tv_nsec - start.tv_nsec) / 1000000.0;
+}
 
 int sortQueryBenchmark() {
     printf("Sort Query Benchmark.\n");
@@ -93,17 +99,42 @@ int sortQueryBenchmark() {
     const char datafileName[] = "data/uwa500K.bin";
     insertData(stateUWA, datafileName);
 
+    struct timespec start_time, end_time;
+    int32_t num_values[] = {100, 1000, 10000, 100000, 500000};
+    
+    printf("\nProjection followed by Sort\n");
     // Perform sort runs with different numbers of values
-    int32_t num_values[] = {100, 1000, 10000, 100000, -1};
-    for (int i = 0; i < 1; i++) {
+    for (int i = 0; i < 5; i++) {
+        printf("%d values:\n", num_values[i]);
 
         // Repeat each run for consistency
         for (int j = 0; j < 1; j++) {
+            clock_gettime(CLOCK_MONOTONIC, &start_time);
 
-            sortRun(num_values[i],stateUWA,baseSchema);
+            sort_order_last(num_values[i],stateUWA,baseSchema);
+
+            clock_gettime(CLOCK_MONOTONIC, &end_time);
+            double elapsed_ms = time_diff_ms(start_time, end_time);
+            printf("\tElapsed time: %.3f ms\n", elapsed_ms);
         }
     }
 
+    // printf("\nSort followed by Projection\n");
+    // // Perform sort runs with different numbers of values
+    // for (int i = 0; i < 5; i++) {
+    //     printf("%d values:\n", num_values[i]);
+
+    //     // Repeat each run for consistency
+    //     for (int j = 0; j < 1; j++) {
+    //         clock_gettime(CLOCK_MONOTONIC, &start_time);
+
+    //         sort_order_first(num_values[i],stateUWA,baseSchema);
+
+    //         clock_gettime(CLOCK_MONOTONIC, &end_time);
+    //         double elapsed_ms = time_diff_ms(start_time, end_time);
+    //         printf("\tElapsed time: %.3f ms\n", elapsed_ms);
+    //     }
+    // }
 
     // Close embedDB
     embedDBClose(stateUWA);
@@ -117,11 +148,8 @@ int sortQueryBenchmark() {
     return 0;
 }
 
-void sortRun(int32_t numValues, embedDBState* stateUWA, embedDBSchema* baseSchema) {
-        /**
-     * Order By:
-     * Find the top 10 lowest temperature recordings
-     */
+void sort_order_last(int32_t numValues, embedDBState* stateUWA, embedDBSchema* baseSchema) {
+
     embedDBIterator it;
     it.minKey = NULL;
     it.maxKey = NULL;
@@ -136,20 +164,40 @@ void sortRun(int32_t numValues, embedDBState* stateUWA, embedDBSchema* baseSchem
     orderByOp->init(orderByOp);
     int32_t* recordBuffer = orderByOp->recordBuffer;
     
-    printf("\nOrder By Results: %d\n", numValues);
-    printf("ID   | Time       | Temp\n");
-    printf("-----+------------+------\n");
     for (uint32_t i = 0; i < 10; i++) {
         if (!exec(orderByOp)) {
-            "[No more rows to return]";
             break;
         }
-        
-        printf("%4d | %-10lu | %-4.1f\n", i, recordBuffer[0], ((uint32_t)recordBuffer[1]) / 10.0);
     }
 
     orderByOp->close(orderByOp);
     embedDBFreeOperatorRecursive(&orderByOp);
+}
+
+void sort_order_first(int32_t numValues, embedDBState* stateUWA, embedDBSchema* baseSchema) {
+
+    embedDBIterator it;
+    it.minKey = NULL;
+    it.maxKey = NULL;
+    it.minData = NULL;
+    it.maxData = NULL;
+    embedDBInitIterator(stateUWA, &it);
+
+    embedDBOperator* scanOpOrderBy = createTableScanOperator(stateUWA, &it, baseSchema);
+    embedDBOperator* orderByOp = createOrderByOperator(stateUWA, scanOpOrderBy, 1, numValues, merge_sort_int32_comparator);
+    uint8_t projColsOB[] = {0,1};
+    embedDBOperator* projColsOrderBy = createProjectionOperator(orderByOp, 2, projColsOB);
+    projColsOrderBy->init(projColsOrderBy);
+    int32_t* recordBuffer = projColsOrderBy->recordBuffer;
+    
+    for (uint32_t i = 0; i < 10; i++) {
+        if (!exec(projColsOrderBy)) {
+            break;
+        }
+    }
+
+    projColsOrderBy->close(projColsOrderBy);
+    embedDBFreeOperatorRecursive(&projColsOrderBy);
 }
 
 void insertData(embedDBState* state, const char* filename) {

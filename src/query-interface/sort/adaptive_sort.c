@@ -55,6 +55,8 @@
 // #define     DEBUG_READ    1
 // #define     DEBUG_HEAP    0
 
+// #define ADAPTIVE_SORT_PRINT_FINISH
+
 /**
  * Prints the contents of the heap. Used for debugging.
  */
@@ -205,7 +207,7 @@ int adaptive_sort(
 
                     count=0;            /* Reset count for the next block */
                     blockIndex++;       /* Update to next block id */           
-
+                    metric->num_writes++;
 
                     #ifdef DEBUG_OUTPUT
                         printf("Wrote output block. Block index: %d\n", blockIndex);
@@ -229,7 +231,8 @@ int adaptive_sort(
 
                 count=0;            /* Reset count for the next block */
                 blockIndex++;       /* Update to next block id */ 
-                
+                metric->num_writes++;
+
                 #ifdef DEBUG_OUTPUT
                     printf("Wrote output block. Block index: %d\n", blockIndex);
                     for (int k = 0; k < values_per_page; k++)
@@ -323,7 +326,7 @@ int adaptive_sort(
             if (recordsRead > 1) {
                 // Sort page using in memory quick sort
                 metric->num_reads += 1;        
-                in_memory_quick_sort(buffer + es->headerSize, (uint32_t)recordsRead, es->record_size, es->key_offset, es->compare_fcn);
+                in_memory_quick_sort(buffer + es->headerSize, (uint32_t)recordsRead, es->record_size, es->key_offset, es->compare_fcn, metric);
             } else if (heapSize < tuplesPerPage) {   
                 // May have enough records currently in heap to continue last block. TODO: Does this make sense? It will add to last run before starting new one.
                 
@@ -364,7 +367,8 @@ int adaptive_sort(
                         break;
                     
                     // Just copy over from heap
-                    memcpy(buffer + es->headerSize + i*es->record_size, buffer+heapStartOffset, es->record_size);   /* Heap into input/output block */                
+                    memcpy(buffer + es->headerSize + i*es->record_size, buffer+heapStartOffset, es->record_size);   /* Heap into input/output block */         
+                    metric->num_memcpys++;       
                     outputCount++;
                     recordsLeft--;
 
@@ -427,7 +431,7 @@ int adaptive_sort(
                     // Use the heap value
                     memcpy(tupleBuffer, buffer + es->headerSize + i*es->record_size, es->record_size);              /* Input tuple into buffer */
                     memcpy(buffer + es->headerSize + i*es->record_size, buffer+heapStartOffset, es->record_size);   /* Heap into input/output block */                
-                    
+                    metric->num_memcpys += 2;
                     // Determine if the value is different than the last one to estimate the number of distinct values
                     if (numDistinctInRun < 255 && haveOutputKey){   
                         // Value is different
@@ -437,6 +441,7 @@ int adaptive_sort(
                     }
                     // lastOutputKey = inputVal;
                     memcpy(lastOutputKey, inputVal, es->record_size);             
+                    metric->num_memcpys++;
 
                     // Find somewhere to put the input value
                     if(es->compare_fcn(tupleBuffer+es->key_offset, lastOutputKey+es->key_offset) < 0){
@@ -447,6 +452,7 @@ int adaptive_sort(
 
                         // Put value into the unsorted list
                         memcpy(buffer+es->page_size + listSize*es->record_size, tupleBuffer, es->record_size);
+                        metric->num_memcpys++;
                         listSize++;
                     } else {
                         // Put value into the heap
@@ -464,7 +470,8 @@ int adaptive_sort(
                     }              
                     // Use the newly read value. don't move it, it's in proper place.            
                     // lastOutputKey = inputVal;       // Update the last key output      
-                    memcpy(lastOutputKey, inputVal, es->record_size);             
+                    memcpy(lastOutputKey, inputVal, es->record_size);
+                    metric->num_memcpys++;             
             
                 }
                 haveOutputKey = 1;
@@ -481,8 +488,8 @@ int adaptive_sort(
             *((int32_t *) buffer) = sublistSize;
             *((int16_t *) (buffer + BLOCK_COUNT_OFFSET)) = (int8_t)outputCount;        
             memcpy(tupleBuffer, buffer+(outputCount-1)*es->record_size+es->headerSize, es->key_size);
-            // lastOutputKey = tupleBuffer;
-            memcpy(lastOutputKey, tupleBuffer, es->record_size);             
+            memcpy(lastOutputKey, tupleBuffer, es->record_size); 
+            metric->num_memcpys+=2;            
 
 
             // Store the last key output temporarily in tuple buffer as once write out then read new block it would be gone
@@ -511,19 +518,23 @@ int adaptive_sort(
     
         // free(lastOutputKey);
         numSublist = metric->num_runs;
+        #ifdef ADAPTIVE_SORT_PRINT
         printf("Gen time: %d\n", metric->genTime);
+        #endif
 
         // Track number of distinct values per sublist    
         avgDistinct = avgDistinct + (numDistinctInRun - avgDistinct/10)*10/numSublist;  
+        #ifdef ADAPTIVE_SORT_PRINT
         printf("Final number of distinct values in sublist: %d Average: %d\n",  numDistinctInRun, avgDistinct);
+        #endif
         numDistinctInRun = 0;
     } /* end pessmistic */
 
     // No merge phase necessary
     if (numSublist == 1) {
         ((file_iterator_state_t *) iteratorState)->fileInterface->flush(outputFile);
-	*resultFilePtr = 0;
-	return 0;
+        *resultFilePtr = 0;
+        return 0;
     }
 
     // Run generation phase only (DEBUG)
@@ -540,13 +551,16 @@ int adaptive_sort(
     if (sublistVersionPossible && avgDistinct > tuplesPerPage)
         avgDistinct  = tuplesPerPage * 10;
 
+        int16_t numPasses = (int) ceil(log(numSublist)/log(bufferSizeInBlocks));
+        int32_t nobSortCost = numPasses *(10 + writeToReadRatio)/10;    
+    
+    #ifdef ADAPTIVE_SORT_PRINT
     printf("Adaptive calculation.\n");
-    int16_t numPasses = (int) ceil(log(numSublist)/log(bufferSizeInBlocks));
-    int32_t nobSortCost = numPasses *(10 + writeToReadRatio)/10;    
     printf("NOB sort cost. # runs: %d", numSublist);
     printf(" # passes: %d cost: %d\n", numPasses, nobSortCost);
     printf("MinSort cost. Num sublists: %d ", numSublist);
     printf(" Avg. distinct/sublist: %d\n", avgDistinct/10);
+    #endif
 
     // Make decision to use either no output buffer sort or MinSort
     if (avgDistinct/10 < nobSortCost) {   
@@ -557,14 +571,18 @@ int adaptive_sort(
         // If can buffer smallest value per sublist, can use a better performing version
         if (sublistVersionPossible) {
             // Use better performing version of minsort
+            #ifdef ADAPTIVE_SORT_PRINT
             printf("Performing MinSort with sorted sublists\n");
+            #endif
             ((file_iterator_state_t*) iteratorState)->file = outputFile;
             *resultFilePtr = 0;
             flash_minsort_sublist(iteratorState, tupleBuffer, outputFile, buffer, bufferSizeBytes, es, resultFilePtr, metric, compareFn, numSublist);
             *resultFilePtr = lastWritePos;
         } else {   
             // Use normal version of minsort. Do not have enough space to index a value per sublist. Assumes data is not sorted in each region
+            #ifdef ADAPTIVE_SORT_PRINT
             printf("Performing MinSort\n");
+            #endif
             ((file_iterator_state_t*) iteratorState)->file = outputFile;
             flash_minsort(iteratorState, tupleBuffer, outputFile, buffer, bufferSizeBytes, es, resultFilePtr, metric, compareFn);
             *resultFilePtr = 0;
@@ -612,29 +630,31 @@ int adaptive_sort(
         while (numSublist > 1) 
         {         
             // Check if can finish using minsort with sorted sublists
-            if (numSublist >= 32 && numSublist <= 64)// && avgDistinct/10 < 32)
-            {   
-                // Switch to MinSort to finish off
-                printf("Finishing sort with MinSort with sorted sublists\n");
-                ((file_iterator_state_t*) iteratorState)->file = outputFile;    
-                // *resultFilePtr = lastMergeStart;   
-                // fflush(outputFile);
-                ((file_iterator_state_t *) iteratorState)->fileInterface->flush(outputFile);
+            // if (numSublist >= 32 && numSublist <= 64)// && avgDistinct/10 < 32)
+            // {   
+            //     // Switch to MinSort to finish off
+            //     printf("Finishing sort with MinSort with sorted sublists\n");
+            //     ((file_iterator_state_t*) iteratorState)->file = outputFile;    
+            //     // *resultFilePtr = lastMergeStart;   
+            //     // fflush(outputFile);
+            //     ((file_iterator_state_t *) iteratorState)->fileInterface->flush(outputFile);
 
-                *resultFilePtr = lastMergeStart;           
-                flash_minsort_sublist(iteratorState, tupleBuffer, outputFile, buffer, bufferSizeBytes, es, resultFilePtr, metric, compareFn, numSublist);
-                lastMergeStart = lastMergeEnd;
-                *resultFilePtr = lastMergeStart;               
-                break; // Sort done
-            }
+            //     *resultFilePtr = lastMergeStart;           
+            //     flash_minsort_sublist(iteratorState, tupleBuffer, outputFile, buffer, bufferSizeBytes, es, resultFilePtr, metric, compareFn, numSublist);
+            //     lastMergeStart = lastMergeEnd;
+            //     *resultFilePtr = lastMergeStart;               
+            //     break; // Sort done
+            // }
 
             // Wrap-around in memory space/file after every 3rd pass
             if (passNumber % 3 == 0)
             { 
                 lastWritePos = 0;
             }
-
+            #ifdef ADAPTIVE_SORT_PRINT
             printf("Pass number: %u  Comparisons: %lu  MemCopies: %lu  TransferIn: %lu  TransferOut: %lu TransferOther: %lu Other: %lu\n", passNumber, metric->num_compar, metric->num_memcpys, numShiftIntoOutput, numShiftOutOutput, numShiftOtherBlock, other);
+            #endif
+
             passNumber++;
 
             // perform a merge
@@ -1026,6 +1046,7 @@ int adaptive_sort(
 
                                     if (destBlk > bufferSizeInBlocks)
                                     {
+                                        #ifdef ADAPTIVE_SORT_PRINT
                                         printf("Incorrect destination block. List 1: (%d, %d) List 2: (%d, %d) List 3: (%d, %d) ResultList: %d\n", record1[0],record2[0],
                                                 record1[1],record2[1],record1[2],record2[2], resultBlock);
 
@@ -1039,6 +1060,7 @@ int adaptive_sort(
                                                 printf("%d: Record: %d  Address: %p\n", k, buf + es->key_offset, buf);             
                                             }
                                         }
+                                        #endif
                                     }
                                 }
 
@@ -1381,9 +1403,10 @@ int adaptive_sort(
             lastMergeEnd                = lastWritePos;            
         }	/* end of merge */
         *resultFilePtr = lastMergeStart;
-  
-        printf("Complete. Comparisons: %u  MemCopies: %u  TransferIn: %u  TransferOut: %u TransferOther: %u Other: %d\n", metric->num_compar, metric->num_memcpys, numShiftIntoOutput, numShiftOutOutput, numShiftOtherBlock, other);
-    
+        #ifdef ADAPTIVE_SORT_PRINT_FINISH
+        printf("Complete. Comparisons: %u  Writes: %u  Reads: %u Memcpys:\n", metric->num_compar, metric->num_writes, metric->num_reads, metric->num_memcpys);
+        #endif
+
         /* cleanup */
         free(sublsFilePtr);
         free(sublsBlkPos);

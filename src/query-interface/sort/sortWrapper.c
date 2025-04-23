@@ -1,5 +1,7 @@
 #include "sortWrapper.h"
 
+#define PRINT_METRIC
+
 /**
  * @brief Adds header information and writes buffer to file 
  * 
@@ -221,6 +223,10 @@ file_iterator_state_t *startSort(sortData *data, void *unsortedFile, void *sorte
     // int err = flash_minsort(iteratorState, tuple_buffer, sortedFile, buffer, buffer_max_pages * es.page_size, &es, &result_file_ptr, &metrics, data->compareFn);
     int err = adaptive_sort(readNextRecord, iteratorState, tuple_buffer, sortedFile, buffer, buffer_max_pages, &es, &result_file_ptr, &metrics, data->compareFn, runGenOnly, writeReadRatio, data);
     
+    #ifdef PRINT_METRIC
+    printf("\tComplete. Comparisons: %d  Writes: %d  Reads: %d Memcpys: %d\n", metrics.num_compar, metrics.num_writes, metrics.num_reads, metrics.num_memcpys);
+    #endif
+
     iteratorState->resultFile = result_file_ptr;
 
 

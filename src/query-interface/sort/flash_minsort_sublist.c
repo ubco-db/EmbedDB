@@ -110,8 +110,9 @@ void init_MinSort_sublist(MinSortStateSublist* ms, external_sort_t *es, metrics_
     // Ignoring small variable overhead
     // j = (ms->memoryAvailable - 2 * SORT_KEY_SIZE - INT_SIZE) / SORT_KEY_SIZE;  
     j = (ms->memoryAvailable) / (SORT_KEY_SIZE + sizeof(uint8_t));  
+    #ifdef FLASH_MINSORT_PRINT
     printf("Memory overhead: %d  Max regions: %d\r\n",  2 * SORT_KEY_SIZE + INT_SIZE, j);                         
-   
+    #endif
     // Memory allocation    
     // Allocate minimum index in separate memory space (block 0 is input buffer, block 1 is output buffer)
     // Block 1 as output buffer is not being counted in this case,
@@ -123,9 +124,11 @@ void init_MinSort_sublist(MinSortStateSublist* ms, external_sort_t *es, metrics_
     ms->min = malloc(ms->numRegions*es->record_size);
     ms->min_set = malloc(ms->numRegions*sizeof(uint8_t));
     ms->offset = malloc(ms->numRegions*sizeof(long));     
+    #ifdef FLASH_MINSORT_PRINT
     printf("Page size: %d, Memory size: %d Record size: %d, Number of records: %lu, Number of blocks: %d, Regions: %d\r\n", 
                    es->page_size, ms->memoryAvailable, ms->record_size, ms->num_records, ms->numBlocks, ms->numRegions);
-                    
+    #endif
+                   
     for (i=0; i < ms->numRegions; i++)
         ms->min_set[i] = false; 
     regionIdx = ms->numRegions-1;
@@ -157,6 +160,7 @@ void init_MinSort_sublist(MinSortStateSublist* ms, external_sort_t *es, metrics_
         // val = getTuple_sublist(ms, 0, es);
         // ms->min[regionIdx] = val;
         memcpy(ms->min+es->record_size*regionIdx, getTuple_sublist(ms, 0, es), es->value_size);
+        metric->num_memcpys++;
         ms->min_set[regionIdx] = true;
         ms->offset[regionIdx] = lastBlock*es->page_size+es->headerSize+ms->fileOffset;
         #if DEBUG
@@ -215,6 +219,7 @@ char* next_MinSort_sublist(MinSortStateSublist* ms, external_sort_t *es, void *t
             // If min is set update current if current is not set or min is less than current
             if (ms->min_set[i] && (!ms->current_set || es->compare_fcn(ms->min+i*es->record_size+es->key_offset, ms->current+es->key_offset) < 0)) {
                 memcpy(ms->current, ms->min+i*es->record_size, es->record_size);
+                metric->num_memcpys++;
                 ms->regionIdx = i;
                 ms->regionIdx_set = true;
                 ms->current_set = true;
@@ -267,6 +272,7 @@ char* next_MinSort_sublist(MinSortStateSublist* ms, external_sort_t *es, void *t
             // ms->min[ms->regionIdx] = getTuple_sublist(ms,0,es);  
             ms->offset[ms->regionIdx] = curBlk*es->page_size+es->headerSize;
             memcpy(ms->min+es->record_size*ms->regionIdx, getTuple_sublist(ms,0,es), es->value_size);
+            metric->num_memcpys++;
             ms->min_set[ms->regionIdx] = true;
         }        
     } else {
@@ -274,6 +280,7 @@ char* next_MinSort_sublist(MinSortStateSublist* ms, external_sort_t *es, void *t
         // ms->min[ms->regionIdx] = getTuple_sublist(ms,i,es); 
         ms->offset[ms->regionIdx] += es->record_size;
         memcpy(ms->min+es->record_size*ms->regionIdx, getTuple_sublist(ms,i,es), es->value_size);
+        metric->num_memcpys++;
         ms->min_set[ms->regionIdx] = true;
 
         // Current tuple is set and each to min tuple
@@ -337,7 +344,9 @@ int flash_minsort_sublist(
         long    numSubList
 )
 {
+    #ifdef FLASH_MINSORT_PRINT
     printf("*Flash Minsort (sorted sublist version)*\n");       
+    #endif 
 
     MinSortStateSublist ms;
     ms.buffer = buffer;
@@ -352,7 +361,7 @@ int flash_minsort_sublist(
     int32_t blockIndex = 0;
     int16_t values_per_page = (es->page_size - es->headerSize) / es->record_size;
     char* outputBuffer = buffer+es->page_size;    
-    unsigned long lastWritePos = ms.fileOffset +   es->num_pages * es->page_size;     
+    unsigned long lastWritePos = ms.fileOffset + es->num_pages * es->page_size;     
 
     // Write 
     while (next_MinSort_sublist(&ms, es, (char*) (outputBuffer+count*es->record_size+es->headerSize), metric) != NULL)

@@ -25,6 +25,7 @@
 
 #include <string.h>
 
+
 #include "in_memory_sort.h"
 
 int8_t
@@ -57,7 +58,8 @@ in_memory_quick_sort_partition(
 	int key_offset,
 	int8_t (*compare_fcn)(void* a, void* b),
 	char* low,
-	char* high
+	char* high,
+	metrics_t *metric
 ) {
 	char* pivot	= low;
 	char* lower_bound	= low - value_size;
@@ -66,14 +68,17 @@ in_memory_quick_sort_partition(
 	while (1) {
 		do {
 			upper_bound -= value_size;
+			metric->num_compar++;
 		} while (compare_fcn(upper_bound + key_offset, pivot + key_offset) > 0);
 
 		do {
 			lower_bound += value_size;
+			metric->num_compar++;
 		} while (compare_fcn(lower_bound + key_offset, pivot + key_offset) < 0);
 
 		if (lower_bound < upper_bound) {
 			in_memory_swap(tmp_buffer, value_size, lower_bound, upper_bound);
+			metric->num_memcpys+=3;
 		}
 		else {
 			return upper_bound;
@@ -89,13 +94,14 @@ in_memory_quick_sort_helper(
 	int key_offset,
 	int8_t (*compare_fcn)(void* a, void* b),
 	char* low,
-	char* high
+	char* high,
+	metrics_t *metric
 ) {
 	if (low < high) {
-		char* pivot = (char *)in_memory_quick_sort_partition(tmp_buffer, value_size, key_offset, compare_fcn, low, high);
+		char* pivot = (char *)in_memory_quick_sort_partition(tmp_buffer, value_size, key_offset, compare_fcn, low, high, metric);
 
-		in_memory_quick_sort_helper(tmp_buffer, num_values, value_size, key_offset, compare_fcn, low, pivot);
-		in_memory_quick_sort_helper(tmp_buffer, num_values, value_size, key_offset, compare_fcn, pivot + value_size, high);
+		in_memory_quick_sort_helper(tmp_buffer, num_values, value_size, key_offset, compare_fcn, low, pivot, metric);
+		in_memory_quick_sort_helper(tmp_buffer, num_values, value_size, key_offset, compare_fcn, pivot + value_size, high, metric);
 	}
 }
 
@@ -105,14 +111,15 @@ in_memory_quick_sort(
 	uint32_t num_values,
 	int value_size,
 	int key_offset,
-	int8_t (*compare_fcn)(void* a, void* b)
+	int8_t (*compare_fcn)(void* a, void* b),
+	metrics_t *metric
 ) {
 	void* tmp_buffer = malloc(value_size);
 	if(NULL == tmp_buffer) return 8;
 
 	/*void* low = data*/
 	char* high = (char*)data + (num_values-1)*value_size;
-	in_memory_quick_sort_helper(tmp_buffer, num_values, value_size, key_offset, compare_fcn, (char*)data, high);
+	in_memory_quick_sort_helper(tmp_buffer, num_values, value_size, key_offset, compare_fcn, (char*)data, high, metric);
 
 	free(tmp_buffer);
 

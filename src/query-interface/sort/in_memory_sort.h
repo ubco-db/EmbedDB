@@ -9,13 +9,16 @@ extern "C" {
 #include <stdint.h>
 // #include <alloca.h>
 
+#include "external_sort.h"
+
 int
 in_memory_quick_sort(
 	void *data,
 	uint32_t num_values,
 	int value_size,
 	int key_offset,
-	int8_t (*compare_fcn)(void* a, void* b)
+	int8_t (*compare_fcn)(void* a, void* b),
+	metrics_t *metrics
 );
 
 /**

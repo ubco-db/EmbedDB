@@ -133,7 +133,9 @@ void init_MinSort(MinSortState *ms, external_sort_t *es, metrics_t *metric, int8
     ms->numBlocks         = es->num_pages;
     ms->records_per_block = (es->page_size - es->headerSize) / es->record_size;
     j = (ms->memoryAvailable - 2 * es->page_size - 2 * es->key_size - INT_SIZE) / (es->key_size + sizeof(uint8_t));
+    #ifdef FLASH_MINSORT_PRINT
     printf("Memory overhead: %d  Max regions: %d\r\n",  2 * es->key_size + INT_SIZE, j);
+    #endif
     ms->blocks_per_region = (uint32_t)ceil((double)ms->numBlocks / j);
     ms->numRegions        = (uint32_t)ceil((double)ms->numBlocks / ms->blocks_per_region);
 
@@ -162,6 +164,7 @@ void init_MinSort(MinSortState *ms, external_sort_t *es, metrics_t *metric, int8
         // Set inital value to first read.
         // ms->min[regionIdx] = getValuePtr(ms, 0, es);
         memcpy(getMinRegionPtr(ms, regionIdx, es), getValuePtr(ms, 0, es), es->key_size);
+        metric->num_memcpys++;
         ms->min_initialized[regionIdx] = true;
 
        /* Process remaining records in the block */
@@ -173,6 +176,7 @@ void init_MinSort(MinSortState *ms, external_sort_t *es, metrics_t *metric, int8
                 /* Update region’s minimum if current record is smaller */
                 if (compareFn(val, getMinRegionPtr(ms, regionIdx, es)) == -1) {
                     memcpy(getMinRegionPtr(ms, regionIdx, es), val, es->key_size);
+                    metric->num_memcpys++;
                     ms->min_initialized[regionIdx] = true;
                 }
             } else
@@ -228,6 +232,7 @@ char *next_MinSort(MinSortState *ms, external_sort_t *es, void *tupleBuffer, met
             // If the current region has a valid minimum, and it's less than the current tuple, update the minimum
             if (ms->min_initialized[i] && (!ms->current_initialized || compareFn(getMinRegionPtr(ms, i, es), ms->current) == -1)) {
                 memcpy(ms->current, getMinRegionPtr(ms, i, es), es->key_size); // ms->current = ms->min[i];
+                metric->num_memcpys++;
                 ms->current_initialized = true;
                 ms->regionIdx = i; // Update the region index to the one containing the new minimum
             }
@@ -281,6 +286,7 @@ char *next_MinSort(MinSortState *ms, external_sort_t *es, void *tupleBuffer, met
             // If the current record is greater than the current minimum and is smaller than the next, update the next minimum
             if (compareFn(dataVal, ms->current) == 1 && (!ms->next_initialized || compareFn(dataVal, ms->next) == -1)) {
                 memcpy(ms->next, dataVal, es->key_size); // ms->next = dataVal;
+                metric->num_memcpys++;
                 ms->next_initialized = true;
                 ms->nextIdx = 0;
             }
@@ -330,6 +336,7 @@ done:
             // If the current record is greater than the current minimum, update the next tuple if needed
             if (compareFn(dataVal, ms->current) == 1 && (!ms->next_initialized || compareFn(dataVal, ms->next) == -1)) {
                 memcpy(ms->next, dataVal, es->key_size); // Update the next tuple
+                metric->num_memcpys++;
                 ms->next_initialized = true;
                 ms->nextIdx = 0;
             }
@@ -345,6 +352,7 @@ done2:
             ms->min_initialized[ms->regionIdx] = false;
         } else {
             memcpy(getMinRegionPtr(ms, ms->regionIdx, es), ms->next, es->key_size); // Update the region's minimum
+            metric->num_memcpys++;
             ms->next_initialized = false;
             ms->min_initialized[ms->regionIdx] = true;
         }
@@ -450,6 +458,7 @@ int flash_minsort(
                 printf("%d: Output Record: %d\n", k, buf->key);
             }
 #endif
+            metric->num_writes++;
             blockIndex++;
         }
     }
@@ -462,7 +471,7 @@ int flash_minsort(
         if (0 == ((file_iterator_state_t *)iteratorState)->fileInterface->write(outputBuffer, blockIndex, es->page_size, outputFile)) {
             return 9; // Return error code if writing to the output file fails
         }
-
+        metric->num_writes++;
         blockIndex++;
         count = 0;
     }

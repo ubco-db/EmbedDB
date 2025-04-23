@@ -15,6 +15,7 @@
 #define SORT_DATA_LOCATION "sort_data.bin"
 #define SORT_ORDER_LOCATION "sort_order.bin"
 
+
 typedef struct embedDBOperator embedDBOperator;
 typedef struct sortData sortData;
 
