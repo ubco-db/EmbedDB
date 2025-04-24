@@ -193,6 +193,36 @@ typedef struct {
      * @return	1 for success and 0 for failure
      */
     int8_t (*flush)(void *file);
+
+    /**
+     * @brief Checks if the last operation causes an error
+     * @return  1 for error and 0 otherwise
+     */
+    int8_t (*error)(void *file);
+
+    /**
+     * @brief Checks if the last operation was an eof
+     * @return 1 for eof and 0 otherwise
+     */
+    int8_t (*eof)(void *file);
+
+    /**
+     *  @brief Reads the same as standard c fread()
+     */
+    int8_t (*readRel)(void *buffer, uint32_t size, uint32_t n, void *file);
+
+    int8_t (*writeRel)(void *buffer, uint32_t size, uint32_t n, void *file);
+
+    /**
+     * 
+     */
+    int8_t (*seek)(uint32_t n, void *file);
+
+    /**
+     * 
+     */
+    int32_t (*tell)(void *file);
+
 } embedDBFileInterface;
 
 typedef struct {

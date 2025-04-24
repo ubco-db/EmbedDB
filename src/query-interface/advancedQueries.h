@@ -42,6 +42,8 @@ extern "C" {
 
 #include "../embedDB/embedDB.h"
 #include "schema.h"
+#include "sort/external_sort.h"
+#include "sort/sortWrapper.h"
 
 #define SELECT_GT 0
 #define SELECT_LT 1
@@ -122,6 +124,20 @@ typedef struct embedDBOperator {
     void* recordBuffer;
 } embedDBOperator;
 
+typedef struct sortData {
+    uint32_t count;
+    uint16_t recordSize;
+    int8_t colNum;
+    int8_t keyOffset;
+    int8_t keySize;
+    int8_t (*compareFn)(void *a, void *b);
+    int32_t tupleLimit;
+
+    void *readBuffer;
+    embedDBFileInterface *fileInterface;
+    file_iterator_state_t *fileIterator;
+} sortData;
+
 /**
  * @brief	Extract a record from an operator
  * @return	1 if a record was returned, 0 if there are no more rows to return
@@ -175,6 +191,16 @@ embedDBOperator* createAggregateOperator(embedDBOperator* input, int8_t (*groupf
  * @brief	Creates an operator for perfoming an equijoin on the keys (sorted and distinct) of two tables
  */
 embedDBOperator* createKeyJoinOperator(embedDBOperator* input1, embedDBOperator* input2);
+
+/**
+ * @brief Create an operator that will reorder records based on a given direction
+ * 
+ * @param dbState       The database state
+ * @param input         The operator that this operator can pull records from
+ * @param colNum        The column that is being sorted on 
+ * @param compareFn     The function being used to make comparisons between row data     
+ */
+embedDBOperator* createOrderByOperator(embedDBState *dbState, embedDBOperator *input, int8_t colNum, int32_t limit,  int8_t (*compareFn)(void *a, void *b));
 
 //////////////////////////////////
 // Prebuilt aggregate functions //

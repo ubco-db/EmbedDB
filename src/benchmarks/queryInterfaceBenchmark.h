@@ -238,6 +238,42 @@ int advancedQueryExample() {
     projOp2->close(projOp2);
     embedDBFreeOperatorRecursive(&projOp2);
 
+    /**
+     * Order By:
+     * Find the top 10 lowest temperature recordings
+     */
+    
+    uint32_t limit = 1024;
+    it.minKey = NULL;
+    it.maxKey = NULL;
+    it.minData = NULL;
+    it.maxData = NULL;
+    embedDBInitIterator(stateUWA, &it);
+
+    embedDBOperator* scanOpOrderBy = createTableScanOperator(stateUWA, &it, baseSchema);
+    uint8_t projColsOB[] = {0,1};
+    embedDBOperator* projColsOrderBy = createProjectionOperator(scanOpOrderBy, 2, projColsOB);
+    embedDBOperator* orderByOp = createOrderByOperator(stateUWA, projColsOrderBy, 1, merge_sort_int32_comparator);
+    orderByOp->init(orderByOp);
+    recordBuffer = orderByOp->recordBuffer;
+    
+    printf("\nOrder By Results:\n");
+    printf("ID   | Time       | Temp\n");
+    printf("-----+------------+------\n");
+    for (uint32_t i = 0; i < limit; i++) {
+        if (!exec(orderByOp)) {
+            "[No more rows to return]";
+            break;
+        }
+        
+        printf("%4d | %-10lu | %-4.1f\n", i, recordBuffer[0], ((uint32_t)recordBuffer[1]) / 10.0);
+    }
+
+    orderByOp->close(orderByOp);
+    embedDBFreeOperatorRecursive(&orderByOp);
+
+
+
     /**	Aggregate Count:
      * 	Get days in which there were at least 50 minutes of wind measurements over 15
      */
@@ -352,7 +388,7 @@ int advancedQueryExample() {
 
     // Prepare sea table
     embedDBOperator* scan4_2 = createTableScanOperator(stateSEA, &it2, baseSchema);
-    scan4_2->init(scan4_2);
+    scan4_2-int32_t*>init(scan4_2);
 
     // Join tables
     embedDBOperator* join4 = createKeyJoinOperator(shift4_1, scan4_2);
