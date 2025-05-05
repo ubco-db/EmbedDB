@@ -32,7 +32,7 @@
 
 embedDBState *state;
 
-void setupEmbedDB(int8_t parameters) {
+void setupEmbedDB(int16_t parameters) {
     /* The setup below will result in having 42 records per page */
     state = (embedDBState *)malloc(sizeof(embedDBState));
     TEST_ASSERT_NOT_NULL_MESSAGE(state, "Unable to allocate embedDBState.");
@@ -63,7 +63,7 @@ void setupEmbedDB(int8_t parameters) {
 }
 
 void setUp() {
-    int8_t setupParamaters = EMBEDDB_RECORD_LEVEL_CONSISTENCY | EMBEDDB_RESET_DATA;
+    int16_t setupParamaters = EMBEDDB_RECORD_LEVEL_CONSISTENCY | EMBEDDB_RESET_DATA;
     setupEmbedDB(setupParamaters);
 }
 

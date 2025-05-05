@@ -103,7 +103,7 @@ void embedDBInit_should_return_erorr_if_numIndexPages_is_not_divisible_by_eraseS
     state->numDataPages = 300;
     state->eraseSizeInPages = 3;
     state->bitmapSize = 1;
-    state->parameters = EMBEDDB_USE_INDEX | EMBEDDB_RESET_DATA;
+    state->parameters = EMBEDDB_USE_INDEX | EMBEDDB_RESET_DATA | EMBEDDB_USE_BMAP;
     state->inBitmap = inBitmapInt8;
     state->updateBitmap = updateBitmapInt8;
     state->buildBitmapFromRange = buildBitmapInt8FromRange;

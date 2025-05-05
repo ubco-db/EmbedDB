@@ -278,7 +278,7 @@ void setupembedDBInstanceKeySize4DataSize12(embedDBState *state, uint32_t number
     TEST_ASSERT_NOT_NULL_MESSAGE(state->buffer, "Failed to allocate EmbedDB buffer.");
     state->numDataPages = 20000;
     state->numIndexPages = 1000;
-    state->parameters = EMBEDDB_RESET_DATA | EMBEDDB_USE_INDEX;
+    state->parameters = EMBEDDB_RESET_DATA | EMBEDDB_USE_INDEX | EMBEDDB_USE_BMAP;
     state->eraseSizeInPages = 4;
     state->fileInterface = getFileInterface();
     char path[40];
@@ -307,7 +307,7 @@ void setupembedDBInstanceKeySize4DataSize12WithVarData(embedDBState *state, uint
     state->numDataPages = 22000;
     state->numIndexPages = 1000;
     state->numVarPages = 44000;
-    state->parameters = EMBEDDB_RESET_DATA | EMBEDDB_USE_INDEX | EMBEDDB_USE_VDATA;
+    state->parameters = EMBEDDB_RESET_DATA | EMBEDDB_USE_INDEX | EMBEDDB_USE_VDATA | EMBEDDB_USE_BMAP;
     state->eraseSizeInPages = 4;
     state->fileInterface = getFileInterface();
     char path[40];

@@ -34,7 +34,7 @@
 
 embedDBState *state;
 
-void setupEmbedDB(int8_t parameters) {
+void setupEmbedDB(int16_t parameters) {
     /* The setup below will result in having 42 records per page */
     state = (embedDBState *)malloc(sizeof(embedDBState));
     TEST_ASSERT_NOT_NULL_MESSAGE(state, "Unable to allocate embedDBState.");
@@ -65,7 +65,7 @@ void setupEmbedDB(int8_t parameters) {
 }
 
 void setUp() {
-    int8_t setupParamaters = EMBEDDB_RECORD_LEVEL_CONSISTENCY | EMBEDDB_RESET_DATA;
+    int16_t setupParamaters = EMBEDDB_RECORD_LEVEL_CONSISTENCY | EMBEDDB_RESET_DATA;
     setupEmbedDB(setupParamaters);
 }
 
@@ -180,7 +180,7 @@ void record_level_consistency_blocks_should_wrap_when_storage_is_full() {
 void embedDBInit_should_detect_when_no_records_written_with_record_level_consistency() {
     /* close embedDB and recover */
     tearDown();
-    int8_t setupParameters = EMBEDDB_RECORD_LEVEL_CONSISTENCY;
+    int16_t setupParameters = EMBEDDB_RECORD_LEVEL_CONSISTENCY;
     setupEmbedDB(setupParameters);
 
     /* test that we recovered correctly to the default state */
@@ -197,7 +197,7 @@ void embedDBInit_should_recover_record_level_consistency_records_when_no_permane
 
     /* close embedDB and recover */
     tearDown();
-    int8_t setupParameters = EMBEDDB_RECORD_LEVEL_CONSISTENCY;
+    int16_t setupParameters = EMBEDDB_RECORD_LEVEL_CONSISTENCY;
     setupEmbedDB(setupParameters);
 
     /* test that we recovered correctly */
@@ -235,7 +235,7 @@ void embedDBInit_should_recover_record_level_consistency_records_when_one_perman
 
     /* close embedDB and recover */
     tearDown();
-    int8_t setupParameters = EMBEDDB_RECORD_LEVEL_CONSISTENCY;
+    int16_t setupParameters = EMBEDDB_RECORD_LEVEL_CONSISTENCY;
     setupEmbedDB(setupParameters);
 
     /* Check that data was initialised correctly */
@@ -258,7 +258,7 @@ void embedDBInit_should_recover_record_level_consistency_records_when_four_perma
 
     /* close embedDB and recover */
     tearDown();
-    int8_t setupParameters = EMBEDDB_RECORD_LEVEL_CONSISTENCY;
+    int16_t setupParameters = EMBEDDB_RECORD_LEVEL_CONSISTENCY;
     setupEmbedDB(setupParameters);
 
     /* Check that data was initialised correctly */
@@ -303,7 +303,7 @@ void embedDBInit_should_recover_record_level_consistency_records_when_eight_perm
 
     /* close embedDB and recover */
     tearDown();
-    int8_t setupParameters = EMBEDDB_RECORD_LEVEL_CONSISTENCY;
+    int16_t setupParameters = EMBEDDB_RECORD_LEVEL_CONSISTENCY;
     setupEmbedDB(setupParameters);
 
     /* Check that data was initialised correctly */
@@ -333,7 +333,7 @@ void embedDBInit_should_recover_record_level_consistency_records_when_twenty_one
 
     /* close embedDB and recover */
     tearDown();
-    int8_t setupParameters = EMBEDDB_RECORD_LEVEL_CONSISTENCY;
+    int16_t setupParameters = EMBEDDB_RECORD_LEVEL_CONSISTENCY;
     setupEmbedDB(setupParameters);
 
     /* Check that data was initialised correctly */
@@ -355,7 +355,7 @@ void embedDBInit_should_recover_record_level_consistency_records_when_twenty_thr
 
     /* close embedDB and recover */
     tearDown();
-    int8_t setupParameters = EMBEDDB_RECORD_LEVEL_CONSISTENCY;
+    int16_t setupParameters = EMBEDDB_RECORD_LEVEL_CONSISTENCY;
     setupEmbedDB(setupParameters);
 
     /* Check that data was initialised correctly */
@@ -387,7 +387,7 @@ void embedDBInit_should_recover_correctly_with_one_wraped_record_level_consisten
 
     /* close embedDB and recover */
     tearDown();
-    int8_t setupParameters = EMBEDDB_RECORD_LEVEL_CONSISTENCY;
+    int16_t setupParameters = EMBEDDB_RECORD_LEVEL_CONSISTENCY;
     setupEmbedDB(setupParameters);
 
     /* Check that data was initialised correctly */
@@ -419,7 +419,7 @@ void embedDBInit_should_recover_correctly_with_both_record_level_consistency_blo
 
     /* close embedDB and recover */
     tearDown();
-    int8_t setupParameters = EMBEDDB_RECORD_LEVEL_CONSISTENCY;
+    int16_t setupParameters = EMBEDDB_RECORD_LEVEL_CONSISTENCY;
     setupEmbedDB(setupParameters);
 
     /* Check that data was initialised correctly */
@@ -451,7 +451,7 @@ void embedDBInit_should_recover_correctly_with_junk_data_at_start_of_data_file()
 
     /* close embedDB and recover */
     tearDown();
-    int8_t setupParameters = EMBEDDB_RECORD_LEVEL_CONSISTENCY;
+    int16_t setupParameters = EMBEDDB_RECORD_LEVEL_CONSISTENCY;
     setupEmbedDB(setupParameters);
 
     /* Check that 32 pages of records and 33 RLC recordsy */
@@ -479,7 +479,7 @@ void embedDBInit_should_recover_correctly_after_wrapping_with_one_page_of_data_a
 
     /* close embedDB and recover */
     tearDown();
-    int8_t setupParameters = EMBEDDB_RECORD_LEVEL_CONSISTENCY;
+    int16_t setupParameters = EMBEDDB_RECORD_LEVEL_CONSISTENCY;
     setupEmbedDB(setupParameters);
 
     /* Check that data was initialised correctly */
@@ -507,7 +507,7 @@ void embedDBInit_should_recover_correctly_when_old_permanent_records_in_record_l
 
     /* close embedDB and recover */
     tearDown();
-    int8_t setupParameters = EMBEDDB_RECORD_LEVEL_CONSISTENCY;
+    int16_t setupParameters = EMBEDDB_RECORD_LEVEL_CONSISTENCY;
     setupEmbedDB(setupParameters);
 
     /* Check that data was initialised correctly */
@@ -524,7 +524,7 @@ void embedDBInit_should_recover_correctly_after_wrapping_several_times() {
 
     /* close embedDB and recover */
     tearDown();
-    int8_t setupParameters = EMBEDDB_RECORD_LEVEL_CONSISTENCY;
+    int16_t setupParameters = EMBEDDB_RECORD_LEVEL_CONSISTENCY;
     setupEmbedDB(setupParameters);
 
     /* Check that data was initialised correctly */
