@@ -60,6 +60,8 @@ void buildBitmapInt64FromRange(void *min, void *max, void *bm);
 /* Recordwise functions */
 int8_t int32Comparator(void *a, void *b);
 int8_t int64Comparator(void *a, void *b);
+int8_t floatComparator(void *a, void *b);
+int8_t doubleComparator(void *a, void *b);
 
 #ifdef __cplusplus
 }

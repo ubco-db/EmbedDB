@@ -245,10 +245,27 @@ int8_t int32Comparator(void *a, void *b) {
 }
 
 int8_t int64Comparator(void *a, void *b) {
-    int64_t result = *((int64_t *)a) - *((int64_t *)b);
+    int64_t i1, i2;
+    memcpy(&i1, a, sizeof(int64_t));
+    memcpy(&i2, b, sizeof(int64_t));
+    int64_t result = i1 - i2;
     if (result < 0)
         return -1;
     if (result > 0)
         return 1;
     return 0;
+}
+
+int8_t floatComparator(void *a, void *b) {
+    float f1, f2;
+    memcpy(&f1, a, sizeof(float));
+    memcpy(&f2, b, sizeof(float));
+    return (f1 > f2) - (f1 < f2);
+}
+
+int8_t doubleComparator(void *a, void *b) {
+    double f1, f2;
+    memcpy(&f1, a, sizeof(double));
+    memcpy(&f2, b, sizeof(double));
+    return (f1 > f2) - (f1 < f2);
 }

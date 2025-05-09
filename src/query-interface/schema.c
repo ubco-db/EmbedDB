@@ -49,11 +49,15 @@
  * @param	numCols			The total number of columns in table
  * @param	colSizes		An array with the size of each column. Max size is 127
  * @param	colSignedness	An array describing if the data in the column is signed or unsigned. Use the defined constants embedDB_COLUMNN_SIGNED or embedDB_COLUMN_UNSIGNED
+ * @param   colTypes        An array describing the type of the column. Use the defined constants embedDB_COLUMN_INT or embedDB_COLUMN_FLOAT
  */
-embedDBSchema* embedDBCreateSchema(uint8_t numCols, int8_t* colSizes, int8_t* colSignedness) {
+embedDBSchema* embedDBCreateSchema(uint8_t numCols, int8_t* colSizes, int8_t* colSignedness, ColumnType* colTypes) {
     embedDBSchema* schema = malloc(sizeof(embedDBSchema));
     schema->columnSizes = malloc(numCols * sizeof(int8_t));
     schema->numCols = numCols;
+    schema->columnTypes = malloc(numCols * sizeof(ColumnType));
+    memcpy(schema->columnTypes, colTypes, numCols * sizeof(ColumnType));
+
     uint16_t totalSize = 0;
     for (uint8_t i = 0; i < numCols; i++) {
         int8_t sign = colSignedness[i];
@@ -86,6 +90,7 @@ embedDBSchema* embedDBCreateSchema(uint8_t numCols, int8_t* colSizes, int8_t* co
 void embedDBFreeSchema(embedDBSchema** schema) {
     if (*schema == NULL) return;
     free((*schema)->columnSizes);
+    free((*schema)->columnTypes);
     free(*schema);
     *schema = NULL;
 }
@@ -114,13 +119,15 @@ embedDBSchema* copySchema(const embedDBSchema* schema) {
     }
     copy->numCols = schema->numCols;
     copy->columnSizes = malloc(schema->numCols * sizeof(int8_t));
-    if (copy->columnSizes == NULL) {
+    copy->columnTypes = malloc(schema->numCols * sizeof(ColumnType));
+    if (copy->columnSizes == NULL || copy->columnTypes == NULL) {
 #ifdef PRINT_ERRORS
         printf("ERROR: malloc failed while copying schema\n");
 #endif
         return NULL;
     }
     memcpy(copy->columnSizes, schema->columnSizes, schema->numCols * sizeof(int8_t));
+    memcpy(copy->columnTypes, schema->columnTypes, schema->numCols * sizeof(ColumnType));
     return copy;
 }
 
