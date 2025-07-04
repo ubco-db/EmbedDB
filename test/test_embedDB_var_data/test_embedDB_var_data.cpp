@@ -113,10 +113,11 @@ void initState(uint32_t dataSize) {
     state->buildBitmapFromRange = buildBitmapInt8FromRange;
     state->compareKey = int32Comparator;
     state->compareData = int32Comparator;
+
     // Set active rules
-    #define MAX_RULES 0
-    state->rules = (activeRule**)calloc(MAX_RULES, sizeof(activeRule*));
+    state->rules = NULL;
     state->numRules = 0;
+    
     embedDBResetStats(state);
 }
 

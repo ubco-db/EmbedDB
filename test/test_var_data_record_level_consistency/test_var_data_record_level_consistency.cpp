@@ -50,8 +50,7 @@ void setupEmbedDB(int8_t parameters) {
     state->buffer = malloc((size_t)state->bufferSizeInBlocks * state->pageSize);
 
     // Set active rules
-    #define MAX_RULES 0
-    state->rules = (activeRule**)calloc(MAX_RULES, sizeof(activeRule*));
+    state->rules = NULL;
     state->numRules = 0;
 
     TEST_ASSERT_NOT_NULL_MESSAGE(state->buffer, "Failed to allocate buffer for EmbedDB.");

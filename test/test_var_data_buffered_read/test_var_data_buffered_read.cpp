@@ -474,8 +474,7 @@ embedDBState *init_state() {
     state->varFile = setupFile(varPath);
 
     // Set active rules
-    #define MAX_RULES 0
-    state->rules = (activeRule**)calloc(MAX_RULES, sizeof(activeRule*));
+    state->rules = NULL;
     state->numRules = 0;
 
     // configure state

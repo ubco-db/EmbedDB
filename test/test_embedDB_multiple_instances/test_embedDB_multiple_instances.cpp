@@ -93,17 +93,17 @@ void setupembedDBInstanceKeySize4DataSize4(embedDBState *state, int number) {
     state->eraseSizeInPages = 4;
     state->fileInterface = getFileInterface();
 
-    // Set active rules
-    #define MAX_RULES 0
-    state->rules = (activeRule**)calloc(MAX_RULES, sizeof(activeRule*));
-    state->numRules = 0;
-
     char dataPath[40];
     snprintf(dataPath, 40, DATA_FILE_PATH, number);
     state->dataFile = setupFile(dataPath);
     state->compareKey = int32Comparator;
     state->compareData = int32Comparator;
     int8_t result = embedDBInit(state, 1);
+
+    // Set active rules
+    state->rules = NULL;
+    state->numRules = 0;
+
     TEST_ASSERT_EQUAL_INT8_MESSAGE(0, result, "embedDB init did not return zero when initializing state.");
 }
 
@@ -299,6 +299,9 @@ void setupembedDBInstanceKeySize4DataSize12(embedDBState *state, uint32_t number
     state->compareKey = int32Comparator;
     state->compareData = int32Comparator;
     int8_t result = embedDBInit(state, 1);
+    // Set active rules
+    state->rules = NULL;
+    state->numRules = 0;
     TEST_ASSERT_EQUAL_INT8_MESSAGE(0, result, "embedDB init did not return zero when initializing state.");
 }
 
@@ -330,6 +333,9 @@ void setupembedDBInstanceKeySize4DataSize12WithVarData(embedDBState *state, uint
     state->compareKey = int32Comparator;
     state->compareData = int32Comparator;
     int8_t result = embedDBInit(state, 1);
+    // Set active rules
+    state->rules = NULL;
+    state->numRules = 0;
     TEST_ASSERT_EQUAL_INT8_MESSAGE(0, result, "embedDB init did not return zero when initializing state.");
 }
 

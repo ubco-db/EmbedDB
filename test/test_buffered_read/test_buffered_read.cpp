@@ -340,8 +340,7 @@ embedDBState* init_state() {
     TEST_ASSERT_EQUAL_INT8_MESSAGE(0, result, "EmbedDB did not initialize correctly.");
 
     // Set active rules
-    #define MAX_RULES 0
-    state->rules = (activeRule**)calloc(MAX_RULES, sizeof(activeRule*));
+    state->rules = NULL;
     state->numRules = 0;
 
     return state;
