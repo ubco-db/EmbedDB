@@ -48,8 +48,6 @@ void setupEmbedDB(int8_t parameters) {
     state->bufferSizeInBlocks = 4;
     state->numSplinePoints = 8;
     state->buffer = malloc((size_t)state->bufferSizeInBlocks * state->pageSize);
-
-    // Set active rules
     state->rules = NULL;
     state->numRules = 0;
 

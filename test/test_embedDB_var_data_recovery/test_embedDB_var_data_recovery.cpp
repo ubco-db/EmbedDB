@@ -82,8 +82,6 @@ void setupEmbedDB() {
     state->bufferSizeInBlocks = 4;
     state->numSplinePoints = 8;
     state->buffer = calloc(1, state->pageSize * state->bufferSizeInBlocks);
-
-    // Set active rules
     state->rules = NULL;
     state->numRules = 0;
 

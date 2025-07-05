@@ -472,8 +472,6 @@ embedDBState *init_state() {
     state->dataFile = setupFile(dataPath);
     state->indexFile = setupFile(indexPath);
     state->varFile = setupFile(varPath);
-
-    // Set active rules
     state->rules = NULL;
     state->numRules = 0;
 

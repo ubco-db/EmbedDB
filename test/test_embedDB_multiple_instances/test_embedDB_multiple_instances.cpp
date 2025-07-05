@@ -99,8 +99,6 @@ void setupembedDBInstanceKeySize4DataSize4(embedDBState *state, int number) {
     state->compareKey = int32Comparator;
     state->compareData = int32Comparator;
     int8_t result = embedDBInit(state, 1);
-
-    // Set active rules
     state->rules = NULL;
     state->numRules = 0;
 
@@ -299,7 +297,6 @@ void setupembedDBInstanceKeySize4DataSize12(embedDBState *state, uint32_t number
     state->compareKey = int32Comparator;
     state->compareData = int32Comparator;
     int8_t result = embedDBInit(state, 1);
-    // Set active rules
     state->rules = NULL;
     state->numRules = 0;
     TEST_ASSERT_EQUAL_INT8_MESSAGE(0, result, "embedDB init did not return zero when initializing state.");
@@ -333,7 +330,6 @@ void setupembedDBInstanceKeySize4DataSize12WithVarData(embedDBState *state, uint
     state->compareKey = int32Comparator;
     state->compareData = int32Comparator;
     int8_t result = embedDBInit(state, 1);
-    // Set active rules
     state->rules = NULL;
     state->numRules = 0;
     TEST_ASSERT_EQUAL_INT8_MESSAGE(0, result, "embedDB init did not return zero when initializing state.");

@@ -96,7 +96,6 @@ void setupEmbedDB() {
     state->compareData = int32Comparator;
     int8_t result = embedDBInit(state, 1);
 
-    // Set active rules
     state->rules = NULL;
     state->numRules = 0;
 
