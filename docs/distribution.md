@@ -5,7 +5,7 @@ The EmbedDB project is also conviently packaged in to a distribution version con
 
 To run the distribution code, make sure that PlatformIO is installed (see [setup](setup.md)). Then, select the PlatformIO extension on the sidebar. Under the *Project Tasks* choose *due-dist > General > Upload and Monitor* to compile, upload, and monitor the EmbedDB example using the distribution version of EmbedDB.
 
-Alternatively, useing the PlatformIO command line interface, run the following command from the root of the project:
+Alternatively, using the PlatformIO command line interface, run the following command from the root of the project:
 
 ```cmd
 pio run -e due-dist -t upload -t monitor
@@ -21,7 +21,7 @@ The suite of unit tests for EmbedDB can also be run using the distribution versi
 
 Using PlatformIO, select the PlatformIO extension on the sidebar. Then, choose *due-dist > Advanced > Test* to run the unit tests on the Arduino Due.
 
-Alternatively, useing the PlatformIO command line interface, run the following command from the root of the project:
+Alternatively, using the PlatformIO command line interface, run the following command from the root of the project:
 
 ```cmd
 pio test -e due-dist -vv
