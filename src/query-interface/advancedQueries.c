@@ -267,14 +267,17 @@ void initProjection(embedDBOperator* op) {
         }
         op->schema->numCols = numCols;
         op->schema->columnSizes = malloc(numCols * sizeof(int8_t));
-        if (op->schema->columnSizes == NULL) {
+        op->schema->columnTypes = malloc(numCols * sizeof(ColumnType));
+        if (op->schema->columnSizes == NULL || op->schema->columnTypes == NULL) {
 #ifdef PRINT_ERRORS
             printf("ERROR: Failed to allocate space for projection while building schema\n");
 #endif
             return;
         }
+        
         for (uint8_t i = 0; i < numCols; i++) {
             op->schema->columnSizes[i] = inputSchema->columnSizes[cols[i]];
+            op->schema->columnTypes[i] = inputSchema->columnTypes[cols[i]];
         }
     }
 
@@ -501,7 +504,8 @@ void initAggregate(embedDBOperator* op) {
         }
         op->schema->numCols = state->functionsLength;
         op->schema->columnSizes = malloc(state->functionsLength);
-        if (op->schema->columnSizes == NULL) {
+        op->schema->columnTypes = malloc(state->functionsLength);
+        if (op->schema->columnSizes == NULL || op->schema->columnTypes == NULL) {
 #ifdef PRINT_ERRORS
             printf("ERROR: Failed to malloc while initializing aggregate operator\n");
 #endif
@@ -687,7 +691,8 @@ void initKeyJoin(embedDBOperator* op) {
         }
         op->schema->numCols = schema1->numCols + schema2->numCols;
         op->schema->columnSizes = malloc(op->schema->numCols * sizeof(int8_t));
-        if (op->schema->columnSizes == NULL) {
+        op->schema->columnTypes = malloc(op->schema->numCols * sizeof(ColumnType));
+        if (op->schema->columnSizes == NULL || op->schema->columnTypes == NULL) {
 #ifdef PRINT_ERRORS
             printf("ERROR: Failed to malloc while initializing join operator\n");
 #endif
@@ -695,6 +700,8 @@ void initKeyJoin(embedDBOperator* op) {
         }
         memcpy(op->schema->columnSizes, schema1->columnSizes, schema1->numCols);
         memcpy(op->schema->columnSizes + schema1->numCols, schema2->columnSizes, schema2->numCols);
+        memcpy(op->schema->columnTypes, schema1->columnTypes, schema1->numCols);
+        memcpy(op->schema->columnTypes + schema1->numCols, schema2->columnTypes, schema2->numCols);
     }
 
     // Allocate recordBuffer
@@ -1034,70 +1041,100 @@ embedDBAggregateFunc* createMaxAggregate(uint8_t colNum, int8_t colSize) {
 }
 
 struct avgState {
-    uint8_t colNum;   // Column to take avg of
-    int8_t isSigned;  // Is input column signed?
-    uint32_t count;   // Count of records seen in group so far
-    int64_t sum;      // Sum of records seen in group so far
+    uint8_t colNum;    // Column to take avg of
+    ColumnType colType; // Column type
+    uint32_t count;    // Count of records seen in group so far
+    double sum;        // Sum of records seen in group so far
 };
 
 void avgReset(struct embedDBAggregateFunc* aggFunc, embedDBSchema* inputSchema) {
     struct avgState* state = aggFunc->state;
-    if (abs(inputSchema->columnSizes[state->colNum]) > 8) {
-#ifdef PRINT_ERRORS
-        printf("WARNING: Can't use this sum function for columns bigger than 8 bytes\n");
-#endif
-    }
+    state->colType = inputSchema->columnTypes[state->colNum];
     state->count = 0;
-    state->sum = 0;
-    state->isSigned = embedDB_IS_COL_SIGNED(inputSchema->columnSizes[state->colNum]);
+    state->sum = 0.0;
 }
 
 void avgAdd(struct embedDBAggregateFunc* aggFunc, embedDBSchema* inputSchema, const void* record) {
     struct avgState* state = aggFunc->state;
     uint8_t colNum = state->colNum;
-    int8_t colSize = inputSchema->columnSizes[colNum];
-    int8_t isSigned = embedDB_IS_COL_SIGNED(colSize);
-    colSize = min(abs(colSize), sizeof(int64_t));
     void* colPos = (int8_t*)record + getColOffsetFromSchema(inputSchema, colNum);
-    if (isSigned) {
-        // Get val to sum from record
-        int64_t val = 0;
-        memcpy(&val, colPos, colSize);
-        // Extend two's complement sign to fill 64 bit number if val is negative
-        int64_t sign = val & (128 << ((colSize - 1) * 8));
-        if (sign != 0) {
-            memset(((int8_t*)(&val)) + colSize, 0xff, sizeof(int64_t) - colSize);
+    switch (state->colType) {
+        case embedDB_COLUMN_INT32: {
+            int32_t val;
+            memcpy(&val, colPos, sizeof(int32_t));
+            state->sum += val;
+            break;
         }
-        state->sum += val;
-    } else {
-        uint64_t val = 0;
-        memcpy(&val, colPos, colSize);
-        val += (uint64_t)state->sum;
-        memcpy(&state->sum, &val, sizeof(uint64_t));
+        case embedDB_COLUMN_UINT32: {
+            uint32_t val;
+            memcpy(&val, colPos, sizeof(uint32_t));
+            state->sum += val;
+            break;
+        }
+        case embedDB_COLUMN_INT64: {
+            int64_t val;
+            memcpy(&val, colPos, sizeof(int64_t));
+            state->sum += val;
+            break;
+        }
+        case embedDB_COLUMN_UINT64: {
+            uint64_t val;
+            memcpy(&val, colPos, sizeof(uint64_t));
+            state->sum += val;
+            break;
+        }
+        case embedDB_COLUMN_FLOAT: {
+            float val;
+            memcpy(&val, colPos, sizeof(float));
+            state->sum += val;
+            break;
+        }
+        case embedDB_COLUMN_DOUBLE: {
+            double val = 0;
+            memcpy(&val, colPos, sizeof(double));
+            state->sum += val;
+            break;
+        }
+        default:
+#ifdef PRINT_ERRORS
+            printf("WARNING: avgAdd encountered unsupported column type: %d\n", state->colType);
+#endif
+            return;
     }
     state->count++;
 }
 
 void avgCompute(struct embedDBAggregateFunc* aggFunc, embedDBSchema* outputSchema, void* recordBuffer, const void* lastRecord) {
     struct avgState* state = aggFunc->state;
-    if (aggFunc->colSize == 8) {
-        double avg = state->sum / (double)state->count;
-        if (state->isSigned) {
-            avg = state->sum / (double)state->count;
-        } else {
-            avg = (uint64_t)state->sum / (double)state->count;
+    if (state->count == 0) {
+        return;  // Avoid division by zero
+    }
+
+    void* outputPos = (int8_t*)recordBuffer + getColOffsetFromSchema(outputSchema, aggFunc->colNum);
+
+    switch (state->colType) {
+        case embedDB_COLUMN_INT32:
+        case embedDB_COLUMN_UINT32:
+        case embedDB_COLUMN_INT64:
+        case embedDB_COLUMN_UINT64:
+        case embedDB_COLUMN_FLOAT: {
+            float avg = (float)(state->sum / state->count);
+            memcpy(outputPos, &avg, sizeof(float));
+            break;
         }
-        memcpy((int8_t*)recordBuffer + getColOffsetFromSchema(outputSchema, aggFunc->colNum), &avg, sizeof(double));
-    } else {
-        float avg;
-        if (state->isSigned) {
-            avg = state->sum / (float)state->count;
-        } else {
-            avg = (uint64_t)state->sum / (float)state->count;
+        case embedDB_COLUMN_DOUBLE: {
+            double avg = state->sum / state->count;
+            memcpy(outputPos, &avg, sizeof(double));
+            break;
         }
-        memcpy((int8_t*)recordBuffer + getColOffsetFromSchema(outputSchema, aggFunc->colNum), &avg, sizeof(float));
+        default:
+#ifdef PRINT_ERRORS
+            printf("WARNING: avgCompute encountered unsupported column type\n");
+#endif
+            return;
     }
 }
+
 
 /**
  * @brief	Creates an operator to compute the average of a column over a group. **WARNING: Outputs a floating point number that may not be compatible with other operators**
