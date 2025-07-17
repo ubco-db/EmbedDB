@@ -56,9 +56,9 @@ embedDBGet(state, (void*) &key, (void*) returnDataPtr);
 
 ## Quick Start
 
-EmbedDB consists of a series of files located in the [source](src/) folder. For convience, these files have been combined into distribution version of the project located in the [distribution](lib/distribution/) folder. To use EmbedDB in your project, add the two core source files listed below to your project.
+EmbedDB consists of a series of files located in the [source](src/) folder. For convience, these files have been combined into distribution version of the project located in the [distribution](lib/Distribution/) folder. To use EmbedDB in your project, add the two core source files listed below to your project.
 
-Core source files needed: [embedDB.h](lib/distribution/embedDB.h), [embedDB.c](lib/distribution/embedDB.c)
+Core source files needed: [embedDB.h](lib/Distribution/embedDB.h), [embedDB.c](lib/Distribution/embedDB.c)
 
 ### Running Our Code
 
