@@ -10,7 +10,10 @@
 #include "adaptive_sort.h"
 
 #include <string.h>
+
+#if defined(DESKTOP)
 #include <desktopFileInterface.h>
+#endif
 
 #define SORT_DATA_LOCATION "sort_data.bin"
 #define SORT_ORDER_LOCATION "sort_order.bin"
