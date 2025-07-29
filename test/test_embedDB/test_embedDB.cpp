@@ -35,7 +35,6 @@
 
 #include <math.h>
 #include <string.h>
-
 #ifdef DIST
 #include "embedDB.h"
 #else
@@ -83,6 +82,8 @@ void setupEmbedDB() {
     state->numDataPages = 1000;
     state->parameters = EMBEDDB_RESET_DATA;
     state->eraseSizeInPages = 4;
+    state->rules = NULL;
+    state->numRules = 0;
 
     /* setup data file for EmbedDB */
     state->fileInterface = getFileInterface();
@@ -104,6 +105,7 @@ void tearDown(void) {
     embedDBClose(state);
     tearDownFile(state->dataFile);
     free(state->fileInterface);
+    free(state->rules);
     free(state);
 }
 

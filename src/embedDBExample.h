@@ -56,6 +56,7 @@
 #define SUCCESS 0
 
 #ifdef ARDUINO
+#include "query-interface/activeRules.h"
 
 #if defined(MEMBOARD) && STORAGE_TYPE == 1
 
@@ -102,16 +103,23 @@ uint32_t embedDBExample() {
 
     embedDBSchema* schema = createSchema();
     int numLast = 5;
+    float threshold = 10.5f;
     activeRule *activeRuleGT = createActiveRule(schema, NULL);
     activeRuleGT->IF(activeRuleGT, 1, GET_AVG)
                     ->ofLast(activeRuleGT, (void*)&numLast)
-                    ->is(activeRuleGT, GreaterThan, (void*)&(float){10.5})
+                    ->is(activeRuleGT, GreaterThan, (void*)&threshold)
                     ->then(activeRuleGT, GTcallback);
 
     state->rules = (activeRule**)malloc(sizeof(activeRule*));
     state->rules[0] = activeRuleGT;
     state->numRules = 1;
+
+
+    #ifdef ARDUINO
+    srand(analogRead(0)); // Use analog pin 0 to seed the random number generator
+    #else
     srand(time(NULL));
+    #endif
 
     for (int i = 0; i < 100; i++) {
         uint64_t timestamp = 202411040000 + i; // Example timestamp
