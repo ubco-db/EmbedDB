@@ -33,8 +33,12 @@
  */
 /******************************************************************************/
 
-#include <math.h>
+
 #include <string.h>
+
+#ifdef ARDUINO
+#include <Arduino.h>
+#endif
 
 #ifdef DIST
 #include "embedDB.h"
@@ -61,9 +65,9 @@
 #ifdef ARDUINO
 #include "SDFileInterface.h"
 #define FILE_TYPE SD_FILE
-#define fopen sd_fopen
-#define fread sd_fread
-#define fclose sd_fclose
+// #define fopen sd_fopen
+// #define fread sd_fread
+// #define fclose sd_fclose
 #define getFileInterface getSDInterface
 #define setupFile setupSDFile
 #define tearDownFile tearDownSDFile
@@ -73,6 +77,7 @@
 #define DATA_PATH_SEA "dataFileSEA.bin"
 #define INDEX_PATH_SEA "indexFileSEA.bin"
 #else
+#include <math.h>
 #include "desktopFileInterface.h"
 #define FILE_TYPE FILE
 #define JOIN_FILE "data/expected_join_output.bin"
