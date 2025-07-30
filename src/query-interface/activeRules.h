@@ -6,8 +6,7 @@ extern "C" {
 #endif
 
 #include "advancedQueries.h"
-// #include <embedDB/embedDB.h>
-#include <embedDBUtility.h>
+#include "embedDBUtility.h"
 #include <string.h>
 
 /**
