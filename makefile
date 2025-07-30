@@ -40,7 +40,7 @@ BUILD_PATHS = $(PATHB) $(PATHD) $(PATHO) $(PATHR) $(PATHA)
 
 EMBEDDB_OBJECTS = $(PATHO)embedDB.o $(PATHO)spline.o $(PATHO)embedDBUtility.o
 EMBEDDB_FILE_INTERFACE = $(PATHO)desktopFileInterface.o
-QUERY_OBJECTS = $(PATHO)schema.o $(PATHO)advancedQueries.o
+QUERY_OBJECTS = $(PATHO)schema.o $(PATHO)advancedQueries.o $(PATHO)activeRules.o
 EMBEDDB_DESKTOP = $(PATHO)desktopMain.o
 DISTRIBUTION_OBJECTS = $(PATHO)distribution.o
 
