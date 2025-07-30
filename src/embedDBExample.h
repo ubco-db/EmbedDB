@@ -139,7 +139,7 @@ uint32_t embedDBExample() {
         if (success != SUCCESS) {
             printf("Error getting record\n");
         }
-        printf("from db: Timestamp: %llu, Temperature: %d\n", timestamp, data);
+        printf("from db: Timestamp: %lu, Temperature: %d\n", timestamp, data);
     }
 
     printf("Example completed!\n");
