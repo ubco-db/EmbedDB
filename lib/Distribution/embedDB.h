@@ -32,16 +32,16 @@
  *  ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  *  POSSIBILITY OF SUCH DAMAGE.
  */
-/******************************************************************************/
-#include <assert.h>
-#include <math.h>
-#include <stdbool.h>
-#include <stddef.h>
-#include <stdint.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
+/******************************************************************************/  
 #include <time.h>
+#include <assert.h>
+#include <stdbool.h>
+#include <stdint.h>
+#include <math.h>
+#include <stdlib.h>
+#include <stddef.h>
+#include <string.h>
+#include <stdio.h>
 /************************************************************spline.h************************************************************/
 /******************************************************************************/
 /**
@@ -82,7 +82,7 @@
 
 #ifdef __cplusplus
 extern "C" {
-#endif
+#endif  
 
 /* Define type for keys and location ids. */
 typedef uint32_t id_t;
@@ -225,7 +225,7 @@ void *splinePointLocation(spline *spl, size_t pointIndex);
 
 #ifdef __cplusplus
 extern "C" {
-#endif
+#endif      
 
 /* Define type for page ids (physical and logical). */
 typedef uint32_t id_t;
@@ -261,6 +261,14 @@ typedef uint16_t count_t;
 #define EMBEDDB_IDX_HEADER_SIZE 16
 
 #define EMBEDDB_NO_VAR_DATA UINT32_MAX
+
+#ifdef max
+#undef max
+#endif
+
+#ifdef min
+#undef min
+#endif
 
 #if !defined(ARDUINO) || defined(DIST)
 #define max(a, b) ((a) > (b) ? (a) : (b))
@@ -375,6 +383,8 @@ typedef struct {
     int8_t (*flush)(void *file);
 } embedDBFileInterface;
 
+struct activeRule;
+
 typedef struct {
     void *dataFile;                                                       /* File for storing data records. */
     void *indexFile;                                                      /* File for storing index records. */
@@ -428,7 +438,10 @@ typedef struct {
     id_t bufferedIndexPageId;                                             /* Index page id currently in index read buffer */
     id_t bufferedVarPage;                                                 /* Variable page id currently in variable read buffer */
     uint8_t recordHasVarData;                                             /* Internal flag to signal that the record currently being written has var data */
+    struct activeRule** rules;                                          /* Array of active rules */
+    uint32_t numRules;                                                    /* Number of active rules */
 } embedDBState;
+
 
 typedef struct {
     uint32_t nextDataPage; /* Next data page that the iterator should read */
@@ -697,18 +710,28 @@ void embedDBClose(embedDBState *state);
 
 #if defined(__cplusplus)
 extern "C" {
-#endif
+#endif 
 
 #define embedDB_COLUMN_SIGNED 0
 #define embedDB_COLUMN_UNSIGNED 1
 #define embedDB_IS_COL_SIGNED(colSize) (colSize < 0 ? 1 : 0)
+
+typedef enum {
+    embedDB_COLUMN_INT32 = 0,
+    embedDB_COLUMN_UINT32 = 1,
+    embedDB_COLUMN_INT64 = 2,
+    embedDB_COLUMN_UINT64 = 3,
+    embedDB_COLUMN_FLOAT = 4,
+    embedDB_COLUMN_DOUBLE = 5
+} ColumnType;
 
 /**
  * @brief	A struct to desribe the number and sizes of attributes contained in the data of a embedDB table
  */
 typedef struct {
     uint8_t numCols;      // The number of columns in the table
-    int8_t *columnSizes;  // A list of the sizes, in bytes, of each column. Negative numbers indicate signed columns while positive indicate an unsigned column
+    int8_t* columnSizes;  // A list of the sizes, in bytes, of each column. Negative numbers indicate signed columns while positive indicate an unsigned column
+    ColumnType* columnTypes; // A list of the types of each column
 } embedDBSchema;
 
 /**
@@ -716,35 +739,36 @@ typedef struct {
  * @param	numCols			The total number of key & data columns in table
  * @param	colSizes		An array with the size of each column. Max size is 127
  * @param	colSignedness	An array describing if the data in the column is signed or unsigned. Use the defined constants embedDB_COLUMNN_SIGNED or embedDB_COLUMN_UNSIGNED
+ * @param   colTypes        An array describing the type of the column. Use the ColumnType enum
  */
-embedDBSchema *embedDBCreateSchema(uint8_t numCols, int8_t *colSizes, int8_t *colSignedness);
+embedDBSchema* embedDBCreateSchema(uint8_t numCols, int8_t* colSizes, int8_t* colSignedness, ColumnType* colTypes);
 
 /**
  * @brief	Free a schema. Sets the schema pointer to NULL.
  */
-void embedDBFreeSchema(embedDBSchema **schema);
+void embedDBFreeSchema(embedDBSchema** schema);
 
 /**
  * @brief	Uses schema to determine the length of buffer to allocate and callocs that space
  */
-void *createBufferFromSchema(embedDBSchema *schema);
+void* createBufferFromSchema(embedDBSchema* schema);
 
 /**
  * @brief	Deep copy schema and return a pointer to the copy
  */
-embedDBSchema *copySchema(const embedDBSchema *schema);
+embedDBSchema* copySchema(const embedDBSchema* schema);
 
 /**
  * @brief	Finds byte offset of the column from the beginning of the record
  */
-uint16_t getColOffsetFromSchema(embedDBSchema *schema, uint8_t colNum);
+uint16_t getColOffsetFromSchema(embedDBSchema* schema, uint8_t colNum);
 
 /**
  * @brief	Calculates record size from schema
  */
-uint16_t getRecordSizeFromSchema(embedDBSchema *schema);
+uint16_t getRecordSizeFromSchema(embedDBSchema* schema);
 
-void printSchema(embedDBSchema *schema);
+void printSchema(embedDBSchema* schema);
 
 #ifdef __cplusplus
 }
@@ -793,7 +817,7 @@ void printSchema(embedDBSchema *schema);
 
 #if defined(__cplusplus)
 extern "C" {
-#endif
+#endif  
 
 #define SELECT_GT 0
 #define SELECT_LT 1
@@ -806,24 +830,24 @@ typedef struct embedDBAggregateFunc {
     /**
      * @brief	Resets the state
      */
-    void (*reset)(struct embedDBAggregateFunc *aggFunc, embedDBSchema *inputSchema);
+    void (*reset)(struct embedDBAggregateFunc* aggFunc, embedDBSchema* inputSchema);
 
     /**
      * @brief	Adds another record to the group and updates the state
      * @param	state	The state tracking the value of the aggregate function e.g. sum
      * @param	record	The record being added
      */
-    void (*add)(struct embedDBAggregateFunc *aggFunc, embedDBSchema *inputSchema, const void *record);
+    void (*add)(struct embedDBAggregateFunc* aggFunc, embedDBSchema* inputSchema, const void* record);
 
     /**
      * @brief	Finalize aggregate result into the record buffer and modify the schema accordingly. Is called once right before aggroup returns.
      */
-    void (*compute)(struct embedDBAggregateFunc *aggFunc, embedDBSchema *outputSchema, void *recordBuffer, const void *lastRecord);
+    void (*compute)(struct embedDBAggregateFunc* aggFunc, embedDBSchema* outputSchema, void* recordBuffer, const void* lastRecord);
 
     /**
      * @brief	A user-allocated space where the operator saves its state. E.g. a sum operator might have 4 bytes allocated to store the sum of all data
      */
-    void *state;
+    void* state;
 
     /**
      * @brief	How many bytes will the compute insert into the record
@@ -840,50 +864,50 @@ typedef struct embedDBOperator {
     /**
      * @brief	The input operator to this operator
      */
-    struct embedDBOperator *input;
+    struct embedDBOperator* input;
 
     /**
      * @brief	Initialize the operator. Usually includes setting/calculating the output schema, allocating buffers, etc. Recursively inits input operator as its first action.
      */
-    void (*init)(struct embedDBOperator *op);
+    void (*init)(struct embedDBOperator* op);
 
     /**
      * @brief	Puts the next tuple to be outputed by this operator into @c operator->recordBuffer. Needs to call next on the input operator if applicable
      * @return	Returns 0 or 1 to indicate whether a new tuple was outputted to operator->recordBuffer
      */
-    int8_t (*next)(struct embedDBOperator *op);
+    int8_t (*next)(struct embedDBOperator* op);
 
     /**
      * @brief	Recursively closes this operator and its input operator. Frees anything allocated in init.
      */
-    void (*close)(struct embedDBOperator *op);
+    void (*close)(struct embedDBOperator* op);
 
     /**
      * @brief	A pre-allocated memory area that can be loaded with any extra parameters that the function needs to operate (e.g. column numbers or selection predicates)
      */
-    void *state;
+    void* state;
 
     /**
      * @brief	The output schema of this operator
      */
-    embedDBSchema *schema;
+    embedDBSchema* schema;
 
     /**
      * @brief	The output record of this operator
      */
-    void *recordBuffer;
+    void* recordBuffer;
 } embedDBOperator;
 
 /**
  * @brief	Extract a record from an operator
  * @return	1 if a record was returned, 0 if there are no more rows to return
  */
-int8_t exec(embedDBOperator *op);
+int8_t exec(embedDBOperator* op);
 
 /**
  * @brief	Completely free a chain of operators recursively after it's already been closed.
  */
-void embedDBFreeOperatorRecursive(embedDBOperator **op);
+void embedDBFreeOperatorRecursive(embedDBOperator** op);
 
 ///////////////////////////////////////////
 // Pre-built operators for basic queries //
@@ -895,7 +919,7 @@ void embedDBFreeOperatorRecursive(embedDBOperator **op);
  * @param	it			An initialized iterator setup to read relevent records for this query
  * @param	baseSchema	The schema of the database being read from
  */
-embedDBOperator *createTableScanOperator(embedDBState *state, embedDBIterator *it, embedDBSchema *baseSchema);
+embedDBOperator* createTableScanOperator(embedDBState* state, embedDBIterator* it, embedDBSchema* baseSchema);
 
 /**
  * @brief	Creates an operator capable of projecting the specified columns. Cannot re-order columns
@@ -903,7 +927,7 @@ embedDBOperator *createTableScanOperator(embedDBState *state, embedDBIterator *i
  * @param	numCols	How many columns will be in the final projection
  * @param	cols	The indexes of the columns to be outputted. *Zero indexed*
  */
-embedDBOperator *createProjectionOperator(embedDBOperator *input, uint8_t numCols, uint8_t *cols);
+embedDBOperator* createProjectionOperator(embedDBOperator* input, uint8_t numCols, uint8_t* cols);
 
 /**
  * @brief	Creates an operator that selects records based on simple selection rules
@@ -912,7 +936,7 @@ embedDBOperator *createProjectionOperator(embedDBOperator *input, uint8_t numCol
  * @param	operation	A constant representing which comparison operation to perform. (e.g. SELECT_GT, SELECT_EQ, etc)
  * @param	compVal		A pointer to the value to compare with. Make sure the size of this is the same number of bytes as is described in the schema
  */
-embedDBOperator *createSelectionOperator(embedDBOperator *input, int8_t colNum, int8_t operation, void *compVal);
+embedDBOperator* createSelectionOperator(embedDBOperator* input, int8_t colNum, int8_t operation, void* compVal);
 
 /**
  * @brief	Creates an operator that will find groups and preform aggregate functions over each group.
@@ -921,12 +945,12 @@ embedDBOperator *createSelectionOperator(embedDBOperator *input, int8_t colNum, 
  * @param	functions		An array of aggregate functions, each of which will be updated with each record read from the iterator
  * @param	functionsLength			The number of embedDBAggregateFuncs in @c functions
  */
-embedDBOperator *createAggregateOperator(embedDBOperator *input, int8_t (*groupfunc)(const void *lastRecord, const void *record), embedDBAggregateFunc *functions, uint32_t functionsLength);
+embedDBOperator* createAggregateOperator(embedDBOperator* input, int8_t (*groupfunc)(const void* lastRecord, const void* record), embedDBAggregateFunc* functions, uint32_t functionsLength);
 
 /**
  * @brief	Creates an operator for perfoming an equijoin on the keys (sorted and distinct) of two tables
  */
-embedDBOperator *createKeyJoinOperator(embedDBOperator *input1, embedDBOperator *input2);
+embedDBOperator* createKeyJoinOperator(embedDBOperator* input1, embedDBOperator* input2);
 
 //////////////////////////////////
 // Prebuilt aggregate functions //
@@ -935,34 +959,34 @@ embedDBOperator *createKeyJoinOperator(embedDBOperator *input1, embedDBOperator 
 /**
  * @brief	Creates an aggregate function to count the number of records in a group. To be used in combination with an embedDBOperator produced by createAggregateOperator
  */
-embedDBAggregateFunc *createCountAggregate();
+embedDBAggregateFunc* createCountAggregate();
 
 /**
  * @brief	Creates an aggregate function to sum a column over a group. To be used in combination with an embedDBOperator produced by createAggregateOperator. Column must be no bigger than 8 bytes.
  * @param	colNum	The index (zero-indexed) of the column which you want to sum. Column must be <= 8 bytes
  */
-embedDBAggregateFunc *createSumAggregate(uint8_t colNum);
+embedDBAggregateFunc* createSumAggregate(uint8_t colNum);
 
 /**
  * @brief	Creates an aggregate function to find the min value in a group
  * @param	colNum	The zero-indexed column to find the min of
  * @param	colSize	The size, in bytes, of the column to find the min of. Negative number represents a signed number, positive is unsigned.
  */
-embedDBAggregateFunc *createMinAggregate(uint8_t colNum, int8_t colSize);
+embedDBAggregateFunc* createMinAggregate(uint8_t colNum, int8_t colSize);
 
 /**
  * @brief	Creates an aggregate function to find the max value in a group
  * @param	colNum	The zero-indexed column to find the max of
  * @param	colSize	The size, in bytes, of the column to find the max of. Negative number represents a signed number, positive is unsigned.
  */
-embedDBAggregateFunc *createMaxAggregate(uint8_t colNum, int8_t colSize);
+embedDBAggregateFunc* createMaxAggregate(uint8_t colNum, int8_t colSize);
 
 /**
  * @brief	Creates an operator to compute the average of a column over a group. **WARNING: Outputs a floating point number that may not be compatible with other operators**
  * @param	colNum			Zero-indexed column to take average of
  * @param	outputFloatSize	Size of float to output. Must be either 4 (float) or 8 (double)
  */
-embedDBAggregateFunc *createAvgAggregate(uint8_t colNum, int8_t outputFloatSize);
+embedDBAggregateFunc* createAvgAggregate(uint8_t colNum, int8_t outputFloatSize);
 
 #ifdef __cplusplus
 }
@@ -1014,7 +1038,7 @@ embedDBAggregateFunc *createAvgAggregate(uint8_t colNum, int8_t outputFloatSize)
 
 #ifdef __cplusplus
 extern "C" {
-#endif
+#endif  
 
 /* Bitmap Functions */
 void updateBitmapInt8(void *data, void *bm);
@@ -1030,9 +1054,275 @@ void buildBitmapInt64FromRange(void *min, void *max, void *bm);
 /* Recordwise functions */
 int8_t int32Comparator(void *a, void *b);
 int8_t int64Comparator(void *a, void *b);
+int8_t floatComparator(void *a, void *b);
+int8_t doubleComparator(void *a, void *b);
 
 #ifdef __cplusplus
 }
 #endif
 
 #endif
+
+/************************************************************activeRules.h************************************************************/
+#ifndef _ACTIVERULES_H
+#define _ACTIVERULES_H
+
+#if defined(__cplusplus)
+extern "C" {
+#endif   
+
+/**
+ * @enum ActiveQueryType
+ * @brief Enum representing the type of active rule.
+ */
+typedef enum {
+    GET_AVG,    /**< Get average value */
+    GET_MAX,    /**< Get maximum value */
+    GET_MIN,     /**< Get minimum value */
+    GET_CUSTOM  /**< Perform custom rule */
+} ActiveQueryType;
+
+/**
+ * @enum SelectOperation
+ * @brief Enum representing the selection operation.
+ */
+typedef enum {
+    GreaterThan,            /**< Greater than operation */
+    LessThan,               /**< Less than operation */
+    GreaterThanOrEqual,     /**< Greater than or equal operation */
+    LessThanOrEqual,        /**< Less than or equal operation */
+    Equal,                  /**< Equal operation */
+    NotEqual                /**< Not equal operation */
+} SelectOperation;
+
+typedef enum {
+    DBINT32,
+    DBINT64,
+    DBFLOAT,
+    DBDOUBLE
+} CustomReturnType;
+
+/**
+ * @struct activeRule
+ * @brief Struct representing a active rule.
+ */
+typedef struct activeRule {
+    void* numLastEntries;    /**< Number of last entries to consider */
+    void* threshold;            /**< Threshold value for comparison */
+    embedDBSchema *schema;      /**< Schema of the database */
+    ActiveQueryType type;    /**< Type of the active rule */
+    SelectOperation operation;  /**< Selection operation */
+    uint8_t colNum;             /**< Column number to preform rule on*/
+    void* context;              /**< Context for callback function */
+    void (*callback)(void* aggregateValue, void* currentValue, void* context);  /**< Callback function */
+    void* (*executeCustom)(struct activeRule *rule, void *key); /**< Execute custom rule */
+    CustomReturnType returnType; /**< Return type of custom rule */
+
+    void* minData;              /**< Minimum data value */
+    void* maxData;              /**< Maximum data value */
+
+    bool enabled;           /**< Flag to indicate if the rule is enabled */
+
+    struct activeRule* (*IF)(struct activeRule *rule, uint8_t colNum, ActiveQueryType type);
+    struct activeRule* (*IFCustom)(struct activeRule *rule, uint8_t colNum, void* (*executeCustom)(struct activeRule *rule, void *key), CustomReturnType returnType);
+    struct activeRule* (*ofLast)(struct activeRule *rule, void* numLastEntries);
+    struct activeRule* (*where)(struct activeRule *rule, void* minData, void* maxData);
+    struct activeRule* (*is)(struct activeRule *rule, SelectOperation operation, void* threshold);
+    struct activeRule* (*then)(struct activeRule *rule, void (*callback)(void* aggregateValue, void* currentValue, void* context));
+} activeRule;
+
+/**
+ * @brief Comparator function pointer type.
+ * @param value1 Pointer to the first value.
+ * @param value2 Pointer to the second value.
+ * @return Comparison result.
+ */
+typedef int8_t (*Comparator)(void* value1, void* value2);
+
+/**
+ * @brief IF method for setting the column the rule will perform on and the type of rule
+ * @param rule Pointer to the activeRule.
+ * @param colNum Column number to perform rule on.
+ * @param type Type of the active rule (Avg, max, min, custom).
+ * @return Pointer to the activeRule.
+ */
+activeRule* IF(activeRule *rule, uint8_t colNum, ActiveQueryType type);
+
+/**
+ * @brief IF method for setting the column a custom rule will be performed on.
+ * @param rule Pointer to the activeRule.
+ * @param colNum Column number to perform rule on.
+ * @param executeCustom Custom rule function.
+ * @param returnType Return type of the custom rule.
+ * @return Pointer to the activeRule.
+ */
+activeRule* IFCustom(activeRule *rule, uint8_t colNum, void* (*executeCustom)(activeRule *rule, void *key), CustomReturnType returnType);
+
+/**
+ * @brief is method for setting the selection operation and value to compare rule result with.
+ * @param rule Pointer to the activeRule.
+ * @param operation Selection operation (<, >, <=, >=, =, !=).
+ * @param threshold Value to compare rule result with.
+ * @return Pointer to the activeRule.
+ */
+activeRule* is(activeRule *rule, SelectOperation operation, void* threshold);
+
+/**
+ * @brief ofLast method for setting the number of last entries to consider.
+ * @param rule Pointer to the activeRule.
+ * @param numLastEntries Number of last entries.
+ * @return Pointer to the activeRule.
+ */
+activeRule* forLast(activeRule *rule, void* numLastEntries);
+
+/**
+ * @brief where method for setting the range of values to consider.
+ * @param rule Pointer to the activeRule.
+ * @param minData minimum value considered.
+ * @param maxData maximum value considered.
+ */
+activeRule* where(activeRule *rule, void* minData, void* maxData);
+
+/**
+ * @brief then method for setting the callback function.
+ * @param rule Pointer to the activeRule.
+ * @param callback Callback function.
+ * @return Pointer to the activeRule.
+ */
+activeRule* then(activeRule *rule, void (*callback)(void* aggregateValue, void* currentValue, void* context));
+
+/**
+ * @brief Creates a new activeRule.
+ * @param state Pointer to the embedDBState.
+ * @param schema Pointer to the embedDBSchema.
+ * @return Pointer to the newly created activeRule.
+ */
+activeRule* createActiveRule(embedDBSchema *schema, void* context);
+
+/**
+ * @brief Inserts a record, performs a rule on that record and the last n specified records (numLastEntries), 
+ * compares rule result with threshold, and calls callback function if comparison returns true.
+ * @param rule Pointer to the activeRule.
+ * @param key Pointer to the key.
+ * @param data Pointer to the data.
+ * @return Result of the insertion operation (0 or 1).
+ */
+void executeRules(embedDBState *state, void *key, void *data);
+
+/**
+ * @brief Gets the average value of last n specified records (numLastEntries) including current value.
+ *
+ * This function creates an operator for the given active rule and key, executes the operator,
+ * and retrieves the average value from the result. It then cleans up the allocated resources
+ * and returns the retrieved value.
+ *
+ * @param rule A pointer to the activeRule structure.
+ * @param key A pointer to the key used for the rule.
+ * @return The average value retrieved from the rule.
+ */
+float GetAvg(embedDBState *state, activeRule *rule, void *key);
+
+/**
+ * @brief Gets the minimum or maximum 32-bit integer value of last n specified records (numLastEntries) including current value.
+ *
+ * This function creates an operator for the given active rule and key, executes the operator,
+ * and retrieves the minimum or maximum value from the result. It then cleans up the allocated resources
+ * and returns the retrieved value.
+ *
+ * @param rule A pointer to the activeRule structure.
+ * @param key A pointer to the key used for the rule.
+ * @return The minimum or maximum 32-bit integer value retrieved from the rule.
+ */
+int32_t GetMinMax32(embedDBState *state, activeRule *rule, void *key);
+
+/**
+ * @brief Gets the minimum or maximum 64-bit integer value of last n specified records (numLastEntries) including current value.
+ *
+ * This function creates an operator for the given active rule and key, executes the operator,
+ * and retrieves the minimum or maximum value from the result. It then cleans up the allocated resources
+ * and returns the retrieved value.
+ *
+ * @param rule A pointer to the activeRule structure.
+ * @param key A pointer to the key used for the rule.
+ * @return The minimum or maximum 64-bit integer value retrieved from the rule.
+ */
+int64_t GetMinMax64(embedDBState *state, activeRule *rule, void *key);
+
+/**
+ * @brief Creates an operator for executing a active rule.
+ *
+ * This function initializes an iterator and sets up the necessary
+ * aggregate function based on the rule type. It supports queries
+ * for average, maximum, and minimum values.
+ *
+ * @param rule A pointer to the activeRule structure containing the rule details.
+ * @param allocatedValues A pointer to a pointer where allocated values will be stored.
+ *                        This will be used to store the iterator and aggregate functions.
+ * @param key A pointer to the key used for the rule.
+ * 
+ * @return A pointer to the created embedDBOperator structure.
+ *         Returns NULL if an unsupported key size is encountered.
+ */
+embedDBOperator* createOperator(embedDBState *state, activeRule *rule, void*** allocatedValues, void *key);
+
+/**
+ * @brief Group function for the aggregate operator.
+ * @param lastRecord Pointer to the last record.
+ * @param record Pointer to the current record.
+ * @return Always returns 1.
+ */
+int8_t groupFunction(const void* lastRecord, const void* record);
+
+/**
+ * @brief Executes a comparison operation for a active rule.
+ *
+ * This function performs a comparison between a given value and the rule's threshold
+ * using the specified comparator function. Depending on the result of the comparison,
+ * it invokes the rule's callback function if the condition is met.
+ *
+ * @param rule Pointer to the activeRule structure.
+ * @param value Pointer to the value to be compared.
+ * @param comparator Function pointer to the comparator function.
+ */
+void executeComparison(activeRule* rule, void *value, Comparator comparator, void *data);
+
+/**
+ * @brief Handles the average value retrieval and comparison for a active rule.
+ *
+ * This function retrieves the average value for the last n specified records (numLastEntries) including current value and
+ * performs a comparison using the executeComparison function.
+ *
+ * @param rule Pointer to the activeRule structure.
+ * @param key Pointer to the key for the current record.
+ */
+void handleGetAvg(embedDBState *state, activeRule* rule, void* key, void *data);
+
+/**
+ * @brief Handles the minimum or maximum value retrieval and comparison for a active rule.
+ *
+ * This function retrieves the minimum or maximum value of the last n specified records (numLastEntries) including current value 
+ * performs a comparison using the executeComparison function.
+ *
+ * @param rule Pointer to the activeRule structure.
+ * @param key Pointer to the key for the current record.
+ */
+void handleGetMinMax(embedDBState *state, activeRule* rule, void* key, void *data);
+
+/**
+ * @brief Handles a custom active rule and executes the appropriate comparison based on the return type.
+ *
+ * @param rule A pointer to the activeRule structure containing the rule details.
+ * @param key A pointer to the key used for executing the custom rule.
+ *
+ * The function executes the custom rule using the provided key and then performs a comparison
+ * based on the return type specified in the rule. Supported return types include DBINT32, DBINT64,
+ * DBFLOAT, and DBDOUBLE. If the return type is unsupported, an error message is printed.
+ */
+void handleCustomQuery(embedDBState *state, activeRule* rule, void* key, void *data);
+
+
+#ifdef __cplusplus
+}
+#endif
+#endif // _ACTIVERULES_H
+
