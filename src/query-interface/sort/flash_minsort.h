@@ -3,8 +3,6 @@
 
 #if defined(ARDUINO)
 #include "serial_c_iface.h"
-// #include "kv_stdio_intercept.h"
-// #include "sd_stdio_c_iface.h"
 #endif
 
 #include <stdint.h>

@@ -65,9 +65,6 @@
 #ifdef ARDUINO
 #include "SDFileInterface.h"
 #define FILE_TYPE SD_FILE
-// #define fopen sd_fopen
-// #define fread sd_fread
-// #define fclose sd_fclose
 #define getFileInterface getSDInterface
 #define setupFile setupSDFile
 #define tearDownFile tearDownSDFile
