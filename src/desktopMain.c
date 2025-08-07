@@ -19,6 +19,7 @@
 #include "benchmarks/queryInterfaceBenchmark.h"
 #elif WHICH_PROGRAM == 4
 #include "benchmarks/sortBenchmark.h"
+#include "benchmarks/activeRulesBenchmark.h"
 #endif
 
 int main() {
@@ -32,6 +33,8 @@ int main() {
     return advancedQueryExample();
 #elif WHICH_PROGRAM == 4
     return sortQueryBenchmark();
+#elif WHICH_PROGRAM == 5
+    return activeRulesBenchmark();
 #endif
 }
 

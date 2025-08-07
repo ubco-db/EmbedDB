@@ -13,7 +13,7 @@ For information about running the distribution version of the code, see the [dis
 
 Our project is currently configured to run on the Arduino Mega, Due, and a custom board using the Arduino framework. If you have an Arduino board, the setup should be quite similar. Please see the [PlatformIO Docs](https://docs.platformio.org/en/latest/) for information on adding another board to the project [configuration](../platformio.ini) file. PlatformIO has an extensive [list of boards](https://docs.platformio.org/en/latest/boards/index.html) which are already supported.
 
-The project includes files for interacting with an SD card on Arduino boards, and a wrapper for the Ardunio serial output library to define a custom `printf()` function. For an how to setup a main C file for Ardunio using these libraries, see [dueMain](../src/dueMain.cpp) in the source folder. Please note that if you add another main file to the source folder, you must modify the `build_src_filter` option in the [configuration](../platformio.ini) file to exclude the main files for the other boards configured in this project.
+The project includes files for interacting with an SD card on Arduino boards, and a wrapper for the Ardunio serial output library to define a custom `printf()` function. For how to setup a main C file for Ardunio using these libraries, see [dueMain](../src/dueMain.cpp) in the source folder. Please note that if you add another main file to the source folder, you must modify the `build_src_filter` option in the [configuration](../platformio.ini) file to exclude the main files for the other boards configured in this project.
 
 ## Running our Example File
 

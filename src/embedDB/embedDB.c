@@ -43,6 +43,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
+#include "query-interface/activeRules.h"
 
 #if defined(ARDUINO)
 #include "serial_c_iface.h"
@@ -881,7 +882,7 @@ float embedDBCalculateSlope(embedDBState *state, void *buffer) {
     uint32_t slopeX1, slopeX2;
     slopeX1 = 0;
     slopeX2 = EMBEDDB_GET_COUNT(buffer) - 1;
-
+    if(EMBEDDB_GET_COUNT(buffer) == 0) slopeX2 = 0;
     if (state->keySize <= 4) {
         uint32_t slopeY1 = 0, slopeY2 = 0;
 
@@ -1121,6 +1122,9 @@ int8_t embedDBPut(embedDBState *state, void *key, void *data) {
             shiftRecordLevelConsistencyBlocks(state);
         }
         return writeTemporaryPage(state, state->buffer);
+    }
+    if(state->rules != NULL && state->rules[0] != NULL){
+        executeRules(state, key, data);
     }
 
     return 0;

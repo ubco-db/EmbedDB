@@ -48,6 +48,9 @@ void setupEmbedDB(int8_t parameters) {
     state->bufferSizeInBlocks = 4;
     state->numSplinePoints = 8;
     state->buffer = malloc((size_t)state->bufferSizeInBlocks * state->pageSize);
+    state->rules = NULL;
+    state->numRules = 0;
+
     TEST_ASSERT_NOT_NULL_MESSAGE(state->buffer, "Failed to allocate buffer for EmbedDB.");
 
 /* configure EmbedDB storage */
@@ -83,6 +86,7 @@ void tearDown() {
     tearDownFile(state->dataFile);
     tearDownFile(state->varFile);
     free(state->fileInterface);
+    free(state->rules);
     free(state);
 }
 

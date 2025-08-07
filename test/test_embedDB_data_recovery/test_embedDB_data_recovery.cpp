@@ -81,6 +81,8 @@ void setupEmbedDB() {
     state->numSplinePoints = 8;
     state->buffer = malloc((size_t)state->bufferSizeInBlocks * state->pageSize);
     TEST_ASSERT_NOT_NULL_MESSAGE(state->buffer, "Failed to allocate buffer for EmbedDB.");
+    state->rules = NULL;
+    state->numRules = 0;
 
 /* configure EmbedDB storage */
 #ifdef MOCK_ERASE_INTERFACE
@@ -137,6 +139,7 @@ void tearDown() {
     tearDownFile(state->dataFile);
     free(state->fileInterface);
     free(state);
+
 }
 
 void insertRecordsLinearly(int32_t startingKey, int64_t startingData, int32_t numRecords) {

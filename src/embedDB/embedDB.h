@@ -44,6 +44,7 @@ extern "C" {
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdbool.h>
 
 #include "../spline/spline.h"
 
@@ -81,6 +82,14 @@ typedef uint16_t count_t;
 #define EMBEDDB_IDX_HEADER_SIZE 16
 
 #define EMBEDDB_NO_VAR_DATA UINT32_MAX
+
+#ifdef max
+#undef max
+#endif
+
+#ifdef min
+#undef min
+#endif
 
 #if !defined(ARDUINO) || defined(DIST)
 #define max(a, b) ((a) > (b) ? (a) : (b))
@@ -225,6 +234,8 @@ typedef struct {
 
 } embedDBFileInterface;
 
+struct activeRule;
+
 typedef struct {
     void *dataFile;                                                       /* File for storing data records. */
     void *indexFile;                                                      /* File for storing index records. */
@@ -278,7 +289,10 @@ typedef struct {
     id_t bufferedIndexPageId;                                             /* Index page id currently in index read buffer */
     id_t bufferedVarPage;                                                 /* Variable page id currently in variable read buffer */
     uint8_t recordHasVarData;                                             /* Internal flag to signal that the record currently being written has var data */
+    struct activeRule** rules;                                          /* Array of active rules */
+    uint32_t numRules;                                                    /* Number of active rules */
 } embedDBState;
+
 
 typedef struct {
     uint32_t nextDataPage; /* Next data page that the iterator should read */
