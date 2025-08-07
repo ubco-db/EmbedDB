@@ -6,7 +6,7 @@
  *
  */
 #ifndef WHICH_PROGRAM
-#define WHICH_PROGRAM 0
+#define WHICH_PROGRAM 4
 #endif
 
 #if WHICH_PROGRAM == 0
@@ -18,6 +18,7 @@
 #elif WHICH_PROGRAM == 3
 #include "benchmarks/queryInterfaceBenchmark.h"
 #elif WHICH_PROGRAM == 4
+#include "benchmarks/sortBenchmark.h"
 #include "benchmarks/activeRulesBenchmark.h"
 #endif
 
@@ -31,6 +32,8 @@ int main() {
 #elif WHICH_PROGRAM == 3
     return advancedQueryExample();
 #elif WHICH_PROGRAM == 4
+    return sortQueryBenchmark();
+#elif WHICH_PROGRAM == 5
     return activeRulesBenchmark();
 #endif
 }
