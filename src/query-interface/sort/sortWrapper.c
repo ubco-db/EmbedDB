@@ -3,7 +3,7 @@
 
 #define PRINT_METRIC
 
-// External declaration for setupFile function (defined in test or application)
+// External declaration for setupFile function 
 extern void* setupFile(const char* filename);
 
 // Forward declaration for pure in-memory sort (no file I/O)
@@ -18,7 +18,6 @@ file_iterator_state_t *startPureMemorySort(sortData *data, embedDBOperator *op);
 file_iterator_state_t *startPureMemorySort(sortData *data, embedDBOperator *op) {
     printf("DEBUG: Starting pure in-memory sort\n");
     
-    // Count how many records we have first
     int record_count = 0;
     while (exec(op->input)) {
         record_count++;
@@ -32,7 +31,6 @@ file_iterator_state_t *startPureMemorySort(sortData *data, embedDBOperator *op) 
     
     if (record_count == 0) {
         printf("DEBUG: No records to sort\n");
-        // Create empty iterator
         file_iterator_state_t *iteratorState = malloc(sizeof(file_iterator_state_t));
         if (iteratorState == NULL) {
             return NULL;
@@ -48,14 +46,12 @@ file_iterator_state_t *startPureMemorySort(sortData *data, embedDBOperator *op) 
         return iteratorState;
     }
     
-    // Allocate buffer to hold all records in memory
     void *buffer = malloc(record_count * data->recordSize);
     if (buffer == NULL) {
         printf("ERROR: Failed to allocate memory for pure in-memory sort\n");
         return NULL;
     }
     
-    // Reset the input operator and read all records into memory
     op->input->close(op->input);
     op->input->init(op->input);
     
@@ -81,7 +77,6 @@ file_iterator_state_t *startPureMemorySort(sortData *data, embedDBOperator *op) 
     
     printf("DEBUG: Pure in-memory sort completed successfully\n");
     
-    // Create iterator that reads from our sorted memory buffer
     file_iterator_state_t *iteratorState = malloc(sizeof(file_iterator_state_t));
     if (iteratorState == NULL) {
         printf("ERROR: Failed to allocate iterator state\n");
@@ -89,8 +84,8 @@ file_iterator_state_t *startPureMemorySort(sortData *data, embedDBOperator *op) 
         return NULL;
     }
     
-    // Store the sorted buffer in the iterator (we'll clean it up later)
-    iteratorState->file = buffer; // Reuse this field to store our memory buffer
+
+    iteratorState->file = buffer;
     iteratorState->fileInterface = data->fileInterface;
     iteratorState->currentRecord = 0;
     iteratorState->recordsRead = 0;
