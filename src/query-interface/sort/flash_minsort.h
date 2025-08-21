@@ -2,9 +2,7 @@
 #define FLASH_MINSORT_H
 
 #if defined(ARDUINO)
-#include "../../../../serial/serial_c_iface.h"
-#include "../../../../file/kv_stdio_intercept.h"
-#include "../../../../file/sd_stdio_c_iface.h"
+#include "serial_c_iface.h"
 #endif
 
 #include <stdint.h>
@@ -19,8 +17,10 @@
 
 #define INT_SIZE            4
 
+#if !defined(ARDUINO)
 #define true 1
 #define false 0
+#endif
 
 #if defined(__cplusplus)
 extern "C" {
