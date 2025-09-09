@@ -112,7 +112,7 @@ void runTestSequentialValues() {
     if (STORAGE_TYPE == 1) {
         TEST_FAIL_MESSAGE("Dataflash is not currently supported. Defaulting to SD card interface.");
     }
-
+    TEST_MESSAGE("Before allocating state");
     embedDBState* stateUWA = (embedDBState*)malloc(sizeof(embedDBState));
     stateUWA->keySize = 4;
     stateUWA->dataSize = 12;
@@ -140,10 +140,13 @@ void runTestSequentialValues() {
     if (initResult != 0) {
         TEST_FAIL_MESSAGE("There was an error setting up the state of the UWA dataset.");
     }
+    stateUWA->rules = NULL;
+    stateUWA->numRules = 0;
 
     int8_t colSizes[] = {4, 12};
-    int8_t colSignedness[] = {embedDB_COLUMN_UNSIGNED, embedDB_COLUMN_UNSIGNED};
-    embedDBSchema* baseSchema = embedDBCreateSchema(2, colSizes, colSignedness);
+    int8_t colSignedness[] = { embedDB_COLUMN_UNSIGNED, embedDB_COLUMN_UNSIGNED };
+    ColumnType colTypes[] = { embedDB_COLUMN_UINT32, embedDB_COLUMN_UINT32 };
+    embedDBSchema* baseSchema = embedDBCreateSchema(2, colSizes, colSignedness, colTypes);
 
     // Insert test data
     #ifdef ARDUINO
@@ -230,8 +233,9 @@ void runTestUsingUWA500k() {
     }
 
     int8_t colSizes[] = {4, 4, 4, 4};
-    int8_t colSignedness[] = {embedDB_COLUMN_UNSIGNED, embedDB_COLUMN_SIGNED, embedDB_COLUMN_SIGNED, embedDB_COLUMN_SIGNED};
-    embedDBSchema* baseSchema = embedDBCreateSchema(4, colSizes, colSignedness);
+    int8_t colSignedness[] = { embedDB_COLUMN_UNSIGNED, embedDB_COLUMN_SIGNED, embedDB_COLUMN_SIGNED, embedDB_COLUMN_SIGNED };
+    ColumnType colTypes[] = { embedDB_COLUMN_UINT32, embedDB_COLUMN_INT32, embedDB_COLUMN_INT32, embedDB_COLUMN_INT32 };
+    embedDBSchema* baseSchema = embedDBCreateSchema(4, colSizes, colSignedness, colTypes);
 
     // Insert data
     const char datafileName[] = "data/uwa500K.bin";
