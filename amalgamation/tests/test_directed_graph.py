@@ -107,6 +107,14 @@ class TestDirectedGraph(unittest.TestCase):
             "schema.h",
             "spline.h",
             "embedDBUtility.h",
+            "flash_minsort_sublist.h",
+            "external_sort.h",
+            "adaptive_sort.h",
+            "in_memory_sort.h",
+            "sortWrapper.h",
+            "no_output_heap.h",
+            "flash_minsort.h",
+            "activeRules.h",
         }
         self.assertEqual(expected_header_file_names, retrieved_header_file_names)
 
@@ -119,6 +127,13 @@ class TestDirectedGraph(unittest.TestCase):
             "embedDB.c",
             "schema.c",
             "spline.c",
+            "flash_minsort_sublist.c",
+            "adaptive_sort.c",
+            "in_memory_sort.c",
+            "sortWrapper.c",
+            "no_output_heap.c",
+            "flash_minsort.c",
+            "activeRules.c",
         }
         self.assertEqual(expected_c_file_names, retrieved_c_file_names)
 
@@ -137,6 +152,7 @@ class TestDirectedGraph(unittest.TestCase):
             "#include <stdlib.h>",
             "#include <string.h>",
             "#include <time.h>",
+            "#include <limits.h>",
         }
 
         # set of objects containing source files (fileNode)
@@ -151,11 +167,31 @@ class TestDirectedGraph(unittest.TestCase):
 
     def test_create_dir_graph(self):
         expected_graph = {
+            "external_sort.h": {"embedDB.h"},
+            "flash_minsort.h": {"external_sort.h", "serial_c_iface.h"},
+            "flash_minsort_sublist.h": {"external_sort.h", "serial_c_iface.h"},
+            "activeRules.h": {"advancedQueries.h", "embedDBUtility.h"},
             "embedDB.h": {"spline.h"},
-            "embedDBUtility.h": set(),
-            "advancedQueries.h": {"embedDB.h", "schema.h"},
+            "no_output_heap.h": {"external_sort.h", "serial_c_iface.h"},
             "schema.h": set(),
+            "sortWrapper.h": {
+                "adaptive_sort.h",
+                "schema.h",
+                "external_sort.h",
+                "in_memory_sort.h",
+                "advancedQueries.h",
+                "flash_minsort.h",
+            },
             "spline.h": set(),
+            "adaptive_sort.h": {"external_sort.h", "serial_c_iface.h"},
+            "embedDBUtility.h": set(),
+            "advancedQueries.h": {
+                "sortWrapper.h",
+                "embedDB.h",
+                "external_sort.h",
+                "schema.h",
+            },
+            "in_memory_sort.h": {"external_sort.h"},
         }
 
         # get headers
@@ -255,6 +291,7 @@ class TestDirectedGraph(unittest.TestCase):
         directed_graph = create_directed_graph(master_h)
 
         # Perform top sort
+        print(directed_graph)
         sorted_graph = topsort(directed_graph)
 
         # Check if every node in the directed graph is in the sorted result

@@ -280,10 +280,15 @@ def format_external_lib(incoming_lib):
     # extract each dependency from incoming_lib and add it to the set
 
     for lib in incoming_lib:
-        print(lib)
-        path = lib.split('"')[1]
-        file = os.path.basename(path)
-        temp.add(file)
+        path = None
+        if '"' in lib:
+            parts = lib.split('"')
+            if len(parts) > 1:
+                path = parts[1]
+
+        if path:
+            file = os.path.basename(path)
+            temp.add(file)
 
     return temp
 
@@ -416,9 +421,9 @@ def dfs(graph, node, visited, result_stack, visiting):
     visited.add(node)
     visiting.append(node)
 
-    # for each node's decendant
+    # for each node's descendant
     for child in graph[node]:
-        # check if cylcic
+        # check if cyclic
         if child in visiting:
             sys.stderr.write(
                 f"An error occured in program depedencies, a cycle with {child} was found\n"
@@ -448,7 +453,7 @@ def topsort(graph):
     Note: The graph should not contain any cycles for a valid topological sort to be possible. If the graph contains cycles, the result will not represent a valid topological ordering.
     TODO use Tarjans strongly connected component algorithm to detect if a graph has cycles. StackOverFlow also suggests that we can detect a cycle in our algorithm too
     """
-    # TODO try and sort alphabeitcally by filename to make it determinsitic
+    # TODO try and sort alphabetically by filename to make it deterministic
 
     visited = set()
     result_stack = deque()  # fast stack using the collections library
