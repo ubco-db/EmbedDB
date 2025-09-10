@@ -279,7 +279,7 @@ def format_external_lib(incoming_lib):
 
     # extract each dependency from incoming_lib and add it to the set
 
-    for lib in incoming_lib:        
+    for lib in incoming_lib:
         print(lib)
         path = lib.split('"')[1]
         file = os.path.basename(path)
