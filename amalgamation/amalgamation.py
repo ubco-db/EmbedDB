@@ -390,9 +390,12 @@ def create_directed_graph(set_of_FileNodes):
     directed_graph = {}
 
     # Each FileNode's file_name becomes value of node, edges are the dependency set each obj contains
+    valid_files = {fn.file_name for fn in set_of_FileNodes}
+
     for file_node in set_of_FileNodes:
         node = file_node.file_name
-        edges = file_node.header_dep
+        # Only keep edges to known project files
+        edges = {dep for dep in file_node.header_dep if dep in valid_files}
         directed_graph[node] = edges
 
     return directed_graph

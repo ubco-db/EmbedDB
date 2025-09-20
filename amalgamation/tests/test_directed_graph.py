@@ -167,31 +167,31 @@ class TestDirectedGraph(unittest.TestCase):
 
     def test_create_dir_graph(self):
         expected_graph = {
-            "external_sort.h": {"embedDB.h"},
-            "flash_minsort.h": {"external_sort.h", "serial_c_iface.h"},
-            "flash_minsort_sublist.h": {"external_sort.h", "serial_c_iface.h"},
-            "activeRules.h": {"advancedQueries.h", "embedDBUtility.h"},
-            "embedDB.h": {"spline.h"},
-            "no_output_heap.h": {"external_sort.h", "serial_c_iface.h"},
-            "schema.h": set(),
-            "sortWrapper.h": {
-                "adaptive_sort.h",
-                "schema.h",
-                "external_sort.h",
-                "in_memory_sort.h",
-                "advancedQueries.h",
-                "flash_minsort.h",
-            },
-            "spline.h": set(),
-            "adaptive_sort.h": {"external_sort.h", "serial_c_iface.h"},
-            "embedDBUtility.h": set(),
             "advancedQueries.h": {
                 "sortWrapper.h",
-                "embedDB.h",
                 "external_sort.h",
                 "schema.h",
+                "embedDB.h",
             },
+            "activeRules.h": {"embedDBUtility.h", "advancedQueries.h"},
+            "external_sort.h": {"embedDB.h"},
             "in_memory_sort.h": {"external_sort.h"},
+            "no_output_heap.h": {"external_sort.h"},
+            "embedDBUtility.h": set(),
+            "sortWrapper.h": {
+                "flash_minsort.h",
+                "adaptive_sort.h",
+                "advancedQueries.h",
+                "external_sort.h",
+                "in_memory_sort.h",
+                "schema.h",
+            },
+            "flash_minsort_sublist.h": {"external_sort.h"},
+            "adaptive_sort.h": {"external_sort.h"},
+            "schema.h": set(),
+            "flash_minsort.h": {"external_sort.h"},
+            "spline.h": set(),
+            "embedDB.h": {"spline.h"},
         }
 
         # get headers
