@@ -291,7 +291,6 @@ class TestDirectedGraph(unittest.TestCase):
         directed_graph = create_directed_graph(master_h)
 
         # Perform top sort
-        print(directed_graph)
         sorted_graph = topsort(directed_graph)
 
         # Check if every node in the directed graph is in the sorted result

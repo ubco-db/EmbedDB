@@ -334,7 +334,7 @@ int test_vardata() {
                         validationTail->next = (Node *)malloc(sizeof(Node));
                         if (validationTail->next == NULL) {
                             printf("Error allocating memory for validation linked list.\n");
-                            return;
+                            return -1;
                         }
                         validationTail = validationTail->next;
                         uint32_t z = 0;
@@ -426,7 +426,7 @@ int test_vardata() {
                             validationTail->next = (Node *)malloc(sizeof(Node));
                             if (validationTail->next == NULL) {
                                 printf("Error allocating memory for validation linked list.\n");
-                                return;
+                                return -1;
                             }
                             validationTail = validationTail->next;
                             validationTail->length = 0;
@@ -438,7 +438,7 @@ int test_vardata() {
                     }
 
                     if (i % stepSize == 0) {
-                        printf("Num: %lu KEY: %lu\n", i, *((int32_t *)buf));
+                        printf("Num: %d KEY: %d\n", i, *((int32_t *)buf));
                         l = i / stepSize - 1;
                         if (l < NUM_STEPS && l >= 0) {
                             times[l][r] = clock() - start;
@@ -453,7 +453,7 @@ int test_vardata() {
                     /* Allows stopping at set number of records instead of reading entire file */
                     if (i == numRecords) {
                         maxRange = *((uint32_t *)buf);
-                        printf("Num: %lu KEY: %lu\n", i, *((int32_t *)buf));
+                        printf("Num: %d KEY: %d\n", i, *((int32_t *)buf));
 
                         goto doneread;
                     }
@@ -473,9 +473,9 @@ int test_vardata() {
         overwrites[l][r] = 0;
         hits[l][r] = state->bufferHits;
 
-        printf("Elapsed Time: %lu ms\n", times[l][r]);
-        printf("Records inserted: %lu\n", numRecords);
-        printf("Records with variable data: %lu\n", numVarData);
+        printf("Elapsed Time: %u ms\n", times[l][r]);
+        printf("Records inserted: %d\n", numRecords);
+        printf("Records with variable data: %u\n", numVarData);
 
         embedDBPrintStats(state);
         embedDBResetStats(state);
@@ -500,13 +500,13 @@ int test_vardata() {
                     if (result == 0) {
                         fixedFound++;
                     } else if (result == -1) {
-                        printf("ERROR: Failed to find: %lu\n", i);
+                        printf("ERROR: Failed to find: %d\n", i);
                         notFound++;
                     } else if (result == 1) {
-                        printf("WARN: Variable data associated with key %lu was deleted\n", i);
+                        printf("WARN: Variable data associated with key %d was deleted\n", i);
                         deleted++;
                     } else if (*((int32_t *)recordBuffer) != i % 100) {
-                        printf("ERROR: Wrong data for: %lu\n", i);
+                        printf("ERROR: Wrong data for: %d\n", i);
                     } else if (VALIDATE_VAR_DATA && varStream != NULL) {
                         while (validationHead->key != i) {
                             Node *tmp = validationHead;
@@ -515,12 +515,12 @@ int test_vardata() {
                             free(tmp);
                         }
                         if (validationHead == NULL) {
-                            printf("ERROR: No validation data for: %lu\n", i);
-                            return;
+                            printf("ERROR: No validation data for: %d\n", i);
+                            return -1;
                         }
                         // Check that the var data is correct
                         if (!dataEquals(state, varStream, validationHead)) {
-                            printf("ERROR: Wrong var data for: %lu\n", i);
+                            printf("ERROR: Wrong var data for: %d\n", i);
                         }
                     }
 
@@ -594,7 +594,7 @@ int test_vardata() {
                     rec++;
                 }
                 printf("Read records: %d\n", rec);
-                printf("Num: %lu KEY: %lu Perc: %d Records: %d Reads: %d \n", i, mv, ((state->numReads - reads) * 1000 / (state->nextDataPageId - state->minDataPageId + state->nextVarPageId)), rec, (state->numReads - reads));
+                printf("Num: %d KEY: %d Perc: %d Records: %d Reads: %d \n", i, mv, ((state->numReads - reads) * 1000 / (state->nextDataPageId - state->minDataPageId + state->nextVarPageId)), rec, (state->numReads - reads));
 
                 embedDBCloseIterator(&it);
                 free(varDataBuf);
@@ -641,13 +641,13 @@ int test_vardata() {
                         int8_t result = embedDBGetVar(state, key, recordBuffer, &varStream);
 
                         if (result == -1) {
-                            printf("ERROR: Failed to find: %lu\n", *key);
+                            printf("ERROR: Failed to find: %d\n", *key);
                             notFound++;
                         } else if (result == 1) {
-                            printf("WARN: Variable data associated with key %lu was deleted\n", *key);
+                            printf("WARN: Variable data associated with key %d was deleted\n", *key);
                             deleted++;
                         } else if (*((int32_t *)recordBuffer) != *((int32_t *)((int8_t *)buf + 4))) {
-                            printf("ERROR: Wrong data for: %lu\n", *key);
+                            printf("ERROR: Wrong data for: %d\n", *key);
                         } else if (VALIDATE_VAR_DATA && varStream != NULL) {
                             while (validationHead->key != i) {
                                 Node *tmp = validationHead;
@@ -656,12 +656,12 @@ int test_vardata() {
                                 free(tmp);
                             }
                             if (validationHead == NULL) {
-                                printf("ERROR: No validation data for: %lu\n", i);
-                                return;
+                                printf("ERROR: No validation data for: %d\n", i);
+                                return -1;
                             }
                             // Check that the var data is correct
                             if (!dataEquals(state, varStream, validationHead)) {
-                                printf("ERROR: Wrong var data for: %lu\n", i);
+                                printf("ERROR: Wrong var data for: %d\n", i);
                             }
                         }
 
@@ -688,7 +688,7 @@ int test_vardata() {
 
                         if (i % stepSize == 0) {
                             l = i / stepSize - 1;
-                            printf("Num: %lu KEY: %lu\n", i, *key);
+                            printf("Num: %d KEY: %d\n", i, *key);
                             if (l < NUM_STEPS && l >= 0) {
                                 rtimes[l][r] = clock() - start;
                                 rreads[l][r] = state->numReads;
@@ -730,7 +730,7 @@ int test_vardata() {
                         // printf("ERROR: Failed to find: %lu\n", key);
                         notFound++;
                     } else if (result == 1) {
-                        printf("WARN: Variable data associated with key %lu was deleted\n", key);
+                        printf("WARN: Variable data associated with key %u was deleted\n", key);
                         deleted++;
                     } else {
                         fixedFound++;
@@ -759,7 +759,7 @@ int test_vardata() {
 
                     if (i % queryStepSize == 0) {
                         l = i / queryStepSize - 1;
-                        printf("Num: %lu KEY: %lu\n", i, key);
+                        printf("Num: %d KEY: %u\n", i, key);
                         if (l < NUM_STEPS && l >= 0) {
                             rtimes[l][r] = clock() - start;
                             rreads[l][r] = state->numReads;
@@ -809,7 +809,7 @@ int test_vardata() {
                 }
                 printf("Read records: %d\n", rec);
                 // embedDBPrintStats(state);
-                printf("Num: %lu KEY: %lu Perc: %.1f Records: %d Reads: %d \n", i, mv, ((state->numReads - reads) * 1000 / (state->nextDataPageId - state->minDataPageId + state->nextVarPageId - state->minVarRecordId)) / 10.0, rec, (state->numReads - reads));
+                printf("Num: %d KEY: %d Perc: %.1f Records: %d Reads: %d \n", i, mv, ((state->numReads - reads) * 1000 / (state->nextDataPageId - state->minDataPageId + state->nextVarPageId - state->minVarRecordId)) / 10.0, rec, (state->numReads - reads));
 
                 embedDBCloseIterator(&it);
                 free(varDataBuf);
@@ -822,12 +822,12 @@ int test_vardata() {
         rtimes[l][r] = end - start;
         rreads[l][r] = state->numReads;
         rhits[l][r] = state->bufferHits;
-        printf("Elapsed Time: %lu ms\n", rtimes[l][r]);
-        printf("Records queried: %lu\n", i);
-        printf("Fixed records found: %lu\n", fixedFound);
-        printf("Vardata found: %lu\n", varDataFound);
-        printf("Vardata deleted: %lu\n", deleted);
-        printf("Num records not found: %lu\n", notFound);
+        printf("Elapsed Time: %u ms\n", rtimes[l][r]);
+        printf("Records queried: %d\n", i);
+        printf("Fixed records found: %u\n", fixedFound);
+        printf("Vardata found: %u\n", varDataFound);
+        printf("Vardata deleted: %u\n", deleted);
+        printf("Num records not found: %u\n", notFound);
 
         embedDBPrintStats(state);
 
@@ -869,79 +869,79 @@ int test_vardata() {
     // Prints results
     uint32_t sum;
     for (count_t i = 1; i <= NUM_STEPS; i++) {
-        printf("Stats for %lu:\n", i * stepSize);
+        printf("Stats for %u:\n", i * stepSize);
 
         printf("Reads:   ");
         sum = 0;
         for (r = 0; r < NUM_RUNS; r++) {
             sum += reads[i - 1][r];
-            printf("\t%lu", reads[i - 1][r]);
+            printf("\t%u", reads[i - 1][r]);
         }
-        printf("\t%lu\n", sum / r);
+        printf("\t%u\n", sum / r);
 
         printf("Writes: ");
         sum = 0;
         for (r = 0; r < NUM_RUNS; r++) {
             sum += writes[i - 1][r];
-            printf("\t%lu", writes[i - 1][r]);
+            printf("\t%u", writes[i - 1][r]);
         }
-        printf("\t%lu\n", sum / r);
+        printf("\t%u\n", sum / r);
 
         printf("Overwrites: ");
         sum = 0;
         for (r = 0; r < NUM_RUNS; r++) {
             sum += overwrites[i - 1][r];
-            printf("\t%lu", overwrites[i - 1][r]);
+            printf("\t%u", overwrites[i - 1][r]);
         }
-        printf("\t%lu\n", sum / r);
+        printf("\t%u\n", sum / r);
 
         printf("Totwrites: ");
         sum = 0;
         for (r = 0; r < NUM_RUNS; r++) {
             sum += overwrites[i - 1][r] + writes[i - 1][r];
-            printf("\t%lu", overwrites[i - 1][r] + writes[i - 1][r]);
+            printf("\t%u", overwrites[i - 1][r] + writes[i - 1][r]);
         }
-        printf("\t%lu\n", sum / r);
+        printf("\t%u\n", sum / r);
 
         printf("Buffer hits: ");
         sum = 0;
         for (r = 0; r < NUM_RUNS; r++) {
             sum += hits[i - 1][r];
-            printf("\t%lu", hits[i - 1][r]);
+            printf("\t%u", hits[i - 1][r]);
         }
-        printf("\t%lu\n", sum / r);
+        printf("\t%u\n", sum / r);
 
         printf("Write Time: ");
         sum = 0;
         for (r = 0; r < NUM_RUNS; r++) {
             sum += times[i - 1][r];
-            printf("\t%lu", times[i - 1][r]);
+            printf("\t%u", times[i - 1][r]);
         }
-        printf("\t%lu\n", sum / r);
+        printf("\t%u\n", sum / r);
 
         printf("R Time: ");
         sum = 0;
         for (r = 0; r < NUM_RUNS; r++) {
             sum += rtimes[i - 1][r];
-            printf("\t%lu", rtimes[i - 1][r]);
+            printf("\t%u", rtimes[i - 1][r]);
         }
-        printf("\t%lu\n", sum / r);
+        printf("\t%u\n", sum / r);
 
         printf("R Reads: ");
         sum = 0;
         for (r = 0; r < NUM_RUNS; r++) {
             sum += rreads[i - 1][r];
-            printf("\t%lu", rreads[i - 1][r]);
+            printf("\t%u", rreads[i - 1][r]);
         }
-        printf("\t%lu\n", sum / r);
+        printf("\t%u\n", sum / r);
 
         printf("R Buffer hits: ");
         sum = 0;
         for (r = 0; r < NUM_RUNS; r++) {
             sum += rhits[i - 1][r];
-            printf("\t%lu", rhits[i - 1][r]);
+            printf("\t%u", rhits[i - 1][r]);
         }
-        printf("\t%lu\n", sum / r);
+        printf("\t%u\n", sum / r);
     }
 
     return 0;

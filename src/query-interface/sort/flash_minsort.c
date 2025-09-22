@@ -53,7 +53,9 @@ This is no output sort with block headers and iterator input. Heap used when mov
 // #define DEBUG_OUTPUT 1
 // #define DEBUG_READ 1
 
+#ifndef INT_MAX
 #define INT_MAX 0xFFFFFFFF
+#endif
 
 /**
  * Reads a page from the source file into memory.

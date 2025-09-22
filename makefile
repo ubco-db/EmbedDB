@@ -17,6 +17,9 @@ else
 	PYTHON=python3
 endif
 
+CC  = gcc
+CXX = g++
+
 .PHONY: clean
 .PHONY: test
 
@@ -25,6 +28,7 @@ PATHS = src/
 PATH_EMBEDDB = src/embedDB/
 PATHSPLINE = src/spline/
 PATH_QUERY = src/query-interface/
+PATH_SORT = src/query-interface/sort/
 PATH_UTILITY = lib/EmbedDB-Utility/
 PATH_FILE_INTERFACE = lib/Desktop-File-Interface/
 PATH_DISTRIBUTION = lib/Distribution/
@@ -40,7 +44,8 @@ BUILD_PATHS = $(PATHB) $(PATHD) $(PATHO) $(PATHR) $(PATHA)
 
 EMBEDDB_OBJECTS = $(PATHO)embedDB.o $(PATHO)spline.o $(PATHO)embedDBUtility.o
 EMBEDDB_FILE_INTERFACE = $(PATHO)desktopFileInterface.o
-QUERY_OBJECTS = $(PATHO)schema.o $(PATHO)advancedQueries.o $(PATHO)activeRules.o
+QUERY_OBJECTS = $(PATHO)schema.o $(PATHO)advancedQueries.o $(PATHO)activeRules.o $(SORT_OBJECTS)
+SORT_OBJECTS = $(PATHO)sortWrapper.o $(PATHO)adaptive_sort.o $(PATHO)flash_minsort_sublist.o $(PATHO)flash_minsort.o $(PATHO)in_memory_sort.o $(PATHO)no_output_heap.o
 EMBEDDB_DESKTOP = $(PATHO)desktopMain.o
 DISTRIBUTION_OBJECTS = $(PATHO)distribution.o
 
@@ -52,11 +57,12 @@ override CFLAGS += $(if $(filter test-dist,$(MAKECMDGOALS)), $(TEST_DIST_FLAGS),
 
 SRCT = $(wildcard $(PATHT)*/*.cpp)
 
-COMPILE=gcc -c
-LINK=gcc
+COMPILE_C   = $(CC)  -c
+COMPILE_CPP = $(CXX) -c
+LINK_C      = $(CC)
+LINK_CPP    = $(CXX)
 DEPEND=gcc -MM -MG -MF
 
-# Transform to results filenames
 RESULTS = $(patsubst $(PATHT)test%.cpp,$(PATHR)test%.testpass,$(SRCT))
 
 build: $(BUILD_PATHS) $(PATHB)desktopMain.$(TARGET_EXTENSION)
@@ -87,9 +93,9 @@ $(PATHR)%.testpass: $(PATHB)%.$(TARGET_EXTENSION)
 	$(MKDIR) $(@D)
 	-./$< > $@ 2>&1
 
-$(PATHB)test%.$(TARGET_EXTENSION): $(PATHO)test%.o $(if $(filter test-dist,$(MAKECMDGOALS)), $(DISTRIBUTION_OBJECTS), $(EMBEDDB_OBJECTS) $(QUERY_OBJECTS)) $(EMBEDDB_FILE_INTERFACE) $(PATHO)unity.o
+$(PATHB)test%.$(TARGET_EXTENSION): $(PATHO)test%.o ... $(PATHO)unity.o
 	$(MKDIR) $(@D)
-	$(LINK) -o $@ $^ $(MATH)
+	$(LINK_CPP) -o $@ $^ $(MATH)
 
 $(PATHO)%.o:: $(PATHT)%.cpp
 	$(MKDIR) $(@D)
@@ -116,8 +122,19 @@ $(PATHO)%.o:: $(PATH_FILE_INTERFACE)%.c
 $(PATHO)%.o:: $(PATH_QUERY)%.c
 	$(COMPILE) $(CFLAGS) $< -o $@
 
+$(PATHO)%.o:: $(PATH_SORT)%.c
+	$(COMPILE) $(CFLAGS) $< -o $@
+
 $(PATHO)%.o:: $(PATHU)%.c $(PATHU)%.h
 	$(COMPILE) $(CFLAGS) $< -o $@
+
+$(PATHB)%.$(TARGET_EXTENSION): $(PATHO)%.o $(PATHO)unity.o
+	$(MKDIR) $(@D)
+	$(LINK_CPP) -o $@ $^ $(MATH)
+
+$(PATHO)%.o: $(PATHT)%.cpp
+	$(MKDIR) $(@D)
+	$(COMPILE_CPP) $(CFLAGS) $< -o $@
 
 $(PATHD)%.d:: $(PATHT)%.c
 	$(DEPEND) $@ $<

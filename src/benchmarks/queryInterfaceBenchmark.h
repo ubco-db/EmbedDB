@@ -194,7 +194,7 @@ int advancedQueryExample() {
     printf("-----------+------+------------\n");
     while (exec(projOp1)) {
         if (++recordsReturned <= printLimit) {
-            printf("%-10lu | %-4.1f | %-4.1f\n", recordBuffer[0], recordBuffer[1] / 10.0, recordBuffer[2] / 10.0);
+            printf("%-10d | %-4.1f | %-4.1f\n", recordBuffer[0], recordBuffer[1] / 10.0, recordBuffer[2] / 10.0);
         }
     }
     if (recordsReturned > printLimit) {
@@ -228,7 +228,7 @@ int advancedQueryExample() {
     printf("-----------+------+------------\n");
     while (exec(projOp2)) {
         if (++recordsReturned <= printLimit) {
-            printf("%-10lu | %-4.1f | %-4.1f\n", recordBuffer[0], recordBuffer[1] / 10.0, recordBuffer[2] / 10.0);
+            printf("%-10d | %-4.1f | %-4.1f\n", recordBuffer[0], recordBuffer[1] / 10.0, recordBuffer[2] / 10.0);
         }
     }
     if (recordsReturned > printLimit) {
@@ -254,9 +254,9 @@ int advancedQueryExample() {
     embedDBOperator* scanOpOrderBy = createTableScanOperator(stateUWA, &it, baseSchema);
     uint8_t projColsOB[] = {0,1};
     embedDBOperator* projColsOrderBy = createProjectionOperator(scanOpOrderBy, 2, projColsOB);
-    embedDBOperator* orderByOp = createOrderByOperator(stateUWA, projColsOrderBy, 1, merge_sort_int32_comparator);
+    embedDBOperator* orderByOp = createOrderByOperator(stateUWA, projColsOrderBy, 1, 5, merge_sort_int32_comparator);
     orderByOp->init(orderByOp);
-    recordBuffer = orderByOp->recordBuffer;
+    recordBuffer = (int32_t*)orderByOp->recordBuffer;
     
     printf("\nOrder By Results:\n");
     printf("ID   | Time       | Temp\n");
@@ -267,7 +267,7 @@ int advancedQueryExample() {
             break;
         }
         
-        printf("%4d | %-10lu | %-4.1f\n", i, recordBuffer[0], ((uint32_t)recordBuffer[1]) / 10.0);
+        printf("%4d | %-10d | %-4.1f\n", i, recordBuffer[0], ((uint32_t)recordBuffer[1]) / 10.0);
     }
 
     orderByOp->close(orderByOp);
@@ -308,7 +308,7 @@ int advancedQueryExample() {
     printf("------+-------+-------+--------+----------+-------\n");
     while (exec(countSelect3)) {
         if (++recordsReturned < printLimit) {
-            printf("%5lu | %5lu | %5.1f | %6.1f | %8lld | %5.1f\n", recordBuffer[0], recordBuffer[1], recordBuffer[2] / 10.0, ((float*)recordBuffer + 3)[3] / 10, *(int64_t*)((uint32_t*)recordBuffer + 4), recordBuffer[6] / 10.0);
+            printf("%5d | %5d | %5.1f | %6.1f | %8ld | %5.1f\n", recordBuffer[0], recordBuffer[1], recordBuffer[2] / 10.0, ((float*)recordBuffer + 3)[3] / 10, *(int64_t*)((uint32_t*)recordBuffer + 4), recordBuffer[6] / 10.0);
         }
     }
     if (recordsReturned > printLimit) {
@@ -389,7 +389,7 @@ int advancedQueryExample() {
 
     // Prepare sea table
     embedDBOperator* scan4_2 = createTableScanOperator(stateSEA, &it2, baseSchema);
-    scan4_2-int32_t*>init(scan4_2);
+    scan4_2->init(scan4_2);
 
     // Join tables
     embedDBOperator* join4 = createKeyJoinOperator(shift4_1, scan4_2);
@@ -408,7 +408,7 @@ int advancedQueryExample() {
     printf("-----------+-------+-------\n");
     while (exec(proj4)) {
         if (++recordsReturned < printLimit) {
-            printf("%-10lu | %-5.1f | %-5.1f\n", recordBuffer[0], recordBuffer[1] / 10.0, recordBuffer[2] / 10.0);
+            printf("%-10d | %-5.1f | %-5.1f\n", recordBuffer[0], recordBuffer[1] / 10.0, recordBuffer[2] / 10.0);
         }
     }
     if (recordsReturned > printLimit) {

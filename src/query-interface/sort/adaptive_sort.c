@@ -70,7 +70,7 @@ void print_heap(char* buffer,  int32_t heap_start_offset, int heap_size, int lis
         addr = buffer + heap_start_offset;            
         printf("heap: ");
         for (j = 0; j < heap_size; j++)
-            printf(" %li", *(int32_t *) (addr - j*es->record_size));
+            printf(" %d", *(int32_t *) (addr - j*es->record_size));
         printf("| ");
     }
     printf("   ");
@@ -80,7 +80,7 @@ void print_heap(char* buffer,  int32_t heap_start_offset, int heap_size, int lis
         addr = buffer + es->page_size;            
         printf("list: ");
         for (j = 0; j < list_size; j++)
-            printf(" %li", *(int32_t *) (addr + j*es->record_size));
+            printf(" %d", *(int32_t *) (addr + j*es->record_size));
         printf("| ");
     }
     printf("\n");             
