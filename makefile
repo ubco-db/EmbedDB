@@ -49,6 +49,10 @@ SORT_OBJECTS = $(PATHO)sortWrapper.o $(PATHO)adaptive_sort.o $(PATHO)flash_minso
 EMBEDDB_DESKTOP = $(PATHO)desktopMain.o
 DISTRIBUTION_OBJECTS = $(PATHO)distribution.o
 
+DIST_TEST_OBJECTS = $(DISTRIBUTION_OBJECTS) $(EMBEDDB_FILE_INTERFACE) $(PATHO)unity.o
+DEV_TEST_OBJECTS = $(EMBEDDB_OBJECTS) $(QUERY_OBJECTS) $(EMBEDDB_FILE_INTERFACE) $(SORT_OBJECTS) $(PATHO)unity.o
+
+
 TEST_FLAGS = -I. -I$(PATHU) -I $(PATHS) -I$(PATH_UTILITY) -I$(PATH_FILE_INTERFACE) -D TEST
 EXAMPLE_FLAGS = -I. -I$(PATHS) -I$(PATH_UTILITY) -I$(PATH_FILE_INTERFACE) -I$(PATH_DISTRIBUTION) -DPRINT_ERRORS
 TEST_DIST_FLAGS = -I. -I$(PATHU) -I$(PATH_FILE_INTERFACE) -I$(PATH_DISTRIBUTION) -DDIST -D TEST
@@ -71,7 +75,7 @@ build: $(BUILD_PATHS) $(PATHB)desktopMain.$(TARGET_EXTENSION)
 	@echo "Finished EmbedDB Desktop Build"
 
 $(PATHB)desktopMain.$(TARGET_EXTENSION): $(EMBEDDB_OBJECTS) $(QUERY_OBJECTS) $(EMBEDDB_DESKTOP) $(EMBEDDB_FILE_INTERFACE)
-	$(LINK) -o $@ $^ $(MATH)
+	$(LINK_C) -o $@ $^ $(MATH)
 
 dist: $(BUILD_PATHS) $(PATHB)distributionMain.$(TARGET_EXTENSION)
 	@echo "Running EmbedDB Distribution Desktop Build File"
@@ -79,13 +83,13 @@ dist: $(BUILD_PATHS) $(PATHB)distributionMain.$(TARGET_EXTENSION)
 	@echo "Finished EmbedDB Distribution Desktop Build"
 
 $(PATHB)distributionMain.$(TARGET_EXTENSION): $(DISTRIBUTION_OBJECTS) $(EMBEDDB_DESKTOP) $(EMBEDDB_FILE_INTERFACE)
-	$(LINK) -o $@ $^ $(MATH)
+	$(LINK_C) -o $@ $^ $(MATH)
 
 test: $(BUILD_PATHS) $(RESULTS)
 	pip install -r requirements.txt -q
 	$(PYTHON) ./scripts/stylize_as_junit.py
 
-test-dist: $(BUILD_PATHS) $(RESULTS)
+test-dist: $(BUILD_PATHS) $(RESULTS:.testpass=.dist.testpass)
 	pip install -r requirements.txt -q
 	$(PYTHON) ./scripts/stylize_as_junit.py
 
@@ -93,40 +97,48 @@ $(PATHR)%.testpass: $(PATHB)%.$(TARGET_EXTENSION)
 	$(MKDIR) $(@D)
 	-./$< > $@ 2>&1
 
-$(PATHB)test%.$(TARGET_EXTENSION): $(PATHO)test%.o ... $(PATHO)unity.o
+$(PATHR)%.dist.testpass: $(PATHB)%.dist.$(TARGET_EXTENSION)
+	$(MKDIR) $(@D)
+	-./$< > $@ 2>&1
+
+$(PATHB)test%.$(TARGET_EXTENSION): $(PATHO)test%.o $(DEV_TEST_OBJECTS)
+	$(MKDIR) $(@D)
+	$(LINK_CPP) -o $@ $^ $(MATH)
+
+$(PATHB)%.dist.$(TARGET_EXTENSION): $(PATHO)%.o $(DIST_TEST_OBJECTS)
 	$(MKDIR) $(@D)
 	$(LINK_CPP) -o $@ $^ $(MATH)
 
 $(PATHO)%.o:: $(PATHT)%.cpp
 	$(MKDIR) $(@D)
-	$(COMPILE) $(CFLAGS) $< -o $@
+	$(COMPILE_CPP) $(CFLAGS) $< -o $@
 
 $(PATHO)distribution.o: $(PATH_DISTRIBUTION)embedDB.c
-	$(COMPILE) -I$(PATH_UTILITY) -I$(PATH_FILE_INTERFACE) -DPRINT_ERRORS -I$(PATH_DISTRIBUTION) $< -o $@
+	$(COMPILE_C) -I$(PATH_UTILITY) -I$(PATH_FILE_INTERFACE) -DPRINT_ERRORS -I$(PATH_DISTRIBUTION) $< -o $@
 
 $(PATHO)%.o:: $(PATHS)%.c
-	$(COMPILE) $(CFLAGS) $< -o $@
+	$(COMPILE_C) $(CFLAGS) $< -o $@
 
 $(PATHO)%.o:: $(PATHSPLINE)%.c
-	$(COMPILE) $(CFLAGS) $< -o $@
+	$(COMPILE_C) $(CFLAGS) $< -o $@
 
 $(PATHO)%.o:: $(PATH_EMBEDDB)%.c
-	$(COMPILE) $(CFLAGS) $< -o $@
+	$(COMPILE_C) $(CFLAGS) $< -o $@
 
 $(PATHO)%.o:: $(PATH_UTILITY)%.c
-	$(COMPILE) $(CFLAGS) $< -o $@
+	$(COMPILE_C) $(CFLAGS) $< -o $@
 
 $(PATHO)%.o:: $(PATH_FILE_INTERFACE)%.c
-	$(COMPILE) $(CFLAGS) $< -o $@
+	$(COMPILE_C) $(CFLAGS) $< -o $@
 
 $(PATHO)%.o:: $(PATH_QUERY)%.c
-	$(COMPILE) $(CFLAGS) $< -o $@
+	$(COMPILE_C) $(CFLAGS) $< -o $@
 
 $(PATHO)%.o:: $(PATH_SORT)%.c
-	$(COMPILE) $(CFLAGS) $< -o $@
+	$(COMPILE_C) $(CFLAGS) $< -o $@
 
 $(PATHO)%.o:: $(PATHU)%.c $(PATHU)%.h
-	$(COMPILE) $(CFLAGS) $< -o $@
+	$(COMPILE_C) $(CFLAGS) $< -o $@
 
 $(PATHB)%.$(TARGET_EXTENSION): $(PATHO)%.o $(PATHO)unity.o
 	$(MKDIR) $(@D)

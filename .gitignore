@@ -6,3 +6,5 @@ build/
 
 sort_data.bin
 sort_order.bin
+
+.venv
