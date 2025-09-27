@@ -151,6 +151,9 @@ int advancedQueryExample() {
     stateUWA->inBitmap = inBitmapInt16;
     stateUWA->updateBitmap = updateBitmapInt16;
     stateUWA->buildBitmapFromRange = buildBitmapInt16FromRange;
+    stateUWA->rules = NULL;
+    stateUWA->numRules = 0;
+    
     int8_t initResult = embedDBInit(stateUWA, 1);
     if (initResult != 0) {
         printf("There was an error setting up the state of the UWA dataset.");
@@ -343,6 +346,9 @@ int advancedQueryExample() {
     stateSEA->numDataPages = 20000;
     stateSEA->numIndexPages = 1000;
     stateSEA->numSplinePoints = 120;
+    
+    stateSEA->rules = NULL;
+    stateSEA->numRules = 0;
 
     /* Setup files for second version of EmbedDB */
     char dataPath2[] = DATA_FILE_PATH_SEA, indexPath2[] = INDEX_FILE_PATH_SEA;
