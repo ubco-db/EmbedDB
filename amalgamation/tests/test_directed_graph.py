@@ -168,7 +168,6 @@ class TestDirectedGraph(unittest.TestCase):
     def test_create_dir_graph(self):
         expected_graph = {
             "advancedQueries.h": {
-                "sortWrapper.h",
                 "external_sort.h",
                 "schema.h",
                 "embedDB.h",

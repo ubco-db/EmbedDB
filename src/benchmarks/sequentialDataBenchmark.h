@@ -195,6 +195,8 @@ int runalltests_embedDB() {
         state->numSplinePoints = 30;
         state->bitmapSize = 0;
         state->bufferSizeInBlocks = M;
+        state->rules = NULL;
+        state->numRules = 0;
         state->buffer = malloc((size_t)state->bufferSizeInBlocks * state->pageSize);
         if (state->buffer == NULL) {
             printf("Unable to allocate buffer. Exiting.\n");
@@ -267,10 +269,9 @@ int runalltests_embedDB() {
         printf("\n\nINSERT TEST:\n");
         /* Insert records into structure */
         start = clock();
-
         if (SEQUENTIAL_DATA) {
             for (i = 0; i < numRecords; i++) {
-                // printf("Inserting record %lu\n", i);
+                printf("Inserting record %lu\n", i);
                 memcpy(recordBuffer, &i, sizeof(int32_t));
                 int32_t data = i % 100;
                 memcpy(recordBuffer + state->keySize, &data, sizeof(int32_t));
@@ -288,7 +289,8 @@ int runalltests_embedDB() {
                     }
                 }
             }
-        } else { /* Read data from a file */
+        }
+        else { /* Read data from a file */
             int8_t headerSize = 16;
             i = 0;
             fseek(infile, 0, SEEK_SET);
@@ -299,13 +301,14 @@ int runalltests_embedDB() {
                     break;
                 // readCounter++;
                 /* Process all records on page */
-                int16_t count = *((int16_t *)(infileBuffer + 4));
+                int16_t count;
+                memcpy(&count, infileBuffer + 4, sizeof(count));
                 for (int j = 0; j < count; j++) {
                     void *buf = (infileBuffer + headerSize + j * state->recordSize);
 
                     // printf("Key: %lu, Data: %lu, Page num: %lu, i: %lu\n",
                     // *(id_t*)buf, *(id_t*)(buf + 4), i/31, i);
-                    embedDBPut(state, buf, (void *)((int8_t *)buf + 4));
+                    embedDBPut(state, buf, (void*)((int8_t*)buf + 4));
                     // if ( i < 100000)
                     //   printf("%lu %d %d %d\n", *((uint32_t*) buf),
                     //   *((int32_t*) (buf+4)), *((int32_t*) (buf+8)),
@@ -434,7 +437,8 @@ int runalltests_embedDB() {
 
                     readCounter++;
                     /* Process all records on page */
-                    int16_t count = *((int16_t *)(infileBuffer + 4));
+                    int16_t count;
+                    memcpy(&count, infileBuffer + 4, sizeof(count));
                     for (int j = 0; j < count; j++) {
                         void *buf = (infileBuffer + headerSize + j * state->recordSize);
                         int32_t *key = (int32_t *)buf;

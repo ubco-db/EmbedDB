@@ -20,7 +20,20 @@
 
 
 typedef struct embedDBOperator embedDBOperator;
-typedef struct sortData sortData;
+
+typedef struct sortData {
+    uint32_t count;
+    uint16_t recordSize;
+    int8_t colNum;
+    int8_t keyOffset;
+    int8_t keySize;
+    int8_t(*compareFn)(void* a, void* b);
+    int32_t tupleLimit;
+
+    void* readBuffer;
+    embedDBFileInterface* fileInterface;
+    file_iterator_state_t* fileIterator;
+} sortData;
 
 /**
  * @brief Initalizes default metric values

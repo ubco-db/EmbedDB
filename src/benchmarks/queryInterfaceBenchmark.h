@@ -43,6 +43,7 @@
 #include "embedDB/embedDB.h"
 #include "embedDBUtility.h"
 #include "query-interface/advancedQueries.h"
+#include "query-interface/sort/in_memory_sort.h"
 
 /**
  * 0 = SD Card

@@ -34,6 +34,7 @@
 /******************************************************************************/
 
 #include "advancedQueries.h"
+#include "sort/sortWrapper.h"
 
 #include <string.h>
 

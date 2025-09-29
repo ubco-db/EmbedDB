@@ -230,6 +230,8 @@ int test_vardata() {
         state->numVarPages = 1000;
         state->eraseSizeInPages = 4;
         state->numSplinePoints = 30;
+        state->rules = NULL;
+        state->numRules = 0;
 
         state->parameters = EMBEDDB_USE_BMAP | EMBEDDB_USE_INDEX | EMBEDDB_USE_VDATA | EMBEDDB_RESET_DATA;
 

@@ -43,7 +43,6 @@ extern "C" {
 #include "../embedDB/embedDB.h"
 #include "schema.h"
 #include "sort/external_sort.h"
-#include "sort/sortWrapper.h"
 
 #define SELECT_GT 0
 #define SELECT_LT 1
@@ -51,6 +50,8 @@ extern "C" {
 #define SELECT_LTE 3
 #define SELECT_EQ 4
 #define SELECT_NEQ 5
+
+typedef struct sortData sortData;
 
 typedef struct embedDBAggregateFunc {
     /**
@@ -123,20 +124,6 @@ typedef struct embedDBOperator {
      */
     void* recordBuffer;
 } embedDBOperator;
-
-typedef struct sortData {
-    uint32_t count;
-    uint16_t recordSize;
-    int8_t colNum;
-    int8_t keyOffset;
-    int8_t keySize;
-    int8_t (*compareFn)(void *a, void *b);
-    int32_t tupleLimit;
-
-    void *readBuffer;
-    embedDBFileInterface *fileInterface;
-    file_iterator_state_t *fileIterator;
-} sortData;
 
 /**
  * @brief	Extract a record from an operator

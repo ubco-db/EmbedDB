@@ -7,6 +7,7 @@
 #include "embedDB/embedDB.h"
 #include "embedDBUtility.h"
 #include "query-interface/advancedQueries.h"
+#include "query-interface/sort/in_memory_sort.h"
 
 /**
  * 0 = SD Card
@@ -92,8 +93,9 @@ int sortQueryBenchmark() {
     }
 
     int8_t colSizes[] = {4, 4, 4, 4};
-    int8_t colSignedness[] = {embedDB_COLUMN_UNSIGNED, embedDB_COLUMN_SIGNED, embedDB_COLUMN_SIGNED, embedDB_COLUMN_SIGNED};
-    embedDBSchema* baseSchema = embedDBCreateSchema(4, colSizes, colSignedness);
+    int8_t colSignedness[] = { embedDB_COLUMN_UNSIGNED, embedDB_COLUMN_SIGNED, embedDB_COLUMN_SIGNED, embedDB_COLUMN_SIGNED };
+    ColumnType colTypes[] = { embedDB_COLUMN_UINT32, embedDB_COLUMN_INT32, embedDB_COLUMN_INT32, embedDB_COLUMN_INT32 };
+    embedDBSchema* baseSchema = embedDBCreateSchema(4, colSizes, colSignedness, colTypes);
 
     // Insert data
     const char datafileName[] = "data/uwa500K.bin";
