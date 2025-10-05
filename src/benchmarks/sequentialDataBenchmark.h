@@ -271,7 +271,7 @@ int runalltests_embedDB() {
         start = clock();
         if (SEQUENTIAL_DATA) {
             for (i = 0; i < numRecords; i++) {
-                printf("Inserting record %lu\n", i);
+                printf("Inserting record %d\n", i);
                 memcpy(recordBuffer, &i, sizeof(int32_t));
                 int32_t data = i % 100;
                 memcpy(recordBuffer + state->keySize, &data, sizeof(int32_t));
