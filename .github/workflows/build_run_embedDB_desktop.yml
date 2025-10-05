@@ -22,25 +22,62 @@ jobs:
                 python -m pip install --upgrade pip
                 python -m pip install platformio
 
-            - name: Run EmbedDB Distribution Example
+           - name: Run EmbedDB Distribution Example (Ubuntu)
+              if: matrix.os == 'ubuntu-latest'
+              shell: bash
               run: |
                 pio run -e desktop-dist -t fullclean
-                pio run -e desktop-dist -t exec --project-option "build_flags=-DWHICH_PROGRAM=0 -lm"
+                PLATFORMIO_BUILD_FLAGS="-DWHICH_PROGRAM=0 -lm" pio run -e desktop-dist -t exec
             
-            - name: Run EmbedDB Distribution Sequential Data Benchmark
+            - name: Run EmbedDB Distribution Sequential Data Benchmark (Ubuntu)
+              if: matrix.os == 'ubuntu-latest'
+              shell: bash
               run: |
                 pio run -e desktop-dist -t fullclean
-                pio run -e desktop-dist -t exec --project-option "build_flags=-DWHICH_PROGRAM=1 -lm"
+                PLATFORMIO_BUILD_FLAGS="-DWHICH_PROGRAM=1 -lm" pio run -e desktop-dist -t exec
             
-            - name: Run EmbedDB Distribution Variable Data Benchmark
+            - name: Run EmbedDB Distribution Variable Data Benchmark (Ubuntu)
+              if: matrix.os == 'ubuntu-latest'
+              shell: bash
               run: |
                 pio run -e desktop-dist -t fullclean
-                pio run -e desktop-dist -t exec --project-option "build_flags=-DWHICH_PROGRAM=2 -lm"
+                PLATFORMIO_BUILD_FLAGS="-DWHICH_PROGRAM=2 -lm" pio run -e desktop-dist -t exec
             
-            - name: Run EmbedDB Distribution Query Interface Benchmark
+            - name: Run EmbedDB Distribution Query Interface Benchmark (Ubuntu)
+              if: matrix.os == 'ubuntu-latest'
+              shell: bash
               run: |
                 pio run -e desktop-dist -t fullclean
-                pio run -e desktop-dist -t exec --project-option "build_flags=-DWHICH_PROGRAM=3 -lm"
+                PLATFORMIO_BUILD_FLAGS="-DWHICH_PROGRAM=3 -lm" pio run -e desktop-dist -t exec
+            
+            
+            - name: Run EmbedDB Distribution Example (Windows)
+              if: matrix.os == 'windows-latest'
+              shell: pwsh
+              run: |
+                pio run -e desktop-dist -t fullclean
+                $env:PLATFORMIO_BUILD_FLAGS='-DWHICH_PROGRAM=0 -lm'; pio run -e desktop-dist -t exec
+            
+            - name: Run EmbedDB Distribution Sequential Data Benchmark (Windows)
+              if: matrix.os == 'windows-latest'
+              shell: pwsh
+              run: |
+                pio run -e desktop-dist -t fullclean
+                $env:PLATFORMIO_BUILD_FLAGS='-DWHICH_PROGRAM=1 -lm'; pio run -e desktop-dist -t exec
+            
+            - name: Run EmbedDB Distribution Variable Data Benchmark (Windows)
+              if: matrix.os == 'windows-latest'
+              shell: pwsh
+              run: |
+                pio run -e desktop-dist -t fullclean
+                $env:PLATFORMIO_BUILD_FLAGS='-DWHICH_PROGRAM=2 -lm'; pio run -e desktop-dist -t exec
+            
+            - name: Run EmbedDB Distribution Query Interface Benchmark (Windows)
+              if: matrix.os == 'windows-latest'
+              shell: pwsh
+              run: |
+                pio run -e desktop-dist -t fullclean
+                $env:PLATFORMIO_BUILD_FLAGS='-DWHICH_PROGRAM=3 -lm'; pio run -e desktop-dist -t exec
         
     test_platformIO:
         name: Test EmbedDB using PlatformIO
