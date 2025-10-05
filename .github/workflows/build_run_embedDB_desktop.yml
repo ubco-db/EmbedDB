@@ -14,15 +14,6 @@ jobs:
         steps:
             - uses: actions/checkout@v3
 
-            - name: Set environment variable
-              run: |
-                if [[ "$RUNNER_OS" == "Windows" ]]; then
-                    echo "EXPORT_COMMAND=set" >> $GITHUB_ENV
-                else
-                    echo "EXPORT_COMMAND=export" >> $GITHUB_ENV
-                fi
-              shell: bash
-
             - name: Set up Python
               uses: actions/setup-python@v4
             
@@ -31,29 +22,25 @@ jobs:
                 python -m pip install --upgrade pip
                 python -m pip install platformio
 
-            - name: Run EmbedDB Example
+            - name: Run EmbedDB Distribution Example
               run: |
-                    pio run -e desktop -t fullclean
-                    ${{ env.EXPORT_COMMAND }} PLATFORMIO_BUILD_FLAGS="-DWHICH_PROGRAM=0 -lm"
-                    pio run -e desktop -t exec
-
-            - name: Run EmbedDB Sequential Data Benchmark
-              run: |
-                    pio run -e desktop -t fullclean
-                    ${{ env.EXPORT_COMMAND }} PLATFORMIO_BUILD_FLAGS="-DWHICH_PROGRAM=1 -lm"
-                    pio run -e desktop -t exec
+                pio run -e desktop-dist -t fullclean
+                pio run -e desktop-dist -t exec --project-option "build_flags=-DWHICH_PROGRAM=0 -lm"
             
-            - name: Run EmbedDB Variable Data Benchmark
+            - name: Run EmbedDB Distribution Sequential Data Benchmark
               run: |
-                    pio run -e desktop -t fullclean
-                    ${{ env.EXPORT_COMMAND }} PLATFORMIO_BUILD_FLAGS="-DWHICH_PROGRAM=2 -lm"
-                    pio run -e desktop -t exec
-                
-            - name: Run EmbedDB Query Interface Benchmark
+                pio run -e desktop-dist -t fullclean
+                pio run -e desktop-dist -t exec --project-option "build_flags=-DWHICH_PROGRAM=1 -lm"
+            
+            - name: Run EmbedDB Distribution Variable Data Benchmark
               run: |
-                    pio run -e desktop -t fullclean
-                    ${{ env.EXPORT_COMMAND }} PLATFORMIO_BUILD_FLAGS="-DWHICH_PROGRAM=3 -lm"
-                    pio run -e desktop -t exec
+                pio run -e desktop-dist -t fullclean
+                pio run -e desktop-dist -t exec --project-option "build_flags=-DWHICH_PROGRAM=2 -lm"
+            
+            - name: Run EmbedDB Distribution Query Interface Benchmark
+              run: |
+                pio run -e desktop-dist -t fullclean
+                pio run -e desktop-dist -t exec --project-option "build_flags=-DWHICH_PROGRAM=3 -lm"
         
     test_platformIO:
         name: Test EmbedDB using PlatformIO
