@@ -22,7 +22,7 @@ jobs:
                 python -m pip install --upgrade pip
                 python -m pip install platformio
 
-           - name: Run EmbedDB Distribution Example (Ubuntu)
+            - name: Run EmbedDB Distribution Example (Ubuntu)
               if: matrix.os == 'ubuntu-latest'
               shell: bash
               run: |
