@@ -185,7 +185,7 @@ int runalltests_embedDB() {
         embedDBState *state = (embedDBState *)malloc(sizeof(embedDBState));
         if (state == NULL) {
             printf("Unable to allocate state. Exiting.\n");
-            exit(1);
+            return -1;
         }
 
         state->recordSize = 16;
@@ -200,12 +200,12 @@ int runalltests_embedDB() {
         state->buffer = malloc((size_t)state->bufferSizeInBlocks * state->pageSize);
         if (state->buffer == NULL) {
             printf("Unable to allocate buffer. Exiting.\n");
-            exit(1);
+            return -1;
         }
         int8_t *recordBuffer = (int8_t *)malloc(state->recordSize);
         if (recordBuffer == NULL) {
             printf("Unable to allocate record buffer. Exiting.\n");
-            exit(1);
+            return -1;
         }
 
         /* Address level parameters */
@@ -370,7 +370,7 @@ int runalltests_embedDB() {
                     if (SEQUENTIAL_DATA && *((int32_t *)recordBuffer) != key % 100) {
                         printf("ERROR: Wrong data for: %d\n", key);
                         printf("Key: %d Data: %d\n", key, *((int32_t *)recordBuffer));
-                        exit(1);
+                        return -1;
                     }
 
                     if (i % stepSize == 0) {

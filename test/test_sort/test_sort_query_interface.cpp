@@ -112,7 +112,6 @@ void runTestSequentialValues() {
     if (STORAGE_TYPE == 1) {
         TEST_FAIL_MESSAGE("Dataflash is not currently supported. Defaulting to SD card interface.");
     }
-    TEST_MESSAGE("Before allocating state");
     embedDBState* stateUWA = (embedDBState*)malloc(sizeof(embedDBState));
     stateUWA->keySize = 4;
     stateUWA->dataSize = 12;
