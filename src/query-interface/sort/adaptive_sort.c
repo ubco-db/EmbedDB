@@ -1270,8 +1270,9 @@ int adaptive_sort(
                                     record1[OUTPUT_BLOCK_ID] = -1;
                             }
                         }
-                    } /*end of reading in next output block */
-                      /* end of run */
+                        /*end of reading in next output block */
+                    }
+                    /* end of run */
                 }
 
                 if (record2[0] > 0) { /* Tuples in output block to write out */
