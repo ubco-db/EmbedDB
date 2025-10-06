@@ -18,8 +18,8 @@
 #elif WHICH_PROGRAM == 3
 #include "benchmarks/queryInterfaceBenchmark.h"
 #elif WHICH_PROGRAM == 4
-#include "benchmarks/sortBenchmark.h"
 #include "benchmarks/activeRulesBenchmark.h"
+#include "benchmarks/sortBenchmark.h"
 #endif
 
 int main() {

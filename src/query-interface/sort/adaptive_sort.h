@@ -10,11 +10,11 @@
 
 #include "external_sort.h"
 
-//block to use as output block. Breaks reading in new block code if changed.
+// block to use as output block. Breaks reading in new block code if changed.
 #define OUTPUT_BLOCK_ID 0
 
-#define BUFFER_OUTPUT_BLOCK_START_OFFSET  	        0
-#define BUFFER_OUTPUT_BLOCK_START_RECORD_OFFSET 	BLOCK_HEADER_SIZE
+#define BUFFER_OUTPUT_BLOCK_START_OFFSET 0
+#define BUFFER_OUTPUT_BLOCK_START_RECORD_OFFSET BLOCK_HEADER_SIZE
 
 #if defined(__cplusplus)
 extern "C" {
@@ -46,24 +46,23 @@ extern "C" {
 @param      runGenOnly
                 True if generate sorted runs but not whole merge process
 @param      writeToReadRatio
-                Write time divided by read time multiplied by 10. If ratio is 2.5 
+                Write time divided by read time multiplied by 10. If ratio is 2.5
                 (writes over twice as expensive) then value is 25.
 */
 int adaptive_sort(
-    uint8_t     (*iterator)(void *state, void* buffer),
-    void    *iteratorState,
-    void    *tupleBuffer,
-    void    *outputFile,		
-    char    *buffer,        
-    int     bufferSizeInBlocks,
+    uint8_t (*iterator)(void *state, void *buffer),
+    void *iteratorState,
+    void *tupleBuffer,
+    void *outputFile,
+    char *buffer,
+    int bufferSizeInBlocks,
     external_sort_t *es,
-    long    *resultFilePtr,
+    long *resultFilePtr,
     metrics_t *metric,
-    int8_t  (*compareFn)(void *a, void *b),
-    int8_t  runGenOnly,
-    int8_t  writeToReadRatio,
-    void *sortData
-);
+    int8_t (*compareFn)(void *a, void *b),
+    int8_t runGenOnly,
+    int8_t writeToReadRatio,
+    void *sortData);
 
 #if defined(__cplusplus)
 }

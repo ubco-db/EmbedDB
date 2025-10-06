@@ -33,7 +33,6 @@
  */
 /******************************************************************************/
 
-
 #include <string.h>
 
 #ifdef ARDUINO
@@ -75,6 +74,7 @@
 #define INDEX_PATH_SEA "indexFileSEA.bin"
 #else
 #include <math.h>
+
 #include "desktopFileInterface.h"
 #define FILE_TYPE FILE
 #define JOIN_FILE "data/expected_join_output.bin"

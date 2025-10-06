@@ -115,7 +115,7 @@ void initState(uint32_t dataSize) {
     state->compareData = int32Comparator;
     state->rules = NULL;
     state->numRules = 0;
-    
+
     embedDBResetStats(state);
 }
 

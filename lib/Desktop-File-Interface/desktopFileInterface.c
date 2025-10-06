@@ -121,7 +121,6 @@ int32_t FILE_TELL(void *file) {
     return ftell(fileInfo->file);
 }
 
-
 embedDBFileInterface *getFileInterface() {
     embedDBFileInterface *fileInterface = malloc(sizeof(embedDBFileInterface));
     fileInterface->close = FILE_CLOSE;

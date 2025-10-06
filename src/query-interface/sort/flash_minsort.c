@@ -131,15 +131,15 @@ void init_MinSort(MinSortState *ms, external_sort_t *es, metrics_t *metric, int8
     ms->tuplesOut = 0;
     ms->bytesRead = 0;
 
-    ms->record_size       = es->record_size;
-    ms->numBlocks         = es->num_pages;
+    ms->record_size = es->record_size;
+    ms->numBlocks = es->num_pages;
     ms->records_per_block = (es->page_size - es->headerSize) / es->record_size;
     j = (ms->memoryAvailable - 2 * es->page_size - 2 * es->key_size - INT_SIZE) / (es->key_size + sizeof(uint8_t));
-    #ifdef FLASH_MINSORT_PRINT
-    printf("Memory overhead: %d  Max regions: %d\r\n",  2 * es->key_size + INT_SIZE, j);
-    #endif
+#ifdef FLASH_MINSORT_PRINT
+    printf("Memory overhead: %d  Max regions: %d\r\n", 2 * es->key_size + INT_SIZE, j);
+#endif
     ms->blocks_per_region = (uint32_t)ceil((double)ms->numBlocks / j);
-    ms->numRegions        = (uint32_t)ceil((double)ms->numBlocks / ms->blocks_per_region);
+    ms->numRegions = (uint32_t)ceil((double)ms->numBlocks / ms->blocks_per_region);
 
     /* Memory allocation for min values per region */
     // Allocate minimum index after block 2 (block 0 is input buffer, block 1 is output buffer)
@@ -159,9 +159,8 @@ void init_MinSort(MinSortState *ms, external_sort_t *es, metrics_t *metric, int8
 
     /* Populate each region’s minimum key by scanning blocks */
     for (i = 0; i < ms->numBlocks; i++) {
-        readPageMinSort(ms, i, es, metric); // Load block i into buffer
+        readPageMinSort(ms, i, es, metric);  // Load block i into buffer
         regionIdx = i / ms->blocks_per_region;
-
 
         // Set inital value to first read.
         // ms->min[regionIdx] = getValuePtr(ms, 0, es);
@@ -169,12 +168,12 @@ void init_MinSort(MinSortState *ms, external_sort_t *es, metrics_t *metric, int8
         metric->num_memcpys++;
         ms->min_initialized[regionIdx] = true;
 
-       /* Process remaining records in the block */
+        /* Process remaining records in the block */
         for (j = 1; j < ms->records_per_block; j++) {
             if (((i * ms->records_per_block) + j) < ms->num_records) {
                 val = getValuePtr(ms, j, es);
                 metric->num_compar++;
-                
+
                 /* Update region’s minimum if current record is smaller */
                 if (compareFn(val, getMinRegionPtr(ms, regionIdx, es)) == -1) {
                     memcpy(getMinRegionPtr(ms, regionIdx, es), val, es->key_size);
@@ -203,9 +202,9 @@ void init_MinSort(MinSortState *ms, external_sort_t *es, metrics_t *metric, int8
 
 /**
  * This function returns the next tuple in the sorted sequence during the MinSort process.
- * It searches through the blocks of data, finds the smallest value (based on a comparison function), 
+ * It searches through the blocks of data, finds the smallest value (based on a comparison function),
  * and updates the state to reflect the progress in the sorting process.
- * 
+ *
  * @param ms Pointer to the MinSortState structure that maintains the current state of the sorting.
  * @param es Pointer to the external_sort_t structure that defines the external sorting configuration.
  * @param tupleBuffer A buffer where the next tuple will be copied when found.
@@ -219,30 +218,29 @@ char *next_MinSort(MinSortState *ms, external_sort_t *es, void *tupleBuffer, met
     void *dataVal;
 
     // Find the block with the minimum tuple value - otherwise continue on with last block
-    if (ms->nextIdx == 0) {  
+    if (ms->nextIdx == 0) {
         // Find new block as do not know location of next minimum tuple
-        
+
         ms->current_initialized = false;
         ms->regionIdx_initialized = false;
         ms->next_initialized = false;
-        ms->regionIdx = INT_MAX; // Reset the region index to indicate no region has been selected yet
+        ms->regionIdx = INT_MAX;  // Reset the region index to indicate no region has been selected yet
 
-    
         for (i = 0; i < ms->numRegions; i++) {
             metric->num_compar++;
 
             // If the current region has a valid minimum, and it's less than the current tuple, update the minimum
             if (ms->min_initialized[i] && (!ms->current_initialized || compareFn(getMinRegionPtr(ms, i, es), ms->current) == -1)) {
-                memcpy(ms->current, getMinRegionPtr(ms, i, es), es->key_size); // ms->current = ms->min[i];
+                memcpy(ms->current, getMinRegionPtr(ms, i, es), es->key_size);  // ms->current = ms->min[i];
                 metric->num_memcpys++;
                 ms->current_initialized = true;
-                ms->regionIdx = i; // Update the region index to the one containing the new minimum
+                ms->regionIdx = i;  // Update the region index to the one containing the new minimum
             }
         }
 
         // If no valid minimum was found, return NULL indicating no more tuples are available
         if (ms->regionIdx == INT_MAX)
-            return NULL; 
+            return NULL;
     }
 
     // Search current region for tuple with current minimum value
@@ -252,7 +250,7 @@ char *next_MinSort(MinSortState *ms, external_sort_t *es, void *tupleBuffer, met
     // Iterate through records in the block
     for (k = startIndex / ms->records_per_block; k < ms->blocks_per_region; k++) {
         curBlk = startBlk + k;
-        
+
         if (curBlk > ms->numBlocks) {
             break;
         }
@@ -263,11 +261,11 @@ char *next_MinSort(MinSortState *ms, external_sort_t *es, void *tupleBuffer, met
         }
 
         for (i = startIndex % ms->records_per_block; i < ms->records_per_block; i++) {
-            if (curBlk * ms->records_per_block + i >= ms->num_records){
-                break; // Stop if we've reached the end of records in the block
+            if (curBlk * ms->records_per_block + i >= ms->num_records) {
+                break;  // Stop if we've reached the end of records in the block
             }
-            
-            dataVal = getValuePtr(ms, i, es); // Pointer to the current record's value
+
+            dataVal = getValuePtr(ms, i, es);  // Pointer to the current record's value
             metric->num_compar++;
 
             // If the current record matches the minimum, copy it into the ouput buffer
@@ -279,15 +277,15 @@ char *next_MinSort(MinSortState *ms, external_sort_t *es, void *tupleBuffer, met
                 buf = (test_record_t *)tupleBuffer;
                 printf("Returning tuple: %d\n", buf->key);
 #endif
-                i++; // Move to the next record
+                i++;  // Move to the next record
                 ms->tuplesOut++;
                 goto done;  // Exit the loop since we found the record we were looking for
             }
             metric->num_compar++;
-            
+
             // If the current record is greater than the current minimum and is smaller than the next, update the next minimum
             if (compareFn(dataVal, ms->current) == 1 && (!ms->next_initialized || compareFn(dataVal, ms->next) == -1)) {
-                memcpy(ms->next, dataVal, es->key_size); // ms->next = dataVal;
+                memcpy(ms->next, dataVal, es->key_size);  // ms->next = dataVal;
                 metric->num_memcpys++;
                 ms->next_initialized = true;
                 ms->nextIdx = 0;
@@ -299,14 +297,14 @@ done:
 #ifdef DEBUG
     printf("Updating minimum in region\r\n");
 #endif
-    
+
     // After processing the current block, scan the rest of the region to find a smaller record if possible
     ms->nextIdx = 0;
 
     // Continue searching the remaining blocks in the region for a smaller tuple
     for (; k < ms->blocks_per_region; k++) {
         curBlk = startBlk + k;
-        
+
         if (curBlk >= ms->numBlocks) {
             break;
         }
@@ -320,7 +318,7 @@ done:
         // Search through the records in the block
         for (; i < ms->records_per_block; i++) {
             if (curBlk * ms->records_per_block + i >= ms->num_records) {
-                break; // Stop if we've reached the end of records in the block
+                break;  // Stop if we've reached the end of records in the block
             }
             dataVal = getValuePtr(ms, i, es);
             metric->num_compar++;
@@ -337,7 +335,7 @@ done:
 
             // If the current record is greater than the current minimum, update the next tuple if needed
             if (compareFn(dataVal, ms->current) == 1 && (!ms->next_initialized || compareFn(dataVal, ms->next) == -1)) {
-                memcpy(ms->next, dataVal, es->key_size); // Update the next tuple
+                memcpy(ms->next, dataVal, es->key_size);  // Update the next tuple
                 metric->num_memcpys++;
                 ms->next_initialized = true;
                 ms->nextIdx = 0;
@@ -349,11 +347,10 @@ done2:
 
     // After finding the next minimum, update the minimum value for the region
     if (ms->nextIdx == 0) {
-
         if (!ms->next_initialized) {
             ms->min_initialized[ms->regionIdx] = false;
         } else {
-            memcpy(getMinRegionPtr(ms, ms->regionIdx, es), ms->next, es->key_size); // Update the region's minimum
+            memcpy(getMinRegionPtr(ms, ms->regionIdx, es), ms->next, es->key_size);  // Update the region's minimum
             metric->num_memcpys++;
             ms->next_initialized = false;
             ms->min_initialized[ms->regionIdx] = true;
@@ -364,9 +361,7 @@ done2:
 #endif
     }
 
-
-
-    return tupleBuffer; // Update the region's minimum
+    return tupleBuffer;  // Update the region's minimum
 }
 
 void close_MinSort(MinSortState *ms, external_sort_t *es) {
@@ -417,8 +412,7 @@ int flash_minsort(
     external_sort_t *es,
     long *resultFilePtr,
     metrics_t *metric,
-    int8_t (*compareFn)(void *a, void *b)
-) {
+    int8_t (*compareFn)(void *a, void *b)) {
 #ifdef DEBUG
     printf("*Flash Minsort*\n");
 #endif
@@ -446,13 +440,13 @@ int flash_minsort(
         if (count == values_per_page) {                                // Write block
             *((int32_t *)outputBuffer) = blockIndex;                   /* Block index */
             *((int16_t *)(outputBuffer + BLOCK_COUNT_OFFSET)) = count; /* Block record count */
-            count = 0;  // Reset count for the next block
-            
+            count = 0;                                                 // Reset count for the next block
+
             // Write the block to the output file using the file interface's write method
             if (0 == ((file_iterator_state_t *)iteratorState)->fileInterface->write(outputBuffer, blockIndex, es->page_size, outputFile)) {
-                return 9; // Return error code if writing to the output file fails
+                return 9;  // Return error code if writing to the output file fails
             }
-                
+
 #ifdef DEBUG
             printf("Wrote output block. Block index: %d\n", blockIndex);
             for (int k = 0; k < values_per_page; k++) {
@@ -471,7 +465,7 @@ int flash_minsort(
         *((int16_t *)(outputBuffer + BLOCK_COUNT_OFFSET)) = count; /* Block record count */
 
         if (0 == ((file_iterator_state_t *)iteratorState)->fileInterface->write(outputBuffer, blockIndex, es->page_size, outputFile)) {
-            return 9; // Return error code if writing to the output file fails
+            return 9;  // Return error code if writing to the output file fails
         }
         metric->num_writes++;
         blockIndex++;
@@ -490,9 +484,9 @@ int flash_minsort(
 
     *resultFilePtr = 0;
 
-#ifdef DEBUG 
+#ifdef DEBUG
     printf("Complete. Comparisons: %d  MemCopies: %d\n", metric->num_compar, metric->num_memcpys);
 #endif
 
-    return 0; // Successful completion
+    return 0;  // Successful completion
 }

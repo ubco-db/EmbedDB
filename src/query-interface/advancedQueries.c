@@ -34,9 +34,10 @@
 /******************************************************************************/
 
 #include "advancedQueries.h"
-#include "sort/sortWrapper.h"
 
 #include <string.h>
+
+#include "sort/sortWrapper.h"
 
 #if defined(ARDUINO)
 #include "serial_c_iface.h"
@@ -275,7 +276,7 @@ void initProjection(embedDBOperator* op) {
 #endif
             return;
         }
-        
+
         for (uint8_t i = 0; i < numCols; i++) {
             op->schema->columnSizes[i] = inputSchema->columnSizes[cols[i]];
             op->schema->columnTypes[i] = inputSchema->columnTypes[cols[i]];
@@ -468,8 +469,7 @@ embedDBOperator* createSelectionOperator(embedDBOperator* input, int8_t colNum, 
     return op;
 }
 
-
-void initOrderBy(embedDBOperator *op) {
+void initOrderBy(embedDBOperator* op) {
     if (op == NULL || op->input == NULL) {
 #ifdef PRINT_ERRORS
         printf("ERROR: ORDER BY: NULL input operator\n");
@@ -493,38 +493,36 @@ void initOrderBy(embedDBOperator *op) {
         }
     }
 
-    ((sortData *)op->state)->readBuffer = malloc(PAGE_SIZE);
+    ((sortData*)op->state)->readBuffer = malloc(PAGE_SIZE);
 
     prepareSort(op);
-
-    
 
     return;
 }
 
-int8_t nextOrderBy(embedDBOperator *op) {
+int8_t nextOrderBy(embedDBOperator* op) {
     if (op == NULL) {
 #ifdef PRINT_ERRORS
         printf("ERROR: ORDER BY: NULL input operator\n");
 #endif
-        return 0;  
+        return 0;
     }
 
-    if (readNextRecord((sortData *)op->state, op->recordBuffer) != 0) {
+    if (readNextRecord((sortData*)op->state, op->recordBuffer) != 0) {
         return 0;
-    } 
+    }
 
     return 1;
 }
 
-void closeOrderBy(embedDBOperator *op) {
+void closeOrderBy(embedDBOperator* op) {
     op->input->close(op->input);
     op->input = NULL;
     embedDBFreeSchema(&op->schema);
-    
-    closeSort(((sortData *)op->state)->fileIterator);
-    free(((sortData *)op->state)->readBuffer);
-    free(((sortData *)op->state)->fileIterator);
+
+    closeSort(((sortData*)op->state)->fileIterator);
+    free(((sortData*)op->state)->readBuffer);
+    free(((sortData*)op->state)->fileIterator);
 
     free(op->state);
     op->state = NULL;
@@ -534,24 +532,24 @@ void closeOrderBy(embedDBOperator *op) {
 
 /**
  * @brief Create an operator that will reorder records based on a given direction
- * 
+ *
  * @param dbState       The database state
  * @param input         The operator that this operator can pull records from
- * @param colNum        The column that is being sorted on 
- * @param compareFn     The function being used to make comparisons between row data     
+ * @param colNum        The column that is being sorted on
+ * @param compareFn     The function being used to make comparisons between row data
  */
-embedDBOperator* createOrderByOperator(embedDBState *dbState, embedDBOperator *input, int8_t colNum, int32_t limit,  int8_t (*compareFn)(void *a, void *b)) {
+embedDBOperator* createOrderByOperator(embedDBState* dbState, embedDBOperator* input, int8_t colNum, int32_t limit, int8_t (*compareFn)(void* a, void* b)) {
     if (input == NULL || dbState == NULL || compareFn == NULL || colNum < 0) {
 #ifdef PRINT_ERRORS
         printf("ERROR: ORDER BY: Invalid Input data\n");
 #endif
-        return NULL;  
+        return NULL;
     }
 
     // Operator state
-    struct sortData *state = malloc(sizeof(struct sortData));
-    embedDBOperator *op = malloc(sizeof(embedDBOperator));
-    
+    struct sortData* state = malloc(sizeof(struct sortData));
+    embedDBOperator* op = malloc(sizeof(embedDBOperator));
+
     if (state == NULL || op == NULL) {
 #ifdef PRINT_ERRORS
         printf("ERROR: ORDER BY: malloc failed\n");
@@ -1149,10 +1147,10 @@ embedDBAggregateFunc* createMaxAggregate(uint8_t colNum, int8_t colSize) {
 }
 
 struct avgState {
-    uint8_t colNum;    // Column to take avg of
-    ColumnType colType; // Column type
-    uint32_t count;    // Count of records seen in group so far
-    double sum;        // Sum of records seen in group so far
+    uint8_t colNum;      // Column to take avg of
+    ColumnType colType;  // Column type
+    uint32_t count;      // Count of records seen in group so far
+    double sum;          // Sum of records seen in group so far
 };
 
 void avgReset(struct embedDBAggregateFunc* aggFunc, embedDBSchema* inputSchema) {
@@ -1242,7 +1240,6 @@ void avgCompute(struct embedDBAggregateFunc* aggFunc, embedDBSchema* outputSchem
             return;
     }
 }
-
 
 /**
  * @brief	Creates an operator to compute the average of a column over a group. **WARNING: Outputs a floating point number that may not be compatible with other operators**

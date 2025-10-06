@@ -59,9 +59,9 @@ typedef enum {
  * @brief	A struct to desribe the number and sizes of attributes contained in the data of a embedDB table
  */
 typedef struct {
-    uint8_t numCols;      // The number of columns in the table
-    int8_t* columnSizes;  // A list of the sizes, in bytes, of each column. Negative numbers indicate signed columns while positive indicate an unsigned column
-    ColumnType* columnTypes; // A list of the types of each column
+    uint8_t numCols;          // The number of columns in the table
+    int8_t* columnSizes;      // A list of the sizes, in bytes, of each column. Negative numbers indicate signed columns while positive indicate an unsigned column
+    ColumnType* columnTypes;  // A list of the types of each column
 } embedDBSchema;
 
 /**

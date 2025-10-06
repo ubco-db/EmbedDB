@@ -181,13 +181,13 @@ embedDBOperator* createKeyJoinOperator(embedDBOperator* input1, embedDBOperator*
 
 /**
  * @brief Create an operator that will reorder records based on a given direction
- * 
+ *
  * @param dbState       The database state
  * @param input         The operator that this operator can pull records from
- * @param colNum        The column that is being sorted on 
- * @param compareFn     The function being used to make comparisons between row data     
+ * @param colNum        The column that is being sorted on
+ * @param compareFn     The function being used to make comparisons between row data
  */
-embedDBOperator* createOrderByOperator(embedDBState *dbState, embedDBOperator *input, int8_t colNum, int32_t limit,  int8_t (*compareFn)(void *a, void *b));
+embedDBOperator* createOrderByOperator(embedDBState* dbState, embedDBOperator* input, int8_t colNum, int32_t limit, int8_t (*compareFn)(void* a, void* b));
 
 //////////////////////////////////
 // Prebuilt aggregate functions //

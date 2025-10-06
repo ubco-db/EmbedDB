@@ -154,7 +154,7 @@ int advancedQueryExample() {
     stateUWA->buildBitmapFromRange = buildBitmapInt16FromRange;
     stateUWA->rules = NULL;
     stateUWA->numRules = 0;
-    
+
     int8_t initResult = embedDBInit(stateUWA, 1);
     if (initResult != 0) {
         printf("There was an error setting up the state of the UWA dataset.");
@@ -247,7 +247,7 @@ int advancedQueryExample() {
      * Order By:
      * Find the top 10 lowest temperature recordings
      */
-    
+
     uint32_t limit = 1024;
     it.minKey = NULL;
     it.maxKey = NULL;
@@ -256,12 +256,12 @@ int advancedQueryExample() {
     embedDBInitIterator(stateUWA, &it);
 
     embedDBOperator* scanOpOrderBy = createTableScanOperator(stateUWA, &it, baseSchema);
-    uint8_t projColsOB[] = {0,1};
+    uint8_t projColsOB[] = {0, 1};
     embedDBOperator* projColsOrderBy = createProjectionOperator(scanOpOrderBy, 2, projColsOB);
     embedDBOperator* orderByOp = createOrderByOperator(stateUWA, projColsOrderBy, 1, 5, merge_sort_int32_comparator);
     orderByOp->init(orderByOp);
     recordBuffer = (int32_t*)orderByOp->recordBuffer;
-    
+
     printf("\nOrder By Results:\n");
     printf("ID   | Time       | Temp\n");
     printf("-----+------------+------\n");
@@ -270,14 +270,12 @@ int advancedQueryExample() {
             "[No more rows to return]";
             break;
         }
-        
+
         printf("%4d | %-10d | %-4.1f\n", i, recordBuffer[0], ((uint32_t)recordBuffer[1]) / 10.0);
     }
 
     orderByOp->close(orderByOp);
     embedDBFreeOperatorRecursive(&orderByOp);
-
-
 
     /**	Aggregate Count:
      * 	Get days in which there were at least 50 minutes of wind measurements over 15
@@ -347,7 +345,7 @@ int advancedQueryExample() {
     stateSEA->numDataPages = 20000;
     stateSEA->numIndexPages = 1000;
     stateSEA->numSplinePoints = 120;
-    
+
     stateSEA->rules = NULL;
     stateSEA->numRules = 0;
 
