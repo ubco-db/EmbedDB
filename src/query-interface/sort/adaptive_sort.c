@@ -897,8 +897,8 @@ int adaptive_sort(
                         /* increment to next position of block that smallest value was read from */
                         if (isRecord2 == 0)
                             record1[resultBlock] += es->record_size;
-                    }    /* end if smallestblock != output block */
-                    else /* The smallest value is already in output block, move it from record1 to record2 */
+                        /* end if smallestblock != output block */
+                    } else /* The smallest value is already in output block, move it from record1 to record2 */
                     {
                         if (record2[resultBlock] != record1[resultBlock]) {
                             metric->num_memcpys++;
@@ -1271,7 +1271,8 @@ int adaptive_sort(
                             }
                         }
                     } /*end of reading in next output block */
-                }     /* end of run */
+                      /* end of run */
+                }
 
                 if (record2[0] > 0) { /* Tuples in output block to write out */
                     // fseek(outputFile, lastWritePos, SEEK_SET);
