@@ -7,6 +7,7 @@
 #include "embedDB/embedDB.h"
 #include "embedDBUtility.h"
 #include "query-interface/advancedQueries.h"
+#include "query-interface/sort/in_memory_sort.h"
 
 /**
  * 0 = SD Card
@@ -93,7 +94,8 @@ int sortQueryBenchmark() {
 
     int8_t colSizes[] = {4, 4, 4, 4};
     int8_t colSignedness[] = {embedDB_COLUMN_UNSIGNED, embedDB_COLUMN_SIGNED, embedDB_COLUMN_SIGNED, embedDB_COLUMN_SIGNED};
-    embedDBSchema* baseSchema = embedDBCreateSchema(4, colSizes, colSignedness);
+    ColumnType colTypes[] = {embedDB_COLUMN_UINT32, embedDB_COLUMN_INT32, embedDB_COLUMN_INT32, embedDB_COLUMN_INT32};
+    embedDBSchema* baseSchema = embedDBCreateSchema(4, colSizes, colSignedness, colTypes);
 
     // Insert data
     const char datafileName[] = "data/uwa500K.bin";
@@ -101,7 +103,7 @@ int sortQueryBenchmark() {
 
     struct timespec start_time, end_time;
     int32_t num_values[] = {100, 1000, 10000, 100000, 500000};
-    
+
     printf("\nProjection followed by Sort\n");
     // Perform sort runs with different numbers of values
     for (int i = 0; i < 5; i++) {
@@ -111,7 +113,7 @@ int sortQueryBenchmark() {
         for (int j = 0; j < 1; j++) {
             clock_gettime(CLOCK_MONOTONIC, &start_time);
 
-            sort_order_last(num_values[i],stateUWA,baseSchema);
+            sort_order_last(num_values[i], stateUWA, baseSchema);
 
             clock_gettime(CLOCK_MONOTONIC, &end_time);
             double elapsed_ms = time_diff_ms(start_time, end_time);
@@ -128,7 +130,7 @@ int sortQueryBenchmark() {
         for (int j = 0; j < 1; j++) {
             clock_gettime(CLOCK_MONOTONIC, &start_time);
 
-            sort_order_first(num_values[i],stateUWA,baseSchema);
+            sort_order_first(num_values[i], stateUWA, baseSchema);
 
             clock_gettime(CLOCK_MONOTONIC, &end_time);
             double elapsed_ms = time_diff_ms(start_time, end_time);
@@ -149,7 +151,6 @@ int sortQueryBenchmark() {
 }
 
 void sort_order_last(int32_t numValues, embedDBState* stateUWA, embedDBSchema* baseSchema) {
-
     embedDBIterator it;
     it.minKey = NULL;
     it.maxKey = NULL;
@@ -158,12 +159,12 @@ void sort_order_last(int32_t numValues, embedDBState* stateUWA, embedDBSchema* b
     embedDBInitIterator(stateUWA, &it);
 
     embedDBOperator* scanOpOrderBy = createTableScanOperator(stateUWA, &it, baseSchema);
-    uint8_t projColsOB[] = {0,1};
+    uint8_t projColsOB[] = {0, 1};
     embedDBOperator* projColsOrderBy = createProjectionOperator(scanOpOrderBy, 2, projColsOB);
     embedDBOperator* orderByOp = createOrderByOperator(stateUWA, projColsOrderBy, 1, numValues, merge_sort_int32_comparator);
     orderByOp->init(orderByOp);
     int32_t* recordBuffer = orderByOp->recordBuffer;
-    
+
     for (uint32_t i = 0; i < 10; i++) {
         if (!exec(orderByOp)) {
             break;
@@ -175,7 +176,6 @@ void sort_order_last(int32_t numValues, embedDBState* stateUWA, embedDBSchema* b
 }
 
 void sort_order_first(int32_t numValues, embedDBState* stateUWA, embedDBSchema* baseSchema) {
-
     embedDBIterator it;
     it.minKey = NULL;
     it.maxKey = NULL;
@@ -185,11 +185,11 @@ void sort_order_first(int32_t numValues, embedDBState* stateUWA, embedDBSchema* 
 
     embedDBOperator* scanOpOrderBy = createTableScanOperator(stateUWA, &it, baseSchema);
     embedDBOperator* orderByOp = createOrderByOperator(stateUWA, scanOpOrderBy, 1, numValues, merge_sort_int32_comparator);
-    uint8_t projColsOB[] = {0,1};
+    uint8_t projColsOB[] = {0, 1};
     embedDBOperator* projColsOrderBy = createProjectionOperator(orderByOp, 2, projColsOB);
     projColsOrderBy->init(projColsOrderBy);
     int32_t* recordBuffer = projColsOrderBy->recordBuffer;
-    
+
     for (uint32_t i = 0; i < 10; i++) {
         if (!exec(projColsOrderBy)) {
             break;

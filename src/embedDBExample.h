@@ -104,33 +104,32 @@ uint32_t embedDBExample() {
     embedDBSchema* schema = createSchema();
     int numLast = 5;
     float threshold = 10.5f;
-    activeRule *activeRuleGT = createActiveRule(schema, NULL);
+    activeRule* activeRuleGT = createActiveRule(schema, NULL);
     activeRuleGT->IF(activeRuleGT, 1, GET_AVG)
-                    ->ofLast(activeRuleGT, (void*)&numLast)
-                    ->is(activeRuleGT, GreaterThan, (void*)&threshold)
-                    ->then(activeRuleGT, GTcallback);
+        ->ofLast(activeRuleGT, (void*)&numLast)
+        ->is(activeRuleGT, GreaterThan, (void*)&threshold)
+        ->then(activeRuleGT, GTcallback);
 
     state->rules = (activeRule**)malloc(sizeof(activeRule*));
     state->rules[0] = activeRuleGT;
     state->numRules = 1;
 
-
-    #ifdef ARDUINO
-    srand(analogRead(0)); // Use analog pin 0 to seed the random number generator
-    #else
+#ifdef ARDUINO
+    srand(analogRead(0));  // Use analog pin 0 to seed the random number generator
+#else
     srand(time(NULL));
-    #endif
+#endif
 
     for (int i = 0; i < 100; i++) {
-        uint64_t timestamp = 202411040000 + i; // Example timestamp
-        
+        uint64_t timestamp = 202411040000 + i;  // Example timestamp
+
         // calloc dataPtr in the heap
         void* dataPtr = calloc(1, state->dataSize);
 
         // set value to be inserted
         *((uint32_t*)dataPtr) = randomInt(15, 30);
-        int8_t result = embedDBPut(state, &timestamp, dataPtr);      
-        if(result != SUCCESS) {
+        int8_t result = embedDBPut(state, &timestamp, dataPtr);
+        if (result != SUCCESS) {
             printf("Error inserting record\n");
         }
         free(dataPtr);
@@ -154,7 +153,6 @@ embedDBSchema* createSchema() {
     embedDBSchema* schema = embedDBCreateSchema(numCols, colSizes, colSignedness, colTypes);
     return schema;
 }
-
 
 embedDBState* init_state() {
     embedDBState* state = (embedDBState*)malloc(sizeof(embedDBState));
@@ -198,7 +196,7 @@ embedDBState* init_state() {
     state->indexFile = setupFile(indexPath);
 
     // enable parameters
-    state->parameters = EMBEDDB_USE_BMAP | EMBEDDB_USE_INDEX  | EMBEDDB_RESET_DATA;
+    state->parameters = EMBEDDB_USE_BMAP | EMBEDDB_USE_INDEX | EMBEDDB_RESET_DATA;
 
     // Setup for data and bitmap comparison functions */
     state->inBitmap = inBitmapInt8;
@@ -206,7 +204,6 @@ embedDBState* init_state() {
     state->buildBitmapFromRange = buildBitmapInt8FromRange;
     state->compareKey = int64Comparator;
     state->compareData = int32Comparator;
-
 
     // init embedDB
     size_t splineMaxError = 1;

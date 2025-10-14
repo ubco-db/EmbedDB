@@ -43,6 +43,7 @@
 #include "embedDB/embedDB.h"
 #include "embedDBUtility.h"
 #include "query-interface/advancedQueries.h"
+#include "query-interface/sort/in_memory_sort.h"
 
 /**
  * 0 = SD Card
@@ -151,6 +152,9 @@ int advancedQueryExample() {
     stateUWA->inBitmap = inBitmapInt16;
     stateUWA->updateBitmap = updateBitmapInt16;
     stateUWA->buildBitmapFromRange = buildBitmapInt16FromRange;
+    stateUWA->rules = NULL;
+    stateUWA->numRules = 0;
+
     int8_t initResult = embedDBInit(stateUWA, 1);
     if (initResult != 0) {
         printf("There was an error setting up the state of the UWA dataset.");
@@ -194,7 +198,7 @@ int advancedQueryExample() {
     printf("-----------+------+------------\n");
     while (exec(projOp1)) {
         if (++recordsReturned <= printLimit) {
-            printf("%-10lu | %-4.1f | %-4.1f\n", recordBuffer[0], recordBuffer[1] / 10.0, recordBuffer[2] / 10.0);
+            printf("%-10d | %-4.1f | %-4.1f\n", recordBuffer[0], recordBuffer[1] / 10.0, recordBuffer[2] / 10.0);
         }
     }
     if (recordsReturned > printLimit) {
@@ -228,7 +232,7 @@ int advancedQueryExample() {
     printf("-----------+------+------------\n");
     while (exec(projOp2)) {
         if (++recordsReturned <= printLimit) {
-            printf("%-10lu | %-4.1f | %-4.1f\n", recordBuffer[0], recordBuffer[1] / 10.0, recordBuffer[2] / 10.0);
+            printf("%-10d | %-4.1f | %-4.1f\n", recordBuffer[0], recordBuffer[1] / 10.0, recordBuffer[2] / 10.0);
         }
     }
     if (recordsReturned > printLimit) {
@@ -243,7 +247,7 @@ int advancedQueryExample() {
      * Order By:
      * Find the top 10 lowest temperature recordings
      */
-    
+
     uint32_t limit = 1024;
     it.minKey = NULL;
     it.maxKey = NULL;
@@ -252,12 +256,12 @@ int advancedQueryExample() {
     embedDBInitIterator(stateUWA, &it);
 
     embedDBOperator* scanOpOrderBy = createTableScanOperator(stateUWA, &it, baseSchema);
-    uint8_t projColsOB[] = {0,1};
+    uint8_t projColsOB[] = {0, 1};
     embedDBOperator* projColsOrderBy = createProjectionOperator(scanOpOrderBy, 2, projColsOB);
-    embedDBOperator* orderByOp = createOrderByOperator(stateUWA, projColsOrderBy, 1, merge_sort_int32_comparator);
+    embedDBOperator* orderByOp = createOrderByOperator(stateUWA, projColsOrderBy, 1, 5, merge_sort_int32_comparator);
     orderByOp->init(orderByOp);
-    recordBuffer = orderByOp->recordBuffer;
-    
+    recordBuffer = (int32_t*)orderByOp->recordBuffer;
+
     printf("\nOrder By Results:\n");
     printf("ID   | Time       | Temp\n");
     printf("-----+------------+------\n");
@@ -266,14 +270,12 @@ int advancedQueryExample() {
             "[No more rows to return]";
             break;
         }
-        
-        printf("%4d | %-10lu | %-4.1f\n", i, recordBuffer[0], ((uint32_t)recordBuffer[1]) / 10.0);
+
+        printf("%4d | %-10d | %-4.1f\n", i, recordBuffer[0], ((uint32_t)recordBuffer[1]) / 10.0);
     }
 
     orderByOp->close(orderByOp);
     embedDBFreeOperatorRecursive(&orderByOp);
-
-
 
     /**	Aggregate Count:
      * 	Get days in which there were at least 50 minutes of wind measurements over 15
@@ -308,7 +310,7 @@ int advancedQueryExample() {
     printf("------+-------+-------+--------+----------+-------\n");
     while (exec(countSelect3)) {
         if (++recordsReturned < printLimit) {
-            printf("%5lu | %5lu | %5.1f | %6.1f | %8lld | %5.1f\n", recordBuffer[0], recordBuffer[1], recordBuffer[2] / 10.0, ((float*)recordBuffer + 3)[3] / 10, *(int64_t*)((uint32_t*)recordBuffer + 4), recordBuffer[6] / 10.0);
+            printf("%5d | %5d | %5.1f | %6.1f | %8ld | %5.1f\n", recordBuffer[0], recordBuffer[1], recordBuffer[2] / 10.0, ((float*)recordBuffer + 3)[3] / 10, *(int64_t*)((uint32_t*)recordBuffer + 4), recordBuffer[6] / 10.0);
         }
     }
     if (recordsReturned > printLimit) {
@@ -343,6 +345,9 @@ int advancedQueryExample() {
     stateSEA->numDataPages = 20000;
     stateSEA->numIndexPages = 1000;
     stateSEA->numSplinePoints = 120;
+
+    stateSEA->rules = NULL;
+    stateSEA->numRules = 0;
 
     /* Setup files for second version of EmbedDB */
     char dataPath2[] = DATA_FILE_PATH_SEA, indexPath2[] = INDEX_FILE_PATH_SEA;
@@ -389,7 +394,7 @@ int advancedQueryExample() {
 
     // Prepare sea table
     embedDBOperator* scan4_2 = createTableScanOperator(stateSEA, &it2, baseSchema);
-    scan4_2-int32_t*>init(scan4_2);
+    scan4_2->init(scan4_2);
 
     // Join tables
     embedDBOperator* join4 = createKeyJoinOperator(shift4_1, scan4_2);
@@ -408,7 +413,7 @@ int advancedQueryExample() {
     printf("-----------+-------+-------\n");
     while (exec(proj4)) {
         if (++recordsReturned < printLimit) {
-            printf("%-10lu | %-5.1f | %-5.1f\n", recordBuffer[0], recordBuffer[1] / 10.0, recordBuffer[2] / 10.0);
+            printf("%-10d | %-5.1f | %-5.1f\n", recordBuffer[0], recordBuffer[1] / 10.0, recordBuffer[2] / 10.0);
         }
     }
     if (recordsReturned > printLimit) {

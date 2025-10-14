@@ -257,7 +257,7 @@ void splinePrint(spline *spl) {
         printf("No spline to print.\n");
         return;
     }
-    printf("Spline max error (%lu):\n", spl->maxError);
+    printf("Spline max error (%u):\n", spl->maxError);
     printf("Spline points (%lu):\n", spl->count);
     uint64_t keyVal = 0;
     uint32_t page = 0;
@@ -265,7 +265,7 @@ void splinePrint(spline *spl) {
         void *point = splinePointLocation(spl, i);
         memcpy(&keyVal, point, spl->keySize);
         memcpy(&page, (int8_t *)point + spl->keySize, sizeof(uint32_t));
-        printf("[%lu]: (%lu, %li)\n", i, keyVal, page);
+        printf("[%u]: (%lu, %d)\n", i, keyVal, page);
     }
     printf("\n");
 }

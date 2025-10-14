@@ -185,7 +185,7 @@ int runalltests_embedDB() {
         embedDBState *state = (embedDBState *)malloc(sizeof(embedDBState));
         if (state == NULL) {
             printf("Unable to allocate state. Exiting.\n");
-            return;
+            return -1;
         }
 
         state->recordSize = 16;
@@ -195,15 +195,17 @@ int runalltests_embedDB() {
         state->numSplinePoints = 30;
         state->bitmapSize = 0;
         state->bufferSizeInBlocks = M;
+        state->rules = NULL;
+        state->numRules = 0;
         state->buffer = malloc((size_t)state->bufferSizeInBlocks * state->pageSize);
         if (state->buffer == NULL) {
             printf("Unable to allocate buffer. Exiting.\n");
-            return;
+            return -1;
         }
         int8_t *recordBuffer = (int8_t *)malloc(state->recordSize);
         if (recordBuffer == NULL) {
             printf("Unable to allocate record buffer. Exiting.\n");
-            return;
+            return -1;
         }
 
         /* Address level parameters */
@@ -267,10 +269,9 @@ int runalltests_embedDB() {
         printf("\n\nINSERT TEST:\n");
         /* Insert records into structure */
         start = clock();
-
         if (SEQUENTIAL_DATA) {
             for (i = 0; i < numRecords; i++) {
-                // printf("Inserting record %lu\n", i);
+                printf("Inserting record %d\n", i);
                 memcpy(recordBuffer, &i, sizeof(int32_t));
                 int32_t data = i % 100;
                 memcpy(recordBuffer + state->keySize, &data, sizeof(int32_t));
@@ -299,7 +300,8 @@ int runalltests_embedDB() {
                     break;
                 // readCounter++;
                 /* Process all records on page */
-                int16_t count = *((int16_t *)(infileBuffer + 4));
+                int16_t count;
+                memcpy(&count, infileBuffer + 4, sizeof(count));
                 for (int j = 0; j < count; j++) {
                     void *buf = (infileBuffer + headerSize + j * state->recordSize);
 
@@ -312,7 +314,7 @@ int runalltests_embedDB() {
                     //   *((int32_t*) (buf+12)));
 
                     if (i % stepSize == 0) {
-                        printf("Num: %lu KEY: %lu\n", i, *((int32_t *)buf));
+                        printf("Num: %d KEY: %d\n", i, *((int32_t *)buf));
                         l = i / stepSize - 1;
                         if (l < numSteps && l >= 0) {
                             times[l][r] = clock() - start;
@@ -326,7 +328,7 @@ int runalltests_embedDB() {
                     /* Allows stopping at set number of records instead of reading entire file */
                     if (i == numRecords) {
                         maxRange = *((uint32_t *)buf);
-                        printf("Num: %lu KEY: %lu\n", i, *((int32_t *)buf));
+                        printf("Num: %d KEY: %d\n", i, *((int32_t *)buf));
                         goto doneread;
                     }
                 }
@@ -346,8 +348,8 @@ int runalltests_embedDB() {
         overwrites[l][r] = 0;
         hits[l][r] = state->bufferHits;
 
-        printf("Elapsed Time: %lu ms\n", times[l][r]);
-        printf("Records inserted: %lu\n", numRecords);
+        printf("Elapsed Time: %u ms\n", times[l][r]);
+        printf("Records inserted: %d\n", numRecords);
 
         embedDBPrintStats(state);
         embedDBResetStats(state);
@@ -363,11 +365,11 @@ int runalltests_embedDB() {
                     int8_t result = embedDBGet(state, &key, recordBuffer);
 
                     if (result != 0)
-                        printf("ERROR: Failed to find: %lu\n", key);
+                        printf("ERROR: Failed to find: %d\n", key);
                     if (SEQUENTIAL_DATA && *((int32_t *)recordBuffer) != key % 100) {
-                        printf("ERROR: Wrong data for: %lu\n", key);
-                        printf("Key: %lu Data: %lu\n", key, *((int32_t *)recordBuffer));
-                        return;
+                        printf("ERROR: Wrong data for: %d\n", key);
+                        printf("Key: %d Data: %d\n", key, *((int32_t *)recordBuffer));
+                        return -1;
                     }
 
                     if (i % stepSize == 0) {
@@ -404,7 +406,7 @@ int runalltests_embedDB() {
                     rec++;
                 }
                 printf("Read records: %d\n", rec);
-                printf("Num: %lu KEY: %lu Perc: %d Records: %d Reads: %d \n", i, mv, ((state->numReads - reads) * 1000 / (state->nextDataPageId - state->minDataPageId)), rec, (state->numReads - reads));
+                printf("Num: %d KEY: %d Perc: %d Records: %d Reads: %d \n", i, mv, ((state->numReads - reads) * 1000 / (state->nextDataPageId - state->minDataPageId)), rec, (state->numReads - reads));
 
                 embedDBCloseIterator(&it);
                 free(itData);
@@ -434,16 +436,17 @@ int runalltests_embedDB() {
 
                     readCounter++;
                     /* Process all records on page */
-                    int16_t count = *((int16_t *)(infileBuffer + 4));
+                    int16_t count;
+                    memcpy(&count, infileBuffer + 4, sizeof(count));
                     for (int j = 0; j < count; j++) {
                         void *buf = (infileBuffer + headerSize + j * state->recordSize);
                         int32_t *key = (int32_t *)buf;
                         int8_t result = embedDBGet(state, key, recordBuffer);
                         if (result != 0)
-                            printf("ERROR: Failed to find key: %lu, i: %lu\n", *key, i);
+                            printf("ERROR: Failed to find key: %d, i: %d\n", *key, i);
                         if (*((int32_t *)recordBuffer) != *((int32_t *)((int8_t *)buf + 4))) {
-                            printf("ERROR: Wrong data for: Key: %lu Data: %lu\n", *key, *((int32_t *)recordBuffer));
-                            printf("%lu %d %d %d\n",
+                            printf("ERROR: Wrong data for: Key: %d Data: %d\n", *key, *((int32_t *)recordBuffer));
+                            printf("%u %d %d %d\n",
                                    *((uint32_t *)buf),
                                    *((int32_t *)((int8_t *)buf + 4)),
                                    *((int32_t *)((int8_t *)buf + 8)),
@@ -453,7 +456,7 @@ int runalltests_embedDB() {
 
                         if (i % stepSize == 0) {
                             l = i / stepSize - 1;
-                            printf("Num: %lu KEY: %lu\n", i, *key);
+                            printf("Num: %d KEY: %d\n", i, *key);
                             if (l < numSteps && l >= 0) {
                                 rtimes[l][r] = clock() - start;
                                 rreads[l][r] = state->numReads;
@@ -486,7 +489,7 @@ int runalltests_embedDB() {
 
                     if (i % stepSize == 0) {
                         l = i / stepSize - 1;
-                        printf("Num: %lu KEY: %lu\n", i, key);
+                        printf("Num: %d KEY: %d\n", i, key);
                         if (l < numSteps && l >= 0) {
                             rtimes[l][r] = clock() - start;
                             rreads[l][r] = state->numReads;
@@ -520,7 +523,7 @@ int runalltests_embedDB() {
                     rec++;
                 }
                 printf("Read records: %d\n", rec);
-                printf("Num: %lu KEY: %lu Perc: %d Records: %d Reads: %d \n", rec, minValue, ((state->numReads - reads) * 1000 / (state->nextDataPageId - state->minDataPageId)), rec, (state->numReads - reads));
+                printf("Num: %d KEY: %d Perc: %d Records: %d Reads: %d \n", rec, minValue, ((state->numReads - reads) * 1000 / (state->nextDataPageId - state->minDataPageId)), rec, (state->numReads - reads));
 
                 embedDBCloseIterator(&it);
                 free(itData);
@@ -532,8 +535,8 @@ int runalltests_embedDB() {
         rtimes[l][r] = end - start;
         rreads[l][r] = state->numReads;
         rhits[l][r] = state->bufferHits;
-        printf("Elapsed Time: %lu ms\n", rtimes[l][r]);
-        printf("Records queried: %lu\n", i);
+        printf("Elapsed Time: %u ms\n", rtimes[l][r]);
+        printf("Records queried: %d\n", i);
 
         embedDBPrintStats(state);
 
@@ -562,79 +565,79 @@ int runalltests_embedDB() {
     // Prints results
     uint32_t sum;
     for (count_t i = 1; i <= numSteps; i++) {
-        printf("Stats for %lu:\n", i * stepSize);
+        printf("Stats for %u:\n", i * stepSize);
 
         printf("Reads:   ");
         sum = 0;
         for (r = 0; r < numRuns; r++) {
             sum += reads[i - 1][r];
-            printf("\t%lu", reads[i - 1][r]);
+            printf("\t%u", reads[i - 1][r]);
         }
-        printf("\t%lu\n", sum / r);
+        printf("\t%u\n", sum / r);
 
         printf("Writes: ");
         sum = 0;
         for (r = 0; r < numRuns; r++) {
             sum += writes[i - 1][r];
-            printf("\t%lu", writes[i - 1][r]);
+            printf("\t%u", writes[i - 1][r]);
         }
-        printf("\t%lu\n", sum / r);
+        printf("\t%u\n", sum / r);
 
         printf("Overwrites: ");
         sum = 0;
         for (r = 0; r < numRuns; r++) {
             sum += overwrites[i - 1][r];
-            printf("\t%lu", overwrites[i - 1][r]);
+            printf("\t%u", overwrites[i - 1][r]);
         }
-        printf("\t%lu\n", sum / r);
+        printf("\t%d\n", sum / r);
 
         printf("Totwrites: ");
         sum = 0;
         for (r = 0; r < numRuns; r++) {
             sum += overwrites[i - 1][r] + writes[i - 1][r];
-            printf("\t%lu", overwrites[i - 1][r] + writes[i - 1][r]);
+            printf("\t%u", overwrites[i - 1][r] + writes[i - 1][r]);
         }
-        printf("\t%lu\n", sum / r);
+        printf("\t%u\n", sum / r);
 
         printf("Buffer hits: ");
         sum = 0;
         for (r = 0; r < numRuns; r++) {
             sum += hits[i - 1][r];
-            printf("\t%lu", hits[i - 1][r]);
+            printf("\t%u", hits[i - 1][r]);
         }
-        printf("\t%lu\n", sum / r);
+        printf("\t%u\n", sum / r);
 
         printf("Write Time: ");
         sum = 0;
         for (r = 0; r < numRuns; r++) {
             sum += times[i - 1][r];
-            printf("\t%lu", times[i - 1][r]);
+            printf("\t%u", times[i - 1][r]);
         }
-        printf("\t%lu\n", sum / r);
+        printf("\t%u\n", sum / r);
 
         printf("R Time: ");
         sum = 0;
         for (r = 0; r < numRuns; r++) {
             sum += rtimes[i - 1][r];
-            printf("\t%lu", rtimes[i - 1][r]);
+            printf("\t%u", rtimes[i - 1][r]);
         }
-        printf("\t%lu\n", sum / r);
+        printf("\t%u\n", sum / r);
 
         printf("R Reads: ");
         sum = 0;
         for (r = 0; r < numRuns; r++) {
             sum += rreads[i - 1][r];
-            printf("\t%lu", rreads[i - 1][r]);
+            printf("\t%u", rreads[i - 1][r]);
         }
-        printf("\t%lu\n", sum / r);
+        printf("\t%u\n", sum / r);
 
         printf("R Buffer hits: ");
         sum = 0;
         for (r = 0; r < numRuns; r++) {
             sum += rhits[i - 1][r];
-            printf("\t%lu", rhits[i - 1][r]);
+            printf("\t%u", rhits[i - 1][r]);
         }
-        printf("\t%lu\n", sum / r);
+        printf("\t%u\n", sum / r);
     }
     return 0;
 }

@@ -10,6 +10,10 @@ Since the glob is part of the default Python library: opening and saving files a
 """
 
 
+def normalize_paths(paths):
+    return [os.path.normpath(p) for p in paths]
+
+
 class TestFileHandlers(unittest.TestCase):
     # source file directory, makes it easy
     PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
@@ -74,14 +78,22 @@ class TestFileHandlers(unittest.TestCase):
             c_files.extend(get_all_files_of_type(directory, "c"))
 
         expected_c_files = [
-            os.path.join(self.query_interface_files, "advancedQueries.c"),
             os.path.join(self.embedDB_files, "embedDB.c"),
-            os.path.join(self.query_interface_files, "schema.c"),
             os.path.join(self.spline_files, "spline.c"),
             os.path.join(self.utility_functions_files, "embedDBUtility.c"),
+            os.path.join(self.query_interface_files, "activeRules.c"),
+            os.path.join(self.query_interface_files, "advancedQueries.c"),
+            os.path.join(self.query_interface_files, "schema.c"),
+            os.path.join(self.query_interface_files, "sort/adaptive_sort.c"),
+            os.path.join(self.query_interface_files, "sort/flash_minsort.c"),
+            os.path.join(self.query_interface_files, "sort/flash_minsort_sublist.c"),
+            os.path.join(self.query_interface_files, "sort/in_memory_sort.c"),
+            os.path.join(self.query_interface_files, "sort/no_output_heap.c"),
+            os.path.join(self.query_interface_files, "sort/sortWrapper.c"),
         ]
-
-        self.assertCountEqual(expected_c_files, c_files)
+        self.assertCountEqual(
+            normalize_paths(expected_c_files), normalize_paths(c_files)
+        )
 
         # test h files
         h_files = []
@@ -89,14 +101,23 @@ class TestFileHandlers(unittest.TestCase):
             h_files.extend(get_all_files_of_type(directory, "h"))
 
         expected_h_files = [
-            os.path.join(self.query_interface_files, "advancedQueries.h"),
             os.path.join(self.embedDB_files, "embedDB.h"),
-            os.path.join(self.query_interface_files, "schema.h"),
             os.path.join(self.spline_files, "spline.h"),
             os.path.join(self.utility_functions_files, "embedDBUtility.h"),
+            os.path.join(self.query_interface_files, "activeRules.h"),
+            os.path.join(self.query_interface_files, "advancedQueries.h"),
+            os.path.join(self.query_interface_files, "schema.h"),
+            os.path.join(self.query_interface_files, "sort/flash_minsort_sublist.h"),
+            os.path.join(self.query_interface_files, "sort/in_memory_sort.h"),
+            os.path.join(self.query_interface_files, "sort/no_output_heap.h"),
+            os.path.join(self.query_interface_files, "sort/flash_minsort.h"),
+            os.path.join(self.query_interface_files, "sort/sortWrapper.h"),
+            os.path.join(self.query_interface_files, "sort/adaptive_sort.h"),
+            os.path.join(self.query_interface_files, "sort/external_sort.h"),
         ]
-
-        self.assertCountEqual(expected_h_files, h_files)
+        self.assertCountEqual(
+            normalize_paths(expected_h_files), normalize_paths(h_files)
+        )
 
     def test_get_all_files_of_type_blank_dir(self):
         """

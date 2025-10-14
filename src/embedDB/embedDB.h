@@ -41,10 +41,10 @@ extern "C" {
 #endif
 
 #include <math.h>
+#include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <stdbool.h>
 
 #include "../spline/spline.h"
 
@@ -223,12 +223,12 @@ typedef struct {
     int8_t (*writeRel)(void *buffer, uint32_t size, uint32_t n, void *file);
 
     /**
-     * 
+     *
      */
     int8_t (*seek)(uint32_t n, void *file);
 
     /**
-     * 
+     *
      */
     int32_t (*tell)(void *file);
 
@@ -289,10 +289,9 @@ typedef struct {
     id_t bufferedIndexPageId;                                             /* Index page id currently in index read buffer */
     id_t bufferedVarPage;                                                 /* Variable page id currently in variable read buffer */
     uint8_t recordHasVarData;                                             /* Internal flag to signal that the record currently being written has var data */
-    struct activeRule** rules;                                          /* Array of active rules */
+    struct activeRule **rules;                                            /* Array of active rules */
     uint32_t numRules;                                                    /* Number of active rules */
 } embedDBState;
-
 
 typedef struct {
     uint32_t nextDataPage; /* Next data page that the iterator should read */

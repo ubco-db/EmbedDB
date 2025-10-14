@@ -150,6 +150,7 @@ class TestRead(unittest.TestCase):
             "#include <stdlib.h>",
             "#include <string.h>",
             "#include <time.h>",
+            '#include "query-interface/activeRules.h"',
         }
 
         self.assertEqual(expected_result, result)
@@ -222,6 +223,7 @@ class TestRead(unittest.TestCase):
         expected_internal_header_files = {
             '#include "embedDB.h"',
             '#include "serial_c_iface.h"',
+            '#include "query-interface/activeRules.h"',
         }
 
         self.assertEqual(expected_internal_header_files, result)

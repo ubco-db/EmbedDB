@@ -1,9 +1,9 @@
 #include <errno.h>
+#include <mmsystem.h>  // Required for timeBeginPeriod
+#include <stdio.h>
 #include <string.h>
 #include <time.h>
 #include <windows.h>
-#include <stdio.h>
-#include <mmsystem.h>  // Required for timeBeginPeriod
 
 #ifdef DIST
 #include "embedDB.h"
@@ -66,8 +66,6 @@ void GTcallback(void* aggregateValue, void* currentValue, void* context) {
     fprintf(perfLog, "%llu,CALLBACK,%f\n", callbackTime, *(float*)aggregateValue);
 }
 
-
-
 int8_t groupFunctionLocal(const void* lastRecord, const void* record) {
     return 1;
 }
@@ -75,10 +73,10 @@ int8_t groupFunctionLocal(const void* lastRecord, const void* record) {
 embedDBOperator* createOperatorLocal(embedDBState* state, embedDBSchema* schema, void*** allocatedValues, uint32_t key) {
     embedDBIterator* it = (embedDBIterator*)malloc(sizeof(embedDBIterator));
     uint32_t minKeyVal = key - (1000 - 1);
-    uint32_t *minKeyPtr = (uint32_t *)malloc(sizeof(uint32_t));
+    uint32_t* minKeyPtr = (uint32_t*)malloc(sizeof(uint32_t));
     *minKeyPtr = minKeyVal;
     it->minKey = minKeyPtr;
-    
+
     it->maxKey = NULL;
     it->minData = NULL;
     it->maxData = NULL;
@@ -86,10 +84,10 @@ embedDBOperator* createOperatorLocal(embedDBState* state, embedDBSchema* schema,
 
     embedDBOperator* scanOp = createTableScanOperator(state, it, schema);
 
-    embedDBAggregateFunc* aggFunc = NULL;    
+    embedDBAggregateFunc* aggFunc = NULL;
     aggFunc = createAvgAggregate(1, 4);
 
-    embedDBAggregateFunc* aggFuncs = (embedDBAggregateFunc*)malloc(1*sizeof(embedDBAggregateFunc));
+    embedDBAggregateFunc* aggFuncs = (embedDBAggregateFunc*)malloc(1 * sizeof(embedDBAggregateFunc));
     aggFuncs[0] = *aggFunc;
     embedDBOperator* aggOp = createAggregateOperator(scanOp, groupFunctionLocal, aggFuncs, 1);
     aggOp->init(aggOp);
@@ -102,7 +100,6 @@ embedDBOperator* createOperatorLocal(embedDBState* state, embedDBSchema* schema,
     ((void**)*allocatedValues)[2] = minKeyPtr;
 
     return aggOp;
-
 }
 
 void GetAvgLocal(embedDBState* state, embedDBSchema* schema, uint32_t key, float currentVal, void* context) {
@@ -121,7 +118,7 @@ void GetAvgLocal(embedDBState* state, embedDBSchema* schema, uint32_t key, float
         free(allocatedValues[i]);
     }
     free(allocatedValues);
-    if(avg > 0){
+    if (avg > 0) {
         GTcallback(&avg, &currentVal, context);
     }
 }
@@ -132,23 +129,23 @@ uint32_t activeRulesBenchmark() {
     embedDBSchema* schema = createSchema();
 
     // Create active rule
-    activeRule *activeRuleGT = createActiveRule(schema, NULL);
+    activeRule* activeRuleGT = createActiveRule(schema, NULL);
     activeRuleGT->IF(activeRuleGT, 1, GET_AVG)
-                    ->ofLast(activeRuleGT, (void*)&(uint32_t){1000}) 
-                    ->is(activeRuleGT, GreaterThan, (void*)&(float){0})
-                    ->then(activeRuleGT, GTcallback);
+        ->ofLast(activeRuleGT, (void*)&(uint32_t){1000})
+        ->is(activeRuleGT, GreaterThan, (void*)&(float){0})
+        ->then(activeRuleGT, GTcallback);
 
     state->rules = (activeRule**)malloc(sizeof(activeRule*));
     state->rules[0] = activeRuleGT;
     state->numRules = 1;
-    state->rules[0]->enabled = false; // Disable the rule for initial insertions
-    srand(12345);  // Fixed seed for reproducibility
+    state->rules[0]->enabled = false;  // Disable the rule for initial insertions
+    srand(12345);                      // Fixed seed for reproducibility
 
     // Open performance log file
     FILE* perfLog = fopen("C:/Users/richa/OneDrive/Documents/influxdb/embeddb_perf_new.csv", "w");
-    //FILE* advancedPerfLog = fopen("C:/Users/richa/OneDrive/Documents/influxdb/embeddb_advanced_perf.csv", "w");
+    // FILE* advancedPerfLog = fopen("C:/Users/richa/OneDrive/Documents/influxdb/embeddb_advanced_perf.csv", "w");
 
-    //fprintf(advancedPerfLog, "timestamp,event,temperature,latency\n");
+    // fprintf(advancedPerfLog, "timestamp,event,temperature,latency\n");
     fprintf(perfLog, "timestamp,event,temperature,latency\n");
 
     // Set callback context to the log file
@@ -168,20 +165,19 @@ uint32_t activeRulesBenchmark() {
         void* dataPtr = malloc(state->dataSize);
         *((float*)dataPtr) = temperature;
         int8_t result = embedDBPut(state, &j, dataPtr);
-        
+
         QueryPerformanceCounter(&end);
         int insertTime = (double)(end.QuadPart - start.QuadPart) / freq.QuadPart * 1e9;  // Convert to nanoseconds
 
         // Log insertion event
-        //fprintf(advancedPerfLog, "%llu,INSERT,%f,%i\n", timestamp, temperature, insertTime);
+        // fprintf(advancedPerfLog, "%llu,INSERT,%f,%i\n", timestamp, temperature, insertTime);
         fprintf(perfLog, "%llu,INSERT,%f,%i\n", timestamp, temperature, insertTime);
 
         free(dataPtr);
         j++;
     }
 
-
-    state->rules[0]->enabled = true; // Enable the rule for subsequent insertions
+    state->rules[0]->enabled = true;  // Enable the rule for subsequent insertions
     uint64_t startTime = get_nanoseconds();
     for (int i = 0; i < NUM_INSERTIONS; i++) {
         uint64_t timestamp = get_nanoseconds();
@@ -193,20 +189,19 @@ uint32_t activeRulesBenchmark() {
 
         void* dataPtr = malloc(state->dataSize);
         *((float*)dataPtr) = temperature;
-        //using j instead of timestamp ensures same number of records queried each time independent of changing insert speed
+        // using j instead of timestamp ensures same number of records queried each time independent of changing insert speed
 
-        int8_t result = embedDBPut(state, &j, dataPtr); 
-        
+        int8_t result = embedDBPut(state, &j, dataPtr);
+
         // QueryPerformanceFrequency(&freq);
         // QueryPerformanceCounter(&start);
         // GetAvgLocal(state, schema, j, temperature, advancedPerfLog);
 
-        
         QueryPerformanceCounter(&end);
         int insertTime = (double)(end.QuadPart - start.QuadPart) / freq.QuadPart * 1e9;  // Convert to nanoseconds
 
         // Log insertion event
-        //fprintf(advancedPerfLog, "%llu,INSERT,%f,%i\n", timestamp, temperature, insertTime);
+        // fprintf(advancedPerfLog, "%llu,INSERT,%f,%i\n", timestamp, temperature, insertTime);
         fprintf(perfLog, "%llu,INSERT,%f,%i\n", timestamp, temperature, insertTime);
 
         free(dataPtr);
@@ -222,7 +217,7 @@ uint32_t activeRulesBenchmark() {
 
     // Clean up
     fclose(perfLog);
-    //fclose(advancedPerfLog);
+    // fclose(advancedPerfLog);
     return 0;
 }
 
@@ -234,7 +229,6 @@ embedDBSchema* createSchema() {
     embedDBSchema* schema = embedDBCreateSchema(numCols, colSizes, colSignedness, colTypes);
     return schema;
 }
-
 
 embedDBState* init_state() {
     embedDBState* state = (embedDBState*)malloc(sizeof(embedDBState));
@@ -287,7 +281,6 @@ embedDBState* init_state() {
     state->buildBitmapFromRange = buildBitmapInt8FromRange;
     state->compareKey = int32Comparator;
     state->compareData = int32Comparator;
-
 
     // init embedDB
     size_t splineMaxError = 1;

@@ -139,7 +139,6 @@ void tearDown() {
     tearDownFile(state->dataFile);
     free(state->fileInterface);
     free(state);
-
 }
 
 void insertRecordsLinearly(int32_t startingKey, int64_t startingData, int32_t numRecords) {

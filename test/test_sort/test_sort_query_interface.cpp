@@ -1,6 +1,6 @@
-#include "unity.h"
 #include "embedDB/embedDB.h"
 #include "embedDBUtility.h"
+#include "unity.h"
 
 #ifdef ARDUINO
 // For Arduino, setupFile is not used since we use pure memory sort
@@ -62,7 +62,6 @@ void* setupFile(const char* filename) {
 
 #endif
 
-
 void setUp() {}
 
 void tearDown() {}
@@ -89,14 +88,14 @@ void insertNValues(embedDBState* state, int n, int mode) {
 
     switch (mode) {
         case 0:
-            for (int i = 0; i<=n; i++) {
+            for (int i = 0; i <= n; i++) {
                 key = i;
                 value = i;
                 embedDBPut(state, &key, &value);
             }
             break;
         case 1:
-            for (int i = n; i>=0; i--) {
+            for (int i = n; i >= 0; i--) {
                 key = i;
                 value = i;
                 embedDBPut(state, &key, &value);
@@ -106,13 +105,11 @@ void insertNValues(embedDBState* state, int n, int mode) {
             break;
     }
 }
-    
 
 void runTestSequentialValues() {
     if (STORAGE_TYPE == 1) {
         TEST_FAIL_MESSAGE("Dataflash is not currently supported. Defaulting to SD card interface.");
     }
-
     embedDBState* stateUWA = (embedDBState*)malloc(sizeof(embedDBState));
     stateUWA->keySize = 4;
     stateUWA->dataSize = 12;
@@ -140,17 +137,20 @@ void runTestSequentialValues() {
     if (initResult != 0) {
         TEST_FAIL_MESSAGE("There was an error setting up the state of the UWA dataset.");
     }
+    stateUWA->rules = NULL;
+    stateUWA->numRules = 0;
 
     int8_t colSizes[] = {4, 12};
     int8_t colSignedness[] = {embedDB_COLUMN_UNSIGNED, embedDB_COLUMN_UNSIGNED};
-    embedDBSchema* baseSchema = embedDBCreateSchema(2, colSizes, colSignedness);
+    ColumnType colTypes[] = {embedDB_COLUMN_UINT32, embedDB_COLUMN_UINT32};
+    embedDBSchema* baseSchema = embedDBCreateSchema(2, colSizes, colSignedness, colTypes);
 
-    // Insert test data
-    #ifdef ARDUINO
-    insertNValues(stateUWA, 1, 0); 
-    #else
-    insertNValues(stateUWA, 10, 0); 
-    #endif
+// Insert test data
+#ifdef ARDUINO
+    insertNValues(stateUWA, 1, 0);
+#else
+    insertNValues(stateUWA, 10, 0);
+#endif
 
     embedDBIterator it;
     it.minKey = NULL;
@@ -160,12 +160,12 @@ void runTestSequentialValues() {
     embedDBInitIterator(stateUWA, &it);
 
     embedDBOperator* scanOpOrderBy = createTableScanOperator(stateUWA, &it, baseSchema);
-    uint8_t projColsOB[] = {0,1};
+    uint8_t projColsOB[] = {0, 1};
     embedDBOperator* projColsOrderBy = createProjectionOperator(scanOpOrderBy, 2, projColsOB);
     embedDBOperator* orderByOp = createOrderByOperator(stateUWA, projColsOrderBy, 1, 3, int32Comparator);
-    
+
     orderByOp->init(orderByOp);
-    
+
     int32_t* recordBuffer = (int32_t*)orderByOp->recordBuffer;
     uint32_t previous = 0;
     int recordCount = 0;
@@ -174,7 +174,7 @@ void runTestSequentialValues() {
         TEST_ASSERT_GREATER_OR_EQUAL_UINT32_MESSAGE(previous, ((uint32_t)recordBuffer[1]) / 10.0, "Sort value is not greater than or equal to previous value.");
         previous = ((uint32_t)recordBuffer[1]) / 10.0;
         recordCount++;
-        
+
         // Safety break to prevent infinite loop
         if (recordCount >= 10) {
             break;
@@ -231,7 +231,8 @@ void runTestUsingUWA500k() {
 
     int8_t colSizes[] = {4, 4, 4, 4};
     int8_t colSignedness[] = {embedDB_COLUMN_UNSIGNED, embedDB_COLUMN_SIGNED, embedDB_COLUMN_SIGNED, embedDB_COLUMN_SIGNED};
-    embedDBSchema* baseSchema = embedDBCreateSchema(4, colSizes, colSignedness);
+    ColumnType colTypes[] = {embedDB_COLUMN_UINT32, embedDB_COLUMN_INT32, embedDB_COLUMN_INT32, embedDB_COLUMN_INT32};
+    embedDBSchema* baseSchema = embedDBCreateSchema(4, colSizes, colSignedness, colTypes);
 
     // Insert data
     const char datafileName[] = "data/uwa500K.bin";
@@ -245,7 +246,7 @@ void runTestUsingUWA500k() {
     embedDBInitIterator(stateUWA, &it);
 
     embedDBOperator* scanOpOrderBy = createTableScanOperator(stateUWA, &it, baseSchema);
-    uint8_t projColsOB[] = {0,1};
+    uint8_t projColsOB[] = {0, 1};
     embedDBOperator* projColsOrderBy = createProjectionOperator(scanOpOrderBy, 2, projColsOB);
     embedDBOperator* orderByOp = createOrderByOperator(stateUWA, projColsOrderBy, 1, -1, int32Comparator);
     orderByOp->init(orderByOp);
@@ -270,7 +271,6 @@ void runTestUsingUWA500k() {
     free(stateUWA);
     embedDBFreeSchema(&baseSchema);
 }
-
 
 int runUnityTests() {
     UNITY_BEGIN();
