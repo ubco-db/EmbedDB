@@ -1,5 +1,5 @@
 #ifdef DIST
-#include "in_memory_sort.h"
+#include "embedDB.h"
 #else
 #include "query-interface/sort/in_memory_sort.h"
 #endif

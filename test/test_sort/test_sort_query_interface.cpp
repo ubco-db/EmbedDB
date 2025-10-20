@@ -1,6 +1,9 @@
-#include "embedDB/embedDB.h"
+#ifdef DIST
+#include "embedDB.h"
+#else
+#include "query-interface/advancedQueries.h"
 #include "embedDBUtility.h"
-#include "unity.h"
+#endif
 
 #ifdef ARDUINO
 // For Arduino, setupFile is not used since we use pure memory sort
@@ -48,13 +51,10 @@ void* setupFile(const char* filename) {
 #define DATA_FILE_PATH_SEA "dataFileSEA.bin"
 #define INDEX_FILE_PATH_SEA "indexFileSEA.bin"
 
-#include "query-interface/advancedQueries.h"
-
 #else
 
-#include "desktopFileInterface.h"
-#include "query-interface/advancedQueries.h"
 #define FILE_TYPE FILE
+#include "desktopFileInterface.h"
 #define DATA_FILE_PATH_UWA "build/artifacts/dataFileUWA.bin"
 #define INDEX_FILE_PATH_UWA "build/artifacts/indexFileUWA.bin"
 #define DATA_FILE_PATH_SEA "build/artifacts/dataFileSEA.bin"
@@ -62,9 +62,60 @@ void* setupFile(const char* filename) {
 
 #endif
 
-void setUp() {}
+#include "unity.h"
 
-void tearDown() {}
+embedDBState* stateUWA;
+embedDBSchema* baseSchema;
+
+void setUp() {
+    if (STORAGE_TYPE == 1) {
+        TEST_FAIL_MESSAGE("Dataflash is not currently supported. Defaulting to SD card interface.");
+    }
+    stateUWA = (embedDBState*)malloc(sizeof(embedDBState));
+    stateUWA->keySize = 4;
+    stateUWA->dataSize = 12;
+    stateUWA->compareKey = int32Comparator;
+    stateUWA->compareData = int32Comparator;
+    stateUWA->pageSize = 512;
+    stateUWA->eraseSizeInPages = 4;
+    stateUWA->numDataPages = 20000;
+    stateUWA->numIndexPages = 1000;
+    stateUWA->numSplinePoints = 30;
+    /* Setup files */
+    char dataPath[] = DATA_FILE_PATH_UWA, indexPath[] = INDEX_FILE_PATH_UWA;
+    stateUWA->fileInterface = getFileInterface();
+    stateUWA->dataFile = setupFile(dataPath);
+    stateUWA->indexFile = setupFile(indexPath);
+
+    stateUWA->bufferSizeInBlocks = 4;
+    stateUWA->buffer = malloc(stateUWA->bufferSizeInBlocks * stateUWA->pageSize);
+    stateUWA->parameters = EMBEDDB_USE_BMAP | EMBEDDB_USE_INDEX | EMBEDDB_RESET_DATA;
+    stateUWA->bitmapSize = 2;
+    stateUWA->inBitmap = inBitmapInt16;
+    stateUWA->updateBitmap = updateBitmapInt16;
+    stateUWA->buildBitmapFromRange = buildBitmapInt16FromRange;
+    int8_t initResult = embedDBInit(stateUWA, 1);
+    if (initResult != 0) {
+        TEST_FAIL_MESSAGE("There was an error setting up the state of the UWA dataset.");
+    }
+    stateUWA->rules = NULL;
+    stateUWA->numRules = 0;
+
+    int8_t colSizes[] = {4, 12};
+    int8_t colSignedness[] = {embedDB_COLUMN_UNSIGNED, embedDB_COLUMN_UNSIGNED};
+    ColumnType colTypes[] = {embedDB_COLUMN_UINT32, embedDB_COLUMN_UINT32};
+    baseSchema = embedDBCreateSchema(2, colSizes, colSignedness, colTypes);
+}
+
+void tearDown() {
+    embedDBClose(stateUWA);
+    tearDownFile(stateUWA->dataFile);
+    tearDownFile(stateUWA->indexFile);
+    free(stateUWA->fileInterface);
+    free(stateUWA->buffer);
+    free(stateUWA);
+    embedDBFreeSchema(&baseSchema);
+}
 
 void insertData(embedDBState* state, const char* filename) {
     FILE_TYPE* fp = fopen(filename, "rb");
@@ -107,45 +158,7 @@ void insertNValues(embedDBState* state, int n, int mode) {
 }
 
 void runTestSequentialValues() {
-    if (STORAGE_TYPE == 1) {
-        TEST_FAIL_MESSAGE("Dataflash is not currently supported. Defaulting to SD card interface.");
-    }
-    embedDBState* stateUWA = (embedDBState*)malloc(sizeof(embedDBState));
-    stateUWA->keySize = 4;
-    stateUWA->dataSize = 12;
-    stateUWA->compareKey = int32Comparator;
-    stateUWA->compareData = int32Comparator;
-    stateUWA->pageSize = 512;
-    stateUWA->eraseSizeInPages = 4;
-    stateUWA->numDataPages = 20000;
-    stateUWA->numIndexPages = 1000;
-    stateUWA->numSplinePoints = 30;
-    /* Setup files */
-    char dataPath[] = DATA_FILE_PATH_UWA, indexPath[] = INDEX_FILE_PATH_UWA;
-    stateUWA->fileInterface = getFileInterface();
-    stateUWA->dataFile = setupFile(dataPath);
-    stateUWA->indexFile = setupFile(indexPath);
-
-    stateUWA->bufferSizeInBlocks = 4;
-    stateUWA->buffer = malloc(stateUWA->bufferSizeInBlocks * stateUWA->pageSize);
-    stateUWA->parameters = EMBEDDB_USE_BMAP | EMBEDDB_USE_INDEX | EMBEDDB_RESET_DATA;
-    stateUWA->bitmapSize = 2;
-    stateUWA->inBitmap = inBitmapInt16;
-    stateUWA->updateBitmap = updateBitmapInt16;
-    stateUWA->buildBitmapFromRange = buildBitmapInt16FromRange;
-    int8_t initResult = embedDBInit(stateUWA, 1);
-    if (initResult != 0) {
-        TEST_FAIL_MESSAGE("There was an error setting up the state of the UWA dataset.");
-    }
-    stateUWA->rules = NULL;
-    stateUWA->numRules = 0;
-
-    int8_t colSizes[] = {4, 12};
-    int8_t colSignedness[] = {embedDB_COLUMN_UNSIGNED, embedDB_COLUMN_UNSIGNED};
-    ColumnType colTypes[] = {embedDB_COLUMN_UINT32, embedDB_COLUMN_UINT32};
-    embedDBSchema* baseSchema = embedDBCreateSchema(2, colSizes, colSignedness, colTypes);
-
-// Insert test data
+    // Insert test data
 #ifdef ARDUINO
     insertNValues(stateUWA, 1, 0);
 #else
@@ -183,15 +196,6 @@ void runTestSequentialValues() {
 
     orderByOp->close(orderByOp);
     embedDBFreeOperatorRecursive(&orderByOp);
-
-    // Close embedDB
-    embedDBClose(stateUWA);
-    tearDownFile(stateUWA->dataFile);
-    tearDownFile(stateUWA->indexFile);
-    free(stateUWA->fileInterface);
-    free(stateUWA->buffer);
-    free(stateUWA);
-    embedDBFreeSchema(&baseSchema);
 }
 
 void runTestUsingUWA500k() {
@@ -261,7 +265,6 @@ void runTestUsingUWA500k() {
 
     orderByOp->close(orderByOp);
     embedDBFreeOperatorRecursive(&orderByOp);
-
     // Close embedDB
     embedDBClose(stateUWA);
     tearDownFile(stateUWA->dataFile);
