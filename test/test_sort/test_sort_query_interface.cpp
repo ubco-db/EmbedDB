@@ -1,8 +1,9 @@
 #ifdef DIST
 #include "embedDB.h"
 #else
-#include "query-interface/advancedQueries.h"
 #include "embedDBUtility.h"
+#include "query-interface/advancedQueries.h"
+
 #endif
 
 #ifdef ARDUINO
