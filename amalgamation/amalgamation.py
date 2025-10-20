@@ -677,7 +677,12 @@ def amalgamate(
         sorted_h, isCpp
     )
 
-    sorted_graph_c_files = [item.replace(".h", ".c") for item in sorted_graph]
+    sorted_graph_c_files = [
+        item.replace(".h", ".c")
+        for item in sorted_graph
+        if any(fn.file_name == item.replace(".h", ".c") for fn in source_file_nodes)
+    ]
+
     sorted_c = order_file_nodes_by_sorted_filenames(
         source_file_nodes, sorted_graph_c_files
     )

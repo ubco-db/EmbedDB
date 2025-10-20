@@ -22,7 +22,7 @@ jobs:
             - name: Run EmbedDB Example (Ubuntu)
               shell: bash
               run: |
-                pio run -e desktop-dist -t fullclean
+                pio run -e desktop -t fullclean
                 PLATFORMIO_BUILD_FLAGS="-DWHICH_PROGRAM=0 -lm" pio run -e desktop -t exec
             
             - name: Run EmbedDB Sequential Data Benchmark (Ubuntu)
