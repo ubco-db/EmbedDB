@@ -34,6 +34,7 @@
  */
 /******************************************************************************/
 #include <assert.h>
+#include <limits.h>
 #include <math.h>
 #include <stdbool.h>
 #include <stddef.h>
@@ -381,6 +382,36 @@ typedef struct {
      * @return	1 for success and 0 for failure
      */
     int8_t (*flush)(void *file);
+
+    /**
+     * @brief Checks if the last operation causes an error
+     * @return  1 for error and 0 otherwise
+     */
+    int8_t (*error)(void *file);
+
+    /**
+     * @brief Checks if the last operation was an eof
+     * @return 1 for eof and 0 otherwise
+     */
+    int8_t (*eof)(void *file);
+
+    /**
+     *  @brief Reads the same as standard c fread()
+     */
+    int8_t (*readRel)(void *buffer, uint32_t size, uint32_t n, void *file);
+
+    int8_t (*writeRel)(void *buffer, uint32_t size, uint32_t n, void *file);
+
+    /**
+     *
+     */
+    int8_t (*seek)(uint32_t n, void *file);
+
+    /**
+     *
+     */
+    int32_t (*tell)(void *file);
+
 } embedDBFileInterface;
 
 struct activeRule;
@@ -668,6 +699,65 @@ void embedDBClose(embedDBState *state);
 
 #endif
 
+/************************************************************external_sort.h************************************************************/
+#if !defined(EXTERNAL_SORT_H)
+#define EXTERNAL_SORT_H
+
+#if defined(__cplusplus)
+extern "C" {
+#endif
+
+typedef struct {
+    uint16_t key_size;
+    uint16_t key_offset;
+    uint16_t value_size;
+    uint16_t page_size;
+    uint16_t record_size;
+    uint32_t num_pages;
+    uint16_t num_values_last_page;
+    int8_t headerSize;
+    int8_t (*compare_fcn)(void *a, void *b);
+} external_sort_t;
+
+typedef struct {
+    int32_t num_reads;
+    int32_t num_writes;
+    int32_t num_memcpys;
+    int32_t num_compar;
+    int32_t num_runs;
+    double time;
+    double genTime;
+} metrics_t;
+
+typedef struct {
+    int32_t key;
+    int8_t value[12];
+} test_record_t;
+
+typedef struct {
+    void *file;
+    int32_t recordsRead;
+    int32_t totalRecords;
+    int32_t currentRecord;
+    int32_t recordsLeftInBlock;
+    int32_t recordSize;
+    long resultFile;
+
+    embedDBFileInterface *fileInterface;
+} file_iterator_state_t;
+
+/* Constant declarations */
+#define BLOCK_HEADER_SIZE sizeof(int32_t) + sizeof(int16_t)
+#define BLOCK_ID_OFFSET 0
+#define BLOCK_COUNT_OFFSET sizeof(int32_t)
+#define PAGE_SIZE 512
+
+#if defined(__cplusplus)
+}
+#endif
+
+#endif
+
 /************************************************************schema.h************************************************************/
 /******************************************************************************/
 /**
@@ -825,6 +915,8 @@ extern "C" {
 #define SELECT_EQ 4
 #define SELECT_NEQ 5
 
+typedef struct sortData sortData;
+
 typedef struct embedDBAggregateFunc {
     /**
      * @brief	Resets the state
@@ -950,6 +1042,16 @@ embedDBOperator *createAggregateOperator(embedDBOperator *input, int8_t (*groupf
  * @brief	Creates an operator for perfoming an equijoin on the keys (sorted and distinct) of two tables
  */
 embedDBOperator *createKeyJoinOperator(embedDBOperator *input1, embedDBOperator *input2);
+
+/**
+ * @brief Create an operator that will reorder records based on a given direction
+ *
+ * @param dbState       The database state
+ * @param input         The operator that this operator can pull records from
+ * @param colNum        The column that is being sorted on
+ * @param compareFn     The function being used to make comparisons between row data
+ */
+embedDBOperator *createOrderByOperator(embedDBState *dbState, embedDBOperator *input, int8_t colNum, int32_t limit, int8_t (*compareFn)(void *a, void *b));
 
 //////////////////////////////////
 // Prebuilt aggregate functions //
@@ -1323,3 +1425,435 @@ void handleCustomQuery(embedDBState *state, activeRule *rule, void *key, void *d
 }
 #endif
 #endif  // _ACTIVERULES_H
+
+/************************************************************adaptive_sort.h************************************************************/
+#if !defined(ADAPTIVE_SORT_H)
+#define ADAPTIVE_SORT_H
+
+#if defined(ARDUINO)
+#endif
+
+// block to use as output block. Breaks reading in new block code if changed.
+#define OUTPUT_BLOCK_ID 0
+
+#define BUFFER_OUTPUT_BLOCK_START_OFFSET 0
+#define BUFFER_OUTPUT_BLOCK_START_RECORD_OFFSET BLOCK_HEADER_SIZE
+
+#if defined(__cplusplus)
+extern "C" {
+#endif
+
+/**
+@brief      Adaptive sort combining no output buffer sort and MinSort that dynamically determines best sorting
+                algorithm based on input distribution. Uses replacement selection.
+@param      iterator
+                Row iterator for reading input rows
+@param      iteratorState
+                Structure stores state of iterator (file info etc.)
+@param      tupleBuffer
+                Pre-allocated space to store one tuple (row) of input being sorted
+@param      outputFile
+                Already opened file to store sorting output (and in-progress temporary results)
+@param      buffer
+                Pre-allocated space used by algorithm during sorting
+@param      bufferSizeInBlocks
+                Size of buffer in blocks
+@param      es
+                Sorting state info (block size, record size, etc.)
+@param      resultFilePtr
+                Offset within output file of first output record
+@param      metric
+                Tracks algorithm metrics (I/Os, comparisons, memory swaps)
+@param      compareFn
+                Record comparison function for record ordering
+@param      runGenOnly
+                True if generate sorted runs but not whole merge process
+@param      writeToReadRatio
+                Write time divided by read time multiplied by 10. If ratio is 2.5
+                (writes over twice as expensive) then value is 25.
+*/
+int adaptive_sort(
+    uint8_t (*iterator)(void *state, void *buffer),
+    void *iteratorState,
+    void *tupleBuffer,
+    void *outputFile,
+    char *buffer,
+    int bufferSizeInBlocks,
+    external_sort_t *es,
+    long *resultFilePtr,
+    metrics_t *metric,
+    int8_t (*compareFn)(void *a, void *b),
+    int8_t runGenOnly,
+    int8_t writeToReadRatio,
+    void *sortData);
+
+#if defined(__cplusplus)
+}
+#endif
+
+#endif
+
+/************************************************************flash_minsort.h************************************************************/
+#ifndef FLASH_MINSORT_H
+#define FLASH_MINSORT_H
+
+#if defined(ARDUINO)
+#endif
+
+// #define BUFFER_OUTPUT_BLOCK_START_OFFSET  		OUTPUT_BLOCK_ID * es->page_size
+// #define BUFFER_OUTPUT_BLOCK_START_RECORD_OFFSET  OUTPUT_BLOCK_ID * es->page_size + BLOCK_HEADER_SIZE
+// Simplification if OUTPUT_BLOCK_ID is 0
+#define BUFFER_OUTPUT_BLOCK_START_OFFSET 0
+#define BUFFER_OUTPUT_BLOCK_START_RECORD_OFFSET BLOCK_HEADER_SIZE
+
+#define INT_SIZE 4
+
+#if !defined(ARDUINO)
+#define true 1
+#define false 0
+#endif
+
+#if defined(__cplusplus)
+extern "C" {
+#endif
+
+/**
+@brief      Flash Minsort implemented with full tuple reads.
+@param      iteratorState
+                Structure stores state of iterator (file info etc.)
+@param      tupleBuffer
+                Pre-allocated space to store one tuple (row) of input being sorted
+@param      outputFile
+                Already opened file to store sorting output (and in-progress temporary results)
+@param      buffer
+                Pre-allocated space used by algorithm during sorting
+@param      bufferSizeInByes
+                Size of buffer in byes
+@param      es
+                Sorting state info (block size, record size, etc.)
+@param      resultFilePtr
+                Offset within output file of first output record
+@param      metric
+                Tracks algorithm metrics (I/Os, comparisons, memory swaps)
+@param      compareFn
+                Record comparison function for record ordering
+*/
+int flash_minsort(
+    void *iteratorState,
+    void *tupleBuffer,
+    void *outputFile,
+    char *buffer,
+    int bufferSizeInBytes,
+    external_sort_t *es,
+    long *resultFilePtr,
+    metrics_t *metric,
+    int8_t (*compareFn)(void *a, void *b));
+
+/*
+typedef struct OpState
+{   char type;
+    unsigned long int blocks_written;
+    unsigned long int blocks_read;
+    unsigned long int tuples_read;
+    unsigned long int bytes_read;
+    unsigned long int tuples_out;
+
+    struct OpState *left;
+    struct OpState *right;
+    TupleSlot* tupleSlot;
+} OpState;
+*/
+typedef struct MinSortState {
+    int8_t *buffer;
+    int8_t *min;
+    int8_t *min_initialized;
+
+    uint64_t nextIdx;
+    void *current;  // current smallest value
+    void *next;     // keep track of next smallest value for next iteration
+    uint32_t regionIdx;
+    uint32_t lastBlockIdx;
+
+    int8_t current_initialized;
+    int8_t next_initialized;
+    int8_t regionIdx_initialized;
+    int8_t lastBlockIdx_initialized;
+
+    uint32_t record_size;
+    uint64_t num_records;
+    uint32_t numBlocks;
+    uint32_t records_per_block;
+    uint32_t blocks_per_region;
+    uint32_t memoryAvailable;
+    uint32_t numRegions;
+
+    void *iteratorState;
+
+    /* Statistics */
+    uint32_t blocksRead;
+    uint32_t tuplesRead;
+    uint32_t tuplesOut;
+    uint32_t bytesRead;
+} MinSortState;
+
+void init_MinSort(MinSortState *ms, external_sort_t *es, metrics_t *metric, int8_t (*compareFn)(void *a, void *b));
+char *next_MinSort(MinSortState *ms, external_sort_t *es, void *tupleBuffer, metrics_t *metric, int8_t (*compareFn)(void *a, void *b));
+void close_MinSort(MinSortState *ms, external_sort_t *es);
+
+#if defined(__cplusplus)
+}
+#endif
+
+#endif
+
+/************************************************************flash_minsort_sublist.h************************************************************/
+#ifndef FLASH_MINSORT_SUBLIST_H
+#define FLASH_MINSORT_SUBLIST_H
+
+#if defined(ARDUINO)
+#endif
+
+#define SORT_KEY_SIZE 4
+#define INT_SIZE 4
+
+#define true 1
+#define false 0
+
+#if defined(__cplusplus)
+extern "C" {
+#endif
+
+/**
+@brief      Flash Minsort designed to handle regions that are sorted sublists.
+@param      iteratorState
+                Structure stores state of iterator (file info etc.)
+@param      tupleBuffer
+                Pre-allocated space to store one tuple (row) of input being sorted
+@param      outputFile
+                Already opened file to store sorting output (and in-progress temporary results)
+@param      buffer
+                Pre-allocated space used by algorithm during sorting
+@param      bufferSizeInBytes
+                Size of buffer in bytes
+@param      es
+                Sorting state info (block size, record size, etc.)
+@param      resultFilePtr
+                Offset within output file of first output record
+@param      metric
+                Tracks algorithm metrics (I/Os, comparisons, memory swaps)
+@param      compareFn
+                Record comparison function for record ordering
+@param      numSubList
+                Number of sublists
+*/
+int flash_minsort_sublist(
+    void *iteratorState,
+    void *tupleBuffer,
+    void *outputFile,
+    char *buffer,
+    int bufferSizeInBytes,
+    external_sort_t *es,
+    long *resultFilePtr,
+    metrics_t *metric,
+    int8_t (*compareFn)(void *a, void *b),
+    long numSubList);
+
+typedef struct MinSortStateSublist {
+    char *buffer;
+    uint8_t *min;
+    uint8_t *min_set;
+    unsigned long *offset;
+
+    uint8_t *current;  // current smallest value
+    uint8_t *next;     // keep track of next smallest value for next iteration
+    unsigned long int nextIdx;
+    uint8_t current_set;
+    uint8_t next_set;
+    uint8_t nextIdx_set;
+
+    unsigned int record_size;
+    unsigned long int num_records;
+    unsigned int numBlocks;
+    unsigned int memoryAvailable;
+    unsigned int numRegions;
+    unsigned int regionIdx;
+    unsigned int lastBlockIdx;
+    unsigned long fileOffset;
+    uint8_t lastBlockIdx_set;
+    uint8_t regionIdx_set;
+
+    void *iteratorState;
+
+    /* Statistics */
+    unsigned int blocksRead;
+    unsigned int tuplesRead;
+    unsigned int tuplesOut;
+    unsigned int bytesRead;
+} MinSortStateSublist;
+
+void init_MinSort_sublist(MinSortStateSublist *ms, external_sort_t *es, metrics_t *metric);
+char *next_MinSort_sublist(MinSortStateSublist *ms, external_sort_t *es, void *tupleBuffer, metrics_t *metric);
+void close_MinSort_sublist(MinSortStateSublist *ms, external_sort_t *es);
+
+#if defined(__cplusplus)
+}
+#endif
+
+#endif
+
+/************************************************************in_memory_sort.h************************************************************/
+#if !defined(IN_MEMORY_SORT_H_)
+#define IN_MEMORY_SORT_H_
+
+#if defined(__cplusplus)
+extern "C" {
+#endif
+//
+
+int in_memory_quick_sort(
+    void *data,
+    uint32_t num_values,
+    int value_size,
+    int key_offset,
+    int8_t (*compare_fcn)(void *a, void *b),
+    metrics_t *metrics);
+
+/**
+ * Compares two records based on an integer key. Uses a and b as pointers to start of record. Assumes key is at start of record.
+ */
+int8_t
+merge_sort_int32_comparator(
+    void *a,
+    void *b);
+
+#if defined(__cplusplus)
+}
+#endif
+
+#endif /* IN_MEMORY_SORT_H_ */
+
+/************************************************************no_output_heap.h************************************************************/
+#if !defined(NO_OUTPUT_HEAP_H)
+#define NO_OUTPUT_HEAP_H
+
+#if defined(ARDUINO)
+#endif
+
+#if defined(__cplusplus)
+extern "C" {
+#endif
+
+void heapify(char *buffer,
+             void *input_tuple,
+             int32_t size,
+             external_sort_t *es,
+             metrics_t *metric);
+
+void shiftUp(char *buffer,
+             void *input_tuple,
+             int32_t idx,
+             external_sort_t *es,
+             metrics_t *metric);
+
+void heapify_rev(char *buffer,
+                 void *input_tuple,
+                 int32_t size,
+                 external_sort_t *es,
+                 metrics_t *metric);
+
+void shiftUp_rev(char *buffer,
+                 void *input_tuple,
+                 int32_t idx,
+                 external_sort_t *es,
+                 metrics_t *metric);
+
+#if defined(__cplusplus)
+}
+#endif
+
+#endif
+
+/************************************************************sortWrapper.h************************************************************/
+
+#ifndef SORT_WRAPPER_H
+#define SORT_WRAPPER_H
+
+#if defined(DESKTOP)
+#endif
+
+#define SORT_DATA_LOCATION "sort_data.bin"
+#define SORT_ORDER_LOCATION "sort_order.bin"
+
+typedef struct embedDBOperator embedDBOperator;
+
+typedef struct sortData {
+    uint32_t count;
+    uint16_t recordSize;
+    int8_t colNum;
+    int8_t keyOffset;
+    int8_t keySize;
+    int8_t (*compareFn)(void *a, void *b);
+    int32_t tupleLimit;
+
+    void *readBuffer;
+    embedDBFileInterface *fileInterface;
+    file_iterator_state_t *fileIterator;
+} sortData;
+
+/**
+ * @brief Initalizes default metric values
+ *
+ * @return metrics_t
+ */
+metrics_t initMetric();
+
+/**
+ * @brief               Writes row data from the input operator to a file
+ *
+ * @param data         The operator data
+ * @param op            The previous operator
+ * @param unsortedFile  A preexisting file that the row data will be written to
+ * @param recordSize    The size of the data
+ * @param keySize       The size of the key
+ * @param keyOffset     The offset of the key with in the record (# of bytes)
+ * @return uint32_t     The total number of records written or 0 if an error occurs
+ *
+ */
+uint32_t loadRowData(sortData *data, embedDBOperator *op, void *unsortedFile);
+
+/**
+ * @brief The data given in the unsortedFile is sorted and stored in the sortedFile
+ *
+ * @param fileInterface             The file interface
+ * @param unsortedFile              The file that is loaded with row data
+ * @param sortedFile                An empty file
+ * @param recordSize                The size of the records
+ * @param count                     The total number of records stored in unsortedFile
+ * @return file_iterator_state_t*   An iterator that is used to retrieve the sorted records
+ */
+file_iterator_state_t *startSort(sortData *data, void *unsortedFile, void *sortedFile);
+
+/**
+ * @brief Begins the sorting operation using row data from previous operator
+ *
+ * @param op The previous operator that will feed row data
+ */
+void prepareSort(embedDBOperator *op);
+
+/**
+ * @brief Reads the next record from the sorted file
+ *
+ * @param data     The ORDER BY operator data
+ * @param buffer    A buffer that is the size of one record
+ * @return uint8_t  0: if read was successful. other wise none zero
+ */
+uint8_t readNextRecord(void *state, void *buffer);
+
+void closeSort(file_iterator_state_t *iteratorState);
+
+typedef struct {
+    uint32_t key;
+    void *value;
+} rowData;
+
+#endif

@@ -33,7 +33,7 @@
  *  ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  *  POSSIBILITY OF SUCH DAMAGE.
  */
-/******************************************************************************/  
+/******************************************************************************/
 /************************************************************spline.c************************************************************/
 /******************************************************************************/
 /**
@@ -68,9 +68,9 @@
  *  ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  *  POSSIBILITY OF SUCH DAMAGE.
  */
-/******************************************************************************/     
+/******************************************************************************/
 
-#if defined(ARDUINO) 
+#if defined(ARDUINO)
 #endif
 
 /**
@@ -294,7 +294,7 @@ void splinePrint(spline *spl) {
         void *point = splinePointLocation(spl, i);
         memcpy(&keyVal, point, spl->keySize);
         memcpy(&page, (int8_t *)point + spl->keySize, sizeof(uint32_t));
-        printf("[%u]: (%lu, %u)\n", i, keyVal, page);
+        printf("[%u]: (%lu, %d)\n", i, keyVal, page);
     }
     printf("\n");
 }
@@ -467,9 +467,9 @@ void *splinePointLocation(spline *spl, size_t pointIndex) {
  *  ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  *  POSSIBILITY OF SUCH DAMAGE.
  */
-/******************************************************************************/          
+/******************************************************************************/
 
-#if defined(ARDUINO) 
+#if defined(ARDUINO)
 #endif
 
 /* Helper Functions */
@@ -1305,7 +1305,7 @@ float embedDBCalculateSlope(embedDBState *state, void *buffer) {
     uint32_t slopeX1, slopeX2;
     slopeX1 = 0;
     slopeX2 = EMBEDDB_GET_COUNT(buffer) - 1;
-    if(EMBEDDB_GET_COUNT(buffer) == 0) slopeX2 = 0;
+    if (EMBEDDB_GET_COUNT(buffer) == 0) slopeX2 = 0;
     if (state->keySize <= 4) {
         uint32_t slopeY1 = 0, slopeY2 = 0;
 
@@ -1546,7 +1546,7 @@ int8_t embedDBPut(embedDBState *state, void *key, void *data) {
         }
         return writeTemporaryPage(state, state->buffer);
     }
-    if(state->rules != NULL && state->rules[0] != NULL){
+    if (state->rules != NULL && state->rules[0] != NULL) {
         executeRules(state, key, data);
     }
 
@@ -2816,9 +2816,9 @@ void embedDBClose(embedDBState *state) {
  *  ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  *  POSSIBILITY OF SUCH DAMAGE.
  */
-/******************************************************************************/     
+/******************************************************************************/
 
-#if defined(ARDUINO) 
+#if defined(ARDUINO)
 #endif
 
 /**
@@ -2828,8 +2828,8 @@ void embedDBClose(embedDBState *state) {
  * @param	colSignedness	An array describing if the data in the column is signed or unsigned. Use the defined constants embedDB_COLUMNN_SIGNED or embedDB_COLUMN_UNSIGNED
  * @param   colTypes        An array describing the type of the column. Use the defined constants embedDB_COLUMN_INT or embedDB_COLUMN_FLOAT
  */
-embedDBSchema* embedDBCreateSchema(uint8_t numCols, int8_t* colSizes, int8_t* colSignedness, ColumnType* colTypes) {
-    embedDBSchema* schema = malloc(sizeof(embedDBSchema));
+embedDBSchema *embedDBCreateSchema(uint8_t numCols, int8_t *colSizes, int8_t *colSignedness, ColumnType *colTypes) {
+    embedDBSchema *schema = malloc(sizeof(embedDBSchema));
     schema->columnSizes = malloc(numCols * sizeof(int8_t));
     schema->numCols = numCols;
     schema->columnTypes = malloc(numCols * sizeof(ColumnType));
@@ -2864,7 +2864,7 @@ embedDBSchema* embedDBCreateSchema(uint8_t numCols, int8_t* colSizes, int8_t* co
 /**
  * @brief	Free a schema. Sets the schema pointer to NULL.
  */
-void embedDBFreeSchema(embedDBSchema** schema) {
+void embedDBFreeSchema(embedDBSchema **schema) {
     if (*schema == NULL) return;
     free((*schema)->columnSizes);
     free((*schema)->columnTypes);
@@ -2875,7 +2875,7 @@ void embedDBFreeSchema(embedDBSchema** schema) {
 /**
  * @brief	Uses schema to determine the length of buffer to allocate and callocs that space
  */
-void* createBufferFromSchema(embedDBSchema* schema) {
+void *createBufferFromSchema(embedDBSchema *schema) {
     uint16_t totalSize = 0;
     for (uint8_t i = 0; i < schema->numCols; i++) {
         totalSize += abs(schema->columnSizes[i]);
@@ -2886,8 +2886,8 @@ void* createBufferFromSchema(embedDBSchema* schema) {
 /**
  * @brief	Deep copy schema and return a pointer to the copy
  */
-embedDBSchema* copySchema(const embedDBSchema* schema) {
-    embedDBSchema* copy = malloc(sizeof(embedDBSchema));
+embedDBSchema *copySchema(const embedDBSchema *schema) {
+    embedDBSchema *copy = malloc(sizeof(embedDBSchema));
     if (copy == NULL) {
 #ifdef PRINT_ERRORS
         printf("ERROR: malloc failed while copying schema\n");
@@ -2911,7 +2911,7 @@ embedDBSchema* copySchema(const embedDBSchema* schema) {
 /**
  * @brief	Finds byte offset of the column from the beginning of the record
  */
-uint16_t getColOffsetFromSchema(embedDBSchema* schema, uint8_t colNum) {
+uint16_t getColOffsetFromSchema(embedDBSchema *schema, uint8_t colNum) {
     uint16_t pos = 0;
     for (uint8_t i = 0; i < colNum; i++) {
         pos += abs(schema->columnSizes[i]);
@@ -2922,7 +2922,7 @@ uint16_t getColOffsetFromSchema(embedDBSchema* schema, uint8_t colNum) {
 /**
  * @brief	Calculates record size from schema
  */
-uint16_t getRecordSizeFromSchema(embedDBSchema* schema) {
+uint16_t getRecordSizeFromSchema(embedDBSchema *schema) {
     uint16_t size = 0;
     for (uint8_t i = 0; i < schema->numCols; i++) {
         size += abs(schema->columnSizes[i]);
@@ -2930,7 +2930,7 @@ uint16_t getRecordSizeFromSchema(embedDBSchema* schema) {
     return size;
 }
 
-void printSchema(embedDBSchema* schema) {
+void printSchema(embedDBSchema *schema) {
     for (uint8_t i = 0; i < schema->numCols; i++) {
         if (i) {
             printf(", ");
@@ -2975,18 +2975,18 @@ void printSchema(embedDBSchema* schema) {
  *  ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  *  POSSIBILITY OF SUCH DAMAGE.
  */
-/******************************************************************************/  
+/******************************************************************************/
 
-#if defined(ARDUINO) 
+#if defined(ARDUINO)
 #endif
 
 /**
  * @return	Returns -1, 0, 1 as a comparator normally would
  */
-int8_t compareUnsignedNumbers(const void* num1, const void* num2, int8_t numBytes) {
+int8_t compareUnsignedNumbers(const void *num1, const void *num2, int8_t numBytes) {
     // Cast the pointers to unsigned char pointers for byte-wise comparison
-    const uint8_t* bytes1 = (const uint8_t*)num1;
-    const uint8_t* bytes2 = (const uint8_t*)num2;
+    const uint8_t *bytes1 = (const uint8_t *)num1;
+    const uint8_t *bytes2 = (const uint8_t *)num2;
 
     for (int8_t i = numBytes - 1; i >= 0; i--) {
         if (bytes1[i] < bytes2[i]) {
@@ -3003,10 +3003,10 @@ int8_t compareUnsignedNumbers(const void* num1, const void* num2, int8_t numByte
 /**
  * @return	Returns -1, 0, 1 as a comparator normally would
  */
-int8_t compareSignedNumbers(const void* num1, const void* num2, int8_t numBytes) {
+int8_t compareSignedNumbers(const void *num1, const void *num2, int8_t numBytes) {
     // Cast the pointers to unsigned char pointers for byte-wise comparison
-    const uint8_t* bytes1 = (const uint8_t*)num1;
-    const uint8_t* bytes2 = (const uint8_t*)num2;
+    const uint8_t *bytes1 = (const uint8_t *)num1;
+    const uint8_t *bytes2 = (const uint8_t *)num2;
 
     // Check the sign bits of the most significant bytes
     int sign1 = bytes1[numBytes - 1] & 0x80;
@@ -3033,8 +3033,8 @@ int8_t compareSignedNumbers(const void* num1, const void* num2, int8_t numBytes)
 /**
  * @return	0 or 1 to indicate if inequality is true
  */
-int8_t compare(void* a, uint8_t operation, void* b, int8_t isSigned, int8_t numBytes) {
-    int8_t (*compFunc)(const void* num1, const void* num2, int8_t numBytes) = isSigned ? compareSignedNumbers : compareUnsignedNumbers;
+int8_t compare(void *a, uint8_t operation, void *b, int8_t isSigned, int8_t numBytes) {
+    int8_t (*compFunc)(const void *num1, const void *num2, int8_t numBytes) = isSigned ? compareSignedNumbers : compareUnsignedNumbers;
     switch (operation) {
         case SELECT_GT:
             return compFunc(a, b, numBytes) > 0;
@@ -3057,11 +3057,11 @@ int8_t compare(void* a, uint8_t operation, void* b, int8_t isSigned, int8_t numB
  * @brief	Extract a record from an operator
  * @return	1 if a record was returned, 0 if there are no more rows to return
  */
-int8_t exec(embedDBOperator* op) {
+int8_t exec(embedDBOperator *op) {
     return op->next(op);
 }
 
-void initTableScan(embedDBOperator* op) {
+void initTableScan(embedDBOperator *op) {
     if (op->input != NULL) {
 #ifdef PRINT_ERRORS
         printf("WARNING: TableScan operator should not have an input operator\n");
@@ -3082,7 +3082,7 @@ void initTableScan(embedDBOperator* op) {
     }
 
     // Check that the provided key schema matches what is in the state
-    embedDBState* embedDBstate = (embedDBState*)(((void**)op->state)[0]);
+    embedDBState *embedDBstate = (embedDBState *)(((void **)op->state)[0]);
     if (op->schema->columnSizes[0] <= 0 || abs(op->schema->columnSizes[0]) != embedDBstate->keySize) {
 #ifdef PRINT_ERRORS
         printf("ERROR: Make sure the the key column is at index 0 of the schema initialization and that it matches the keySize in the state and is unsigned\n");
@@ -3108,7 +3108,7 @@ void initTableScan(embedDBOperator* op) {
     }
 }
 
-int8_t nextTableScan(embedDBOperator* op) {
+int8_t nextTableScan(embedDBOperator *op) {
     // Check that a schema was set
     if (op->schema == NULL) {
 #ifdef PRINT_ERRORS
@@ -3118,16 +3118,16 @@ int8_t nextTableScan(embedDBOperator* op) {
     }
 
     // Get next record
-    embedDBState* state = (embedDBState*)(((void**)op->state)[0]);
-    embedDBIterator* it = (embedDBIterator*)(((void**)op->state)[1]);
-    if (!embedDBNext(state, it, op->recordBuffer, (int8_t*)op->recordBuffer + state->keySize)) {
+    embedDBState *state = (embedDBState *)(((void **)op->state)[0]);
+    embedDBIterator *it = (embedDBIterator *)(((void **)op->state)[1]);
+    if (!embedDBNext(state, it, op->recordBuffer, (int8_t *)op->recordBuffer + state->keySize)) {
         return 0;
     }
 
     return 1;
 }
 
-void closeTableScan(embedDBOperator* op) {
+void closeTableScan(embedDBOperator *op) {
     embedDBFreeSchema(&op->schema);
     free(op->recordBuffer);
     op->recordBuffer = NULL;
@@ -3141,7 +3141,7 @@ void closeTableScan(embedDBOperator* op) {
  * @param	it			An initialized iterator setup to read relevent records for this query
  * @param	baseSchema	The schema of the database being read from
  */
-embedDBOperator* createTableScanOperator(embedDBState* state, embedDBIterator* it, embedDBSchema* baseSchema) {
+embedDBOperator *createTableScanOperator(embedDBState *state, embedDBIterator *it, embedDBSchema *baseSchema) {
     // Ensure all fields are not NULL
     if (state == NULL || it == NULL || baseSchema == NULL) {
 #ifdef PRINT_ERRORS
@@ -3150,7 +3150,7 @@ embedDBOperator* createTableScanOperator(embedDBState* state, embedDBIterator* i
         return NULL;
     }
 
-    embedDBOperator* op = malloc(sizeof(embedDBOperator));
+    embedDBOperator *op = malloc(sizeof(embedDBOperator));
     if (op == NULL) {
 #ifdef PRINT_ERRORS
         printf("ERROR: malloc failed while creating TableScan operator\n");
@@ -3158,15 +3158,15 @@ embedDBOperator* createTableScanOperator(embedDBState* state, embedDBIterator* i
         return NULL;
     }
 
-    op->state = malloc(2 * sizeof(void*));
+    op->state = malloc(2 * sizeof(void *));
     if (op->state == NULL) {
 #ifdef PRINT_ERRORS
         printf("ERROR: malloc failed while creating TableScan operator\n");
 #endif
         return NULL;
     }
-    memcpy(op->state, &state, sizeof(void*));
-    memcpy((int8_t*)op->state + sizeof(void*), &it, sizeof(void*));
+    memcpy(op->state, &state, sizeof(void *));
+    memcpy((int8_t *)op->state + sizeof(void *), &it, sizeof(void *));
 
     op->schema = copySchema(baseSchema);
     op->input = NULL;
@@ -3179,7 +3179,7 @@ embedDBOperator* createTableScanOperator(embedDBState* state, embedDBIterator* i
     return op;
 }
 
-void initProjection(embedDBOperator* op) {
+void initProjection(embedDBOperator *op) {
     if (op->input == NULL) {
 #ifdef PRINT_ERRORS
         printf("ERROR: Projection operator needs an input operator\n");
@@ -3191,9 +3191,9 @@ void initProjection(embedDBOperator* op) {
     op->input->init(op->input);
 
     // Get state
-    uint8_t numCols = *(uint8_t*)op->state;
-    uint8_t* cols = (uint8_t*)op->state + 1;
-    const embedDBSchema* inputSchema = op->input->schema;
+    uint8_t numCols = *(uint8_t *)op->state;
+    uint8_t *cols = (uint8_t *)op->state + 1;
+    const embedDBSchema *inputSchema = op->input->schema;
 
     // Init output schema
     if (op->schema == NULL) {
@@ -3213,7 +3213,7 @@ void initProjection(embedDBOperator* op) {
 #endif
             return;
         }
-        
+
         for (uint8_t i = 0; i < numCols; i++) {
             op->schema->columnSizes[i] = inputSchema->columnSizes[cols[i]];
             op->schema->columnTypes[i] = inputSchema->columnTypes[cols[i]];
@@ -3232,10 +3232,10 @@ void initProjection(embedDBOperator* op) {
     }
 }
 
-int8_t nextProjection(embedDBOperator* op) {
-    uint8_t numCols = *(uint8_t*)op->state;
-    uint8_t* cols = (uint8_t*)op->state + 1;
-    embedDBSchema* inputSchema = op->input->schema;
+int8_t nextProjection(embedDBOperator *op) {
+    uint8_t numCols = *(uint8_t *)op->state;
+    uint8_t *cols = (uint8_t *)op->state + 1;
+    embedDBSchema *inputSchema = op->input->schema;
 
     // Get next record
     if (op->input->next(op->input)) {
@@ -3244,7 +3244,7 @@ int8_t nextProjection(embedDBOperator* op) {
             uint8_t col = cols[colIdx];
             uint8_t colSize = abs(inputSchema->columnSizes[col]);
             uint16_t srcColPos = getColOffsetFromSchema(inputSchema, col);
-            memcpy((int8_t*)op->recordBuffer + curColPos, (int8_t*)op->input->recordBuffer + srcColPos, colSize);
+            memcpy((int8_t *)op->recordBuffer + curColPos, (int8_t *)op->input->recordBuffer + srcColPos, colSize);
             curColPos += colSize;
         }
         return 1;
@@ -3253,7 +3253,7 @@ int8_t nextProjection(embedDBOperator* op) {
     }
 }
 
-void closeProjection(embedDBOperator* op) {
+void closeProjection(embedDBOperator *op) {
     op->input->close(op->input);
 
     embedDBFreeSchema(&op->schema);
@@ -3269,9 +3269,9 @@ void closeProjection(embedDBOperator* op) {
  * @param	numCols	How many columns will be in the final projection
  * @param	cols	The indexes of the columns to be outputted. Zero indexed. Column indexes must be strictly increasing i.e. columns must stay in the same order, can only remove columns from input
  */
-embedDBOperator* createProjectionOperator(embedDBOperator* input, uint8_t numCols, uint8_t* cols) {
+embedDBOperator *createProjectionOperator(embedDBOperator *input, uint8_t numCols, uint8_t *cols) {
     // Create state
-    uint8_t* state = malloc(numCols + 1);
+    uint8_t *state = malloc(numCols + 1);
     if (state == NULL) {
 #ifdef PRINT_ERRORS
         printf("ERROR: malloc failed while creating Projection operator\n");
@@ -3281,7 +3281,7 @@ embedDBOperator* createProjectionOperator(embedDBOperator* input, uint8_t numCol
     state[0] = numCols;
     memcpy(state + 1, cols, numCols);
 
-    embedDBOperator* op = malloc(sizeof(embedDBOperator));
+    embedDBOperator *op = malloc(sizeof(embedDBOperator));
     if (op == NULL) {
 #ifdef PRINT_ERRORS
         printf("ERROR: malloc failed while creating Projection operator\n");
@@ -3303,10 +3303,10 @@ embedDBOperator* createProjectionOperator(embedDBOperator* input, uint8_t numCol
 struct selectionInfo {
     int8_t colNum;
     int8_t operation;
-    void* compVal;
+    void *compVal;
 };
 
-void initSelection(embedDBOperator* op) {
+void initSelection(embedDBOperator *op) {
     if (op->input == NULL) {
 #ifdef PRINT_ERRORS
         printf("ERROR: Projection operator needs an input operator\n");
@@ -3334,9 +3334,9 @@ void initSelection(embedDBOperator* op) {
     }
 }
 
-int8_t nextSelection(embedDBOperator* op) {
-    embedDBSchema* schema = op->input->schema;
-    struct selectionInfo* state = op->state;
+int8_t nextSelection(embedDBOperator *op) {
+    embedDBSchema *schema = op->input->schema;
+    struct selectionInfo *state = op->state;
 
     int8_t colNum = state->colNum;
     uint16_t colPos = getColOffsetFromSchema(schema, colNum);
@@ -3349,7 +3349,7 @@ int8_t nextSelection(embedDBOperator* op) {
     }
 
     while (op->input->next(op->input)) {
-        void* colData = (int8_t*)op->input->recordBuffer + colPos;
+        void *colData = (int8_t *)op->input->recordBuffer + colPos;
         if (compare(colData, operation, state->compVal, isSigned, colSize)) {
             memcpy(op->recordBuffer, op->input->recordBuffer, getRecordSizeFromSchema(op->schema));
             return 1;
@@ -3359,7 +3359,7 @@ int8_t nextSelection(embedDBOperator* op) {
     return 0;
 }
 
-void closeSelection(embedDBOperator* op) {
+void closeSelection(embedDBOperator *op) {
     op->input->close(op->input);
 
     embedDBFreeSchema(&op->schema);
@@ -3376,8 +3376,8 @@ void closeSelection(embedDBOperator* op) {
  * @param	operation	A constant representing which comparison operation to perform. (e.g. SELECT_GT, SELECT_EQ, etc)
  * @param	compVal		A pointer to the value to compare with. Make sure the size of this is the same number of bytes as is described in the schema
  */
-embedDBOperator* createSelectionOperator(embedDBOperator* input, int8_t colNum, int8_t operation, void* compVal) {
-    struct selectionInfo* state = malloc(sizeof(struct selectionInfo));
+embedDBOperator *createSelectionOperator(embedDBOperator *input, int8_t colNum, int8_t operation, void *compVal) {
+    struct selectionInfo *state = malloc(sizeof(struct selectionInfo));
     if (state == NULL) {
 #ifdef PRINT_ERRORS
         printf("ERROR: Failed to malloc while creating Selection operator\n");
@@ -3386,9 +3386,9 @@ embedDBOperator* createSelectionOperator(embedDBOperator* input, int8_t colNum, 
     }
     state->colNum = colNum;
     state->operation = operation;
-    memcpy(&state->compVal, &compVal, sizeof(void*));
+    memcpy(&state->compVal, &compVal, sizeof(void *));
 
-    embedDBOperator* op = malloc(sizeof(embedDBOperator));
+    embedDBOperator *op = malloc(sizeof(embedDBOperator));
     if (op == NULL) {
 #ifdef PRINT_ERRORS
         printf("ERROR: Failed to malloc while creating Selection operator\n");
@@ -3406,19 +3406,123 @@ embedDBOperator* createSelectionOperator(embedDBOperator* input, int8_t colNum, 
     return op;
 }
 
+void initOrderBy(embedDBOperator *op) {
+    if (op == NULL || op->input == NULL) {
+#ifdef PRINT_ERRORS
+        printf("ERROR: ORDER BY: NULL input operator\n");
+#endif
+        return;
+    }
+
+    op->input->init(op->input);
+
+    if (op->schema == NULL) {
+        op->schema = copySchema(op->input->schema);
+    }
+
+    if (op->recordBuffer == NULL) {
+        op->recordBuffer = createBufferFromSchema(op->schema);
+        if (op->recordBuffer == NULL) {
+#ifdef PRINT_ERRORS
+            printf("ERROR: ORDER BY: Failed to allocate buffer\n");
+#endif
+            return;
+        }
+    }
+
+    ((sortData *)op->state)->readBuffer = malloc(PAGE_SIZE);
+
+    prepareSort(op);
+
+    return;
+}
+
+int8_t nextOrderBy(embedDBOperator *op) {
+    if (op == NULL) {
+#ifdef PRINT_ERRORS
+        printf("ERROR: ORDER BY: NULL input operator\n");
+#endif
+        return 0;
+    }
+
+    if (readNextRecord((sortData *)op->state, op->recordBuffer) != 0) {
+        return 0;
+    }
+
+    return 1;
+}
+
+void closeOrderBy(embedDBOperator *op) {
+    op->input->close(op->input);
+    op->input = NULL;
+    embedDBFreeSchema(&op->schema);
+
+    closeSort(((sortData *)op->state)->fileIterator);
+    free(((sortData *)op->state)->readBuffer);
+    free(((sortData *)op->state)->fileIterator);
+
+    free(op->state);
+    op->state = NULL;
+    free(op->recordBuffer);
+    op->recordBuffer = NULL;
+}
+
+/**
+ * @brief Create an operator that will reorder records based on a given direction
+ *
+ * @param dbState       The database state
+ * @param input         The operator that this operator can pull records from
+ * @param colNum        The column that is being sorted on
+ * @param compareFn     The function being used to make comparisons between row data
+ */
+embedDBOperator *createOrderByOperator(embedDBState *dbState, embedDBOperator *input, int8_t colNum, int32_t limit, int8_t (*compareFn)(void *a, void *b)) {
+    if (input == NULL || dbState == NULL || compareFn == NULL || colNum < 0) {
+#ifdef PRINT_ERRORS
+        printf("ERROR: ORDER BY: Invalid Input data\n");
+#endif
+        return NULL;
+    }
+
+    // Operator state
+    struct sortData *state = malloc(sizeof(struct sortData));
+    embedDBOperator *op = malloc(sizeof(embedDBOperator));
+
+    if (state == NULL || op == NULL) {
+#ifdef PRINT_ERRORS
+        printf("ERROR: ORDER BY: malloc failed\n");
+#endif
+        return NULL;
+    }
+
+    state->fileInterface = dbState->fileInterface;
+    state->colNum = colNum;
+    state->compareFn = compareFn;
+    state->tupleLimit = limit;
+
+    op->state = state;
+    op->input = input;
+    op->schema = NULL;
+    op->recordBuffer = NULL;
+    op->init = initOrderBy;
+    op->next = nextOrderBy;
+    op->close = closeOrderBy;
+
+    return op;
+}
+
 /**
  * @brief	A private struct to hold the state of the aggregate operator
  */
 struct aggregateInfo {
-    int8_t (*groupfunc)(const void* lastRecord, const void* record);  // Function that determins if both records are in the same group
-    embedDBAggregateFunc* functions;                                  // An array of aggregate functions
+    int8_t (*groupfunc)(const void *lastRecord, const void *record);  // Function that determins if both records are in the same group
+    embedDBAggregateFunc *functions;                                  // An array of aggregate functions
     uint32_t functionsLength;                                         // The length of the functions array
-    void* lastRecordBuffer;                                           // Buffer for the last record read by input->next
+    void *lastRecordBuffer;                                           // Buffer for the last record read by input->next
     uint16_t bufferSize;                                              // Size of the input buffer (and lastRecordBuffer)
     int8_t isLastRecordUsable;                                        // Is the data in lastRecordBuffer usable for checking if the recently read record is in the same group? Is set to 0 at start, and also after the last record
 };
 
-void initAggregate(embedDBOperator* op) {
+void initAggregate(embedDBOperator *op) {
     if (op->input == NULL) {
 #ifdef PRINT_ERRORS
         printf("ERROR: Aggregate operator needs an input operator\n");
@@ -3429,7 +3533,7 @@ void initAggregate(embedDBOperator* op) {
     // Init input
     op->input->init(op->input);
 
-    struct aggregateInfo* state = op->state;
+    struct aggregateInfo *state = op->state;
     state->isLastRecordUsable = 0;
 
     // Init output schema
@@ -3478,9 +3582,9 @@ void initAggregate(embedDBOperator* op) {
     }
 }
 
-int8_t nextAggregate(embedDBOperator* op) {
-    struct aggregateInfo* state = op->state;
-    embedDBOperator* input = op->input;
+int8_t nextAggregate(embedDBOperator *op) {
+    struct aggregateInfo *state = op->state;
+    embedDBOperator *input = op->input;
 
     // Reset each operator
     for (int i = 0; i < state->functionsLength; i++) {
@@ -3543,11 +3647,11 @@ int8_t nextAggregate(embedDBOperator* op) {
     return 1;
 }
 
-void closeAggregate(embedDBOperator* op) {
+void closeAggregate(embedDBOperator *op) {
     op->input->close(op->input);
     op->input = NULL;
     embedDBFreeSchema(&op->schema);
-    free(((struct aggregateInfo*)op->state)->lastRecordBuffer);
+    free(((struct aggregateInfo *)op->state)->lastRecordBuffer);
     free(op->state);
     op->state = NULL;
     free(op->recordBuffer);
@@ -3561,8 +3665,8 @@ void closeAggregate(embedDBOperator* op) {
  * @param	functions		An array of aggregate functions, each of which will be updated with each record read from the iterator
  * @param	functionsLength			The number of embedDBAggregateFuncs in @c functions
  */
-embedDBOperator* createAggregateOperator(embedDBOperator* input, int8_t (*groupfunc)(const void* lastRecord, const void* record), embedDBAggregateFunc* functions, uint32_t functionsLength) {
-    struct aggregateInfo* state = malloc(sizeof(struct aggregateInfo));
+embedDBOperator *createAggregateOperator(embedDBOperator *input, int8_t (*groupfunc)(const void *lastRecord, const void *record), embedDBAggregateFunc *functions, uint32_t functionsLength) {
+    struct aggregateInfo *state = malloc(sizeof(struct aggregateInfo));
     if (state == NULL) {
 #ifdef PRINT_ERRORS
         printf("ERROR: Failed to malloc while creating aggregate operator\n");
@@ -3575,7 +3679,7 @@ embedDBOperator* createAggregateOperator(embedDBOperator* input, int8_t (*groupf
     state->functionsLength = functionsLength;
     state->lastRecordBuffer = NULL;
 
-    embedDBOperator* op = malloc(sizeof(embedDBOperator));
+    embedDBOperator *op = malloc(sizeof(embedDBOperator));
     if (op == NULL) {
 #ifdef PRINT_ERRORS
         printf("ERROR: Failed to malloc while creating aggregate operator\n");
@@ -3595,21 +3699,21 @@ embedDBOperator* createAggregateOperator(embedDBOperator* input, int8_t (*groupf
 }
 
 struct keyJoinInfo {
-    embedDBOperator* input2;
+    embedDBOperator *input2;
     int8_t firstCall;
 };
 
-void initKeyJoin(embedDBOperator* op) {
-    struct keyJoinInfo* state = op->state;
-    embedDBOperator* input1 = op->input;
-    embedDBOperator* input2 = state->input2;
+void initKeyJoin(embedDBOperator *op) {
+    struct keyJoinInfo *state = op->state;
+    embedDBOperator *input1 = op->input;
+    embedDBOperator *input2 = state->input2;
 
     // Init inputs
     input1->init(input1);
     input2->init(input2);
 
-    embedDBSchema* schema1 = input1->schema;
-    embedDBSchema* schema2 = input2->schema;
+    embedDBSchema *schema1 = input1->schema;
+    embedDBSchema *schema2 = input2->schema;
 
     // Check that join is compatible
     if (schema1->columnSizes[0] != schema2->columnSizes[0] || schema1->columnSizes[0] < 0 || schema2->columnSizes[0] < 0) {
@@ -3655,16 +3759,16 @@ void initKeyJoin(embedDBOperator* op) {
     state->firstCall = 1;
 }
 
-int8_t nextKeyJoin(embedDBOperator* op) {
-    struct keyJoinInfo* state = op->state;
-    embedDBOperator* input1 = op->input;
-    embedDBOperator* input2 = state->input2;
-    embedDBSchema* schema1 = input1->schema;
-    embedDBSchema* schema2 = input2->schema;
+int8_t nextKeyJoin(embedDBOperator *op) {
+    struct keyJoinInfo *state = op->state;
+    embedDBOperator *input1 = op->input;
+    embedDBOperator *input2 = state->input2;
+    embedDBSchema *schema1 = input1->schema;
+    embedDBSchema *schema2 = input2->schema;
 
     // We've already used this match
-    void* record1 = input1->recordBuffer;
-    void* record2 = input2->recordBuffer;
+    void *record1 = input1->recordBuffer;
+    void *record2 = input2->recordBuffer;
 
     int8_t colSize = abs(schema1->columnSizes[0]);
 
@@ -3706,7 +3810,7 @@ int8_t nextKeyJoin(embedDBOperator* op) {
             // Copy both records into the output
             uint16_t record1Size = getRecordSizeFromSchema(schema1);
             memcpy(op->recordBuffer, input1->recordBuffer, record1Size);
-            memcpy((int8_t*)op->recordBuffer + record1Size, input2->recordBuffer, getRecordSizeFromSchema(schema2));
+            memcpy((int8_t *)op->recordBuffer + record1Size, input2->recordBuffer, getRecordSizeFromSchema(schema2));
             return 1;
         }
         // Else keep advancing inputs until a match is found
@@ -3715,10 +3819,10 @@ int8_t nextKeyJoin(embedDBOperator* op) {
     return 0;
 }
 
-void closeKeyJoin(embedDBOperator* op) {
-    struct keyJoinInfo* state = op->state;
-    embedDBOperator* input1 = op->input;
-    embedDBOperator* input2 = state->input2;
+void closeKeyJoin(embedDBOperator *op) {
+    struct keyJoinInfo *state = op->state;
+    embedDBOperator *input1 = op->input;
+    embedDBOperator *input2 = state->input2;
     input1->close(input1);
     input2->close(input2);
 
@@ -3732,8 +3836,8 @@ void closeKeyJoin(embedDBOperator* op) {
 /**
  * @brief	Creates an operator for perfoming an equijoin on the keys (sorted and distinct) of two tables
  */
-embedDBOperator* createKeyJoinOperator(embedDBOperator* input1, embedDBOperator* input2) {
-    embedDBOperator* op = malloc(sizeof(embedDBOperator));
+embedDBOperator *createKeyJoinOperator(embedDBOperator *input1, embedDBOperator *input2) {
+    embedDBOperator *op = malloc(sizeof(embedDBOperator));
     if (op == NULL) {
 #ifdef PRINT_ERRORS
         printf("ERROR: Failed to malloc while creating join operator\n");
@@ -3741,7 +3845,7 @@ embedDBOperator* createKeyJoinOperator(embedDBOperator* input1, embedDBOperator*
         return NULL;
     }
 
-    struct keyJoinInfo* state = malloc(sizeof(struct keyJoinInfo));
+    struct keyJoinInfo *state = malloc(sizeof(struct keyJoinInfo));
     if (state == NULL) {
 #ifdef PRINT_ERRORS
         printf("ERROR: Failed to malloc while creating join operator\n");
@@ -3761,24 +3865,24 @@ embedDBOperator* createKeyJoinOperator(embedDBOperator* input1, embedDBOperator*
     return op;
 }
 
-void countReset(embedDBAggregateFunc* aggFunc, embedDBSchema* inputSchema) {
-    *(uint32_t*)aggFunc->state = 0;
+void countReset(embedDBAggregateFunc *aggFunc, embedDBSchema *inputSchema) {
+    *(uint32_t *)aggFunc->state = 0;
 }
 
-void countAdd(embedDBAggregateFunc* aggFunc, embedDBSchema* inputSchema, const void* recordBuffer) {
-    (*(uint32_t*)aggFunc->state)++;
+void countAdd(embedDBAggregateFunc *aggFunc, embedDBSchema *inputSchema, const void *recordBuffer) {
+    (*(uint32_t *)aggFunc->state)++;
 }
 
-void countCompute(embedDBAggregateFunc* aggFunc, embedDBSchema* outputSchema, void* recordBuffer, const void* lastRecord) {
+void countCompute(embedDBAggregateFunc *aggFunc, embedDBSchema *outputSchema, void *recordBuffer, const void *lastRecord) {
     // Put count in record
-    memcpy((int8_t*)recordBuffer + getColOffsetFromSchema(outputSchema, aggFunc->colNum), aggFunc->state, sizeof(uint32_t));
+    memcpy((int8_t *)recordBuffer + getColOffsetFromSchema(outputSchema, aggFunc->colNum), aggFunc->state, sizeof(uint32_t));
 }
 
 /**
  * @brief	Creates an aggregate function to count the number of records in a group. To be used in combination with an embedDBOperator produced by createAggregateOperator
  */
-embedDBAggregateFunc* createCountAggregate() {
-    embedDBAggregateFunc* aggFunc = malloc(sizeof(embedDBAggregateFunc));
+embedDBAggregateFunc *createCountAggregate() {
+    embedDBAggregateFunc *aggFunc = malloc(sizeof(embedDBAggregateFunc));
     aggFunc->reset = countReset;
     aggFunc->add = countAdd;
     aggFunc->compute = countCompute;
@@ -3787,21 +3891,21 @@ embedDBAggregateFunc* createCountAggregate() {
     return aggFunc;
 }
 
-void sumReset(embedDBAggregateFunc* aggFunc, embedDBSchema* inputSchema) {
-    if (abs(inputSchema->columnSizes[*((uint8_t*)aggFunc->state + sizeof(int64_t))]) > 8) {
+void sumReset(embedDBAggregateFunc *aggFunc, embedDBSchema *inputSchema) {
+    if (abs(inputSchema->columnSizes[*((uint8_t *)aggFunc->state + sizeof(int64_t))]) > 8) {
 #ifdef PRINT_ERRORS
         printf("WARNING: Can't use this sum function for columns bigger than 8 bytes\n");
 #endif
     }
-    *(int64_t*)aggFunc->state = 0;
+    *(int64_t *)aggFunc->state = 0;
 }
 
-void sumAdd(embedDBAggregateFunc* aggFunc, embedDBSchema* inputSchema, const void* recordBuffer) {
-    uint8_t colNum = *((uint8_t*)aggFunc->state + sizeof(int64_t));
+void sumAdd(embedDBAggregateFunc *aggFunc, embedDBSchema *inputSchema, const void *recordBuffer) {
+    uint8_t colNum = *((uint8_t *)aggFunc->state + sizeof(int64_t));
     int8_t colSize = inputSchema->columnSizes[colNum];
     int8_t isSigned = embedDB_IS_COL_SIGNED(colSize);
     colSize = min(abs(colSize), sizeof(int64_t));
-    void* colPos = (int8_t*)recordBuffer + getColOffsetFromSchema(inputSchema, colNum);
+    void *colPos = (int8_t *)recordBuffer + getColOffsetFromSchema(inputSchema, colNum);
     if (isSigned) {
         // Get val to sum from record
         int64_t val = 0;
@@ -3809,43 +3913,43 @@ void sumAdd(embedDBAggregateFunc* aggFunc, embedDBSchema* inputSchema, const voi
         // Extend two's complement sign to fill 64 bit number if val is negative
         int64_t sign = val & (128 << ((colSize - 1) * 8));
         if (sign != 0) {
-            memset(((int8_t*)(&val)) + colSize, 0xff, sizeof(int64_t) - colSize);
+            memset(((int8_t *)(&val)) + colSize, 0xff, sizeof(int64_t) - colSize);
         }
-        (*(int64_t*)aggFunc->state) += val;
+        (*(int64_t *)aggFunc->state) += val;
     } else {
         uint64_t val = 0;
         memcpy(&val, colPos, colSize);
-        (*(uint64_t*)aggFunc->state) += val;
+        (*(uint64_t *)aggFunc->state) += val;
     }
 }
 
-void sumCompute(embedDBAggregateFunc* aggFunc, embedDBSchema* outputSchema, void* recordBuffer, const void* lastRecord) {
+void sumCompute(embedDBAggregateFunc *aggFunc, embedDBSchema *outputSchema, void *recordBuffer, const void *lastRecord) {
     // Put count in record
-    memcpy((int8_t*)recordBuffer + getColOffsetFromSchema(outputSchema, aggFunc->colNum), aggFunc->state, sizeof(int64_t));
+    memcpy((int8_t *)recordBuffer + getColOffsetFromSchema(outputSchema, aggFunc->colNum), aggFunc->state, sizeof(int64_t));
 }
 
 /**
  * @brief	Creates an aggregate function to sum a column over a group. To be used in combination with an embedDBOperator produced by createAggregateOperator. Column must be no bigger than 8 bytes.
  * @param	colNum	The index (zero-indexed) of the column which you want to sum. Column must be <= 8 bytes
  */
-embedDBAggregateFunc* createSumAggregate(uint8_t colNum) {
-    embedDBAggregateFunc* aggFunc = malloc(sizeof(embedDBAggregateFunc));
+embedDBAggregateFunc *createSumAggregate(uint8_t colNum) {
+    embedDBAggregateFunc *aggFunc = malloc(sizeof(embedDBAggregateFunc));
     aggFunc->reset = sumReset;
     aggFunc->add = sumAdd;
     aggFunc->compute = sumCompute;
     aggFunc->state = malloc(sizeof(int8_t) + sizeof(int64_t));
-    *((uint8_t*)aggFunc->state + sizeof(int64_t)) = colNum;
+    *((uint8_t *)aggFunc->state + sizeof(int64_t)) = colNum;
     aggFunc->colSize = -8;
     return aggFunc;
 }
 
 struct minMaxState {
     uint8_t colNum;  // Which column of input to use
-    void* current;   // The value currently regarded as the min/max
+    void *current;   // The value currently regarded as the min/max
 };
 
-void minReset(embedDBAggregateFunc* aggFunc, embedDBSchema* inputSchema) {
-    struct minMaxState* state = aggFunc->state;
+void minReset(embedDBAggregateFunc *aggFunc, embedDBSchema *inputSchema) {
+    struct minMaxState *state = aggFunc->state;
     int8_t colSize = inputSchema->columnSizes[state->colNum];
     if (aggFunc->colSize != colSize) {
 #ifdef PRINT_ERRORS
@@ -3857,24 +3961,24 @@ void minReset(embedDBAggregateFunc* aggFunc, embedDBSchema* inputSchema) {
     memset(state->current, 0xff, colSize);
     if (isSigned) {
         // If the number is signed, flip MSB else it will read as -1, not MAX_INT
-        memset((int8_t*)state->current + colSize - 1, 0x7f, 1);
+        memset((int8_t *)state->current + colSize - 1, 0x7f, 1);
     }
 }
 
-void minAdd(embedDBAggregateFunc* aggFunc, embedDBSchema* inputSchema, const void* record) {
-    struct minMaxState* state = aggFunc->state;
+void minAdd(embedDBAggregateFunc *aggFunc, embedDBSchema *inputSchema, const void *record) {
+    struct minMaxState *state = aggFunc->state;
     int8_t colSize = inputSchema->columnSizes[state->colNum];
     int8_t isSigned = embedDB_IS_COL_SIGNED(colSize);
     colSize = abs(colSize);
-    void* newValue = (int8_t*)record + getColOffsetFromSchema(inputSchema, state->colNum);
+    void *newValue = (int8_t *)record + getColOffsetFromSchema(inputSchema, state->colNum);
     if (compare(newValue, SELECT_LT, state->current, isSigned, colSize)) {
         memcpy(state->current, newValue, colSize);
     }
 }
 
-void minMaxCompute(embedDBAggregateFunc* aggFunc, embedDBSchema* outputSchema, void* recordBuffer, const void* lastRecord) {
+void minMaxCompute(embedDBAggregateFunc *aggFunc, embedDBSchema *outputSchema, void *recordBuffer, const void *lastRecord) {
     // Put count in record
-    memcpy((int8_t*)recordBuffer + getColOffsetFromSchema(outputSchema, aggFunc->colNum), ((struct minMaxState*)aggFunc->state)->current, abs(outputSchema->columnSizes[aggFunc->colNum]));
+    memcpy((int8_t *)recordBuffer + getColOffsetFromSchema(outputSchema, aggFunc->colNum), ((struct minMaxState *)aggFunc->state)->current, abs(outputSchema->columnSizes[aggFunc->colNum]));
 }
 
 /**
@@ -3882,15 +3986,15 @@ void minMaxCompute(embedDBAggregateFunc* aggFunc, embedDBSchema* outputSchema, v
  * @param	colNum	The zero-indexed column to find the min of
  * @param	colSize	The size, in bytes, of the column to find the min of. Negative number represents a signed number, positive is unsigned.
  */
-embedDBAggregateFunc* createMinAggregate(uint8_t colNum, int8_t colSize) {
-    embedDBAggregateFunc* aggFunc = malloc(sizeof(embedDBAggregateFunc));
+embedDBAggregateFunc *createMinAggregate(uint8_t colNum, int8_t colSize) {
+    embedDBAggregateFunc *aggFunc = malloc(sizeof(embedDBAggregateFunc));
     if (aggFunc == NULL) {
 #ifdef PRINT_ERRORS
         printf("ERROR: Failed to allocate while creating min aggregate function\n");
 #endif
         return NULL;
     }
-    struct minMaxState* state = malloc(sizeof(struct minMaxState));
+    struct minMaxState *state = malloc(sizeof(struct minMaxState));
     if (state == NULL) {
 #ifdef PRINT_ERRORS
         printf("ERROR: Failed to allocate while creating min aggregate function\n");
@@ -3914,8 +4018,8 @@ embedDBAggregateFunc* createMinAggregate(uint8_t colNum, int8_t colSize) {
     return aggFunc;
 }
 
-void maxReset(embedDBAggregateFunc* aggFunc, embedDBSchema* inputSchema) {
-    struct minMaxState* state = aggFunc->state;
+void maxReset(embedDBAggregateFunc *aggFunc, embedDBSchema *inputSchema) {
+    struct minMaxState *state = aggFunc->state;
     int8_t colSize = inputSchema->columnSizes[state->colNum];
     if (aggFunc->colSize != colSize) {
 #ifdef PRINT_ERRORS
@@ -3927,16 +4031,16 @@ void maxReset(embedDBAggregateFunc* aggFunc, embedDBSchema* inputSchema) {
     memset(state->current, 0, colSize);
     if (isSigned) {
         // If the number is signed, flip MSB else it will read as 0, not MIN_INT
-        memset((int8_t*)state->current + colSize - 1, 0x80, 1);
+        memset((int8_t *)state->current + colSize - 1, 0x80, 1);
     }
 }
 
-void maxAdd(embedDBAggregateFunc* aggFunc, embedDBSchema* inputSchema, const void* record) {
-    struct minMaxState* state = aggFunc->state;
+void maxAdd(embedDBAggregateFunc *aggFunc, embedDBSchema *inputSchema, const void *record) {
+    struct minMaxState *state = aggFunc->state;
     int8_t colSize = inputSchema->columnSizes[state->colNum];
     int8_t isSigned = embedDB_IS_COL_SIGNED(colSize);
     colSize = abs(colSize);
-    void* newValue = (int8_t*)record + getColOffsetFromSchema(inputSchema, state->colNum);
+    void *newValue = (int8_t *)record + getColOffsetFromSchema(inputSchema, state->colNum);
     if (compare(newValue, SELECT_GT, state->current, isSigned, colSize)) {
         memcpy(state->current, newValue, colSize);
     }
@@ -3947,15 +4051,15 @@ void maxAdd(embedDBAggregateFunc* aggFunc, embedDBSchema* inputSchema, const voi
  * @param	colNum	The zero-indexed column to find the max of
  * @param	colSize	The size, in bytes, of the column to find the max of. Negative number represents a signed number, positive is unsigned.
  */
-embedDBAggregateFunc* createMaxAggregate(uint8_t colNum, int8_t colSize) {
-    embedDBAggregateFunc* aggFunc = malloc(sizeof(embedDBAggregateFunc));
+embedDBAggregateFunc *createMaxAggregate(uint8_t colNum, int8_t colSize) {
+    embedDBAggregateFunc *aggFunc = malloc(sizeof(embedDBAggregateFunc));
     if (aggFunc == NULL) {
 #ifdef PRINT_ERRORS
         printf("ERROR: Failed to allocate while creating max aggregate function\n");
 #endif
         return NULL;
     }
-    struct minMaxState* state = malloc(sizeof(struct minMaxState));
+    struct minMaxState *state = malloc(sizeof(struct minMaxState));
     if (state == NULL) {
 #ifdef PRINT_ERRORS
         printf("ERROR: Failed to allocate while creating max aggregate function\n");
@@ -3980,23 +4084,23 @@ embedDBAggregateFunc* createMaxAggregate(uint8_t colNum, int8_t colSize) {
 }
 
 struct avgState {
-    uint8_t colNum;    // Column to take avg of
-    ColumnType colType; // Column type
-    uint32_t count;    // Count of records seen in group so far
-    double sum;        // Sum of records seen in group so far
+    uint8_t colNum;      // Column to take avg of
+    ColumnType colType;  // Column type
+    uint32_t count;      // Count of records seen in group so far
+    double sum;          // Sum of records seen in group so far
 };
 
-void avgReset(struct embedDBAggregateFunc* aggFunc, embedDBSchema* inputSchema) {
-    struct avgState* state = aggFunc->state;
+void avgReset(struct embedDBAggregateFunc *aggFunc, embedDBSchema *inputSchema) {
+    struct avgState *state = aggFunc->state;
     state->colType = inputSchema->columnTypes[state->colNum];
     state->count = 0;
     state->sum = 0.0;
 }
 
-void avgAdd(struct embedDBAggregateFunc* aggFunc, embedDBSchema* inputSchema, const void* record) {
-    struct avgState* state = aggFunc->state;
+void avgAdd(struct embedDBAggregateFunc *aggFunc, embedDBSchema *inputSchema, const void *record) {
+    struct avgState *state = aggFunc->state;
     uint8_t colNum = state->colNum;
-    void* colPos = (int8_t*)record + getColOffsetFromSchema(inputSchema, colNum);
+    void *colPos = (int8_t *)record + getColOffsetFromSchema(inputSchema, colNum);
     switch (state->colType) {
         case embedDB_COLUMN_INT32: {
             int32_t val;
@@ -4043,13 +4147,13 @@ void avgAdd(struct embedDBAggregateFunc* aggFunc, embedDBSchema* inputSchema, co
     state->count++;
 }
 
-void avgCompute(struct embedDBAggregateFunc* aggFunc, embedDBSchema* outputSchema, void* recordBuffer, const void* lastRecord) {
-    struct avgState* state = aggFunc->state;
+void avgCompute(struct embedDBAggregateFunc *aggFunc, embedDBSchema *outputSchema, void *recordBuffer, const void *lastRecord) {
+    struct avgState *state = aggFunc->state;
     if (state->count == 0) {
         return;  // Avoid division by zero
     }
 
-    void* outputPos = (int8_t*)recordBuffer + getColOffsetFromSchema(outputSchema, aggFunc->colNum);
+    void *outputPos = (int8_t *)recordBuffer + getColOffsetFromSchema(outputSchema, aggFunc->colNum);
 
     switch (state->colType) {
         case embedDB_COLUMN_INT32:
@@ -4074,21 +4178,20 @@ void avgCompute(struct embedDBAggregateFunc* aggFunc, embedDBSchema* outputSchem
     }
 }
 
-
 /**
  * @brief	Creates an operator to compute the average of a column over a group. **WARNING: Outputs a floating point number that may not be compatible with other operators**
  * @param	colNum			Zero-indexed column to take average of
  * @param	outputFloatSize	Size of float to output. Must be either 4 (float) or 8 (double)
  */
-embedDBAggregateFunc* createAvgAggregate(uint8_t colNum, int8_t outputFloatSize) {
-    embedDBAggregateFunc* aggFunc = malloc(sizeof(embedDBAggregateFunc));
+embedDBAggregateFunc *createAvgAggregate(uint8_t colNum, int8_t outputFloatSize) {
+    embedDBAggregateFunc *aggFunc = malloc(sizeof(embedDBAggregateFunc));
     if (aggFunc == NULL) {
 #ifdef PRINT_ERRORS
         printf("ERROR: Failed to allocate while creating avg aggregate function\n");
 #endif
         return NULL;
     }
-    struct avgState* state = malloc(sizeof(struct avgState));
+    struct avgState *state = malloc(sizeof(struct avgState));
     if (state == NULL) {
 #ifdef PRINT_ERRORS
         printf("ERROR: Failed to allocate while creating avg aggregate function\n");
@@ -4120,7 +4223,7 @@ embedDBAggregateFunc* createAvgAggregate(uint8_t colNum, int8_t outputFloatSize)
 /**
  * @brief	Completely free a chain of functions recursively after it's already been closed.
  */
-void embedDBFreeOperatorRecursive(embedDBOperator** op) {
+void embedDBFreeOperatorRecursive(embedDBOperator **op) {
     if ((*op)->input != NULL) {
         embedDBFreeOperatorRecursive(&(*op)->input);
     }
@@ -4176,7 +4279,7 @@ void embedDBFreeOperatorRecursive(embedDBOperator** op) {
  *  ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  *  POSSIBILITY OF SUCH DAMAGE.
  */
-/******************************************************************************/  
+/******************************************************************************/
 
 /* A bitmap with 8 buckets (bits). Range 0 to 100. */
 void updateBitmapInt8(void *data, void *bm) {
@@ -4408,15 +4511,14 @@ int8_t doubleComparator(void *a, void *b) {
     return (f1 > f2) - (f1 < f2);
 }
 /************************************************************activeRules.c************************************************************/
- 
 
-activeRule* IF(activeRule *rule, uint8_t colNum, ActiveQueryType type) {
+activeRule *IF(activeRule *rule, uint8_t colNum, ActiveQueryType type) {
     rule->type = type;
     rule->colNum = colNum;
     return rule;
 }
 
-activeRule* IFCustom(activeRule *rule, uint8_t colNum, void* (*executeCustom)(activeRule *rule, void *key), CustomReturnType returnType) {
+activeRule *IFCustom(activeRule *rule, uint8_t colNum, void *(*executeCustom)(activeRule *rule, void *key), CustomReturnType returnType) {
     rule->type = GET_CUSTOM;
     rule->colNum = colNum;
     rule->executeCustom = executeCustom;
@@ -4424,33 +4526,33 @@ activeRule* IFCustom(activeRule *rule, uint8_t colNum, void* (*executeCustom)(ac
     return rule;
 }
 
-activeRule* is(activeRule *rule, SelectOperation operation, void* threshold) {
+activeRule *is(activeRule *rule, SelectOperation operation, void *threshold) {
     rule->operation = operation;
     rule->threshold = threshold;
     return rule;
 }
 
-activeRule* ofLast(activeRule *rule, void* numLastEntries) {
+activeRule *ofLast(activeRule *rule, void *numLastEntries) {
     rule->numLastEntries = numLastEntries;
     return rule;
 }
 
-activeRule* where(activeRule *rule, void* minData, void* maxData) {
+activeRule *where(activeRule *rule, void *minData, void *maxData) {
     rule->minData = minData;
     rule->maxData = maxData;
     return rule;
 }
 
-activeRule* then(activeRule *rule, void (*callback)(void* aggregateValue, void* currentValue, void* context)) {
+activeRule *then(activeRule *rule, void (*callback)(void *aggregateValue, void *currentValue, void *context)) {
     rule->callback = callback;
     return rule;
 }
 
-activeRule* createActiveRule(embedDBSchema *schema, void* context) {
-    activeRule *rule = (activeRule*)malloc(sizeof(activeRule));
+activeRule *createActiveRule(embedDBSchema *schema, void *context) {
+    activeRule *rule = (activeRule *)malloc(sizeof(activeRule));
     if (rule != NULL) {
-        rule->minData = NULL; // Default to no min data
-        rule->maxData = NULL; // Default to no max data
+        rule->minData = NULL;  // Default to no min data
+        rule->maxData = NULL;  // Default to no max data
         rule->schema = copySchema(schema);
         rule->context = context;
         rule->IF = IF;
@@ -4459,18 +4561,15 @@ activeRule* createActiveRule(embedDBSchema *schema, void* context) {
         rule->ofLast = ofLast;
         rule->where = where;
         rule->then = then;
-        rule->enabled = true; // Default to enabled
+        rule->enabled = true;  // Default to enabled
     }
     return rule;
 }
 
-
-
-
-void executeRules(embedDBState* state, void *key, void *data) {
+void executeRules(embedDBState *state, void *key, void *data) {
     for (int i = 0; i < state->numRules; i++) {
-        if(state->rules[i]->enabled == false) {
-            continue; // Skip disabled rules
+        if (state->rules[i]->enabled == false) {
+            continue;  // Skip disabled rules
         }
         switch (state->rules[i]->type) {
             case GET_AVG:
@@ -4486,16 +4585,15 @@ void executeRules(embedDBState* state, void *key, void *data) {
             default:
                 printf("ERROR: Unsupported rule type\n");
         }
-    
     }
 }
 
 float GetAvg(embedDBState *state, activeRule *rule, void *key) {
-    void** allocatedValues;
-    embedDBOperator* op = createOperator(state, rule, &allocatedValues, key);
+    void **allocatedValues;
+    embedDBOperator *op = createOperator(state, rule, &allocatedValues, key);
 
-    void* recordBuffer = op->recordBuffer;
-    float* C1 = (float*)((int8_t*)recordBuffer + 0);
+    void *recordBuffer = op->recordBuffer;
+    float *C1 = (float *)((int8_t *)recordBuffer + 0);
     // Print as csv
     exec(op);
     float avg = *C1;
@@ -4510,11 +4608,11 @@ float GetAvg(embedDBState *state, activeRule *rule, void *key) {
 }
 
 int32_t GetMinMax32(embedDBState *state, activeRule *rule, void *key) {
-    void** allocatedValues;
-    embedDBOperator* op = createOperator(state, rule, &allocatedValues, key);
+    void **allocatedValues;
+    embedDBOperator *op = createOperator(state, rule, &allocatedValues, key);
 
-    void* recordBuffer = op->recordBuffer;
-    int32_t* C1 = (int32_t*)((int8_t*)recordBuffer + 0);
+    void *recordBuffer = op->recordBuffer;
+    int32_t *C1 = (int32_t *)((int8_t *)recordBuffer + 0);
     // Print as csv
     exec(op);
     int32_t minmax = *C1;
@@ -4529,11 +4627,11 @@ int32_t GetMinMax32(embedDBState *state, activeRule *rule, void *key) {
 }
 
 int64_t GetMinMax64(embedDBState *state, activeRule *rule, void *key) {
-    void** allocatedValues;
-    embedDBOperator* op = createOperator(state, rule, &allocatedValues, key);
+    void **allocatedValues;
+    embedDBOperator *op = createOperator(state, rule, &allocatedValues, key);
 
-    void* recordBuffer = op->recordBuffer;
-    int64_t* C1 = (int64_t*)((int8_t*)recordBuffer + 0);
+    void *recordBuffer = op->recordBuffer;
+    int64_t *C1 = (int64_t *)((int8_t *)recordBuffer + 0);
     // Print as csv
     exec(op);
     int64_t minmax = *C1;
@@ -4547,37 +4645,37 @@ int64_t GetMinMax64(embedDBState *state, activeRule *rule, void *key) {
     return minmax;
 }
 
-embedDBOperator* createOperator(embedDBState *state, activeRule * rule, void*** allocatedValues, void *key) {
-    embedDBIterator* it = (embedDBIterator*)malloc(sizeof(embedDBIterator));
-    if(state->keySize == 4){
-        uint32_t minKeyVal = *(uint32_t*)key - (*(uint32_t*)rule->numLastEntries - 1);
+embedDBOperator *createOperator(embedDBState *state, activeRule *rule, void ***allocatedValues, void *key) {
+    embedDBIterator *it = (embedDBIterator *)malloc(sizeof(embedDBIterator));
+    if (state->keySize == 4) {
+        uint32_t minKeyVal = *(uint32_t *)key - (*(uint32_t *)rule->numLastEntries - 1);
         uint32_t *minKeyPtr = (uint32_t *)malloc(sizeof(uint32_t));
         if (minKeyPtr != NULL) {
             *minKeyPtr = minKeyVal;
             it->minKey = minKeyPtr;
         }
-    }else if(state->keySize == 8){
-        uint64_t minKeyVal = *(uint64_t*)key - (*(uint64_t*)rule->numLastEntries - 1);
+    } else if (state->keySize == 8) {
+        uint64_t minKeyVal = *(uint64_t *)key - (*(uint64_t *)rule->numLastEntries - 1);
         uint64_t *minKeyPtr = (uint64_t *)malloc(sizeof(uint64_t));
         if (minKeyPtr != NULL) {
             *minKeyPtr = minKeyVal;
             it->minKey = minKeyPtr;
         }
-    }else{
+    } else {
         printf("ERROR: Unsupported key size\n");
         return NULL;
     }
-    
+
     it->maxKey = NULL;
     it->minData = rule->minData;
     it->maxData = rule->maxData;
     embedDBInitIterator(state, it);
 
-    embedDBOperator* scanOp = createTableScanOperator(state, it, rule->schema);
+    embedDBOperator *scanOp = createTableScanOperator(state, it, rule->schema);
 
-    embedDBAggregateFunc* aggFunc = NULL;    
+    embedDBAggregateFunc *aggFunc = NULL;
 
-    switch(rule->type) {
+    switch (rule->type) {
         case GET_AVG:
             aggFunc = createAvgAggregate(rule->colNum, 4);
             break;
@@ -4591,26 +4689,25 @@ embedDBOperator* createOperator(embedDBState *state, activeRule * rule, void*** 
             printf("ERROR: Unsupported rule type\n");
     }
 
-    embedDBAggregateFunc* aggFuncs = (embedDBAggregateFunc*)malloc(1*sizeof(embedDBAggregateFunc));
+    embedDBAggregateFunc *aggFuncs = (embedDBAggregateFunc *)malloc(1 * sizeof(embedDBAggregateFunc));
     aggFuncs[0] = *aggFunc;
-    embedDBOperator* aggOp = createAggregateOperator(scanOp, groupFunction, aggFuncs, 1);
+    embedDBOperator *aggOp = createAggregateOperator(scanOp, groupFunction, aggFuncs, 1);
     aggOp->init(aggOp);
 
     free(aggFunc);
 
-    *allocatedValues = (void**)malloc(2 * sizeof(void*));
-    ((void**)*allocatedValues)[0] = it;
-    ((void**)*allocatedValues)[1] = aggFuncs;
+    *allocatedValues = (void **)malloc(2 * sizeof(void *));
+    ((void **)*allocatedValues)[0] = it;
+    ((void **)*allocatedValues)[1] = aggFuncs;
 
     return aggOp;
-
 }
 
-int8_t groupFunction(const void* lastRecord, const void* record) {
+int8_t groupFunction(const void *lastRecord, const void *record) {
     return 1;
 }
 
-void executeComparison(activeRule* rule, void *aggregateValue, Comparator comparator, void *data) {
+void executeComparison(activeRule *rule, void *aggregateValue, Comparator comparator, void *data) {
     int8_t comparisonResult = comparator(aggregateValue, rule->threshold);
 
     switch (rule->operation) {
@@ -4637,30 +4734,28 @@ void executeComparison(activeRule* rule, void *aggregateValue, Comparator compar
     }
 }
 
-void handleGetAvg(embedDBState *state, activeRule *rule, void* key, void *data) {
+void handleGetAvg(embedDBState *state, activeRule *rule, void *key, void *data) {
     float avg = GetAvg(state, rule, key);
     executeComparison(rule, &avg, floatComparator, data);
 }
 
-void handleGetMinMax(embedDBState *state, activeRule *rule, void* key, void *data) {
+void handleGetMinMax(embedDBState *state, activeRule *rule, void *key, void *data) {
     int columnSize = abs(rule->schema->columnSizes[rule->colNum]);
 
-    if (columnSize == 4) { // 32-bit integer
+    if (columnSize == 4) {  // 32-bit integer
         int32_t minmax = GetMinMax32(state, rule, key);
         executeComparison(rule, &minmax, int32Comparator, data);
-    } 
-    else if (columnSize == 8) { // 64-bit integer
+    } else if (columnSize == 8) {  // 64-bit integer
         int64_t minmax = GetMinMax64(state, rule, key);
         executeComparison(rule, &minmax, int64Comparator, data);
-    } 
-    else {
+    } else {
         printf("ERROR: Unsupported column size\n");
     }
 }
 
-void handleCustomQuery(embedDBState *state, activeRule *rule, void* key, void *data) {
-    void* result = rule->executeCustom(rule, key);
-    switch(rule->returnType) {
+void handleCustomQuery(embedDBState *state, activeRule *rule, void *key, void *data) {
+    void *result = rule->executeCustom(rule, key);
+    switch (rule->returnType) {
         case DBINT32:
             executeComparison(rule, result, int32Comparator, data);
             break;
@@ -4678,3 +4773,2943 @@ void handleCustomQuery(embedDBState *state, activeRule *rule, void* key, void *d
     }
 }
 
+/************************************************************adaptive_sort.c************************************************************/
+/******************************************************************************/
+/**
+@file		adaptive_sort.c
+@author		Ramon Lawrence
+@brief		Adaptive sort combining no output buffer sort and MinSort that
+            dynamically determines best sorting algorithm based on input
+            distribution. Uses replacement selection.
+@copyright	Copyright 2020
+                        The University of British Columbia,
+                        IonDB Project Contributors (see AUTHORS.md)
+@par Redistribution and use in source and binary forms, with or without
+        modification, are permitted provided that the following conditions are met:
+
+@par 1.Redistributions of source code must retain the above copyright notice,
+        this list of conditions and the following disclaimer.
+
+@par 2.Redistributions in binary form must reproduce the above copyright notice,
+        this list of conditions and the following  disclaimer in the documentation
+        and/or other materials provided with the distribution.
+
+@par 3.Neither the name of the copyright holder nor the names of its contributors
+        may be used to endorse or promote products derived from this software without
+        specific prior written permission.
+
+@par THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+        AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+        IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+        ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE
+        LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+        CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+        SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+        INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+        CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+        ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+        POSSIBILITY OF SUCH DAMAGE.
+*/
+/******************************************************************************/
+
+// #define     DEBUG         1
+// #define     DEBUG_OUTPUT  1
+// #define     DEBUG_READ    1
+// #define     DEBUG_HEAP    0
+
+// #define ADAPTIVE_SORT_PRINT_FINISH
+
+/**
+ * Prints the contents of the heap. Used for debugging.
+ */
+void print_heap(char *buffer, int32_t heap_start_offset, int heap_size, int list_size, external_sort_t *es) {
+    // Prints the heap
+    int32_t aa;
+    char *addr;
+    int j;
+    for (aa = 0; aa < 1; aa++) {
+        addr = buffer + heap_start_offset;
+        printf("heap: ");
+        for (j = 0; j < heap_size; j++)
+            printf(" %d", *(int32_t *)(addr - j * es->record_size));
+        printf("| ");
+    }
+    printf("   ");
+
+    // Prints the list
+    for (aa = 0; aa < 1; aa++) {
+        addr = buffer + es->page_size;
+        printf("list: ");
+        for (j = 0; j < list_size; j++)
+            printf(" %d", *(int32_t *)(addr + j * es->record_size));
+        printf("| ");
+    }
+    printf("\n");
+}
+
+/**
+@brief      Adaptive sort combining no output buffer sort and MinSort that dynamically determines best sorting
+                algorithm based on input distribution. Uses replacement selection.
+@param      iterator
+                Row iterator for reading input rows
+@param      iteratorState
+                Structure stores state of iterator (file info etc.)
+@param      tupleBuffer
+                Pre-allocated space to store one tuple (row) of input being sorted
+@param      outputFile
+                Already opened file to store sorting output (and in-progress temporary results)
+@param      buffer
+                Pre-allocated space used by algorithm during sorting
+@param      bufferSizeInBlocks
+                Size of buffer in blocks
+@param      es
+                Sorting state info (block size, record size, etc.)
+@param      resultFilePtr
+                Offset within output file of first output record
+@param      metric
+                Tracks algorithm metrics (I/Os, comparisons, memory swaps)
+@param      compareFn
+                Record comparison function for record ordering
+@param      runGenOnly
+                True if generate sorted runs but not whole merge process
+@param      writeToReadRatio
+                Write time divided by read time multiplied by 10. If ratio is 2.5
+                (writes over twice as expensive) then value is 25.
+*/
+int adaptive_sort(
+    uint8_t (*iterator)(void *state, void *buffer),
+    void *iteratorState,
+    void *tupleBuffer,
+    void *outputFile,
+    char *buffer,
+    int bufferSizeInBlocks,
+    external_sort_t *es,
+    long *resultFilePtr,
+    metrics_t *metric,
+    int8_t (*compareFn)(void *a, void *b),
+    int8_t runGenOnly,
+    int8_t writeToReadRatio,
+    void *sortData) {
+    int16_t tuplesPerPage = (es->page_size - es->headerSize) / es->record_size;
+    es->compare_fcn = compareFn;
+    long lastWritePos = 0;
+    int16_t i, status;
+    int32_t numSublist = 0;
+    void *addr;
+    int32_t numShiftOutOutput = 0, numShiftIntoOutput = 0, numShiftOtherBlock = 0;
+
+    /* Distribution estimation variables */
+    int16_t avgDistinct = 0; /* Average # of distinct values per run. Multiplied by 10 so can do integer rather than float operations. */
+    /* Note: Could be int8_t as larger than 255 is above cutoff for using MinSort. */
+    uint8_t numDistinctInRun = 0; /* Number of distinct values in current run */
+
+    int optimistic = true;
+    if (optimistic) {
+        // Do FLASH MinSort init first
+#ifdef DEBUG
+        printf("*Optimistic*\n");
+#endif
+
+        MinSortState ms;
+        ms.buffer = buffer;
+        ms.iteratorState = iteratorState;
+        ms.memoryAvailable = bufferSizeInBlocks * es->page_size;
+        ms.num_records = ((file_iterator_state_t *)iteratorState)->totalRecords;
+
+        init_MinSort(&ms, es, metric, compareFn);
+        avgDistinct = 16;
+
+        int16_t numPasses = (int)ceil(log(es->num_pages / bufferSizeInBlocks) / log(bufferSizeInBlocks));
+        int32_t nobSortCost = numPasses * (10 + writeToReadRatio) / 10;
+
+#ifdef DEBUG
+        printf("Adaptive calculation.\n");
+        printf("NOB sort cost. # runs: %d", numSublist);
+        printf(" # passes: %d cost: %d\n", numPasses, nobSortCost);
+        printf("MinSort cost. Num sublists: %d ", numSublist);
+        printf(" Avg. distinct/sublist: %d\n", avgDistinct / 10);
+#endif
+
+        if (avgDistinct < nobSortCost)
+        // if (true)
+        {
+#ifdef DEBUG
+            printf("Performing MinSort Optimistic\n");
+#endif
+
+            int16_t count = 0;
+            int32_t blockIndex = 0;
+            int16_t values_per_page = (es->page_size - es->headerSize) / es->record_size;
+            char *outputBuffer = buffer + es->page_size;
+
+            // Main sorting loop for min sort: fetches and writes sorted records in blocks
+            while (next_MinSort(&ms, es, (char *)(outputBuffer + count * es->record_size + es->headerSize), metric, compareFn) != NULL) {
+                // Store record in block (already done during call to next)
+                // buf = (void *)(outputBuffer+count*es->record_size+es->headerSize);
+                count++;
+
+                // When a block is full, write it to the output file
+                if (count == values_per_page) {
+                    *((int32_t *)outputBuffer) = blockIndex;                   /* Block index */
+                    *((int16_t *)(outputBuffer + BLOCK_COUNT_OFFSET)) = count; /* Block record count */
+
+                    // Write block to the ouput file
+                    if (0 == ((file_iterator_state_t *)iteratorState)->fileInterface->write(outputBuffer, blockIndex, es->page_size, outputFile)) {
+                        return 9;  // Return error code if writing to the output file fails
+                    }
+
+                    count = 0;    /* Reset count for the next block */
+                    blockIndex++; /* Update to next block id */
+                    metric->num_writes++;
+
+#ifdef DEBUG_OUTPUT
+                    printf("Wrote output block. Block index: %d\n", blockIndex);
+                    for (int k = 0; k < values_per_page; k++) {
+                        printf("%3d: 1 Output Record: %d\n", k, outputBuffer + es->headerSize + k * es->record_size + es->key_offset);
+                    }
+#endif
+                }
+            }
+
+            // Write last block if there are remaining records
+            if (count > 0) {
+                *((int32_t *)outputBuffer) = blockIndex;                   /* Block index */
+                *((int16_t *)(outputBuffer + BLOCK_COUNT_OFFSET)) = count; /* Block record count */
+
+                if (0 == ((file_iterator_state_t *)iteratorState)->fileInterface->write(outputBuffer, blockIndex, es->page_size, outputFile)) {
+                    return 9;  // Return error code if writing to the output file fails
+                }
+
+                count = 0;    /* Reset count for the next block */
+                blockIndex++; /* Update to next block id */
+                metric->num_writes++;
+
+#ifdef DEBUG_OUTPUT
+                printf("Wrote output block. Block index: %d\n", blockIndex);
+                for (int k = 0; k < values_per_page; k++) {
+                    printf("%3d: 2 Output Record: %d\n", k, *(uint32_t *)(outputBuffer + es->headerSize + k * es->record_size + es->key_offset));
+                }
+#endif
+            }
+
+            close_MinSort(&ms, es);
+
+            *resultFilePtr = 0;
+            return 0;
+        } else {
+            optimistic = 0;
+        }
+    }
+
+    if (!optimistic) {
+        /*                                 */
+        /* -----Replacement Selection----- */
+        /*                                 */
+
+        // Replacement selection variables
+        int32_t recordsRead = 0;
+        int32_t heapSize = 0;
+        int32_t heapStartOffset = bufferSizeInBlocks * es->page_size - es->record_size;
+        int32_t listSize = 0;
+
+        void *lastOutputKey = malloc(es->record_size); /* Pointer to memory storing value of last key output */
+        int8_t haveOutputKey = 0;
+        int32_t sublistSize = 0; /* size in blocks */
+        int32_t outputCount = 0; /* number of values in output block */
+        int32_t recordsLeft = 0; /* number of records in buffer */
+        void *heapVal, *inputVal;
+
+        // Fill all blocks other than the first with tuples
+        addr = buffer + es->page_size;
+        for (i = 0; i < (bufferSizeInBlocks - 1) * tuplesPerPage; i++) {
+            status = !iterator(sortData, addr);
+            if (status == 0)
+                break;
+            recordsRead++;
+            addr += es->record_size;
+        }
+
+        recordsLeft = recordsRead;
+
+        // Update metrics
+        metric->num_reads += bufferSizeInBlocks - 1;
+        metric->num_runs++;
+
+        // Build heap from tuples in filled blocks
+        for (i = 0; i < recordsRead; i++) {
+            addr -= es->record_size;
+            memcpy(tupleBuffer, addr, es->record_size);
+            metric->num_memcpys++;
+            shiftUp_rev(buffer + heapStartOffset, tupleBuffer, heapSize, es, metric);
+            heapSize++;
+        }
+
+        // Read each block and sort
+        while (recordsLeft != 0) {
+            recordsRead = 0;
+
+            // Read in page
+            addr = buffer + es->headerSize;
+            for (i = 0; i < tuplesPerPage; i++) {
+                status = !iterator(sortData, addr);
+                if (status == 0)
+                    break;
+                recordsRead++;
+                addr += es->record_size;
+            }
+            recordsLeft += recordsRead;
+
+#ifdef DEBUG_HEAP
+            print_heap(buffer, heapStartOffset, heapSize, listSize, es);
+#endif
+
+            if (recordsRead > 1) {
+                // Sort page using in memory quick sort
+                metric->num_reads += 1;
+                in_memory_quick_sort(buffer + es->headerSize, (uint32_t)recordsRead, es->record_size, es->key_offset, es->compare_fcn, metric);
+            } else if (heapSize < tuplesPerPage) {
+                // May have enough records currently in heap to continue last block. TODO: Does this make sense? It will add to last run before starting new one.
+
+                // Move everything in list to the heap
+                for (listSize = listSize; listSize > 0; listSize--) {
+                    shiftUp_rev(buffer + heapStartOffset, buffer + es->page_size + (listSize - 1) * es->record_size, heapSize, es, metric);
+                    heapSize++;
+                }
+
+                // If first value in heap is smaller than lastOutputValue then start new sublist, otherwise continue with previous one.
+                heapVal = buffer + heapStartOffset;
+                if (lastOutputKey == NULL || es->compare_fcn(heapVal, lastOutputKey) < 0) {
+                    // Start new sublist
+                    numSublist++;
+
+                    // Track number of distinct values per sublist
+                    avgDistinct = avgDistinct + (numDistinctInRun - avgDistinct / 10) * 10 / numSublist;
+#ifdef DEBUG
+                    printf("Number of distinct values in sublist: %d Running average: %d\n", numDistinctInRun, avgDistinct / 10);
+#endif
+                    numDistinctInRun = 1;
+
+                    // Restart building the sublist
+                    outputCount = 0;
+                    haveOutputKey = 0;
+                    sublistSize = 0;
+                    metric->num_runs++;
+                }
+            }
+
+            // Swap output records into output buffer from heap if smaller than records currently there. (I/O block is id zero)
+            for (i = 0; i < tuplesPerPage; i++) {
+                // Check if we've read all records from the current page
+                if (recordsRead == 0) {
+                    // Check if there are any records left
+                    if (recordsLeft <= 0)
+                        break;
+
+                    // Just copy over from heap
+                    memcpy(buffer + es->headerSize + i * es->record_size, buffer + heapStartOffset, es->record_size); /* Heap into input/output block */
+                    metric->num_memcpys++;
+                    outputCount++;
+                    recordsLeft--;
+
+                    // Restore heap
+                    heapSize--;
+                    if (heapSize > 0)
+                        heapify_rev(buffer + heapStartOffset, buffer + heapStartOffset - heapSize * es->record_size, heapSize, es, metric);
+                    continue;
+                }
+
+                heapVal = buffer + heapStartOffset;
+                inputVal = buffer + es->headerSize + i * es->record_size;
+
+                // Check if both heap top and current input value are smaller than the last output key
+                // This indicates we need to start a new sorted sublist
+                if (haveOutputKey && (es->compare_fcn(heapVal + es->key_offset, lastOutputKey + es->key_offset) < 0 || heapSize <= 0) && es->compare_fcn(inputVal + es->key_offset, lastOutputKey + es->key_offset) < 0) {
+                    // Start a new sublist (as cannot use heap value or input value)
+                    numSublist++;
+
+                    // Track number of distinct values per sublist
+                    avgDistinct = avgDistinct + (numDistinctInRun - avgDistinct / 10) * 10 / numSublist;
+#ifdef DEBUG
+                    printf("Number of distinct values in sublist: %d Running average: %d\n", numDistinctInRun, avgDistinct / 10);
+#endif
+                    numDistinctInRun = 1;
+
+                    // Convert unsorted list into heap
+                    for (listSize = listSize; listSize > 0; listSize--) {
+                        shiftUp_rev(buffer + heapStartOffset, buffer + es->page_size + (listSize - 1) * es->record_size, heapSize, es, metric);
+                        heapSize++;
+                    }
+
+                    // Restart building the sublist
+                    outputCount = 0;
+                    haveOutputKey = 0;
+                    sublistSize = 0;
+                    recordsLeft += i;
+                    i = -1;
+                    metric->num_runs++;
+                    continue;
+                }
+
+                /*
+                 * Decide whether to use the heap value or input value for the current output position.
+                 * Use the heap value if:
+                 *   1. Heap value is less than input value AND
+                 *   2. Either:
+                 *      a. We haven't output any values yet, OR
+                 *      b. Heap value is greater than or equal to last output key (maintains sort order)
+                 *   OR
+                 *   3. The input value would break sort order (is smaller than last output key)
+                 */
+                if ((es->compare_fcn(heapVal + es->key_offset, inputVal + es->key_offset) < 0 && (haveOutputKey == 0 || es->compare_fcn(heapVal + es->key_offset, lastOutputKey + es->key_offset) >= 0)) || (haveOutputKey && es->compare_fcn(inputVal + es->key_offset, lastOutputKey + es->key_offset) < 0)) {
+                    // Use the heap value
+                    memcpy(tupleBuffer, buffer + es->headerSize + i * es->record_size, es->record_size);              /* Input tuple into buffer */
+                    memcpy(buffer + es->headerSize + i * es->record_size, buffer + heapStartOffset, es->record_size); /* Heap into input/output block */
+                    metric->num_memcpys += 2;
+                    // Determine if the value is different than the last one to estimate the number of distinct values
+                    if (numDistinctInRun < 255 && haveOutputKey) {
+                        // Value is different
+                        metric->num_compar++;
+                        if (es->compare_fcn(lastOutputKey + es->key_offset, inputVal + es->key_offset) < 0)
+                            numDistinctInRun++;
+                    }
+                    // lastOutputKey = inputVal;
+                    memcpy(lastOutputKey, inputVal, es->record_size);
+                    metric->num_memcpys++;
+
+                    // Find somewhere to put the input value
+                    if (es->compare_fcn(tupleBuffer + es->key_offset, lastOutputKey + es->key_offset) < 0) {
+                        // Restore heap
+                        heapSize--;
+                        if (heapSize > 0)
+                            heapify_rev(buffer + heapStartOffset, buffer + heapStartOffset - heapSize * es->record_size, heapSize, es, metric);
+
+                        // Put value into the unsorted list
+                        memcpy(buffer + es->page_size + listSize * es->record_size, tupleBuffer, es->record_size);
+                        metric->num_memcpys++;
+                        listSize++;
+                    } else {
+                        // Put value into the heap
+                        heapify_rev(buffer + heapStartOffset, tupleBuffer, heapSize, es, metric);
+                    }
+                } else {
+                    // Use the input value since it's smaller or equal to heap value and maintains sort order
+                    // Track if this is a new distinct value for statistics
+                    metric->num_compar++;
+                    if (numDistinctInRun < 255 && haveOutputKey) {
+                        // Value is different
+                        metric->num_compar++;
+                        if (es->compare_fcn(lastOutputKey + es->key_offset, inputVal + es->key_offset) < 0)
+                            numDistinctInRun++;
+                    }
+                    // Use the newly read value. don't move it, it's in proper place.
+                    // lastOutputKey = inputVal;       // Update the last key output
+                    memcpy(lastOutputKey, inputVal, es->record_size);
+                    metric->num_memcpys++;
+                }
+                haveOutputKey = 1;
+                outputCount++;
+                recordsLeft--;
+#ifdef DEBUG_HEAP
+                print_heap(buffer, heapStartOffset, heapSize, listSize, es);
+#endif
+                if (recordsLeft == 0)
+                    break;
+            }
+
+            // Add Page Headers
+            *((int32_t *)buffer) = sublistSize;
+            *((int16_t *)(buffer + BLOCK_COUNT_OFFSET)) = (int8_t)outputCount;
+            memcpy(tupleBuffer, buffer + (outputCount - 1) * es->record_size + es->headerSize, es->key_size);
+            memcpy(lastOutputKey, tupleBuffer, es->record_size);
+            metric->num_memcpys += 2;
+
+            // Store the last key output temporarily in tuple buffer as once write out then read new block it would be gone
+            // Write the output block
+            ((file_iterator_state_t *)iteratorState)->fileInterface->writeRel(buffer, PAGE_SIZE, 1, outputFile);
+            if (((file_iterator_state_t *)iteratorState)->fileInterface->error(outputFile)) {
+                // File write error
+                free(lastOutputKey);
+                return 9;
+            }
+
+#ifdef DEBUG_OUTPUT
+            printf("Wrote block. Sublist: %d ", numSublist);
+            printf(" Idx: %d\n", sublistSize);
+            // printf("Offset: %lu\n",  ftell(outputFile)-es->page_size);
+            for (int k = 0; k < tuplesPerPage; k++) {
+                printf("%3d: 3 Output Record: %d\n", k, *(uint32_t *)(buffer + es->headerSize + k * es->record_size + es->key_offset));
+            }
+#endif
+
+            metric->num_writes += 1;
+            sublistSize++;
+            outputCount = 0;
+        } /* while records left */
+
+        // free(lastOutputKey);
+        numSublist = metric->num_runs;
+#ifdef ADAPTIVE_SORT_PRINT
+        printf("Gen time: %d\n", metric->genTime);
+#endif
+
+        // Track number of distinct values per sublist
+        avgDistinct = avgDistinct + (numDistinctInRun - avgDistinct / 10) * 10 / numSublist;
+#ifdef ADAPTIVE_SORT_PRINT
+        printf("Final number of distinct values in sublist: %d Average: %d\n", numDistinctInRun, avgDistinct);
+#endif
+        numDistinctInRun = 0;
+    } /* end pessmistic */
+
+    // No merge phase necessary
+    if (numSublist == 1) {
+        ((file_iterator_state_t *)iteratorState)->fileInterface->flush(outputFile);
+        *resultFilePtr = 0;
+        return 0;
+    }
+
+    // Run generation phase only (DEBUG)
+    if (runGenOnly)
+        return 0;
+
+    // lastWritePos = ftell(outputFile);
+    lastWritePos = ((file_iterator_state_t *)iteratorState)->fileInterface->tell(outputFile);
+
+    // if (avgDistinct/10 < nobSortCost)
+    int bufferSizeBytes = (bufferSizeInBlocks - 1) * es->page_size;                        /* One of the buffers is used for a read buffer */
+    int8_t sublistVersionPossible = (numSublist <= bufferSizeBytes / (SORT_KEY_SIZE + 4)); /* +4 is size of file offset pointer. Each record has a key and file offset. */
+
+    if (sublistVersionPossible && avgDistinct > tuplesPerPage)
+        avgDistinct = tuplesPerPage * 10;
+
+    int16_t numPasses = (int)ceil(log(numSublist) / log(bufferSizeInBlocks));
+    int32_t nobSortCost = numPasses * (10 + writeToReadRatio) / 10;
+
+#ifdef ADAPTIVE_SORT_PRINT
+    printf("Adaptive calculation.\n");
+    printf("NOB sort cost. # runs: %d", numSublist);
+    printf(" # passes: %d cost: %d\n", numPasses, nobSortCost);
+    printf("MinSort cost. Num sublists: %d ", numSublist);
+    printf(" Avg. distinct/sublist: %d\n", avgDistinct / 10);
+#endif
+
+    // Make decision to use either no output buffer sort or MinSort
+    if (avgDistinct / 10 < nobSortCost) {
+        /*               */
+        /*    MinSort    */
+        /*               */
+
+        // If can buffer smallest value per sublist, can use a better performing version
+        if (sublistVersionPossible) {
+            // Use better performing version of minsort
+#ifdef ADAPTIVE_SORT_PRINT
+            printf("Performing MinSort with sorted sublists\n");
+#endif
+            ((file_iterator_state_t *)iteratorState)->file = outputFile;
+            *resultFilePtr = 0;
+            flash_minsort_sublist(iteratorState, tupleBuffer, outputFile, buffer, bufferSizeBytes, es, resultFilePtr, metric, compareFn, numSublist);
+            *resultFilePtr = lastWritePos;
+        } else {
+            // Use normal version of minsort. Do not have enough space to index a value per sublist. Assumes data is not sorted in each region
+#ifdef ADAPTIVE_SORT_PRINT
+            printf("Performing MinSort\n");
+#endif
+            ((file_iterator_state_t *)iteratorState)->file = outputFile;
+            flash_minsort(iteratorState, tupleBuffer, outputFile, buffer, bufferSizeBytes, es, resultFilePtr, metric, compareFn);
+            *resultFilePtr = 0;
+        }
+    } else {
+        /*                                   */
+        /*    No Output Buffer Sort Merge    */
+        /*                                   */
+
+        /* ----- Merge phase: recursively combine M sublists ----- */
+        long mergeSOW; /* start of write */
+        int32_t currentBlockId = 0;
+        long lastMergeStart = 0; /* start of read */
+        long lastMergeEnd = lastWritePos;
+
+        long *sublsFilePtr = (long *)malloc(sizeof(long) * bufferSizeInBlocks);         /* location of current record in file */
+        int32_t *sublsBlkPos = (int32_t *)malloc(sizeof(int32_t) * bufferSizeInBlocks); /* current block of sublist being read */
+        int32_t *blocksInSublist = (int32_t *)malloc(sizeof(int32_t) * bufferSizeInBlocks);
+
+        int32_t *record1 = (int32_t *)malloc(sizeof(int32_t) * bufferSizeInBlocks); /* current record of each buffered block. (byte offset from start of buffer) */
+        int32_t *record2 = (int32_t *)malloc(sizeof(int32_t) * bufferSizeInBlocks); /* current output block record stored in each buffered block (byte offset from start of buffer) */
+        /* Output block uses record2 to store position of last to-output record inserted */
+        int16_t run = 0;
+        int8_t passNumber = 1;
+        int32_t numRuns;
+        int32_t resultRecOffset = -1; /* Number of records from start of buffer to the next record to output */
+        int32_t resultBlock = -1;     /* Block containing next record to output */
+        char isRecord2 = 0;           /* 1 if result record is from the output block but stored in a non outputblock */
+        int32_t offset = 0;           /* Offset of current record being compared with current smallest record */
+        int16_t heapSizeRecords;      /* Number of records in heap */
+        char outputIsEmpty = 0;       /* Flag indicating if there are still more input records in sublist in output block */
+        int16_t numTransferThisPass;
+        int32_t blk = -1;
+        int16_t space = 0;
+        int16_t outputCursor;
+        int8_t destBlk;
+        int32_t other = 0;
+
+        // Verify all memory has been allocated successfully
+        if (record2 == NULL) {
+            free(record1);
+            free(sublsBlkPos);
+            free(sublsFilePtr);
+            free(blocksInSublist);
+            return 9;
+        }
+
+        while (numSublist > 1) {
+            // Check if can finish using minsort with sorted sublists
+            // if (numSublist >= 32 && numSublist <= 64)// && avgDistinct/10 < 32)
+            // {
+            //     // Switch to MinSort to finish off
+            //     printf("Finishing sort with MinSort with sorted sublists\n");
+            //     ((file_iterator_state_t*) iteratorState)->file = outputFile;
+            //     // *resultFilePtr = lastMergeStart;
+            //     // fflush(outputFile);
+            //     ((file_iterator_state_t *) iteratorState)->fileInterface->flush(outputFile);
+
+            //     *resultFilePtr = lastMergeStart;
+            //     flash_minsort_sublist(iteratorState, tupleBuffer, outputFile, buffer, bufferSizeBytes, es, resultFilePtr, metric, compareFn, numSublist);
+            //     lastMergeStart = lastMergeEnd;
+            //     *resultFilePtr = lastMergeStart;
+            //     break; // Sort done
+            // }
+
+            // Wrap-around in memory space/file after every 3rd pass
+            if (passNumber % 3 == 0) {
+                lastWritePos = 0;
+            }
+#ifdef ADAPTIVE_SORT_PRINT
+            printf("Pass number: %u  Comparisons: %lu  MemCopies: %lu  TransferIn: %lu  TransferOut: %lu TransferOther: %lu Other: %lu\n", passNumber, metric->num_compar, metric->num_memcpys, numShiftIntoOutput, numShiftOutOutput, numShiftOtherBlock, other);
+#endif
+
+            passNumber++;
+
+            // perform a merge
+            mergeSOW = lastWritePos;
+
+            numRuns = (numSublist + bufferSizeInBlocks - 1) / bufferSizeInBlocks; /* Equivalent to CEIL(numSublist/bufferSizeInBlocks) */
+
+            // perform runs
+            long ptrLastBlock = lastMergeEnd;
+            for (run = 0; run < numRuns; run++) {
+                // Setup the run
+                int32_t sublistsInRun = bufferSizeInBlocks;
+                if (numSublist < bufferSizeInBlocks)
+                    sublistsInRun = numSublist;
+                numSublist -= sublistsInRun;
+
+                currentBlockId = 0;
+                /*
+                Note: Reading from file to find block offsets of each sublist is ONLY required as not storing these offsets in memory.
+                This code also makes sure the "smallest" sublist is in output block (0) as this results in fewest swaps (especially for sorted input).
+                Since sublists are scanned from back of previous run, it alternates on each pass what sublist read will be smaller.
+                On first pass, the last sublist read will be smaller. On second pass, first sublist read will be smaller.
+                Considered doing for loop like this instead: for (i = sublists_in_run-1; i >=0 ; i--)
+                However due to alternating nature of when smallest sublist will be, stuck with current implementation and checked every sublist read.
+                Note that check is not perfect. It is actually comparing first record in last block of each sublist as that is the block that is read
+                when determining the starting point of the sublist. The first block is not read at this point. That happens later in the code.
+
+                Consider checking last record instead as they may be better for the random case when sublists are not the same size in blocks.
+                */
+
+                // Find fist block of each run
+                for (i = 0; i < sublistsInRun; i++) {
+                    /* Read last block of sublist into buffer */
+                    // fseek(outputFile, ptrLastBlock - es->page_size, SEEK_SET);
+                    // if (0 == fread(&buffer[i * es->page_size], (size_t)es->page_size, 1, outputFile))
+                    // {   /* File read error */
+                    //     free(record1); free(record2); free(sublsBlkPos); free(sublsFilePtr);
+                    //     return 10;
+                    // }
+
+                    ((file_iterator_state_t *)iteratorState)->fileInterface->seek(ptrLastBlock - es->page_size, outputFile);
+                    ((file_iterator_state_t *)iteratorState)->fileInterface->readRel(&buffer[i * es->page_size], (size_t)es->page_size, 1, outputFile);
+                    if (((file_iterator_state_t *)iteratorState)->fileInterface->error(outputFile)) {
+                        /* File read error */
+                        free(record1);
+                        free(record2);
+                        free(sublsBlkPos);
+                        free(sublsFilePtr);
+                        return 10;
+                    }
+
+                    metric->num_reads += 1;
+                    ptrLastBlock = ptrLastBlock - (*(int32_t *)&buffer[i * es->page_size]) * es->page_size - es->page_size;
+                    blocksInSublist[i] = *(int32_t *)&buffer[i * es->page_size] + 1; /* Retrieve block id (indexed from 0 - hence +1) to compute count of blocks in sublist */
+
+                    // Validate vlock offset
+                    if (ptrLastBlock < lastMergeStart) {
+                        // Invalid block offset
+                        sublsFilePtr[i] = -1;
+                        sublsBlkPos[i] = -1;
+                    } else {
+                        // Valid block offset
+                        sublsFilePtr[i] = ptrLastBlock;
+                        sublsBlkPos[i] = 0;
+
+                        // Move smallest entry to index 0
+                        if (i != 0) {
+                            metric->num_compar++;
+
+                            // Check entry at index i is less than 0
+                            if (es->compare_fcn(buffer + es->headerSize + es->key_offset, buffer + i * es->page_size + es->headerSize + es->key_offset) > 0) {
+#ifdef DEBUG
+                                void *buffer0Rec = (void *)buffer + es->headerSize;
+                                void *currentRec = (void *)buffer + i * es->page_size + es->headerSize;
+                                printf("Swapping in buffer 0. Current key: %d  New key: %d\n", *(uint32_t *)(buffer0Rec + es->key_offset), *(uint32_t *)(currentRec + es->key_offset));
+#endif
+                                // Perform swap
+                                sublsBlkPos[i] = sublsFilePtr[0]; /* Note: Using subls_blk_pos[i] as a temp variable during swap */  // TODO: Update swap to not be variable length
+                                sublsFilePtr[0] = sublsFilePtr[i];
+                                sublsFilePtr[i] = sublsBlkPos[i];
+                                sublsBlkPos[i] = blocksInSublist[i];
+                                blocksInSublist[i] = blocksInSublist[0];
+                                blocksInSublist[0] = sublsBlkPos[i];
+                                sublsBlkPos[i] = 0; /* Reset variable back to 0 */
+                            }
+                        }
+                    }
+                }
+
+                // Load in first blocks into buffer
+                for (i = 0; i < sublistsInRun; i++) {
+                    // fseek(outputFile, sublsFilePtr[i], SEEK_SET);
+                    // if (0 == fread(&buffer[i * es->page_size], (size_t)es->page_size, 1, outputFile))
+                    // {   /* Read error */
+                    //     free(record1); free(record2); free(sublsBlkPos); free(sublsFilePtr);
+                    //     return 10;
+                    // }
+
+                    // Read first block into buffer
+                    ((file_iterator_state_t *)iteratorState)->fileInterface->seek(sublsFilePtr[i], outputFile);
+                    ((file_iterator_state_t *)iteratorState)->fileInterface->readRel(&buffer[i * es->page_size], PAGE_SIZE, 1, outputFile);
+                    if (((file_iterator_state_t *)iteratorState)->fileInterface->error(outputFile)) {
+                        // File read error
+                        free(record1);
+                        free(record2);
+                        free(sublsBlkPos);
+                        free(sublsFilePtr);
+                        return 10;
+                    }
+
+                    metric->num_reads += 1;
+
+#ifdef DEBUG_READ
+                    void *firstRec = (void *)buffer + i * es->page_size + es->headerSize;
+                    void *lastRec = (void *)buffer + i * es->page_size + es->headerSize + (*((int16_t *)(buffer + i * es->page_size + BLOCK_COUNT_OFFSET)) - 1) * es->record_size;
+                    printf("Read Sublist: %d Block: %d NumRec: %d First key: %d Last key: %d\n", i, (int32_t) * (buffer + i * es->page_size),
+                           *((int16_t *)(buffer + i * es->page_size + BLOCK_COUNT_OFFSET)), *(uint32_t *)(firstRec + es->key_offset), *(uint32_t *)(lastRec + es->key_offset));
+#endif
+                    // Initialize record1 to start of each block and record2 to empty
+                    record1[i] = i * es->page_size + es->headerSize;
+                    record2[i] = -1;
+                }
+
+                // Perform the run
+                while (1) {
+                    // Find next smallest tuple
+                    resultBlock = -1;
+                    isRecord2 = 0;
+
+                    // Find first sublist with valid data record
+                    i = 0;
+                    while (record1[i] == -1 && i < sublistsInRun)
+                        i++;
+
+                    // Find a sublist with a valid data record
+                    if (i < sublistsInRun) {
+                        // record found
+                        resultRecOffset = record1[i];
+                        resultBlock = i;
+                        i++;
+                    }
+
+                    // Go through rest of sublists looking for a smaller record
+                    for (; i < sublistsInRun; i++) {
+                        if (record1[i] == -1)
+                            continue; /* Sublist has no more records */
+
+                        offset = record1[i];
+
+                        metric->num_compar++;
+                        if (0 < es->compare_fcn(buffer + resultRecOffset + es->key_offset, buffer + offset + es->key_offset)) { /* Record is smaller than current smallest record */
+                            resultRecOffset = offset;
+                            resultBlock = i;
+                        }
+                    }
+
+                    // Find smallest value of last block, it might be scattered amongst other blocks
+                    // Note: For loop code is assuming OUTPUT_BLOCK_ID is 0. Otherwise, i should start at 0 not 1 and must check if i == OUTPUT_BLOCK_ID.
+                    for (i = 1; i < sublistsInRun; i++) {
+                        if (record2[i] == -1)
+                            continue; /* This block has no records from the output block */
+
+                        /* Current value is at start of block in list 2 */
+                        offset = i * es->page_size + es->headerSize;
+
+                        if (resultBlock != -1)
+                            metric->num_compar++;
+
+                        if ((resultBlock == -1) || 0 < es->compare_fcn(buffer + resultRecOffset + es->key_offset, buffer + offset + es->key_offset)) { /* Record is smaller than current smallest record */
+                            resultRecOffset = offset;
+                            resultBlock = i;
+                            isRecord2 = 1;
+                        }
+                    }
+
+                    // Check if a record has been found
+                    if (resultBlock == -1) break;
+
+                    // Record has been found
+                    // Increment record2 to next position of output block. record2 is where the next record to output will be placed
+                    if (record2[OUTPUT_BLOCK_ID] == -1)
+                        record2[OUTPUT_BLOCK_ID] = BUFFER_OUTPUT_BLOCK_START_RECORD_OFFSET;
+                    else
+                        record2[OUTPUT_BLOCK_ID] += es->record_size;
+
+#ifdef DEBUG
+                    void *buf = (void *)buffer + resultRecOffset;
+                    printf("Smallest Record: %d  From list: %d\n", *(uint32_t *)(buf + es->key_offset), resultBlock);
+                    printf("List status: 0: (%d, %d) 1: (%d, %d) 2: (%d, %d) ResultList: %d\n", record1[0], record2[0],
+                           record1[1], record2[1], record1[2], record2[2], resultBlock);
+
+                    if (*(uint32_t *)(buf + es->key_offset) == 27391) {
+                        /* Output all block contents */
+                        for (int l = 0; l < 2; l++) {
+                            printf("Current  block: %d  # records: %d\n", l, tuplesPerPage);
+                            for (int k = 0; k < tuplesPerPage; k++) {
+                                void *buf = (void *)(buffer + es->headerSize + k * es->record_size + l * es->page_size);
+                                printf("%d: Record: %d  Address: %p\n", k, buf + es->key_size, buf);
+                            }
+                        }
+                        printf("HERE\n");
+                    }
+#endif
+
+                    /* Add smallest tuple to output position in buffer (may already be in output buffer) */
+                    if (resultBlock != OUTPUT_BLOCK_ID) {
+                        if ((record1[OUTPUT_BLOCK_ID] == record2[OUTPUT_BLOCK_ID]) && (record1[OUTPUT_BLOCK_ID] != -1)) { /* Output block does not have space for the result record */
+                            /* Optimization (removed):
+                            Determine if space in block holding smallest record to store output block.
+                            If so, can directly insert into the heap in that block rather than using a temporary tuple.
+                            Note: Can extend this to check if space in other blocks not just the one with smallest record.
+                            This would be more comparisons but would save record copies.
+                            Savings on memory copies between 1 and 2% was determined not to be worth extra calculations.
+                            This is for records of 16 bytes. May be different for larger records.
+                            */
+
+                            /* Move output block's record into temporary buffer */
+                            metric->num_memcpys++;
+                            memcpy(tupleBuffer, buffer + record1[OUTPUT_BLOCK_ID], (size_t)es->record_size);
+                            numShiftOutOutput++;
+#ifdef DEBUG
+                            void *buf = (void *)(buffer + record1[OUTPUT_BLOCK_ID]);
+                            printf("Output record moved to list %d Key: %d\n", resultBlock, *(uint32_t *)(buf + es->key_size));
+#endif
+                            /* Move result record into output block (record1[output_block]==record2[output_block]) */
+                            metric->num_memcpys++;
+                            memcpy(buffer + record2[OUTPUT_BLOCK_ID], buffer + resultRecOffset, (size_t)es->record_size);
+
+                            /* Move displaced output block record out of the temp buffer and into the output list (list2) of the result record's block */
+                            if (isRecord2 == 0) { /* Smallest record is not originally from output block */
+                                /* Result is from record1 list. Insert into heap of output records for block. */
+                                if (record2[resultBlock] == -1)
+                                    record2[resultBlock] = resultBlock * es->page_size + es->headerSize;
+                                else
+                                    record2[resultBlock] += es->record_size;
+                                heapSizeRecords = (record2[resultBlock] + es->record_size - resultBlock * es->page_size) / es->record_size;
+                                /* Buffered output record is in tuple_buffer */
+                                shiftUp(buffer + resultBlock * es->page_size + es->headerSize, tupleBuffer, heapSizeRecords - 1, es, metric);
+                            } else {
+                                /* Result is from record2 list. Insert the displaced output value into record2 list */
+                                heapSizeRecords = (record2[resultBlock] + es->record_size - resultBlock * es->page_size) / es->record_size;
+
+                                /* Output record to be inserted is already stored in the tuple_buffer */
+                                heapify(buffer + resultBlock * es->page_size + es->headerSize, tupleBuffer, heapSizeRecords, es, metric);
+                            }
+
+                            /* Displaced the output block's current record. Increment to next output block record. */
+                            record1[OUTPUT_BLOCK_ID] += es->record_size;
+                            if (record1[OUTPUT_BLOCK_ID] >= OUTPUT_BLOCK_ID * es->page_size + (*((int16_t *)(buffer + OUTPUT_BLOCK_ID * es->page_size + BLOCK_COUNT_OFFSET))) * es->record_size + es->headerSize)
+                                // if (record1[OUTPUT_BLOCK_ID] >= OUTPUT_BLOCK_ID * es->page_size + tuplesPerPage*es->record_size + es->headerSize)
+                                record1[OUTPUT_BLOCK_ID] = -1;
+                        } else { /* Output block already has an empty slot for the result value. Only need to move result value into result list of output block. */
+                            /* Move result record into output block */
+                            metric->num_memcpys++;
+                            memcpy(buffer + record2[OUTPUT_BLOCK_ID], buffer + resultRecOffset, (size_t)es->record_size);
+
+                            if (isRecord2 == 1) {
+                                /* is_record2: result value came from list2 of result block */
+                                record2[resultBlock] -= es->record_size;
+
+                                if (record2[resultBlock] < resultBlock * es->page_size + es->headerSize)
+                                    record2[resultBlock] = -1;
+                                else {
+                                    /* Move last value to front of heap */
+                                    heapSizeRecords = (record2[resultBlock] + es->record_size - resultBlock * es->page_size) / es->record_size;
+                                    heapify(buffer + resultBlock * es->page_size + es->headerSize, buffer + record2[resultBlock] + es->record_size, heapSizeRecords, es, metric);
+                                }
+                            }
+                        }
+
+                        /* increment to next position of block that smallest value was read from */
+                        if (isRecord2 == 0)
+                            record1[resultBlock] += es->record_size;
+                        /* end if smallestblock != output block */
+                    } else /* The smallest value is already in output block, move it from record1 to record2 */
+                    {
+                        if (record2[resultBlock] != record1[resultBlock]) {
+                            metric->num_memcpys++;
+                            memcpy(buffer + record2[resultBlock], buffer + record1[resultBlock], (size_t)es->record_size);
+                        }
+
+                        record1[resultBlock] += es->record_size;
+                    } /* end of adding smallest tuple to appropriate block */
+
+                    /* Determine if block with smallest value has any more records in it */
+                    if (record1[resultBlock] >= resultBlock * es->page_size + (*((int16_t *)(buffer + resultBlock * es->page_size + BLOCK_COUNT_OFFSET))) * es->record_size + es->headerSize)
+                        record1[resultBlock] = -1;
+
+                    /* Output block is full, write it out */
+                    if (record2[OUTPUT_BLOCK_ID] >= OUTPUT_BLOCK_ID * es->page_size + tuplesPerPage * es->record_size - es->record_size) {
+                        // fseek(outputFile, lastWritePos, SEEK_SET);
+                        // if (0 == fwrite(buffer + OUTPUT_BLOCK_ID * es->page_size, (size_t)es->page_size, 1, outputFile))
+                        // {   /* File write error - Arduino prints 1st value nmemb times if nmemb != 1  */
+                        //     free(record1); free(record2); free(sublsBlkPos); free(sublsFilePtr);
+                        //     return 9;
+                        // }
+
+                        // Setup block header
+                        *((int32_t *)buffer) = currentBlockId++;
+                        *((int16_t *)(buffer + BLOCK_COUNT_OFFSET)) = (int16_t)tuplesPerPage;
+
+                        ((file_iterator_state_t *)iteratorState)->fileInterface->seek(lastWritePos, outputFile);
+                        ((file_iterator_state_t *)iteratorState)->fileInterface->writeRel(buffer + OUTPUT_BLOCK_ID * es->page_size, PAGE_SIZE, 1, outputFile);
+                        if (((file_iterator_state_t *)iteratorState)->fileInterface->error(outputFile)) {
+                            // File read error
+                            free(record1);
+                            free(record2);
+                            free(sublsBlkPos);
+                            free(sublsFilePtr);
+                            return 10;
+                        }
+
+                        lastWritePos = ((file_iterator_state_t *)iteratorState)->fileInterface->tell(outputFile);
+                        record2[OUTPUT_BLOCK_ID] = -1;
+                        metric->num_writes++;
+#ifdef DEBUG_OUTPUT
+                        printf("Wrote output block: %d  # records: %d\n", *((int32_t *)buffer), tuplesPerPage);
+                        for (int k = 0; k < tuplesPerPage; k++) {
+                            void *buf = (void *)(buffer + es->headerSize + k * es->record_size);
+                            printf("%3d: 4 Output Record: %d  Address: %p\n", k, *(uint32_t *)(buf + es->key_offset), buf);
+                        }
+#endif
+                    }
+
+                    /* Read in the next block of a sublist if buffered block is depleted (non-output block) */
+                    if ((record1[resultBlock] == -1) && (sublsBlkPos[resultBlock] != -1) && (resultBlock != OUTPUT_BLOCK_ID)) {
+                        /* check if we are finished with that sublist */
+                        if (sublsBlkPos[resultBlock] >= blocksInSublist[resultBlock] - 1) {
+                            sublsBlkPos[resultBlock] = -1; /* sublist is spent */
+                            record1[resultBlock] = -1;
+                        } else {
+                            /* not finished with sublist read in next block of sublist */
+                            sublsBlkPos[resultBlock]++;
+                            sublsFilePtr[resultBlock] += es->page_size;
+
+                            /* put any output records in this block into other blocks */
+                            int32_t originPtr = resultBlock * es->page_size + es->headerSize;
+                            int32_t destBlk = OUTPUT_BLOCK_ID;
+                            int16_t numTransfer = (record2[resultBlock] - originPtr) / es->record_size + 1;
+
+                            /* while there are still records left to move */
+                            while (record2[resultBlock] != -1 && originPtr <= record2[resultBlock]) {
+                                /* Find a block with space to store the record */
+                                blk = -1;
+                                space = 0;
+                                while (blk == -1 && space == 0) {
+                                    if (record1[destBlk] != -1)
+                                        space += record1[destBlk] - (destBlk * es->page_size + es->headerSize);
+                                    else
+                                        space += es->page_size - es->headerSize;
+
+                                    if (record2[destBlk] != -1)
+                                        space -= (record2[destBlk] - destBlk * es->page_size + es->record_size - es->headerSize);
+
+                                    space = space / es->record_size;
+
+                                    if (space >= 1)
+                                        blk = destBlk;
+                                    else
+                                        destBlk++;
+
+                                    if (resultBlock == destBlk)
+                                        destBlk++; /* Go to next destination block if currently at the original block that had smallest value */
+
+                                    if (destBlk > bufferSizeInBlocks) {
+#ifdef ADAPTIVE_SORT_PRINT
+                                        printf("Incorrect destination block. List 1: (%d, %d) List 2: (%d, %d) List 3: (%d, %d) ResultList: %d\n", record1[0], record2[0],
+                                               record1[1], record2[1], record1[2], record2[2], resultBlock);
+
+                                        /* Output all block contents */
+                                        for (int l = 0; l < 3; l++) {
+                                            printf("Current  block: %d  # records: %d\n", l, tuplesPerPage);
+                                            for (int k = 0; k < tuplesPerPage; k++) {
+                                                void *buf = (void *)(buffer + es->headerSize + k * es->record_size + l * es->page_size);
+                                                printf("%d: Record: %d  Address: %p\n", k, buf + es->key_offset, buf);
+                                            }
+                                        }
+#endif
+                                    }
+                                }
+
+                                numTransferThisPass = space;
+                                if (space > numTransfer)
+                                    numTransferThisPass = numTransfer;
+                                numTransfer -= numTransferThisPass;
+
+                                if (destBlk == OUTPUT_BLOCK_ID) { /* Returning tuples back to output block */
+                                    /* Position record1 input pointer at first space for record to be inserted */
+                                    if (record1[destBlk] == -1) { /* There are no input records in sublist 0 currently in the block */
+                                        record1[destBlk] = destBlk * es->page_size + (tuplesPerPage - numTransferThisPass) * es->record_size + es->headerSize;
+                                        offset = record1[destBlk]; /* Remember first insert location */
+                                        for (i = 0; i < numTransferThisPass; i++) {
+#ifdef DEBUG
+                                            void *buf = (void *)(buffer + originPtr);
+                                            printf("Empty output block case. Moved output record back from list %d Key: %d\n", resultBlock, *(uint32_t *)(buf + es->key_offset));
+#endif
+                                            numShiftIntoOutput++;
+                                            /* Get top value from heap */
+                                            metric->num_memcpys++;
+                                            memcpy(buffer + record1[destBlk], buffer + originPtr, (size_t)es->record_size);
+
+                                            /* Fix heap */
+                                            heapSizeRecords = (record2[resultBlock] + es->record_size - resultBlock * es->page_size) / es->record_size;
+                                            heapSizeRecords--; /* Subtract 1 as going to use last record in heap as insert record */
+
+                                            heapify(buffer + resultBlock * es->page_size + es->headerSize, (void *)(buffer + record2[resultBlock]), heapSizeRecords, es, metric);
+                                            record1[destBlk] += es->record_size;
+                                            record2[resultBlock] -= es->record_size;
+                                        }
+                                        record1[destBlk] = offset; /* Set pointer to first insert location */
+                                    } else {
+                                        for (i = 0; i < numTransferThisPass; i++) {
+                                            record1[destBlk] = record1[destBlk] - es->record_size;
+#ifdef DEBUG
+                                            void *buf = (void *)(buffer + originPtr);
+                                            printf("Moved output record back from list %d Key: %d\n", resultBlock, buf + es->key_offset);
+#endif
+                                            numShiftIntoOutput++;
+
+                                            /* insertion sort type insert */
+                                            int32_t insert_ptr = record1[destBlk];
+                                            while (insert_ptr < destBlk * es->page_size + (tuplesPerPage - 1) * es->record_size) {
+                                                metric->num_compar++;
+#ifdef DEBUG
+                                                void *buf = (void *)(buffer + insert_ptr + es->record_size);
+                                                printf("Compare with list %d Key: %d\n", resultBlock, buf + es->key_offset);
+#endif
+                                                if (0 < es->compare_fcn(buffer + originPtr + es->key_offset, buffer + insert_ptr + es->record_size + es->key_offset)) {
+                                                    /* shift next_val down */
+                                                    metric->num_memcpys++;
+                                                    memcpy(buffer + insert_ptr, buffer + insert_ptr + es->record_size, (size_t)es->record_size);
+                                                } else
+                                                    break;
+
+                                                insert_ptr += es->record_size;
+                                            }
+
+                                            metric->num_memcpys++;
+                                            memcpy(buffer + insert_ptr, buffer + originPtr, (size_t)es->record_size);
+                                            originPtr += es->record_size;
+                                        }
+                                    }
+                                } else {
+                                    for (i = 0; i < numTransferThisPass; i++) {
+                                        /* insert into a non output block, put into the record2 list of the block */
+                                        if (record2[destBlk] == -1)
+                                            record2[destBlk] = destBlk * es->page_size + es->headerSize; /* no other record2 values */
+                                        else
+                                            record2[destBlk] += es->record_size; /* other record2 values */
+
+#ifdef DEBUG
+                                        void *buf = (void *)(buffer + originPtr);
+                                        printf("Moved output record to list %d Key: %d\n", destBlk, buf + es->key_offset);
+#endif
+                                        numShiftOtherBlock++;
+
+                                        /* Insert at end of heap */
+                                        int32_t heapSizeRecords = (record2[destBlk] + es->record_size - es->page_size * destBlk) / es->record_size;
+                                        shiftUp(buffer + destBlk * es->page_size + es->headerSize, buffer + originPtr, heapSizeRecords - 1, es, metric);
+
+                                        originPtr += es->record_size;
+                                    }
+                                }
+                            }
+
+                            /* read in next block */
+                            // fseek(outputFile, sublsFilePtr[resultBlock], SEEK_SET);
+                            // if (0 == fread(buffer + resultBlock * es->page_size, (size_t)es->page_size, 1, outputFile))
+                            // {   /* Read error */
+                            //     free(record1); free(record2); free(sublsBlkPos); free(sublsFilePtr);
+                            //     return 10;
+                            // }
+
+                            // Read in next block
+                            ((file_iterator_state_t *)iteratorState)->fileInterface->seek(sublsFilePtr[resultBlock], outputFile);
+                            ((file_iterator_state_t *)iteratorState)->fileInterface->readRel(buffer + resultBlock * es->page_size, PAGE_SIZE, 1, outputFile);
+                            if (((file_iterator_state_t *)iteratorState)->fileInterface->error(outputFile)) {
+                                // File read error
+                                free(record1);
+                                free(record2);
+                                free(sublsBlkPos);
+                                free(sublsFilePtr);
+                                return 10;
+                            }
+
+                            metric->num_reads += 1;
+                            record2[resultBlock] = -1;
+                            record1[resultBlock] = resultBlock * es->page_size + es->headerSize;
+#ifdef DEBUG_READ
+                            printf("Read block sublist: %d\n", resultBlock);
+                            void *firstRec = (void *)buffer + resultBlock * es->page_size + es->headerSize;
+                            void *lastRec = (void *)buffer + resultBlock * es->page_size + es->headerSize + (*((int16_t *)(buffer + resultBlock * es->page_size + BLOCK_COUNT_OFFSET)) - 1) * es->record_size;
+                            printf("Read Sublist: %d Block: %d NumRec: %d First key: %d Last key: %d\n", resultBlock, (int32_t) * (buffer + resultBlock * es->page_size),
+                                   *((int16_t *)(buffer + resultBlock * es->page_size + BLOCK_COUNT_OFFSET)), firstRec + es->key_offset, lastRec + es->key_offset);
+#endif
+                        }
+                    } /* end if is the non output block empty */
+
+                    /* Determine if there are no records from the output block left */
+                    outputIsEmpty = 1;
+                    if (record1[OUTPUT_BLOCK_ID] != -1) {
+                        outputIsEmpty = 0;
+                    } else {
+                        for (i = 0; i < sublistsInRun; i++) {
+                            if (i == OUTPUT_BLOCK_ID)
+                                continue;
+
+                            if (record2[i] != -1) {
+                                outputIsEmpty = 0;
+                                break;
+                            }
+                        }
+                    }
+
+                    // read in next block of sublist (output block)
+                    if (outputIsEmpty && (-1 != sublsBlkPos[OUTPUT_BLOCK_ID])) {
+                        /* check if we are finished with output blocks associated sublist */
+                        if (sublsBlkPos[OUTPUT_BLOCK_ID] >= blocksInSublist[OUTPUT_BLOCK_ID] - 1) {
+                            sublsBlkPos[OUTPUT_BLOCK_ID] = -1; /* sublist is spent */
+                            record1[OUTPUT_BLOCK_ID] = -1;
+                        } else {
+                            /* sublist isn't empty read in next block of sublist */
+                            sublsBlkPos[OUTPUT_BLOCK_ID]++;
+                            sublsFilePtr[OUTPUT_BLOCK_ID] += es->page_size;
+
+                            /* if the output block contains results they have to be temporarily stored in other blocks. */
+                            if (record2[OUTPUT_BLOCK_ID] != -1) {
+                                outputCursor = OUTPUT_BLOCK_ID * es->page_size + es->headerSize;
+                                destBlk = 1;
+
+                                /* While there are still output tuples to move */
+                                while (outputCursor <= record2[OUTPUT_BLOCK_ID]) {
+                                    /* find next block with space to store a tuple. Start at block 1 continue to block N where N>1 */
+                                    blk = -1;
+                                    space = 0;
+                                    while (-1 == blk) {
+                                        if (record1[destBlk] != -1)
+                                            space += record1[destBlk] - (destBlk * es->page_size + es->headerSize);
+                                        else
+                                            space += es->page_size - es->headerSize;
+
+                                        if (record2[destBlk] != -1)
+                                            space -= (record2[destBlk] - destBlk * es->page_size + es->record_size - es->headerSize);
+
+                                        space = space / es->record_size;
+
+                                        if (space >= 1)
+                                            blk = destBlk;
+                                        else
+                                            destBlk++;
+                                    }
+
+                                    if (record2[destBlk] == -1)
+                                        record2[destBlk] = destBlk * es->page_size + es->headerSize;
+                                    else
+                                        record2[destBlk] += es->record_size;
+
+                                        /* move the record */
+#ifdef DEBUG
+                                    void *buf = (void *)(buffer + outputCursor);
+                                    printf("Output list empty so moved record in output to list %d Key: %d\n", destBlk, *(uint32_t *)(buf + es->key_offset));
+#endif
+                                    numShiftOutOutput++;
+                                    metric->num_memcpys++;
+                                    memcpy(buffer + record2[destBlk], buffer + outputCursor, (size_t)es->record_size);
+                                    outputCursor += es->record_size;
+                                }
+                            }
+
+                            /* Perform the the read into the now empty output block */
+                            // fseek(outputFile, sublsFilePtr[OUTPUT_BLOCK_ID], SEEK_SET);
+
+                            // if (0 == fread(buffer + OUTPUT_BLOCK_ID * es->page_size, (size_t)es->page_size, 1, outputFile))
+                            // {   // Read error
+                            //     free(record1); free(record2); free(sublsBlkPos); free(sublsFilePtr);
+                            //     return 10;
+                            // }
+
+                            ((file_iterator_state_t *)iteratorState)->fileInterface->seek(sublsFilePtr[OUTPUT_BLOCK_ID], outputFile);
+                            ((file_iterator_state_t *)iteratorState)->fileInterface->readRel(buffer + OUTPUT_BLOCK_ID * es->page_size, PAGE_SIZE, 1, outputFile);
+                            if (((file_iterator_state_t *)iteratorState)->fileInterface->error(outputFile)) {
+                                // File read error
+                                free(record1);
+                                free(record2);
+                                free(sublsBlkPos);
+                                free(sublsFilePtr);
+                                return 10;
+                            }
+
+                            int16_t numRecords = *((int16_t *)(buffer + BLOCK_COUNT_OFFSET));
+#ifdef DEBUG_READ
+                            printf("Read block sublist: 0\n");
+                            void *firstRec = (void *)buffer + es->headerSize;
+                            void *lastRec = (void *)buffer + es->headerSize + (*((int16_t *)(buffer + BLOCK_COUNT_OFFSET)) - 1) * es->record_size;
+                            printf("Read Sublist: %d Block: %d NumRec: %d First key: %d Last key: %d\n", 0, (int32_t) * (buffer + 0 * es->page_size),
+                                   *((int16_t *)(buffer + BLOCK_COUNT_OFFSET)), firstRec + es->key_offset, lastRec + es->key_offset);
+#endif
+
+                            metric->num_reads += 1;
+                            record1[OUTPUT_BLOCK_ID] = OUTPUT_BLOCK_ID * es->page_size + es->headerSize;
+
+                            /* put the results back into the output block, re-add them in reverse order from when we removed them (blocks N to 1)
+                             * This will keep the blocks in sorted order.  */
+                            if (record2[OUTPUT_BLOCK_ID] != -1) {
+                                outputCursor = OUTPUT_BLOCK_ID * es->page_size + es->headerSize;
+
+                                for (blk = 0; blk < sublistsInRun; blk++) {
+                                    if (record2[blk] == -1)
+                                        continue;
+
+                                    if (blk == OUTPUT_BLOCK_ID)
+                                        continue;
+
+                                    int16_t blkCursor = blk * es->page_size + es->headerSize;
+                                    int16_t limit = record2[blk];
+
+                                    /* Output block read may not be full of input records. Only swap the input records. */
+                                    i = 0;
+                                    while (blkCursor <= limit && i < numRecords) {
+                                        i++;
+                                        metric->num_memcpys += 3;
+                                        /* swap record */
+                                        memcpy(tupleBuffer, buffer + blkCursor, (size_t)es->record_size);
+                                        memcpy(buffer + blkCursor, buffer + outputCursor, (size_t)es->record_size);
+                                        memcpy(buffer + outputCursor, tupleBuffer, (size_t)es->record_size);
+                                        outputCursor += es->record_size;
+                                        blkCursor += es->record_size;
+                                        numShiftIntoOutput++;
+                                    }
+                                    /* Copy back to output block all remaining records into the free space in the output block */
+                                    while (blkCursor <= limit) {
+                                        metric->num_memcpys += 1;
+                                        memcpy(buffer + outputCursor, buffer + blkCursor, (size_t)es->record_size);
+                                        outputCursor += es->record_size;
+                                        blkCursor += es->record_size;
+                                        numShiftIntoOutput++;
+                                        record2[blk] -= es->record_size;
+                                    }
+                                }
+
+                                record1[OUTPUT_BLOCK_ID] = record2[OUTPUT_BLOCK_ID] + es->record_size;
+
+                                if (record1[OUTPUT_BLOCK_ID] >= OUTPUT_BLOCK_ID * es->page_size + es->headerSize + numRecords * es->record_size)
+                                    record1[OUTPUT_BLOCK_ID] = -1;
+                            }
+                        }
+                        /*end of reading in next output block */
+                    }
+                    /* end of run */
+                }
+
+                if (record2[0] > 0) { /* Tuples in output block to write out */
+                    // fseek(outputFile, lastWritePos, SEEK_SET);
+                    // if (0 == fwrite(buffer + OUTPUT_BLOCK_ID * es->page_size, (size_t)es->page_size, 1, outputFile))
+                    // {   /* File write error - arduino prints 1st value nmemb times if nmemb != 1 */
+                    //     free(record1); free(record2); free(sublsBlkPos); free(sublsFilePtr);
+                    //     return 9;
+                    // }
+
+                    // setup header
+                    *((int32_t *)buffer) = currentBlockId;
+                    *((int16_t *)(buffer + BLOCK_COUNT_OFFSET)) = (int16_t)(record2[0] - es->headerSize) / es->record_size + 1;
+                    currentBlockId++;
+
+                    ((file_iterator_state_t *)iteratorState)->fileInterface->seek(lastWritePos, outputFile);
+                    ((file_iterator_state_t *)iteratorState)->fileInterface->writeRel(buffer + OUTPUT_BLOCK_ID * es->page_size, PAGE_SIZE, 1, outputFile);
+                    if (((file_iterator_state_t *)iteratorState)->fileInterface->error(outputFile)) {
+                        // File write error
+                        free(record1);
+                        free(record2);
+                        free(sublsBlkPos);
+                        free(sublsFilePtr);
+                        return 10;
+                    }
+
+                    lastWritePos = ((file_iterator_state_t *)iteratorState)->fileInterface->tell(outputFile);
+                    record2[OUTPUT_BLOCK_ID] = -1;
+                    metric->num_writes += 1;
+
+#ifdef DEBUG_OUTPUT
+                    printf("Wrote output block here.\n");
+                    for (int k = 0; k < tuplesPerPage; k++) {
+                        void *buf = (void *)(buffer + es->headerSize + k * es->record_size);
+                        printf("%3d: 5 Output Record: %d  Address: %p\n", k, *(uint32_t *)(buf + es->key_offset), buf);  // TODO: Update to no use test_record_t
+                    }
+#endif
+                }
+
+            } /* end of runs */
+
+            numSublist = numRuns;      /* each run produces 1 sublist */
+            lastMergeStart = mergeSOW; /* next merge reads where this one started writing */
+            lastMergeEnd = lastWritePos;
+        } /* end of merge */
+        *resultFilePtr = lastMergeStart;
+#ifdef ADAPTIVE_SORT_PRINT_FINISH
+        printf("Complete. Comparisons: %u  Writes: %u  Reads: %u Memcpys:\n", metric->num_compar, metric->num_writes, metric->num_reads, metric->num_memcpys);
+#endif
+
+        /* cleanup */
+        free(sublsFilePtr);
+        free(sublsBlkPos);
+        free(blocksInSublist);
+        free(record1);
+        free(record2);
+    }
+
+    return 0;
+}
+
+/************************************************************flash_minsort.c************************************************************/
+/******************************************************************************/
+/**
+@file		flash_minsort.c
+@author		Ramon Lawrence
+@brief		Flash MinSort (Cossentine/Lawrence 2010) for flash sorting with no writes.
+@copyright	Copyright 2020
+                        The University of British Columbia,
+                        IonDB Project Contributors (see AUTHORS.md)
+@par Redistribution and use in source and binary forms, with or without
+        modification, are permitted provided that the following conditions are met:
+
+@par 1.Redistributions of source code must retain the above copyright notice,
+        this list of conditions and the following disclaimer.
+
+@par 2.Redistributions in binary form must reproduce the above copyright notice,
+        this list of conditions and the following  disclaimer in the documentation
+        and/or other materials provided with the distribution.
+
+@par 3.Neither the name of the copyright holder nor the names of its contributors
+        may be used to endorse or promote products derived from this software without
+        specific prior written permission.
+
+@par THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+        AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+        IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+        ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE
+        LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+        CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+        SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+        INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+        CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+        ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+        POSSIBILITY OF SUCH DAMAGE.
+*/
+/******************************************************************************/
+
+/*
+This is no output sort with block headers and iterator input. Heap used when moving tuples in other blocks.
+*/
+
+// #define DEBUG 1
+// #define DEBUG_OUTPUT 1
+// #define DEBUG_READ 1
+
+#ifndef INT_MAX
+#define INT_MAX 0xFFFFFFFF
+#endif
+
+/**
+ * Reads a page from the source file into memory.
+ * @param ms Pointer to the MinSortState structure holding sorting state.
+ * @param pageNum The page number to read.
+ * @param es Sorting configuration, including page and record sizes.
+ * @param metric Metrics tracking structure for performance analysis.
+ */
+void readPageMinSort(MinSortState *ms, int pageNum, external_sort_t *es, metrics_t *metric) {
+    file_iterator_state_t *is = (file_iterator_state_t *)ms->iteratorState;
+    void *fp = is->file;
+
+    // Read page into the buffer
+    if (0 == is->fileInterface->read(ms->buffer, pageNum, es->page_size, fp)) {
+        printf("MINSORT: Failed to read block.\n");
+    }
+
+    metric->num_reads++;
+    ms->blocksRead++;
+    ms->lastBlockIdx = pageNum;
+
+#ifdef DEBUG_READ
+    printf("Reading block: %d\n", pageNum);
+    for (int k = 0; k < 31; k++) {
+        test_record_t *buf = (void *)(ms->buffer + es->headerSize + k * es->record_size);
+        printf("%d: Record: %d\n", k, buf->key);
+    }
+#endif
+}
+
+/**
+ * Returns a pointer to the value of a specific record within the buffer.
+ * @param ms Pointer to the MinSortState structure holding sorting state.
+ * @param recordNum The record number within the block to access.
+ * @param es Sorting configuration, including offsets and sizes for keys.
+ * @return Pointer to the key of the specified record.
+ */
+void *getValuePtr(MinSortState *ms, int recordNum, external_sort_t *es) {
+    return ms->buffer + es->headerSize + recordNum * es->record_size + es->key_offset;
+}
+
+/**
+ * Returns a pointer to the minimum key for a specific region.
+ * @param ms Pointer to the MinSortState structure holding sorting state.
+ * @param regionIdx The region index to access.
+ * @param es Sorting configuration, including key size.
+ * @return Pointer to the minimum key value for the region.
+ */
+void *getMinRegionPtr(MinSortState *ms, int regionIdx, external_sort_t *es) {
+    return ms->min + regionIdx * es->key_size;
+}
+
+/**
+ * Initializes the MinSort state, including memory allocations, regions, and metrics.
+ * @param ms Pointer to the MinSortState structure to initialize.
+ * @param es Sorting configuration.
+ * @param metric Metrics tracking structure for performance analysis.
+ * @param compareFn Comparison function pointer.
+ */
+void init_MinSort(MinSortState *ms, external_sort_t *es, metrics_t *metric, int8_t (*compareFn)(void *a, void *b)) {
+    uint32_t i = 0, j = 0, regionIdx;
+    void *val;
+
+    /* Initialize statistics and tracking metrics */
+    metric->num_reads = 0;
+    metric->num_compar = 0;
+    metric->num_writes = 0;
+    metric->num_memcpys = 0;
+
+    /* Set up MinSort state fields */
+    ms->blocksRead = 0;
+    ms->tuplesRead = 0;
+    ms->tuplesOut = 0;
+    ms->bytesRead = 0;
+
+    ms->record_size = es->record_size;
+    ms->numBlocks = es->num_pages;
+    ms->records_per_block = (es->page_size - es->headerSize) / es->record_size;
+    j = (ms->memoryAvailable - 2 * es->page_size - 2 * es->key_size - INT_SIZE) / (es->key_size + sizeof(uint8_t));
+#ifdef FLASH_MINSORT_PRINT
+    printf("Memory overhead: %d  Max regions: %d\r\n", 2 * es->key_size + INT_SIZE, j);
+#endif
+    ms->blocks_per_region = (uint32_t)ceil((double)ms->numBlocks / j);
+    ms->numRegions = (uint32_t)ceil((double)ms->numBlocks / ms->blocks_per_region);
+
+    /* Memory allocation for min values per region */
+    // Allocate minimum index after block 2 (block 0 is input buffer, block 1 is output buffer)
+    ms->min = (int8_t *)(ms->buffer + es->page_size * 2);
+    ms->min_initialized = (int8_t *)(ms->min + es->key_size * ms->numRegions);
+
+#ifdef DEBUG
+    printf("Memory overhead: %d  Max regions: %d\r\n", 2 * SORT_KEY_SIZE + INT_SIZE, j);
+    printf("Page size: %d, Memory size: %d Record size: %d, Number of records: %lu, Number of blocks: %d, Blocks per region: %d  Regions: %d\r\n",
+           es->page_size, ms->memoryAvailable, ms->record_size, ms->num_records, ms->numBlocks, ms->blocks_per_region, ms->numRegions);
+#endif
+
+    /* Initialize each region’s minimum value */
+    for (i = 0; i < ms->numRegions; i++) {
+        ms->min_initialized[i] = false;
+    }
+
+    /* Populate each region’s minimum key by scanning blocks */
+    for (i = 0; i < ms->numBlocks; i++) {
+        readPageMinSort(ms, i, es, metric);  // Load block i into buffer
+        regionIdx = i / ms->blocks_per_region;
+
+        // Set inital value to first read.
+        // ms->min[regionIdx] = getValuePtr(ms, 0, es);
+        memcpy(getMinRegionPtr(ms, regionIdx, es), getValuePtr(ms, 0, es), es->key_size);
+        metric->num_memcpys++;
+        ms->min_initialized[regionIdx] = true;
+
+        /* Process remaining records in the block */
+        for (j = 1; j < ms->records_per_block; j++) {
+            if (((i * ms->records_per_block) + j) < ms->num_records) {
+                val = getValuePtr(ms, j, es);
+                metric->num_compar++;
+
+                /* Update region’s minimum if current record is smaller */
+                if (compareFn(val, getMinRegionPtr(ms, regionIdx, es)) == -1) {
+                    memcpy(getMinRegionPtr(ms, regionIdx, es), val, es->key_size);
+                    metric->num_memcpys++;
+                    ms->min_initialized[regionIdx] = true;
+                }
+            } else
+                break;
+        }
+    }
+
+#ifdef DEBUG
+    for (i = 0; i < ms->numRegions; i++)
+        printf("Region: %d  Min: %d\r\n", i, ms->min[i]);
+#endif
+
+    /* Allocate memory for current and next keys */
+    ms->current = malloc(es->key_size);
+    ms->next = malloc(es->key_size);
+    ms->lastBlockIdx = INT_MAX;
+
+    ms->nextIdx = 0;
+    ms->current_initialized = false;
+    ms->next_initialized = false;
+}
+
+/**
+ * This function returns the next tuple in the sorted sequence during the MinSort process.
+ * It searches through the blocks of data, finds the smallest value (based on a comparison function),
+ * and updates the state to reflect the progress in the sorting process.
+ *
+ * @param ms Pointer to the MinSortState structure that maintains the current state of the sorting.
+ * @param es Pointer to the external_sort_t structure that defines the external sorting configuration.
+ * @param tupleBuffer A buffer where the next tuple will be copied when found.
+ * @param metric Pointer to the metrics_t structure that tracks statistics such as comparisons and memory copies.
+ * @param compareFn A comparison function used to compare two data values.
+ * @return A pointer to the next tuple in the sorted sequence, or NULL if no more tuples are available.
+ */
+char *next_MinSort(MinSortState *ms, external_sort_t *es, void *tupleBuffer, metrics_t *metric, int8_t (*compareFn)(void *a, void *b)) {
+    uint32_t i, curBlk, startBlk;
+    uint64_t startIndex, k;
+    void *dataVal;
+
+    // Find the block with the minimum tuple value - otherwise continue on with last block
+    if (ms->nextIdx == 0) {
+        // Find new block as do not know location of next minimum tuple
+
+        ms->current_initialized = false;
+        ms->regionIdx_initialized = false;
+        ms->next_initialized = false;
+        ms->regionIdx = INT_MAX;  // Reset the region index to indicate no region has been selected yet
+
+        for (i = 0; i < ms->numRegions; i++) {
+            metric->num_compar++;
+
+            // If the current region has a valid minimum, and it's less than the current tuple, update the minimum
+            if (ms->min_initialized[i] && (!ms->current_initialized || compareFn(getMinRegionPtr(ms, i, es), ms->current) == -1)) {
+                memcpy(ms->current, getMinRegionPtr(ms, i, es), es->key_size);  // ms->current = ms->min[i];
+                metric->num_memcpys++;
+                ms->current_initialized = true;
+                ms->regionIdx = i;  // Update the region index to the one containing the new minimum
+            }
+        }
+
+        // If no valid minimum was found, return NULL indicating no more tuples are available
+        if (ms->regionIdx == INT_MAX)
+            return NULL;
+    }
+
+    // Search current region for tuple with current minimum value
+    startIndex = ms->nextIdx;
+    startBlk = ms->regionIdx * ms->blocks_per_region;
+
+    // Iterate through records in the block
+    for (k = startIndex / ms->records_per_block; k < ms->blocks_per_region; k++) {
+        curBlk = startBlk + k;
+
+        if (curBlk > ms->numBlocks) {
+            break;
+        }
+
+        // Read the current block into the buffer if it's not already loaded
+        if (curBlk != ms->lastBlockIdx) {
+            readPageMinSort(ms, curBlk, es, metric);
+        }
+
+        for (i = startIndex % ms->records_per_block; i < ms->records_per_block; i++) {
+            if (curBlk * ms->records_per_block + i >= ms->num_records) {
+                break;  // Stop if we've reached the end of records in the block
+            }
+
+            dataVal = getValuePtr(ms, i, es);  // Pointer to the current record's value
+            metric->num_compar++;
+
+            // If the current record matches the minimum, copy it into the ouput buffer
+            if (compareFn(dataVal, ms->current) == 0) {
+                memcpy(tupleBuffer, &(ms->buffer[ms->record_size * i + es->headerSize]), ms->record_size);
+                metric->num_memcpys++;
+#ifdef DEBUG
+                test_record_t *buf = (test_record_t *)(ms->buffer + es->headerSize + i * es->record_size);
+                buf = (test_record_t *)tupleBuffer;
+                printf("Returning tuple: %d\n", buf->key);
+#endif
+                i++;  // Move to the next record
+                ms->tuplesOut++;
+                goto done;  // Exit the loop since we found the record we were looking for
+            }
+            metric->num_compar++;
+
+            // If the current record is greater than the current minimum and is smaller than the next, update the next minimum
+            if (compareFn(dataVal, ms->current) == 1 && (!ms->next_initialized || compareFn(dataVal, ms->next) == -1)) {
+                memcpy(ms->next, dataVal, es->key_size);  // ms->next = dataVal;
+                metric->num_memcpys++;
+                ms->next_initialized = true;
+                ms->nextIdx = 0;
+            }
+        }
+    }
+
+done:
+#ifdef DEBUG
+    printf("Updating minimum in region\r\n");
+#endif
+
+    // After processing the current block, scan the rest of the region to find a smaller record if possible
+    ms->nextIdx = 0;
+
+    // Continue searching the remaining blocks in the region for a smaller tuple
+    for (; k < ms->blocks_per_region; k++) {
+        curBlk = startBlk + k;
+
+        if (curBlk >= ms->numBlocks) {
+            break;
+        }
+
+        // If the block is not already loaded, read it into the buffer
+        if (curBlk != ms->lastBlockIdx) {
+            readPageMinSort(ms, curBlk, es, metric);
+            i = 0;
+        }
+
+        // Search through the records in the block
+        for (; i < ms->records_per_block; i++) {
+            if (curBlk * ms->records_per_block + i >= ms->num_records) {
+                break;  // Stop if we've reached the end of records in the block
+            }
+            dataVal = getValuePtr(ms, i, es);
+            metric->num_compar++;
+
+            // If the current record matches the minimum, update the index
+            if (compareFn(dataVal, ms->current) == 0) {
+                ms->nextIdx = k * ms->records_per_block + i;
+#ifdef DEBUG
+                printf("Next tuple at: %d  k: %d  i: %d\r\n", ms->nextIdx, k, i);
+#endif
+                goto done2;
+            }
+            metric->num_compar++;
+
+            // If the current record is greater than the current minimum, update the next tuple if needed
+            if (compareFn(dataVal, ms->current) == 1 && (!ms->next_initialized || compareFn(dataVal, ms->next) == -1)) {
+                memcpy(ms->next, dataVal, es->key_size);  // Update the next tuple
+                metric->num_memcpys++;
+                ms->next_initialized = true;
+                ms->nextIdx = 0;
+            }
+        }
+    }
+
+done2:
+
+    // After finding the next minimum, update the minimum value for the region
+    if (ms->nextIdx == 0) {
+        if (!ms->next_initialized) {
+            ms->min_initialized[ms->regionIdx] = false;
+        } else {
+            memcpy(getMinRegionPtr(ms, ms->regionIdx, es), ms->next, es->key_size);  // Update the region's minimum
+            metric->num_memcpys++;
+            ms->next_initialized = false;
+            ms->min_initialized[ms->regionIdx] = true;
+        }
+
+#ifdef DEBUG
+        printf("Updated minimum in block to: %d\r\n", ms->min[ms->regionIdx]);
+#endif
+    }
+
+    return tupleBuffer;  // Update the region's minimum
+}
+
+void close_MinSort(MinSortState *ms, external_sort_t *es) {
+    /*
+    printf("Tuples out:  %lu\r\n", ms->op.tuples_out);
+    printf("Blocks read: %lu\r\n", ms->op.blocks_read);
+    printf("Tuples read: %lu\r\n", ms->op.tuples_read);
+    printf("Bytes read:  %lu\r\n", ms->op.bytes_read);
+    */
+
+    if (ms->current) {
+        free(ms->current);
+        ms->current = NULL;
+    }
+    if (ms->next) {
+        free(ms->next);
+        ms->next = NULL;
+    }
+}
+
+/**
+@brief      Flash Minsort implemented with full tuple reads.
+@param      iteratorState
+                Structure stores state of iterator (file info etc.)
+@param      tupleBuffer
+                Pre-allocated space to store one tuple (row) of input being sorted
+@param      outputFile
+                Already opened file to store sorting output (and in-progress temporary results)
+@param      buffer
+                Pre-allocated space used by algorithm during sorting
+@param      bufferSizeInByes
+                Size of buffer in byes
+@param      es
+                Sorting state info (block size, record size, etc.)
+@param      resultFilePtr
+                Offset within output file of first output record
+@param      metric
+                Tracks algorithm metrics (I/Os, comparisons, memory swaps)
+@param      compareFn
+                Record comparison function for record ordering
+*/
+int flash_minsort(
+    void *iteratorState,
+    void *tupleBuffer,
+    void *outputFile,
+    char *buffer,
+    int bufferSizeInBytes,
+    external_sort_t *es,
+    long *resultFilePtr,
+    metrics_t *metric,
+    int8_t (*compareFn)(void *a, void *b)) {
+#ifdef DEBUG
+    printf("*Flash Minsort*\n");
+#endif
+    clock_t start = clock();
+
+    MinSortState ms;
+    ms.buffer = buffer;
+    ms.iteratorState = iteratorState;
+    ms.memoryAvailable = bufferSizeInBytes;
+    ms.num_records = ((file_iterator_state_t *)iteratorState)->totalRecords;
+
+    init_MinSort(&ms, es, metric, compareFn);
+    int16_t count = 0;
+    int32_t blockIndex = 0;
+    int16_t values_per_page = (es->page_size - es->headerSize) / es->record_size;
+    uint8_t *outputBuffer = buffer + es->page_size;
+    // test_record_t *buf;
+
+    // Main sorting loop: fetches and writes sorted records in blocks
+    while (next_MinSort(&ms, es, (char *)(outputBuffer + count * es->record_size + es->headerSize), metric, compareFn) != NULL) {
+        // Store the current record in the buffer
+        count++;
+
+        // When a block is full, write it to the output file
+        if (count == values_per_page) {                                // Write block
+            *((int32_t *)outputBuffer) = blockIndex;                   /* Block index */
+            *((int16_t *)(outputBuffer + BLOCK_COUNT_OFFSET)) = count; /* Block record count */
+            count = 0;                                                 // Reset count for the next block
+
+            // Write the block to the output file using the file interface's write method
+            if (0 == ((file_iterator_state_t *)iteratorState)->fileInterface->write(outputBuffer, blockIndex, es->page_size, outputFile)) {
+                return 9;  // Return error code if writing to the output file fails
+            }
+
+#ifdef DEBUG
+            printf("Wrote output block. Block index: %d\n", blockIndex);
+            for (int k = 0; k < values_per_page; k++) {
+                test_record_t *buf = (void *)(outputBuffer + es->headerSize + k * es->record_size);
+                printf("%d: Output Record: %d\n", k, buf->key);
+            }
+#endif
+            metric->num_writes++;
+            blockIndex++;
+        }
+    }
+
+    // Write the last block if there are remaining records
+    if (count > 0) {
+        *((int32_t *)outputBuffer) = blockIndex;                   /* Block index */
+        *((int16_t *)(outputBuffer + BLOCK_COUNT_OFFSET)) = count; /* Block record count */
+
+        if (0 == ((file_iterator_state_t *)iteratorState)->fileInterface->write(outputBuffer, blockIndex, es->page_size, outputFile)) {
+            return 9;  // Return error code if writing to the output file fails
+        }
+        metric->num_writes++;
+        blockIndex++;
+        count = 0;
+    }
+
+#ifdef DEBUG
+    printf("Number of sorted records: %d", ms.num_records);
+#endif
+
+    ((file_iterator_state_t *)iteratorState)->fileInterface->flush(outputFile);
+
+    close_MinSort(&ms, es);
+
+    clock_t end = clock();
+
+    *resultFilePtr = 0;
+
+#ifdef DEBUG
+    printf("Complete. Comparisons: %d  MemCopies: %d\n", metric->num_compar, metric->num_memcpys);
+#endif
+
+    return 0;  // Successful completion
+}
+
+/************************************************************flash_minsort_sublist.c************************************************************/
+/******************************************************************************/
+/**
+@file		flash_minsort_sublist.c
+@author		Ramon Lawrence
+@brief		Flash Minsort designed to handle regions that are sorted sublists.
+@copyright	Copyright 2020
+                        The University of British Columbia,
+                        IonDB Project Contributors (see AUTHORS.md)
+@par Redistribution and use in source and binary forms, with or without
+        modification, are permitted provided that the following conditions are met:
+
+@par 1.Redistributions of source code must retain the above copyright notice,
+        this list of conditions and the following disclaimer.
+
+@par 2.Redistributions in binary form must reproduce the above copyright notice,
+        this list of conditions and the following  disclaimer in the documentation
+        and/or other materials provided with the distribution.
+
+@par 3.Neither the name of the copyright holder nor the names of its contributors
+        may be used to endorse or promote products derived from this software without
+        specific prior written permission.
+
+@par THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+        AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+        IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+        ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE
+        LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+        CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+        SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+        INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+        CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+        ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+        POSSIBILITY OF SUCH DAMAGE.
+*/
+/******************************************************************************/
+
+/*
+#define DEBUG 1
+#define DEBUG_OUTPUT 1
+#define DEBUG_READ 1
+*/
+
+void readPage_sublist(MinSortStateSublist *ms, int pageNum, external_sort_t *es, metrics_t *metric) {
+    file_iterator_state_t *is = (file_iterator_state_t *)ms->iteratorState;
+    void *fp = is->file;
+
+    // Read page into the buffer
+    if (0 == is->fileInterface->read(ms->buffer, pageNum, es->page_size, fp)) {
+        printf("MINSORT SUBLIST: Failed to read block.\n");
+    }
+
+    metric->num_reads++;
+    ms->blocksRead++;
+    ms->lastBlockIdx = pageNum;
+
+#ifdef DEBUG_READ
+    printf("Reading block: %d Offset: %lu\n", pageNum, offset);
+    for (int k = 0; k < 31; k++) {
+        test_record_t *buf = (void *)(ms->buffer + es->headerSize + k * es->record_size);
+        printf("%d: Record: %d\n", k, buf->key);
+    }
+#endif
+}
+
+int32_t getBlockId(MinSortStateSublist *ms) {
+    return *((int32_t *)(ms->buffer));
+}
+
+int16_t getNumRecordsBlock(MinSortStateSublist *ms) {
+    return *((int16_t *)(ms->buffer + BLOCK_COUNT_OFFSET));
+}
+
+/* Returns a value of a tuple given a record number in a block (that has been previously buffered) */
+void *getTuple_sublist(MinSortStateSublist *ms, int recordNum, external_sort_t *es) {
+    // test_record_t *buf = (test_record_t*) (ms->buffer+es->headerSize+recordNum*es->record_size);
+    // return buf->key;
+    return (void *)(ms->buffer + es->headerSize + recordNum * es->record_size);
+}
+
+void init_MinSort_sublist(MinSortStateSublist *ms, external_sort_t *es, metrics_t *metric) {
+    unsigned int i = 0, j = 0, regionIdx = 0;
+
+    /* Operator statistics */
+    ms->blocksRead = 0;
+    ms->tuplesRead = 0;
+    ms->tuplesOut = 0;
+    ms->bytesRead = 0;
+
+    ms->record_size = es->record_size;
+    ms->numBlocks = es->num_pages;
+
+    // Ignoring small variable overhead
+    // j = (ms->memoryAvailable - 2 * SORT_KEY_SIZE - INT_SIZE) / SORT_KEY_SIZE;
+    j = (ms->memoryAvailable) / (SORT_KEY_SIZE + sizeof(uint8_t));
+#ifdef FLASH_MINSORT_PRINT
+    printf("Memory overhead: %d  Max regions: %d\r\n", 2 * SORT_KEY_SIZE + INT_SIZE, j);
+#endif
+    // Memory allocation
+    // Allocate minimum index in separate memory space (block 0 is input buffer, block 1 is output buffer)
+    // Block 1 as output buffer is not being counted in this case,
+    // TODO: Challenge with this as if given only 2 buffers then have no room for minimum index. Creating separate allocated arrays for now.
+    // Note: Assuming MinSort does need actually count the output buffer for its use as it can produce records in iterator format and does not need an output buffer for this.
+    ms->current = malloc(es->record_size);
+    ms->next = malloc(es->record_size);
+
+    ms->min = malloc(ms->numRegions * es->record_size);
+    ms->min_set = malloc(ms->numRegions * sizeof(uint8_t));
+    ms->offset = malloc(ms->numRegions * sizeof(long));
+#ifdef FLASH_MINSORT_PRINT
+    printf("Page size: %d, Memory size: %d Record size: %d, Number of records: %lu, Number of blocks: %d, Regions: %d\r\n",
+           es->page_size, ms->memoryAvailable, ms->record_size, ms->num_records, ms->numBlocks, ms->numRegions);
+#endif
+
+    for (i = 0; i < ms->numRegions; i++)
+        ms->min_set[i] = false;
+    regionIdx = ms->numRegions - 1;
+
+    /* Scan data to populate the minimum in each region */
+    /* Read from back of output file to get start of each sublist (region) */
+
+    /* Read last block of sublist into buffer */
+    long lastBlock = ms->numBlocks - 1;
+    while (lastBlock >= 0) {
+        readPage_sublist(ms, lastBlock, es, metric);
+        int numBlocksSublist = *(int32_t *)ms->buffer; /* Retrieve block id (indexed from 0) to compute count of blocks in sublist */
+
+#if DEBUG
+        printf("Read block: %d", lastBlock);
+        printf(" Num: %d\n", numBlocksSublist);
+
+        for (int k = 0; k < 31; k++) {
+            test_record_t *buf = (void *)(ms->buffer + es->headerSize + k * es->record_size);
+            printf("%d: Record: %d\n", k, buf->key);
+        }
+#endif
+        lastBlock = lastBlock - numBlocksSublist;
+        readPage_sublist(ms, lastBlock, es, metric);
+
+        // val = getTuple_sublist(ms, 0, es);
+        // ms->min[regionIdx] = val;
+        memcpy(ms->min + es->record_size * regionIdx, getTuple_sublist(ms, 0, es), es->value_size);
+        metric->num_memcpys++;
+        ms->min_set[regionIdx] = true;
+        ms->offset[regionIdx] = lastBlock * es->page_size + es->headerSize + ms->fileOffset;
+#if DEBUG
+        printf("New min. Index: %d", regionIdx);
+        printf(" Min: %u", ms->min[regionIdx]);
+        printf(" Offset: %lu\n", ms->offset[regionIdx]);
+#endif
+        regionIdx--;
+        lastBlock--;
+    }
+
+#ifdef DEBUG
+    printf("Region summary\n");
+    for (i = 0; i < ms->numRegions; i++) {
+        printf("Reg: %d", i);
+        printf(" Min: %u", ms->min[i]);
+        printf(" Offset: %lu\n", ms->offset[i]);
+    }
+
+#endif
+
+    // ms->current = INT_MAX;
+    // ms->next    = INT_MAX;
+    // ms->lastBlockIdx = INT_MAX;
+    ms->current_set = false;
+    ms->next_set = false;
+    ms->lastBlockIdx_set = false;
+    ms->nextIdx = 0;
+}
+
+char *next_MinSort_sublist(MinSortStateSublist *ms, external_sort_t *es, void *tupleBuffer, metrics_t *metric) {
+    unsigned int i, curBlk;
+    unsigned long int startIndex;
+
+    // Find the block with the minimum tuple value - otherwise continue on with last block
+    if (ms->nextIdx == 0) {
+        // Find new block as do not know location of next minimum tuple
+        ms->current_set = false;
+        ms->regionIdx_set = false;
+        ms->next_set = false;
+
+        for (i = 0; i < ms->numRegions; i++) {
+            metric->num_compar++;
+
+            // if (ms->min[i] < ms->current)
+            // {   ms->current = ms->min[i];
+            //     ms->regionIdx = i;
+            // }
+
+            // If min is set update current if current is not set or min is less than current
+            if (ms->min_set[i] && (!ms->current_set || es->compare_fcn(ms->min + i * es->record_size + es->key_offset, ms->current + es->key_offset) < 0)) {
+                memcpy(ms->current, ms->min + i * es->record_size, es->record_size);
+                metric->num_memcpys++;
+                ms->regionIdx = i;
+                ms->regionIdx_set = true;
+                ms->current_set = true;
+            }
+        }
+        if (!ms->regionIdx_set)
+            return NULL;  // Join complete - no more tuples
+
+        // Determine current block and record index for next smallest value based on file offset
+        startIndex = ms->offset[ms->regionIdx];
+        i = (startIndex % es->page_size - es->headerSize) / ms->record_size;
+        curBlk = startIndex / es->page_size;
+
+        // Smallest value is at current index
+        if (curBlk != ms->lastBlockIdx) {  // Read block into buffer
+            readPage_sublist(ms, curBlk, es, metric);
+        }
+    } else {  // Use next record in current block
+        i = ms->nextIdx;
+    }
+
+    memcpy(tupleBuffer, ms->buffer + ms->record_size * i + es->headerSize, ms->record_size);
+    metric->num_memcpys++;
+
+#ifdef DEBUG
+    test_record_t *buf = (test_record_t *)(ms->buffer + es->headerSize + i * es->record_size);
+    buf = (test_record_t *)tupleBuffer;
+    printf("Returning tuple: %d\n", buf->key);
+#endif
+
+    // Advance to next tuple in block
+    i++;
+    ms->nextIdx = 0;
+
+    if (i >= getNumRecordsBlock(ms)) {
+        // Advance to next block
+        i = 0;
+        int32_t currentBlockId = getBlockId(ms);
+        curBlk++;
+        readPage_sublist(ms, curBlk, es, metric);
+        if (currentBlockId >= getBlockId(ms)) {
+            // Transitioned to a block in a new sublist
+            // ms->min[ms->regionIdx] = INT_MAX;
+            ms->offset[ms->regionIdx] = -1;
+            ms->min_set[ms->regionIdx] = false;
+        } else {
+            // ms->min[ms->regionIdx] = getTuple_sublist(ms,0,es);
+            ms->offset[ms->regionIdx] = curBlk * es->page_size + es->headerSize;
+            memcpy(ms->min + es->record_size * ms->regionIdx, getTuple_sublist(ms, 0, es), es->value_size);
+            metric->num_memcpys++;
+            ms->min_set[ms->regionIdx] = true;
+        }
+    } else {
+        // ms->min[ms->regionIdx] = getTuple_sublist(ms,i,es);
+        ms->offset[ms->regionIdx] += es->record_size;
+        memcpy(ms->min + es->record_size * ms->regionIdx, getTuple_sublist(ms, i, es), es->value_size);
+        metric->num_memcpys++;
+        ms->min_set[ms->regionIdx] = true;
+
+        // Current tuple is set and each to min tuple
+        if (ms->current_set && es->compare_fcn(ms->min + i * es->record_size + es->key_offset, ms->current + es->key_offset) == 0) {
+            ms->nextIdx = i;
+        }
+        // if (ms->min[ms->regionIdx]  == ms->current)
+        //     ms->nextIdx = i;
+    }
+
+#ifdef DEBUG
+    printf("Updated minimum in block to: %d\r\n", ms->min[ms->regionIdx]);
+#endif
+
+    return tupleBuffer;
+}
+
+void close_MinSort_sublist(MinSortStateSublist *ms, external_sort_t *es) {
+    /*
+    printf("Tuples out:  %lu\r\n", ms->op.tuples_out);
+    printf("Blocks read: %lu\r\n", ms->op.blocks_read);
+    printf("Tuples read: %lu\r\n", ms->op.tuples_read);
+    printf("Bytes read:  %lu\r\n", ms->op.bytes_read);
+    */
+}
+
+/**
+@brief      Flash Minsort implemented that has input file with sorted sublists.
+@param      iteratorState
+                Structure stores state of iterator (file info etc.)
+@param      tupleBuffer
+                Pre-allocated space to store one tuple (row) of input being sorted
+@param      outputFile
+                Already opened file to store sorting output (and in-progress temporary results)
+@param      buffer
+                Pre-allocated space used by algorithm during sorting
+@param      bufferSizeInByes
+                Size of buffer in byes
+@param      es
+                Sorting state info (block size, record size, etc.)
+@param      resultFilePtr
+                Offset within output file of first output record
+@param      metric
+                Tracks algorithm metrics (I/Os, comparisons, memory swaps)
+@param      compareFn
+                Record comparison function for record ordering
+@param      numSubList
+                Number of sublists
+*/
+int flash_minsort_sublist(
+    void *iteratorState,
+    void *tupleBuffer,
+    void *outputFile,
+    char *buffer,
+    int bufferSizeInBytes,
+    external_sort_t *es,
+    long *resultFilePtr,
+    metrics_t *metric,
+    int8_t (*compareFn)(void *a, void *b),
+    long numSubList) {
+#ifdef FLASH_MINSORT_PRINT
+    printf("*Flash Minsort (sorted sublist version)*\n");
+#endif
+
+    MinSortStateSublist ms;
+    ms.buffer = buffer;
+    ms.iteratorState = iteratorState;
+    ms.memoryAvailable = bufferSizeInBytes;
+    ms.num_records = ((file_iterator_state_t *)iteratorState)->totalRecords;
+    ms.numRegions = numSubList;
+    ms.fileOffset = *resultFilePtr;
+
+    init_MinSort_sublist(&ms, es, metric);
+    int16_t count = 0;
+    int32_t blockIndex = 0;
+    int16_t values_per_page = (es->page_size - es->headerSize) / es->record_size;
+    char *outputBuffer = buffer + es->page_size;
+    unsigned long lastWritePos = ms.fileOffset + es->num_pages * es->page_size;
+
+    // Write
+    while (next_MinSort_sublist(&ms, es, (char *)(outputBuffer + count * es->record_size + es->headerSize), metric) != NULL) {
+        // Store record in block (already done during call to next)
+        count++;
+
+        if (count == values_per_page) {                                // Write block
+            *((int32_t *)outputBuffer) = blockIndex;                   /* Block index */
+            *((int16_t *)(outputBuffer + BLOCK_COUNT_OFFSET)) = count; /* Block record count */
+            count = 0;
+
+            // Force seek to end of file as outputFile is also inputFile and have been reading it
+            ((file_iterator_state_t *)iteratorState)->fileInterface->seek(lastWritePos, outputFile);
+            // Write the block to the output file using the file interface's write method
+            if (0 == ((file_iterator_state_t *)iteratorState)->fileInterface->writeRel(outputBuffer, es->page_size, 1, outputFile)) {
+                return 9;  // Return error code if writing to the output file fails
+            }
+
+            lastWritePos += es->page_size;
+            metric->num_writes += 1;
+            /*
+            printf("Loc2: %lu\n", ftell(outputFile));
+                         if (blockIndex % 16 == 0)
+                            printf("Last write pos: %lu Block: %d\n", lastWritePos, blockIndex);
+                            */
+#ifdef DEBUG_OUTPUT
+            printf("Wrote output block. Block index: %d\n", blockIndex);
+            for (int k = 0; k < values_per_page; k++) {
+                test_record_t *buf = (void *)(outputBuffer + es->headerSize + k * es->record_size);
+                printf("%d: Output Record: %d\n", k, buf->key);
+            }
+#endif
+            blockIndex++;
+        }
+    }
+
+    // Write the last block if there are remaining
+    if (count > 0) {
+        // fseek(outputFile, lastWritePos, SEEK_SET);
+        ((file_iterator_state_t *)iteratorState)->fileInterface->seek(lastWritePos, outputFile);
+
+        *((int32_t *)buffer) = blockIndex;                   /* Block index */
+        *((int16_t *)(buffer + BLOCK_COUNT_OFFSET)) = count; /* Block record count */
+
+        if (0 == ((file_iterator_state_t *)iteratorState)->fileInterface->write(outputBuffer, es->page_size, 1, outputFile)) {
+            return 9;  // Return error code if writing to the output file fails
+        }
+
+        metric->num_writes += 1;
+        blockIndex++;
+        count = 0;
+    }
+
+    ((file_iterator_state_t *)iteratorState)->fileInterface->flush(outputFile);
+
+    close_MinSort_sublist(&ms, es);
+
+    *resultFilePtr = 0;
+    free(ms.min);
+    free(ms.offset);
+    free(ms.current);
+    free(ms.next);
+
+    //    printf("Complete. Comparisons: %d  MemCopies: %d  TransferIn: %d  TransferOut: %d TransferOther: %d\n", metric->num_compar, metric->num_memcpys, numShiftIntoOutput, numShiftOutOutput, numShiftOtherBlock);
+
+    return 0;
+}
+
+/************************************************************in_memory_sort.c************************************************************/
+/******************************************************************************/
+/**
+@file
+@author		Kris Wallperington
+@brief		Implementation of an in-place, recursive quicksort written by the author.
+@copyright	Copyright 2016
+                                The University of British Columbia,
+                                IonDB Project Contributors (see AUTHORS.md)
+@par
+                        Licensed under the Apache License, Version 2.0 (the "License");
+                        you may not use this file except in compliance with the License.
+                        You may obtain a copy of the License at
+                                        http://www.apache.org/licenses/LICENSE-2.0
+@par
+                        Unless required by applicable law or agreed to in writing,
+                        software distributed under the License is distributed on an
+                        "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,
+                        either express or implied. See the License for the specific
+                        language governing permissions and limitations under the
+                        License.
+*/
+/******************************************************************************/
+// TODO: quick sort throws a seg fault on pc when sorting large arrays (>20000). This may be due to the stack overflowing
+//  from the recursive calls to in_memory_quick_sort_helper(...)
+
+int8_t
+merge_sort_int32_comparator(
+    void *a,
+    void *b) {
+    int32_t result = *((int32_t *)a) - *((int32_t *)b);
+    if (result < 0) return -1;
+    if (result > 0) return 1;
+    return 0;
+}
+
+void in_memory_swap(
+    void *tmp_buffer,
+    int value_size,
+    char *a,
+    char *b) {
+    memcpy(tmp_buffer, a, value_size);
+    memcpy(a, b, value_size);
+    memcpy(b, tmp_buffer, value_size);
+}
+
+void *in_memory_quick_sort_partition(
+    void *tmp_buffer,
+    int value_size,
+    int key_offset,
+    int8_t (*compare_fcn)(void *a, void *b),
+    char *low,
+    char *high,
+    metrics_t *metric) {
+    char *pivot = low;
+    char *lower_bound = low - value_size;
+    char *upper_bound = high + value_size;
+
+    while (1) {
+        do {
+            upper_bound -= value_size;
+            metric->num_compar++;
+        } while (compare_fcn(upper_bound + key_offset, pivot + key_offset) > 0);
+
+        do {
+            lower_bound += value_size;
+            metric->num_compar++;
+        } while (compare_fcn(lower_bound + key_offset, pivot + key_offset) < 0);
+
+        if (lower_bound < upper_bound) {
+            in_memory_swap(tmp_buffer, value_size, lower_bound, upper_bound);
+            metric->num_memcpys += 3;
+        } else {
+            return upper_bound;
+        }
+    }
+}
+
+void in_memory_quick_sort_helper(
+    void *tmp_buffer,
+    uint32_t num_values,
+    int value_size,
+    int key_offset,
+    int8_t (*compare_fcn)(void *a, void *b),
+    char *low,
+    char *high,
+    metrics_t *metric) {
+    if (low < high) {
+        char *pivot = (char *)in_memory_quick_sort_partition(tmp_buffer, value_size, key_offset, compare_fcn, low, high, metric);
+
+        in_memory_quick_sort_helper(tmp_buffer, num_values, value_size, key_offset, compare_fcn, low, pivot, metric);
+        in_memory_quick_sort_helper(tmp_buffer, num_values, value_size, key_offset, compare_fcn, pivot + value_size, high, metric);
+    }
+}
+
+int in_memory_quick_sort(
+    void *data,
+    uint32_t num_values,
+    int value_size,
+    int key_offset,
+    int8_t (*compare_fcn)(void *a, void *b),
+    metrics_t *metric) {
+    void *tmp_buffer = malloc(value_size);
+    if (NULL == tmp_buffer) return 8;
+
+    /*void* low = data*/
+    char *high = (char *)data + (num_values - 1) * value_size;
+    in_memory_quick_sort_helper(tmp_buffer, num_values, value_size, key_offset, compare_fcn, (char *)data, high, metric);
+
+    free(tmp_buffer);
+
+    return 0;
+}
+/************************************************************no_output_heap.c************************************************************/
+/******************************************************************************/
+/**
+@file		replacement_heap.c
+@author		Riley Jackson, Ramon Lawrence
+@brief		File-based replacement selection
+@copyright	Copyright 2019
+                        The University of British Columbia,
+                        IonDB Project Contributors (see AUTHORS.md)
+@par Redistribution and use in source and binary forms, with or without
+        modification, are permitted provided that the following conditions are met:
+
+@par 1.Redistributions of source code must retain the above copyright notice,
+        this list of conditions and the following disclaimer.
+
+@par 2.Redistributions in binary form must reproduce the above copyright notice,
+        this list of conditions and the following  disclaimer in the documentation
+        and/or other materials provided with the distribution.
+
+@par 3.Neither the name of the copyright holder nor the names of its contributors
+        may be used to endorse or promote products derived from this software without
+        specific prior written permission.
+
+@par THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+        AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+        IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+        ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE
+        LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+        CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+        SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+        INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+        CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+        ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+        POSSIBILITY OF SUCH DAMAGE.
+*/
+/******************************************************************************/
+
+/*
+ *Starts with empty root and recursively moves tuples into their empty parent. Stops when the input tuple can be inserted into the parent instead while maintaining sorted order.
+ */
+void heapify(char *buffer,
+             void *input_tuple,
+             int32_t size,
+             external_sort_t *es,
+             metrics_t *metric) {
+    int32_t left, right, smallest;
+    int32_t i = 0;
+    while (1) {
+        left = 2 * i + 1;
+        right = left + 1;
+
+        if (left >= size)
+            break;
+
+        // find if left or right is smallest
+        metric->num_compar++;
+        if (right < size && es->compare_fcn(buffer + right * es->record_size + es->key_offset, buffer + left * es->record_size + es->key_offset) < 0)
+            smallest = right;
+        else
+            smallest = left;
+
+        // is input tuple the smallest
+        metric->num_compar++;
+        if (es->compare_fcn(input_tuple + es->key_offset, buffer + smallest * es->record_size + es->key_offset) < 0)
+            break;
+
+        // Perform shift
+        metric->num_memcpys++;
+        memcpy(buffer + i * es->record_size, buffer + smallest * es->record_size, (size_t)es->record_size);
+        i = smallest;
+    }
+    // insert the tuple
+    metric->num_memcpys++;
+    memcpy(buffer + i * es->record_size, input_tuple, (size_t)es->record_size);
+}
+/*
+ * Shifts parent node of current child at idx into the child. Stops shifting parents and inserts the insert_tuple into the idx when
+ * the idx points to the position where the input tuple belongs in sorted order.
+ */
+void shiftUp(char *buffer,
+             void *input_tuple,
+             int32_t idx,
+             external_sort_t *es,
+             metrics_t *metric) {
+    int32_t parent;
+
+    while (idx > 0) {
+        parent = (idx - 1) / 2;
+
+        metric->num_compar++;
+        if (es->compare_fcn(input_tuple, buffer + parent * es->record_size + es->key_offset) >= 0) {
+            break;
+        }
+        metric->num_memcpys++;
+        memcpy(buffer + idx * es->record_size, buffer + parent * es->record_size, (size_t)es->record_size);
+        idx = parent;
+    }
+    metric->num_memcpys++;
+    memcpy(buffer + idx * es->record_size, input_tuple, (size_t)es->record_size);
+}
+
+/*
+ *Starts with empty root and recursively moves tuples into their empty parent. Stops when the input tuple can be inserted into the parent instead while maintaining sorted order.
+ * Heap function assumes root is at end of array and works backwards
+ */
+void heapify_rev(char *buffer,
+                 void *input_tuple,
+                 int32_t size,
+                 external_sort_t *es,
+                 metrics_t *metric) {
+    int32_t left, right, smallest;
+    int32_t i = 0;
+    while (1) {
+        left = 2 * i + 1;
+        right = left + 1;
+
+        if (left >= size)
+            break;
+
+        // find if left or right is smallest
+        metric->num_compar++;
+        if (right < size && es->compare_fcn(buffer - right * es->record_size + es->key_offset, buffer - left * es->record_size + es->key_offset) < 0)
+            smallest = right;
+        else
+            smallest = left;
+
+        // is input tuple the smallest
+        metric->num_compar++;
+        if (es->compare_fcn(input_tuple + es->key_offset, buffer - smallest * es->record_size + es->key_offset) < 0)
+            break;
+
+        // Perform shift
+        metric->num_memcpys++;
+        memcpy(buffer - i * es->record_size, buffer - smallest * es->record_size, (size_t)es->record_size);
+        i = smallest;
+    }
+    // insert the tuple
+    metric->num_memcpys++;
+    memcpy(buffer - i * es->record_size, input_tuple, (size_t)es->record_size);
+}
+/*
+ * Shifts parent node of current child at idx into the child. Stops shifting parents and inserts the insert_tuple into the idx when
+ * the idx points to the position where the input tuple belongs in sorted order.
+ * Heap function assumes root is at end of array and works backwards
+ */
+void shiftUp_rev(char *buffer,
+                 void *input_tuple,
+                 int32_t idx,
+                 external_sort_t *es,
+                 metrics_t *metric) {
+    int32_t parent;
+
+    while (idx > 0) {
+        parent = (idx - 1) / 2;
+
+        metric->num_compar++;
+        if (es->compare_fcn(input_tuple + es->key_offset, buffer - parent * es->record_size + es->key_offset) >= 0) {
+            break;
+        }
+        metric->num_memcpys++;
+        memcpy(buffer - idx * es->record_size, buffer - parent * es->record_size, (size_t)es->record_size);
+        idx = parent;
+    }
+    metric->num_memcpys++;
+    memcpy(buffer - idx * es->record_size, input_tuple, (size_t)es->record_size);
+}
+
+/************************************************************sortWrapper.c************************************************************/
+
+#define PRINT_METRIC
+
+// External declaration for setupFile function
+extern void *setupFile(const char *filename);
+
+// Forward declaration for pure in-memory sort (no file I/O)
+file_iterator_state_t *startPureMemorySort(sortData *data, embedDBOperator *op);
+
+/**
+ * @brief Pure in-memory sort that avoids file I/O completely for very small datasets
+ * @param data Sort configuration data
+ * @param op The operator to read data from
+ * @return file_iterator_state_t* Iterator for reading sorted results from memory
+ */
+file_iterator_state_t *startPureMemorySort(sortData *data, embedDBOperator *op) {
+    printf("DEBUG: Starting pure in-memory sort\n");
+
+    int record_count = 0;
+    while (exec(op->input)) {
+        record_count++;
+        if (record_count > 10) {  // Safety limit
+            printf("ERROR: Too many records for pure in-memory sort\n");
+            return NULL;
+        }
+    }
+
+    printf("DEBUG: Found %d records for pure in-memory sort\n", record_count);
+
+    if (record_count == 0) {
+        printf("DEBUG: No records to sort\n");
+        file_iterator_state_t *iteratorState = malloc(sizeof(file_iterator_state_t));
+        if (iteratorState == NULL) {
+            return NULL;
+        }
+        iteratorState->file = NULL;
+        iteratorState->fileInterface = data->fileInterface;
+        iteratorState->currentRecord = 0;
+        iteratorState->recordsRead = 0;
+        iteratorState->recordsLeftInBlock = 0;
+        iteratorState->recordSize = data->recordSize;
+        iteratorState->totalRecords = 0;
+        iteratorState->resultFile = 0;
+        return iteratorState;
+    }
+
+    void *buffer = malloc(record_count * data->recordSize);
+    if (buffer == NULL) {
+        printf("ERROR: Failed to allocate memory for pure in-memory sort\n");
+        return NULL;
+    }
+
+    op->input->close(op->input);
+    op->input->init(op->input);
+
+    int records_read = 0;
+    while (exec(op->input) && records_read < record_count) {
+        memcpy((char *)buffer + records_read * data->recordSize,
+               op->input->recordBuffer,
+               data->recordSize);
+        records_read++;
+    }
+
+    printf("DEBUG: Read %d records into memory buffer\n", records_read);
+
+    // Sort the records in memory using quicksort
+    metrics_t metrics = {0};
+    int sort_result = in_memory_quick_sort(buffer, records_read, data->recordSize, data->keyOffset, data->compareFn, &metrics);
+
+    if (sort_result != 0) {
+        printf("ERROR: In-memory sort failed\n");
+        free(buffer);
+        return NULL;
+    }
+
+    printf("DEBUG: Pure in-memory sort completed successfully\n");
+
+    file_iterator_state_t *iteratorState = malloc(sizeof(file_iterator_state_t));
+    if (iteratorState == NULL) {
+        printf("ERROR: Failed to allocate iterator state\n");
+        free(buffer);
+        return NULL;
+    }
+
+    iteratorState->file = buffer;
+    iteratorState->fileInterface = data->fileInterface;
+    iteratorState->currentRecord = 0;
+    iteratorState->recordsRead = 0;
+    iteratorState->recordsLeftInBlock = 0;
+    iteratorState->recordSize = data->recordSize;
+    iteratorState->totalRecords = records_read;
+    iteratorState->resultFile = 0;
+
+    return iteratorState;
+}
+
+/**
+ * @brief Adds header information and writes buffer to file
+ *
+ * @param buffer            The buffer that is written. Should be atleast the size of pageSize
+ * @param blockIndex        The block index
+ * @param numberOfValues    The the number of database rows stored in the page
+ * @param pageSize          The size of the page
+ * @param fileInterface     The interface used to write the file
+ * @param file              The file being written to
+ * @return int8_t
+ */
+int8_t writePageWithHeader(void *buffer, const uint32_t blockIndex, const uint32_t numberOfValues, const uint32_t pageSize, const embedDBFileInterface *fileInterface, void *file) {
+    memcpy(buffer, &blockIndex, sizeof(int32_t));
+    memcpy(buffer + sizeof(uint32_t), &numberOfValues, sizeof(int16_t));
+
+    fileInterface->write(buffer, blockIndex, pageSize, file);
+
+    if (fileInterface->error(file)) {
+        printf("ERROR: SORT: Failed to write unsorted data");
+        return 1;
+    }
+
+    return 0;
+}
+
+/**
+ * @brief               Writes row data from the input operator to a file
+ *
+ * @param data         The operator data
+ * @param op            The previous operator
+ * @param unsortedFile  A prexisting file that the row data will be writen to
+ * @param recordSize    The size of the data
+ * @param keySize       The size of the key
+ * @param keyOffset     The offset of the key with in the record (# of bytes)
+ * @return uint32_t     The total number of records written or 0 if an error occurs
+ *
+ */
+uint32_t loadRowData(sortData *data, embedDBOperator *op, void *unsortedFile) {
+    uint32_t count = 0;
+    int32_t blockIndex = 0;
+    int16_t valuesPerPage = (PAGE_SIZE - BLOCK_HEADER_SIZE) / data->recordSize;
+
+    void *buffer = malloc(PAGE_SIZE);
+
+    if (buffer == NULL) {
+        printf("ERROR: SORT: buffer malloc failed");
+        return 0;
+    }
+
+    // Write row data to file
+    while (exec(op->input)) {
+        // Write page to file when full
+        if (count % valuesPerPage == 0 && count != 0) {
+            if (writePageWithHeader(buffer, blockIndex, valuesPerPage, PAGE_SIZE, data->fileInterface, unsortedFile)) {
+                free(buffer);
+                buffer = NULL;
+                return 0;
+            }
+
+            blockIndex++;
+        }
+
+        // Offset of the data in the page
+        uint32_t rowOffset = count % valuesPerPage * data->recordSize + BLOCK_HEADER_SIZE;
+
+        if (rowOffset + data->recordSize > PAGE_SIZE) {
+            printf("ERROR: SORT: error calculating row offset");
+            free(buffer);
+            buffer = NULL;
+            return 0;
+        }
+
+        // Write data to buffer
+        memcpy((uint8_t *)buffer + rowOffset, op->input->recordBuffer, data->recordSize);
+
+        count++;
+
+        // temp limit for debugging
+        if (data->tupleLimit != -1 && count >= data->tupleLimit)
+            break;
+    }
+
+    // Write remaining records
+    uint32_t numRemainingRecords = (count % valuesPerPage == 0 && count != 0) ? valuesPerPage : count % valuesPerPage;
+    if (writePageWithHeader(buffer, blockIndex, numRemainingRecords, PAGE_SIZE, data->fileInterface, unsortedFile)) {
+        free(buffer);
+        buffer = NULL;
+        return 0;
+    }
+
+    data->fileInterface->flush(unsortedFile);
+
+    // Clean up
+    free(buffer);
+    buffer = NULL;
+
+    return count;
+}
+
+/**
+ * @brief Begins the sorting operation using row data from previous operator
+ *
+ * @param op The previous operator that will feed row data
+ */
+void prepareSort(embedDBOperator *op) {
+    sortData *data = op->state;
+    data->keyOffset = getColOffsetFromSchema(op->schema, data->colNum);
+    data->recordSize = getRecordSizeFromSchema(op->schema);
+    data->keySize = op->schema->columnSizes[data->colNum];
+
+    // A columns size will be negative if the column is signed
+    // and positive if value is unsigned
+    if (data->keySize < 0) {
+        data->keySize = -1 * data->keySize;
+    }
+
+#ifdef ARDUINO
+    // For Arduino Due, use pure in-memory sort to completely avoid SD card I/O issues
+    data->fileIterator = startPureMemorySort(data, op);
+    if (data->fileIterator == NULL) {
+        printf("ERROR: Pure memory sort failed\n");
+        return;
+    }
+    return;
+#endif
+
+    // Set up files
+    void *unsortedFile = setupFile(SORT_DATA_LOCATION);
+    void *sortedFile = setupFile(SORT_ORDER_LOCATION);
+
+    if (unsortedFile == NULL || sortedFile == NULL) {
+#ifdef PRINT_ERRORS
+        printf("ERROR: Failed to open files while initializing ORDER BY operator");
+#endif
+        return;
+    }
+
+    const uint8_t unsortedOpen = data->fileInterface->open(unsortedFile, EMBEDDB_FILE_MODE_W_PLUS_B);
+    const uint8_t sortedOpen = data->fileInterface->open(sortedFile, EMBEDDB_FILE_MODE_W_PLUS_B);
+
+    if (!unsortedOpen || !sortedOpen) {
+#ifdef PRINT_ERRORS
+        printf("ERROR: Failed to open files while initializing ORDER BY operator");
+#endif
+        return;
+    }
+
+    // Load row data
+    data->count = loadRowData(data, op, unsortedFile);
+
+    // Start sorting
+    file_iterator_state_t *iteratorState = startSort(data, unsortedFile, sortedFile);
+    if (iteratorState == NULL) {
+        printf("ERROR: Sort failed");
+        return;
+    }
+
+    // Finish
+    iteratorState->file = sortedFile;
+    data->fileInterface->close(unsortedFile);
+    data->fileIterator = iteratorState;
+}
+
+/**
+ * @brief The data given in the unsortedFile is sorted and stored in the sortedFile
+ *
+ * @param fileInterface             The file interface
+ * @param unsortedFile              The file that is loaded with row data
+ * @param sortedFile                An empty file
+ * @param recordSize                The size of the records
+ * @param count                     The total number of records stored in unsortedFile
+ * @return file_iterator_state_t*   An iterator that is used to retrieve the sorted records
+ */
+file_iterator_state_t *startSort(sortData *data, void *unsortedFile, void *sortedFile) {
+    // Initialize external_sort_t structure
+    external_sort_t es;
+    es.key_size = data->keySize;
+    es.value_size = data->recordSize;
+    es.record_size = data->recordSize;
+    es.key_offset = data->keyOffset;
+    es.headerSize = BLOCK_HEADER_SIZE;
+    es.page_size = PAGE_SIZE;
+    es.num_pages = (uint32_t)ceil((float)data->count / ((es.page_size - es.headerSize) / es.record_size));
+
+// Reduce buffer size for Arduino
+#ifdef ARDUINO
+    const int buffer_max_pages = 1;  // Reduced to minimum for Arduino
+#else
+    const int buffer_max_pages = 4;
+#endif
+
+    char *buffer = malloc(buffer_max_pages * es.page_size + es.record_size);
+    char *tuple_buffer = buffer + es.page_size * buffer_max_pages;
+
+    if (buffer == NULL) {
+#ifdef PRINT_ERRORS
+        printf("ERROR: SORT: buffer malloc failed m\n");
+#endif
+        return NULL;
+    }
+
+    // Prepare the file iterator data for sorting
+    file_iterator_state_t *iteratorState = malloc(sizeof(file_iterator_state_t));
+    if (iteratorState == NULL) {
+#ifdef PRINT_ERRORS
+        printf("Error: SORT: iterator malloc failed\n");
+#endif
+        free(buffer);
+        buffer = NULL;
+        return NULL;
+    }
+
+    iteratorState->file = unsortedFile;
+    iteratorState->recordsRead = 0;
+    iteratorState->totalRecords = data->count;  // Total records from the previous while loop
+    iteratorState->recordSize = es.record_size;
+    iteratorState->fileInterface = data->fileInterface;
+    iteratorState->currentRecord = 0;
+    iteratorState->recordsLeftInBlock = 0;
+    iteratorState->resultFile = 0;
+
+    data->fileIterator = iteratorState;
+
+    // Metrics
+    metrics_t metrics = initMetric();
+
+    long result_file_ptr = 0;
+
+    int err;
+// Use simpler sort for Arduino with small datasets
+#ifdef ARDUINO
+    printf("DEBUG: Starting Arduino sort with %d records\n", data->count);
+    if (data->count <= 100) {  // Use flash_minsort for all datasets on Arduino (more memory efficient)
+        printf("DEBUG: Using flash_minsort for small dataset\n");
+        err = flash_minsort(iteratorState, tuple_buffer, sortedFile, buffer, buffer_max_pages * es.page_size, &es, &result_file_ptr, &metrics, data->compareFn);
+    } else {
+        printf("DEBUG: Using flash_minsort for large dataset\n");
+        // Use flash_minsort for larger datasets (more memory efficient than adaptive_sort)
+        err = flash_minsort(iteratorState, tuple_buffer, sortedFile, buffer, buffer_max_pages * es.page_size, &es, &result_file_ptr, &metrics, data->compareFn);
+    }
+    printf("DEBUG: Arduino sort completed with error code: %d\n", err);
+#else
+    // Use adaptive sort on desktop
+    int8_t runGenOnly = false;   // Run full sort operation
+    int8_t writeReadRatio = 19;  // 1.97 * 10 => 19
+    err = adaptive_sort(readNextRecord, iteratorState, tuple_buffer, sortedFile, buffer, buffer_max_pages, &es, &result_file_ptr, &metrics, data->compareFn, runGenOnly, writeReadRatio, data);
+#endif
+
+#ifdef PRINT_METRIC
+    printf("\tComplete. Comparisons: %d  Writes: %d  Reads: %d Memcpys: %d\n", metrics.num_compar, metrics.num_writes, metrics.num_reads, metrics.num_memcpys);
+#endif
+
+    iteratorState->resultFile = result_file_ptr;
+
+#ifdef PRINT_ERRORS
+    if (8 == err) {
+        printf("Out of memory!\n");
+    } else if (10 == err) {
+        printf("File Read Error!\n");
+    } else if (9 == err) {
+        printf("File Write Error!\n");
+    }
+#endif
+
+    // Reset file iterator
+    iteratorState->recordsRead = 0;
+    iteratorState->currentRecord = 0;
+
+    // Clean up
+    free(buffer);
+    buffer = NULL;
+    return iteratorState;
+}
+
+/**
+ * @brief Reads the next record from the sorted file
+ *
+ * @param data     The ORDER BY operator data
+ * @param buffer    A buffer that is the size of one record
+ * @return uint8_t  0: if read was successful. other wise none zero
+ */
+uint8_t readNextRecord(void *data, void *buffer) {
+    file_iterator_state_t *iteratorState = ((sortData *)data)->fileIterator;
+
+    if (iteratorState->recordsRead >= iteratorState->totalRecords) {
+        return 1;  // No more records left to read
+    }
+
+#ifdef ARDUINO
+    // For pure memory sort on Arduino, read directly from memory buffer
+    if (iteratorState->file != NULL && iteratorState->resultFile == 0) {
+        memcpy(buffer, (char *)iteratorState->file + iteratorState->recordsRead * iteratorState->recordSize,
+               iteratorState->recordSize);
+        iteratorState->recordsRead++;
+        iteratorState->currentRecord++;
+        return 0;
+    }
+#endif
+
+    uint32_t recordPerPage = (PAGE_SIZE - BLOCK_HEADER_SIZE) / iteratorState->recordSize;
+
+    // Read next page if current buffer is empty
+    if (iteratorState->currentRecord % recordPerPage == 0 || iteratorState->recordsRead == 0) {
+        iteratorState->fileInterface->seek(iteratorState->currentRecord / recordPerPage * PAGE_SIZE + iteratorState->resultFile, iteratorState->file);
+        iteratorState->fileInterface->readRel(((sortData *)data)->readBuffer, PAGE_SIZE, 1, iteratorState->file);
+
+        if (((sortData *)data)->fileInterface->error(iteratorState->file)) {
+            printf("ERROR: SORT: next record read failed");
+            return 2;
+        }
+    }
+
+    // Copy result to ouput buffer
+    memcpy(buffer, ((sortData *)data)->readBuffer + BLOCK_HEADER_SIZE + iteratorState->recordSize * (iteratorState->currentRecord % recordPerPage), iteratorState->recordSize);
+    iteratorState->recordsRead++;
+    iteratorState->currentRecord++;
+
+#ifdef DEBUG
+    printf("DEBUG: ROWDATA from file:\n");
+    for (int i = 0; i < iteratorState->recordSize - SORT_KEY_SIZE; i++) {
+        printf("%2x ", ((uint8_t *)buffer)[i]);
+    }
+    printf("\n");
+#endif
+
+    return 0;
+}
+
+void closeSort(file_iterator_state_t *iteratorState) {
+#ifdef ARDUINO
+    // For pure memory sort, we need to free the memory buffer
+    if (iteratorState->file != NULL && iteratorState->resultFile == 0) {
+        free(iteratorState->file);
+        iteratorState->file = NULL;
+        return;
+    }
+#endif
+
+    if (iteratorState->file != NULL) {
+        iteratorState->fileInterface->close(iteratorState->file);
+        iteratorState->file = NULL;
+    }
+}
+
+/**
+ * @brief Initalizes default metric values
+ *
+ * @return metrics_t
+ */
+metrics_t initMetric() {
+    metrics_t metrics;
+    metrics.num_reads = 0;
+    metrics.num_compar = 0;
+    metrics.num_memcpys = 0;
+    metrics.num_runs = 0;
+    metrics.num_writes = 0;
+    return metrics;
+}
