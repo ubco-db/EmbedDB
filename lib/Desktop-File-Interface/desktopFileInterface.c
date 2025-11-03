@@ -5,7 +5,7 @@ typedef struct {
     FILE *file;
 } FILE_INFO;
 
-void *setupFile(char *filename) {
+void *setupFile(const char *filename) {
     FILE_INFO *fileInfo = malloc(sizeof(FILE_INFO));
     int nameLen = strlen(filename);
     fileInfo->filename = calloc(1, nameLen + 1);

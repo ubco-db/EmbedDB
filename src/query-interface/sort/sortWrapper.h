@@ -56,6 +56,14 @@ metrics_t initMetric();
 uint32_t loadRowData(sortData *data, embedDBOperator *op, void *unsortedFile);
 
 /**
+ * @brief Pure in-memory sort that avoids file I/O completely for very small datasets
+ * @param data Sort configuration data
+ * @param op The operator to read data from
+ * @return file_iterator_state_t* Iterator for reading sorted results from memory
+ */
+file_iterator_state_t *startPureMemorySort(sortData *data, embedDBOperator *op);
+
+/**
  * @brief The data given in the unsortedFile is sorted and stored in the sortedFile
  *
  * @param fileInterface             The file interface

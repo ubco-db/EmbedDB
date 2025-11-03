@@ -71,7 +71,9 @@ void executeRules(embedDBState* state, void* key, void* data) {
                 handleCustomQuery(state, state->rules[i], key, data);
                 break;
             default:
+#ifdef PRINT_ERRORS
                 printf("ERROR: Unsupported rule type\n");
+#endif
         }
     }
 }
@@ -150,7 +152,9 @@ embedDBOperator* createOperator(embedDBState* state, activeRule* rule, void*** a
             it->minKey = minKeyPtr;
         }
     } else {
+#ifdef PRINT_ERRORS
         printf("ERROR: Unsupported key size\n");
+#endif
         return NULL;
     }
 
@@ -174,7 +178,9 @@ embedDBOperator* createOperator(embedDBState* state, activeRule* rule, void*** a
             aggFunc = createMinAggregate(rule->colNum, rule->schema->columnSizes[rule->colNum]);
             break;
         default:
+#ifdef PRINT_ERRORS
             printf("ERROR: Unsupported rule type\n");
+#endif
     }
 
     embedDBAggregateFunc* aggFuncs = (embedDBAggregateFunc*)malloc(1 * sizeof(embedDBAggregateFunc));
@@ -218,7 +224,9 @@ void executeComparison(activeRule* rule, void* aggregateValue, Comparator compar
             if (comparisonResult != 0) rule->callback(aggregateValue, data, rule->context);
             break;
         default:
+#ifdef PRINT_ERRORS
             printf("ERROR: Unsupported operation\n");
+#endif
     }
 }
 
@@ -237,7 +245,9 @@ void handleGetMinMax(embedDBState* state, activeRule* rule, void* key, void* dat
         int64_t minmax = GetMinMax64(state, rule, key);
         executeComparison(rule, &minmax, int64Comparator, data);
     } else {
+#ifdef PRINT_ERRORS
         printf("ERROR: Unsupported column size\n");
+#endif
     }
 }
 
@@ -257,6 +267,8 @@ void handleCustomQuery(embedDBState* state, activeRule* rule, void* key, void* d
             executeComparison(rule, result, doubleComparator, data);
             break;
         default:
+#ifdef PRINT_ERRORS
             printf("ERROR: Unsupported return type\n");
+#endif
     }
 }

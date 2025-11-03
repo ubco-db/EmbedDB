@@ -6,31 +6,11 @@
 
 #endif
 
-#ifdef ARDUINO
-// For Arduino, setupFile is not used since we use pure memory sort
-// But we need to define it for linking compatibility
-#ifdef __cplusplus
-extern "C" {
-#endif
-
-void* setupSDFile(char* filename);
-
-void* setupFile(const char* filename) {
-    return setupSDFile((char*)filename);
-}
-
-#ifdef __cplusplus
-}
-#endif
-#endif
-
 #define STORAGE_TYPE 0
-
-#ifdef ARDUINO
-// pio test --environment due --filter "test_sort"
 
 #if defined(MEMBOARD) && STORAGE_TYPE == 1
 #include "dataflashFileInterface.h"
+#include "memboardTestSetup.h"
 #endif
 
 #if defined(MEGA)
@@ -41,26 +21,24 @@ void* setupFile(const char* filename) {
 #include "dueTestSetup.h"
 #endif
 
+#ifdef ARDUINO
 #include "SDFileInterface.h"
-#define FILE_TYPE SD_FILE
 #define getFileInterface getSDInterface
+#define setupFile setupSDFile
 #define tearDownFile tearDownSDFile
-
+#define DATA_FILE_PATH "dataFile.bin"
 #define clock millis
 #define DATA_FILE_PATH_UWA "dataFileUWA.bin"
 #define INDEX_FILE_PATH_UWA "indexFileUWA.bin"
 #define DATA_FILE_PATH_SEA "dataFileSEA.bin"
 #define INDEX_FILE_PATH_SEA "indexFileSEA.bin"
-
 #else
-
 #define FILE_TYPE FILE
 #include "desktopFileInterface.h"
 #define DATA_FILE_PATH_UWA "build/artifacts/dataFileUWA.bin"
 #define INDEX_FILE_PATH_UWA "build/artifacts/indexFileUWA.bin"
 #define DATA_FILE_PATH_SEA "build/artifacts/dataFileSEA.bin"
 #define INDEX_FILE_PATH_SEA "build/artifacts/indexFileSEA.bin"
-
 #endif
 
 #include "unity.h"
