@@ -135,6 +135,8 @@ embedDBFileInterface *getFileInterface() {
     fileInterface->writeRel = FILE_WRITE_REL;
     fileInterface->seek = FILE_SEEK;
     fileInterface->tell = FILE_TELL;
+    fileInterface->setup = setupFile;
+    fileInterface->teardown = tearDownFile;
     return fileInterface;
 }
 
@@ -152,5 +154,7 @@ embedDBFileInterface *getMockEraseFileInterface() {
     fileInterface->writeRel = FILE_WRITE_REL;
     fileInterface->seek = FILE_SEEK;
     fileInterface->tell = FILE_TELL;
+    fileInterface->setup = setupFile;
+    fileInterface->teardown = tearDownFile;
     return fileInterface;
 }

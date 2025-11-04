@@ -134,5 +134,7 @@ embedDBFileInterface *getSDInterface() {
     fileInterface->erase = FILE_ERASE;
     fileInterface->open = FILE_OPEN;
     fileInterface->flush = FILE_FLUSH;
+    fileInterface->setup = setupSDFile;
+    fileInterface->teardown = tearDownSDFile;
     return fileInterface;
 }

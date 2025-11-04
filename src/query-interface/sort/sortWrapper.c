@@ -1,11 +1,9 @@
 #include "sortWrapper.h"
 
 #include "query-interface/sort/in_memory_sort.h"
+#include "unistd.h"
 
 #define PRINT_METRIC
-
-// External declaration for setupFile function
-extern void *setupFile(const char *filename);
 
 file_iterator_state_t *startPureMemorySort(sortData *data, embedDBOperator *op) {
 #ifdef DEBUG
@@ -227,21 +225,16 @@ void prepareSort(embedDBOperator *op) {
         data->keySize = -1 * data->keySize;
     }
 
-#ifdef ARDUINO
-    // For Arduino Due, use pure in-memory sort to completely avoid SD card I/O issues
-    data->fileIterator = startPureMemorySort(data, op);
-    if (data->fileIterator == NULL) {
-#ifdef PRINT_ERRORS
-        printf("ERROR: Pure memory sort failed\n");
-#endif
-        return;
-    }
-    return;
-#endif
+    char tmp1[] = "/tmp/embedsort_unsortedXXXXXX";
+    char tmp2[] = "/tmp/embedsort_sortedXXXXXX";
+    int fd1 = mkstemp(tmp1);
+    int fd2 = mkstemp(tmp2);
+    if (fd1 >= 0) close(fd1);
+    if (fd2 >= 0) close(fd2);
 
     // Set up files
-    void *unsortedFile = setupFile(SORT_DATA_LOCATION);
-    void *sortedFile = setupFile(SORT_ORDER_LOCATION);
+    void* unsortedFile = data->fileInterface->setup(tmp1);
+    void* sortedFile = data->fileInterface->setup(tmp2);
 
     if (unsortedFile == NULL || sortedFile == NULL) {
 #ifdef PRINT_ERRORS

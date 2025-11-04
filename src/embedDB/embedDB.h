@@ -230,7 +230,10 @@ typedef struct {
     /**
      *
      */
-    int32_t (*tell)(void *file);
+    int32_t(*tell)(void* file);
+
+    void* (*setup)(const char* filename);
+    void (*teardown)(void* file);
 
 } embedDBFileInterface;
 

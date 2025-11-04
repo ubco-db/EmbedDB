@@ -11,13 +11,6 @@
 #include "flash_minsort.h"
 #include "in_memory_sort.h"
 
-#if defined(DESKTOP)
-#include <desktopFileInterface.h>
-#endif
-
-#define SORT_DATA_LOCATION "sort_data.bin"
-#define SORT_ORDER_LOCATION "sort_order.bin"
-
 typedef struct embedDBOperator embedDBOperator;
 
 typedef struct sortData {
