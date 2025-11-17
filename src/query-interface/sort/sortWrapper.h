@@ -28,7 +28,7 @@ typedef struct sortData {
 } sortData;
 
 /**
- * @brief Initalizes default metric values
+ * @brief Initializes default metric values
  *
  * @return metrics_t
  */

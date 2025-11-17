@@ -232,13 +232,20 @@ void prepareSort(embedDBOperator *op) {
     if (fd1 >= 0) close(fd1);
     if (fd2 >= 0) close(fd2);
 
-    // Set up files
-    void* unsortedFile = data->fileInterface->setup(tmp1);
-    void* sortedFile = data->fileInterface->setup(tmp2);
+    // Set up files using the configured file interface factory
+    if (data->fileInterface == NULL || data->fileInterface->setup == NULL) {
+#ifdef PRINT_ERRORS
+        printf("ERROR: File interface or setup function not provided while initializing ORDER BY operator\n");
+#endif
+        return;
+    }
+
+    void *unsortedFile = data->fileInterface->setup(tmp1);
+    void *sortedFile = data->fileInterface->setup(tmp2);
 
     if (unsortedFile == NULL || sortedFile == NULL) {
 #ifdef PRINT_ERRORS
-        printf("ERROR: Failed to open files while initializing ORDER BY operator");
+        printf("ERROR: Failed to allocate file handles while initializing ORDER BY operator\n");
 #endif
         return;
     }
@@ -322,7 +329,7 @@ file_iterator_state_t *startSort(sortData *data, void *unsortedFile, void *sorte
 
     iteratorState->file = unsortedFile;
     iteratorState->recordsRead = 0;
-    iteratorState->totalRecords = data->count;  // Total records from the previous while loop
+    iteratorState->totalRecords = data->count;
     iteratorState->recordSize = es.record_size;
     iteratorState->fileInterface = data->fileInterface;
     iteratorState->currentRecord = 0;
