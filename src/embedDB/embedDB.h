@@ -232,8 +232,18 @@ typedef struct {
      */
     int32_t(*tell)(void* file);
 
+    /**
+     *  @brief Pointer to external function for file setup
+     */
     void* (*setup)(const char* filename);
+    /**
+     *  @brief Pointer to external function for file teardown
+     */
     void (*teardown)(void* file);
+    /**
+     *  @brief Pointer to platform specific tmp file path
+     */
+    char* (*tempFilePath)(void);
 
 } embedDBFileInterface;
 

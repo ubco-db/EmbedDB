@@ -1,5 +1,7 @@
 #include "desktopFileInterface.h"
 
+static char tempPathBuffer[256];
+
 typedef struct {
     char *filename;
     FILE *file;
@@ -121,6 +123,37 @@ int32_t FILE_TELL(void *file) {
     return ftell(fileInfo->file);
 }
 
+char *tempFilePath(void) {
+    static char tempPathBuffer[256];
+
+#if defined(_WIN32) || defined(_WIN64)
+    char *path = _tempnam(NULL, "embeddb_");
+    if (path != NULL) {
+        strncpy(tempPathBuffer, path, sizeof(tempPathBuffer) - 1);
+        tempPathBuffer[sizeof(tempPathBuffer) - 1] = '\0';
+        free(path);
+        return tempPathBuffer;
+    }
+
+    /* Fallback */
+    snprintf(tempPathBuffer, sizeof(tempPathBuffer),
+             "embeddb_%lu.tmp", (unsigned long)rand());
+    return tempPathBuffer;
+
+#else
+    /* POSIX systems */
+    snprintf(tempPathBuffer, sizeof(tempPathBuffer),
+             "/tmp/embeddb_%luXXXXXX", (unsigned long)rand());
+
+    int fd = mkstemp(tempPathBuffer);
+    if (fd >= 0) {
+        close(fd);
+    }
+
+    return tempPathBuffer;
+#endif
+}
+
 embedDBFileInterface *getFileInterface() {
     embedDBFileInterface *fileInterface = malloc(sizeof(embedDBFileInterface));
     fileInterface->close = FILE_CLOSE;
@@ -137,6 +170,7 @@ embedDBFileInterface *getFileInterface() {
     fileInterface->tell = FILE_TELL;
     fileInterface->setup = setupFile;
     fileInterface->teardown = tearDownFile;
+    fileInterface->tempFilePath = tempFilePath;
     return fileInterface;
 }
 
@@ -156,5 +190,6 @@ embedDBFileInterface *getMockEraseFileInterface() {
     fileInterface->tell = FILE_TELL;
     fileInterface->setup = setupFile;
     fileInterface->teardown = tearDownFile;
+    fileInterface->tempFilePath = tempFilePath;
     return fileInterface;
 }

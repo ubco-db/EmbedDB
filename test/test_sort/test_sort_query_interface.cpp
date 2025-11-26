@@ -63,8 +63,12 @@ void setUp() {
     /* Setup files */
     char dataPath[] = DATA_FILE_PATH_UWA, indexPath[] = INDEX_FILE_PATH_UWA;
     stateUWA->fileInterface = getFileInterface();
-    stateUWA->dataFile = setupFile(dataPath);
-    stateUWA->indexFile = setupFile(indexPath);
+
+    stateUWA->dataFile = stateUWA->fileInterface->setup(dataPath);
+    stateUWA->indexFile = stateUWA->fileInterface->setup(indexPath);
+#ifdef ARDUINO
+    stateUWA->fileInterface->tempFilePath
+#endif
 
     stateUWA->bufferSizeInBlocks = 4;
     stateUWA->buffer = malloc(stateUWA->bufferSizeInBlocks * stateUWA->pageSize);
@@ -125,10 +129,11 @@ void insertNValues(embedDBState* state, int n, int mode) {
             }
             break;
         case 1:
+            key = 1;
             for (int i = n; i >= 0; i--) {
-                key = i;
                 value = i;
                 embedDBPut(state, &key, &value);
+                key++;
             }
             break;
         default:
@@ -141,7 +146,7 @@ void runTestSequentialValues() {
 #ifdef ARDUINO
     insertNValues(stateUWA, 1, 0);
 #else
-    insertNValues(stateUWA, 10, 0);
+    insertNValues(stateUWA, 10, 1);
 #endif
 
     embedDBIterator it;
@@ -163,8 +168,8 @@ void runTestSequentialValues() {
     int recordCount = 0;
 
     while (exec(orderByOp)) {
-        TEST_ASSERT_GREATER_OR_EQUAL_UINT32_MESSAGE(previous, ((uint32_t)recordBuffer[1]) / 10.0, "Sort value is not greater than or equal to previous value.");
-        previous = ((uint32_t)recordBuffer[1]) / 10.0;
+        TEST_ASSERT_GREATER_OR_EQUAL_UINT32_MESSAGE(previous, ((uint32_t)recordBuffer[1]), "Sort value is not greater than or equal to previous value.");
+        previous = ((uint32_t)recordBuffer[1]);
         recordCount++;
 
         // Safety break to prevent infinite loop
@@ -178,45 +183,6 @@ void runTestSequentialValues() {
 }
 
 void runTestUsingUWA500k() {
-    printf("Advanced Query Example.\n");
-    embedDBState* stateUWA = (embedDBState*)malloc(sizeof(embedDBState));
-    stateUWA->keySize = 4;
-    stateUWA->dataSize = 12;
-    stateUWA->compareKey = int32Comparator;
-    stateUWA->compareData = int32Comparator;
-    stateUWA->pageSize = 512;
-    stateUWA->eraseSizeInPages = 4;
-    stateUWA->numDataPages = 20000;
-    stateUWA->numIndexPages = 1000;
-    stateUWA->numSplinePoints = 30;
-
-    if (STORAGE_TYPE == 1) {
-        TEST_FAIL_MESSAGE("Dataflash is not currently supported. Defaulting to SD card interface.");
-    }
-
-    /* Setup files */
-    char dataPath[] = DATA_FILE_PATH_UWA, indexPath[] = INDEX_FILE_PATH_UWA;
-    stateUWA->fileInterface = getFileInterface();
-    stateUWA->dataFile = setupFile(dataPath);
-    stateUWA->indexFile = setupFile(indexPath);
-
-    stateUWA->bufferSizeInBlocks = 4;
-    stateUWA->buffer = malloc(stateUWA->bufferSizeInBlocks * stateUWA->pageSize);
-    stateUWA->parameters = EMBEDDB_USE_BMAP | EMBEDDB_USE_INDEX | EMBEDDB_RESET_DATA;
-    stateUWA->bitmapSize = 2;
-    stateUWA->inBitmap = inBitmapInt16;
-    stateUWA->updateBitmap = updateBitmapInt16;
-    stateUWA->buildBitmapFromRange = buildBitmapInt16FromRange;
-    int8_t initResult = embedDBInit(stateUWA, 1);
-    if (initResult != 0) {
-        TEST_FAIL_MESSAGE("There was an error setting up the state of the UWA dataset.");
-    }
-
-    int8_t colSizes[] = {4, 4, 4, 4};
-    int8_t colSignedness[] = {embedDB_COLUMN_UNSIGNED, embedDB_COLUMN_SIGNED, embedDB_COLUMN_SIGNED, embedDB_COLUMN_SIGNED};
-    ColumnType colTypes[] = {embedDB_COLUMN_UINT32, embedDB_COLUMN_INT32, embedDB_COLUMN_INT32, embedDB_COLUMN_INT32};
-    embedDBSchema* baseSchema = embedDBCreateSchema(4, colSizes, colSignedness, colTypes);
-
     // Insert data
     const char datafileName[] = "data/uwa500K.bin";
     insertData(stateUWA, datafileName);
@@ -244,19 +210,12 @@ void runTestUsingUWA500k() {
 
     orderByOp->close(orderByOp);
     embedDBFreeOperatorRecursive(&orderByOp);
-    // Close embedDB
-    embedDBClose(stateUWA);
-    tearDownFile(stateUWA->dataFile);
-    tearDownFile(stateUWA->indexFile);
-    free(stateUWA->fileInterface);
-    free(stateUWA->buffer);
-    free(stateUWA);
-    embedDBFreeSchema(&baseSchema);
 }
 
 int runUnityTests() {
     UNITY_BEGIN();
     RUN_TEST(runTestSequentialValues);
+    RUN_TEST(runTestUsingUWA500k);
     return UNITY_END();
 }
 

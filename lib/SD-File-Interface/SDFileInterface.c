@@ -136,5 +136,12 @@ embedDBFileInterface *getSDInterface() {
     fileInterface->flush = FILE_FLUSH;
     fileInterface->setup = setupSDFile;
     fileInterface->teardown = tearDownSDFile;
+    fileInterface->tempFilePath = sdfat_tempFilePath;
     return fileInterface;
+}
+
+char* sdfat_tempFilePath(void) {
+    static char tempPathBuffer[32];
+    snprintf(tempPathBuffer, sizeof(tempPathBuffer), "TMP%lu.DAT", random());
+    return tempPathBuffer;
 }
