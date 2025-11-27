@@ -141,7 +141,7 @@ int8_t writePageWithHeader(void *buffer, const uint32_t blockIndex, const uint32
  *
  * @param data         The operator data
  * @param op            The previous operator
- * @param unsortedFile  A prexisting file that the row data will be writen to
+ * @param unsortedFile  A preexisting file that the row data will be written to
  * @param recordSize    The size of the data
  * @param keySize       The size of the key
  * @param keyOffset     The offset of the key with in the record (# of bytes)
@@ -479,7 +479,7 @@ void prepareSort(embedDBOperator *op) {
     }
 
     /**
-     * @brief Initalizes default metric values
+     * @brief Initializes default metric values
      *
      * @return metrics_t
      */

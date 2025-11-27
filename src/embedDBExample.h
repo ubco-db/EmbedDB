@@ -2,7 +2,7 @@
 /**
  * @file		embedDBExample.h
  * @author		EmbedDB Team (See Authors.md)
- * @brief		This file includes and example for insterting and retrieving sequential records for EmbeDB.
+ * @brief		This file includes and example for inserting and retrieving sequential records for EmbedDB.
  * @copyright	Copyright 2023
  * 			    EmbedDB Team
  * @par Redistribution and use in source and binary forms, with or without

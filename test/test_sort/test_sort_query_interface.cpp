@@ -135,6 +135,12 @@ void insertNValues(embedDBState* state, int n, int mode) {
                 embedDBPut(state, &key, &value);
                 key++;
             }
+            for (int i = 0, data = 10; i <= n; i++) {
+                key = i + 1;
+                embedDBGet(state, (void*)&key, (void*)&value);
+                TEST_ASSERT_MESSAGE(value == data, "value isn't equal to extracted data");
+                data--;
+            }
             break;
         default:
             break;

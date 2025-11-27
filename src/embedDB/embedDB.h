@@ -176,7 +176,7 @@ typedef struct {
 
     /**
      * @brief	Erases a span of paes from file
-     * @param	startPage   The first page to earse
+     * @param	startPage   The first page to erase
      * @param	pageSize	The page to erase up to (exclusive)
      * @param	file		The file data that was stored in embedDBState->dataFile etc
      * @return	1 for success and 0 for failure
@@ -268,7 +268,7 @@ typedef struct {
     id_t nextIdxPageId;                                                   /* Next logical page id for index. Page id is an incrementing value and may not always be same as physical page id. */
     id_t nextVarPageId;                                                   /* Page number of next var page to be written */
     uint32_t nextRLCPhysicalPageLocation;                                 /* Physical page number for the location for the next record-level-consistency page */
-    uint32_t rlcPhysicalStartingPage;                                     /* Physical page number for the starting page of the record-level consistnecy pages */
+    uint32_t rlcPhysicalStartingPage;                                     /* Physical page number for the starting page of the record-level consistency pages */
     id_t currentVarLoc;                                                   /* Current variable address offset to write at (bytes from beginning of file) */
     void *buffer;                                                         /* Pre-allocated memory buffer for use by algorithm */
     spline *spl;                                                          /* Spline model */
@@ -441,14 +441,14 @@ uint32_t embedDBVarDataStreamRead(embedDBState *state, embedDBVarDataStream *str
 /**
  * @brief	Flushes output buffer.
  * @param	state	algorithm state structure
- * @returns 0 if successul and a non-zero value otherwise
+ * @returns 0 if successful and a non-zero value otherwise
  */
 int8_t embedDBFlush(embedDBState *state);
 
 /**
  * @brief	Flushes output buffer.
  * @param	state	algorithm state structure
- * @returns 0 if successul and a non-zero value otherwise
+ * @returns 0 if successful and a non-zero value otherwise
  */
 int8_t embedDBFlushVar(embedDBState *state);
 
@@ -501,7 +501,7 @@ id_t writeIndexPage(embedDBState *state, void *buffer);
 id_t writeVariablePage(embedDBState *state, void *buffer);
 
 /**
- * @brief   Writes a temporary page when using record-levek-consistency to storage.
+ * @brief   Writes a temporary page when using record-level-consistency to storage.
  * @param	state	embedDB algorithm state structure
  * @param	pageNum	Page number to read
  * @return  Returns 0 for success and non-zero value for an error.

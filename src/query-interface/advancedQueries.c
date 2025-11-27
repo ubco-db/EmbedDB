@@ -897,7 +897,7 @@ void closeKeyJoin(embedDBOperator* op) {
 }
 
 /**
- * @brief	Creates an operator for perfoming an equijoin on the keys (sorted and distinct) of two tables
+ * @brief	Creates an operator for performing an equi-join on the keys (sorted and distinct) of two tables
  */
 embedDBOperator* createKeyJoinOperator(embedDBOperator* input1, embedDBOperator* input2) {
     embedDBOperator* op = malloc(sizeof(embedDBOperator));
