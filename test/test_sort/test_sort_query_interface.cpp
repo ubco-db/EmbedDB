@@ -201,9 +201,9 @@ void runTestUsingUWA500k() {
     embedDBInitIterator(stateUWA, &it);
 
     embedDBOperator* scanOpOrderBy = createTableScanOperator(stateUWA, &it, baseSchema);
-    uint8_t projColsOB[] = {0, 2};
+    uint8_t projColsOB[] = {0, 3};
     embedDBOperator* projColsOrderBy = createProjectionOperator(scanOpOrderBy, 2, projColsOB);
-    embedDBOperator* orderByOp = createOrderByOperator(stateUWA, projColsOrderBy, 2, -1, int32Comparator);
+    embedDBOperator* orderByOp = createOrderByOperator(stateUWA, projColsOrderBy, 3, -1, int32Comparator);
     orderByOp->init(orderByOp);
     int32_t* recordBuffer = (int32_t*)orderByOp->recordBuffer;
     uint32_t previous = 0;
