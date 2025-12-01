@@ -70,7 +70,7 @@ void setUp() {
     stateUWA->fileInterface->tempFilePath
 #endif
 
-    stateUWA->bufferSizeInBlocks = 4;
+        stateUWA->bufferSizeInBlocks = 4;
     stateUWA->buffer = malloc(stateUWA->bufferSizeInBlocks * stateUWA->pageSize);
     stateUWA->parameters = EMBEDDB_USE_BMAP | EMBEDDB_USE_INDEX | EMBEDDB_RESET_DATA;
     stateUWA->bitmapSize = 2;
@@ -165,7 +165,7 @@ void runTestSequentialValues() {
     embedDBOperator* scanOpOrderBy = createTableScanOperator(stateUWA, &it, baseSchema);
     uint8_t projColsOB[] = {0, 1};
     embedDBOperator* projColsOrderBy = createProjectionOperator(scanOpOrderBy, 2, projColsOB);
-    embedDBOperator* orderByOp = createOrderByOperator(stateUWA, projColsOrderBy, 1, 3, int32Comparator);
+    embedDBOperator* orderByOp = createOrderByOperator(stateUWA, projColsOrderBy, 1, -1, int32Comparator);
 
     orderByOp->init(orderByOp);
 
@@ -201,9 +201,9 @@ void runTestUsingUWA500k() {
     embedDBInitIterator(stateUWA, &it);
 
     embedDBOperator* scanOpOrderBy = createTableScanOperator(stateUWA, &it, baseSchema);
-    uint8_t projColsOB[] = {0, 1};
+    uint8_t projColsOB[] = {0, 2};
     embedDBOperator* projColsOrderBy = createProjectionOperator(scanOpOrderBy, 2, projColsOB);
-    embedDBOperator* orderByOp = createOrderByOperator(stateUWA, projColsOrderBy, 1, -1, int32Comparator);
+    embedDBOperator* orderByOp = createOrderByOperator(stateUWA, projColsOrderBy, 2, -1, int32Comparator);
     orderByOp->init(orderByOp);
     int32_t* recordBuffer = (int32_t*)orderByOp->recordBuffer;
     uint32_t previous = 0;

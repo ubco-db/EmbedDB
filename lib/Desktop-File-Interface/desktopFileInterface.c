@@ -1,7 +1,5 @@
 #include "desktopFileInterface.h"
 
-static char tempPathBuffer[256];
-
 typedef struct {
     char *filename;
     FILE *file;
@@ -22,6 +20,31 @@ void tearDownFile(void *file) {
     if (fileInfo->file != NULL)
         fclose(fileInfo->file);
     free(file);
+}
+
+int8_t FILE_REMOVE(void *file) {
+    if (file == NULL) return 0;
+    FILE_INFO *fileInfo = (FILE_INFO *)file;
+
+    if (fileInfo->file != NULL) {
+        fclose(fileInfo->file);
+        fileInfo->file = NULL;
+    }
+
+    int8_t result = 1;
+    if (fileInfo->filename != NULL) {
+        if (remove(fileInfo->filename) != 0) {
+            result = 0;
+#ifdef PRINT_ERRORS
+            perror("ERROR: Failed to remove temp file");
+#endif
+        }
+        free(fileInfo->filename);
+        fileInfo->filename = NULL;
+
+        free(fileInfo);
+        return result;
+    }
 }
 
 int8_t FILE_READ(void *buffer, uint32_t pageNum, uint32_t pageSize, void *file) {
@@ -132,13 +155,11 @@ char *tempFilePath(void) {
         strncpy(tempPathBuffer, path, sizeof(tempPathBuffer) - 1);
         tempPathBuffer[sizeof(tempPathBuffer) - 1] = '\0';
         free(path);
-        return tempPathBuffer;
+    } else {
+        /* Fallback */
+        snprintf(tempPathBuffer, sizeof(tempPathBuffer),
+                 "embeddb_%lu.tmp", (unsigned long)rand());
     }
-
-    /* Fallback */
-    snprintf(tempPathBuffer, sizeof(tempPathBuffer),
-             "embeddb_%lu.tmp", (unsigned long)rand());
-    return tempPathBuffer;
 
 #else
     /* POSIX systems */
@@ -149,9 +170,13 @@ char *tempFilePath(void) {
     if (fd >= 0) {
         close(fd);
     }
-
-    return tempPathBuffer;
 #endif
+
+    char *out = malloc(strlen(tempPathBuffer) + 1);
+    if (out) {
+        strcpy(out, tempPathBuffer);
+    }
+    return out;
 }
 
 embedDBFileInterface *getFileInterface() {
@@ -170,6 +195,7 @@ embedDBFileInterface *getFileInterface() {
     fileInterface->tell = FILE_TELL;
     fileInterface->setup = setupFile;
     fileInterface->teardown = tearDownFile;
+    fileInterface->removeFile = FILE_REMOVE;
     fileInterface->tempFilePath = tempFilePath;
     return fileInterface;
 }
@@ -190,6 +216,7 @@ embedDBFileInterface *getMockEraseFileInterface() {
     fileInterface->tell = FILE_TELL;
     fileInterface->setup = setupFile;
     fileInterface->teardown = tearDownFile;
+    fileInterface->removeFile = FILE_REMOVE;
     fileInterface->tempFilePath = tempFilePath;
     return fileInterface;
 }

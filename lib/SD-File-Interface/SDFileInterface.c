@@ -57,6 +57,32 @@ void tearDownSDFile(void *file) {
     free(file);
 }
 
+int8_t SD_FILE_REMOVE(void *file) {
+    if (file == NULL) return 0;
+    SD_FILE_INFO *fileInfo = (SD_FILE_INFO *)file;
+
+    if (fileInfo->sdFile != NULL) {
+        sd_fclose(fileInfo->sdFile);
+        fileInfo->sdFile = NULL;
+    }
+
+    int8_t result = 1;
+    if (fileInfo->filename != NULL) {
+        /* Try to use C remove as fallback; replace with sd-specific remove if available */
+        if (remove(fileInfo->filename) != 0) {
+            result = 0;
+#ifdef PRINT_ERRORS
+            perror("ERROR: Failed to remove SD temp file");
+#endif
+        }
+        free(fileInfo->filename);
+        fileInfo->filename = NULL;
+    }
+
+    free(fileInfo);
+    return result;
+}
+
 int8_t FILE_READ(void *buffer, uint32_t pageNum, uint32_t pageSize, void *file) {
     SD_FILE_INFO *fileInfo = (SD_FILE_INFO *)file;
     sd_fseek(fileInfo->sdFile, pageSize * pageNum, SEEK_SET);
@@ -136,6 +162,7 @@ embedDBFileInterface *getSDInterface() {
     fileInterface->flush = FILE_FLUSH;
     fileInterface->setup = setupSDFile;
     fileInterface->teardown = tearDownSDFile;
+    fileInterface->removeFile = SD_FILE_REMOVE;
     fileInterface->tempFilePath = sdfat_tempFilePath;
     return fileInterface;
 }

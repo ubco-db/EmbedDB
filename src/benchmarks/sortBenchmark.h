@@ -163,7 +163,7 @@ void sort_order_last(int32_t numValues, embedDBState* stateUWA, embedDBSchema* b
     embedDBOperator* projColsOrderBy = createProjectionOperator(scanOpOrderBy, 2, projColsOB);
     embedDBOperator* orderByOp = createOrderByOperator(stateUWA, projColsOrderBy, 1, numValues, merge_sort_int32_comparator);
     orderByOp->init(orderByOp);
-    int32_t* recordBuffer = orderByOp->recordBuffer;
+    int32_t* recordBuffer = (int32_t*)orderByOp->recordBuffer;
 
     for (uint32_t i = 0; i < 10; i++) {
         if (!exec(orderByOp)) {
@@ -188,7 +188,7 @@ void sort_order_first(int32_t numValues, embedDBState* stateUWA, embedDBSchema* 
     uint8_t projColsOB[] = {0, 1};
     embedDBOperator* projColsOrderBy = createProjectionOperator(orderByOp, 2, projColsOB);
     projColsOrderBy->init(projColsOrderBy);
-    int32_t* recordBuffer = projColsOrderBy->recordBuffer;
+    int32_t* recordBuffer = (int32_t*)projColsOrderBy->recordBuffer;
 
     for (uint32_t i = 0; i < 10; i++) {
         if (!exec(projColsOrderBy)) {

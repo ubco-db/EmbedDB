@@ -245,11 +245,13 @@ void prepareSort(embedDBOperator *op) {
         return;
     }
 
-    const char *tmp1 = data->fileInterface->tempFilePath();
-    const char *tmp2 = data->fileInterface->tempFilePath();
+    char *tmp1 = data->fileInterface->tempFilePath();
+    char *tmp2 = data->fileInterface->tempFilePath();
 
     void *unsortedFile = data->fileInterface->setup(tmp1);
     void *sortedFile = data->fileInterface->setup(tmp2);
+    free(tmp1);
+    free(tmp2);
 
     if (unsortedFile == NULL || sortedFile == NULL) {
 #ifdef PRINT_ERRORS
@@ -283,6 +285,9 @@ void prepareSort(embedDBOperator *op) {
     // Finish
     iteratorState->file = sortedFile;
     data->fileInterface->close(unsortedFile);
+    if (data->fileInterface->removeFile) {
+        data->fileInterface->removeFile(unsortedFile);
+    }
     data->fileIterator = iteratorState;
 #endif
     }
@@ -435,7 +440,8 @@ void prepareSort(embedDBOperator *op) {
 
         // Read next page if current buffer is empty
         if (iteratorState->currentRecord % recordPerPage == 0 || iteratorState->recordsRead == 0) {
-            iteratorState->fileInterface->seek(iteratorState->currentRecord / recordPerPage * PAGE_SIZE + iteratorState->resultFile, iteratorState->file);
+            uint32_t pageOffset = (iteratorState->currentRecord / recordPerPage) * PAGE_SIZE;
+            iteratorState->fileInterface->seek(pageOffset, iteratorState->file);
             iteratorState->fileInterface->readRel(((sortData *)data)->readBuffer, PAGE_SIZE, 1, iteratorState->file);
 
             if (((sortData *)data)->fileInterface->error(iteratorState->file)) {
@@ -474,6 +480,9 @@ void prepareSort(embedDBOperator *op) {
 
         if (iteratorState->file != NULL) {
             iteratorState->fileInterface->close(iteratorState->file);
+            if (iteratorState->fileInterface->removeFile) {
+                iteratorState->fileInterface->removeFile(iteratorState->file);
+            }
             iteratorState->file = NULL;
         }
     }
