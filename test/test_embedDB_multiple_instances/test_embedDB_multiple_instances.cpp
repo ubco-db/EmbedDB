@@ -67,9 +67,9 @@
 #else
 #include "desktopFileInterface.h"
 #define FILE_TYPE FILE
-#define DATA_FILE_PATH "build/artifacts/dataFile%li.bin"
-#define INDEX_FILE_PATH "build/artifacts/indexFile%li.bin"
-#define VAR_DATA_FILE_PATH "build/artifacts/varFile%li.bin"
+#define DATA_FILE_PATH "build/artifacts/dataFile%u.bin"
+#define INDEX_FILE_PATH "build/artifacts/indexFile%u.bin"
+#define VAR_DATA_FILE_PATH "build/artifacts/varFile%u.bin"
 #endif
 
 #include "unity.h"
@@ -128,9 +128,9 @@ void queryRecords(embedDBState *state, int32_t numberOfRecords, int32_t starting
     char message[120];
     for (int32_t i = 0; i < numberOfRecords; i++) {
         int8_t getResult = embedDBGet(state, &key, &dataBuffer);
-        snprintf(message, 120, "embedDBGet returned a non-zero value when getting key %li from state %li", key, i);
+        snprintf(message, 120, "embedDBGet returned a non-zero value when getting key %u from state %u", key, i);
         TEST_ASSERT_EQUAL_INT8_MESSAGE(0, getResult, message);
-        snprintf(message, 120, "embedDBGet did not return the correct data for key %li from state %li", key, i);
+        snprintf(message, 120, "embedDBGet did not return the correct data for key %u from state %u", key, i);
         TEST_ASSERT_EQUAL_INT32_MESSAGE(data, dataBuffer, message);
         key++;
         data++;
@@ -151,7 +151,7 @@ void insertRecordsFromFile(embedDBState *state, const char *fileName, int32_t nu
         for (int16_t i = 0; i < count; i++) {
             void *buf = (infileBuffer + headerSize + i * state->recordSize);
             int8_t putResult = embedDBPut(state, buf, (void *)((int8_t *)buf + 4));
-            snprintf(message, 100, "embedDBPut returned non-zero value for insert of key %li", *((uint32_t *)buf));
+            snprintf(message, 100, "embedDBPut returned non-zero value for insert of key %u", *((uint32_t *)buf));
             TEST_ASSERT_EQUAL_INT8_MESSAGE(0, putResult, message);
             numInserted++;
             if (numInserted >= numRecords) {
@@ -182,7 +182,7 @@ void insertRecordsFromFileWithVarData(embedDBState *state, const char *fileName,
             memcpy(&key, buf, sizeof(uint32_t));
             snprintf(varData, 30, "Hello world %li", key);
             int8_t putResult = embedDBPutVar(state, buf, (void *)((int8_t *)buf + 4), varData, strlen(varData));
-            snprintf(message, 100, "embedDBPut returned non-zero value for insert of key %li", key);
+            snprintf(message, 100, "embedDBPut returned non-zero value for insert of key %u", key);
             TEST_ASSERT_EQUAL_INT8_MESSAGE(0, putResult, message);
             numInserted++;
             if (numInserted >= numRecords) {
@@ -213,9 +213,9 @@ void queryRecordsFromFile(embedDBState *state, const char *fileName, int32_t num
             int8_t getResult = embedDBGet(state, buf, dataBuffer);
             uint32_t key = 0;
             memcpy(&key, buf, sizeof(uint32_t));
-            snprintf(message, 100, "embedDBGet was not able to find the data for key %li", key);
+            snprintf(message, 100, "embedDBGet was not able to find the data for key %u", key);
             TEST_ASSERT_EQUAL_INT8_MESSAGE(0, getResult, message);
-            snprintf(message, 100, "embedDBGet did not return the correct data for key %li", key);
+            snprintf(message, 100, "embedDBGet did not return the correct data for key %u", key);
             TEST_ASSERT_EQUAL_MEMORY_MESSAGE((int8_t *)buf + 4, dataBuffer, state->dataSize, message);
             numRead++;
             if (numRead >= numRecords)
@@ -246,17 +246,17 @@ void queryRecordsFromFileWithVarData(embedDBState *state, const char *fileName, 
             void *buf = (infileBuffer + headerSize + i * (state->keySize + state->dataSize));
             uint32_t key = 0;
             memcpy(&key, buf, sizeof(uint32_t));
-            snprintf(varDataExpected, 30, "Hello world %li", key);
+            snprintf(varDataExpected, 30, "Hello world %u", key);
             embedDBVarDataStream *stream = NULL;
             int8_t getResult = embedDBGetVar(state, buf, dataBuffer, &stream);
-            snprintf(message, 100, "embedDBGetVar was not able to find the data for key %li", key);
+            snprintf(message, 100, "embedDBGetVar was not able to find the data for key %u", key);
             TEST_ASSERT_EQUAL_INT8_MESSAGE(0, getResult, message);
-            snprintf(message, 100, "embedDBGetBar did not return the correct data for key %li", key);
+            snprintf(message, 100, "embedDBGetBar did not return the correct data for key %u", key);
             TEST_ASSERT_EQUAL_MEMORY_MESSAGE((int8_t *)buf + 4, dataBuffer, state->dataSize, message);
             uint32_t streamBytesRead = embedDBVarDataStreamRead(state, stream, varDataBuffer, strlen(varDataExpected));
-            snprintf(message, 100, "embedDBGetVar did not return the correct number of bytes read for key %li.", key);
+            snprintf(message, 100, "embedDBGetVar did not return the correct number of bytes read for key %u.", key);
             TEST_ASSERT_EQUAL_UINT32_MESSAGE(strlen(varDataExpected), streamBytesRead, message);
-            snprintf(message, 100, "embedDBGetVar did not return the correct variable data for key %li", key);
+            snprintf(message, 100, "embedDBGetVar did not return the correct variable data for key %u", key);
 
             TEST_ASSERT_EQUAL_MEMORY_MESSAGE(varDataExpected, varDataBuffer, strlen(varDataExpected), message);
             numRead++;

@@ -43,46 +43,46 @@
 
 #include "unity.h"
 
-embedDBState* stateUWA;
+embedDBState* state;
 embedDBSchema* baseSchema;
 
 void setUp() {
     if (STORAGE_TYPE == 1) {
         TEST_FAIL_MESSAGE("Dataflash is not currently supported. Defaulting to SD card interface.");
     }
-    stateUWA = (embedDBState*)malloc(sizeof(embedDBState));
-    stateUWA->keySize = 4;
-    stateUWA->dataSize = 12;
-    stateUWA->compareKey = int32Comparator;
-    stateUWA->compareData = int32Comparator;
-    stateUWA->pageSize = 512;
-    stateUWA->eraseSizeInPages = 4;
-    stateUWA->numDataPages = 20000;
-    stateUWA->numIndexPages = 1000;
-    stateUWA->numSplinePoints = 30;
+    state = (embedDBState*)malloc(sizeof(embedDBState));
+    state->keySize = 4;
+    state->dataSize = 12;
+    state->compareKey = int32Comparator;
+    state->compareData = int32Comparator;
+    state->pageSize = 512;
+    state->eraseSizeInPages = 4;
+    state->numDataPages = 20000;
+    state->numIndexPages = 1000;
+    state->numSplinePoints = 30;
     /* Setup files */
     char dataPath[] = DATA_FILE_PATH_UWA, indexPath[] = INDEX_FILE_PATH_UWA;
-    stateUWA->fileInterface = getFileInterface();
+    state->fileInterface = getFileInterface();
 
-    stateUWA->dataFile = stateUWA->fileInterface->setup(dataPath);
-    stateUWA->indexFile = stateUWA->fileInterface->setup(indexPath);
+    state->dataFile = state->fileInterface->setup(dataPath);
+    state->indexFile = state->fileInterface->setup(indexPath);
 #ifdef ARDUINO
-    stateUWA->fileInterface->tempFilePath
+    state->fileInterface->tempFilePath
 #endif
 
-        stateUWA->bufferSizeInBlocks = 4;
-    stateUWA->buffer = malloc(stateUWA->bufferSizeInBlocks * stateUWA->pageSize);
-    stateUWA->parameters = EMBEDDB_USE_BMAP | EMBEDDB_USE_INDEX | EMBEDDB_RESET_DATA;
-    stateUWA->bitmapSize = 2;
-    stateUWA->inBitmap = inBitmapInt16;
-    stateUWA->updateBitmap = updateBitmapInt16;
-    stateUWA->buildBitmapFromRange = buildBitmapInt16FromRange;
-    int8_t initResult = embedDBInit(stateUWA, 1);
+        state->bufferSizeInBlocks = 4;
+    state->buffer = malloc(state->bufferSizeInBlocks * state->pageSize);
+    state->parameters = EMBEDDB_USE_BMAP | EMBEDDB_USE_INDEX | EMBEDDB_RESET_DATA;
+    state->bitmapSize = 2;
+    state->inBitmap = inBitmapInt16;
+    state->updateBitmap = updateBitmapInt16;
+    state->buildBitmapFromRange = buildBitmapInt16FromRange;
+    int8_t initResult = embedDBInit(state, 1);
     if (initResult != 0) {
         TEST_FAIL_MESSAGE("There was an error setting up the state of the UWA dataset.");
     }
-    stateUWA->rules = NULL;
-    stateUWA->numRules = 0;
+    state->rules = NULL;
+    state->numRules = 0;
 
     int8_t colSizes[] = {4, 12};
     int8_t colSignedness[] = {embedDB_COLUMN_UNSIGNED, embedDB_COLUMN_UNSIGNED};
@@ -91,12 +91,12 @@ void setUp() {
 }
 
 void tearDown() {
-    embedDBClose(stateUWA);
-    tearDownFile(stateUWA->dataFile);
-    tearDownFile(stateUWA->indexFile);
-    free(stateUWA->fileInterface);
-    free(stateUWA->buffer);
-    free(stateUWA);
+    embedDBClose(state);
+    tearDownFile(state->dataFile);
+    tearDownFile(state->indexFile);
+    free(state->fileInterface);
+    free(state->buffer);
+    free(state);
     embedDBFreeSchema(&baseSchema);
 }
 
@@ -147,12 +147,22 @@ void insertNValues(embedDBState* state, int n, int mode) {
     }
 }
 
+void debugBinData(embedDBOperator* scanTableOp, uint32_t numValues, uint32_t col) {
+    scanTableOp->init(scanTableOp);
+    int32_t* buffer = (int32_t*)scanTableOp->recordBuffer;
+    for (int i = 0; i < numValues; ++i) {
+        exec(scanTableOp);
+        printf("%u ", (uint32_t)buffer[col]);
+    }
+    fflush(stdout);
+}
+
 void runTestSequentialValues() {
     // Insert test data
 #ifdef ARDUINO
-    insertNValues(stateUWA, 1, 0);
+    insertNValues(state, 1, 0);
 #else
-    insertNValues(stateUWA, 10, 1);
+    insertNValues(state, 10, 1);
 #endif
 
     embedDBIterator it;
@@ -160,12 +170,12 @@ void runTestSequentialValues() {
     it.maxKey = NULL;
     it.minData = NULL;
     it.maxData = NULL;
-    embedDBInitIterator(stateUWA, &it);
+    embedDBInitIterator(state, &it);
 
-    embedDBOperator* scanOpOrderBy = createTableScanOperator(stateUWA, &it, baseSchema);
+    embedDBOperator* scanOpOrderBy = createTableScanOperator(state, &it, baseSchema);
     uint8_t projColsOB[] = {0, 1};
     embedDBOperator* projColsOrderBy = createProjectionOperator(scanOpOrderBy, 2, projColsOB);
-    embedDBOperator* orderByOp = createOrderByOperator(stateUWA, projColsOrderBy, 1, -1, int32Comparator);
+    embedDBOperator* orderByOp = createOrderByOperator(state, projColsOrderBy, 1, -1, int32Comparator);
 
     orderByOp->init(orderByOp);
 
@@ -188,22 +198,23 @@ void runTestSequentialValues() {
     embedDBFreeOperatorRecursive(&orderByOp);
 }
 
-void runTestUsingUWA500k() {
+void runTestUsingSEA100k() {
     // Insert data
-    const char datafileName[] = "data/uwa500K.bin";
-    insertData(stateUWA, datafileName);
+    const char datafileName[] = "data/sea100K.bin";
+    insertData(state, datafileName);
 
     embedDBIterator it;
     it.minKey = NULL;
     it.maxKey = NULL;
     it.minData = NULL;
     it.maxData = NULL;
-    embedDBInitIterator(stateUWA, &it);
+    embedDBInitIterator(state, &it);
 
-    embedDBOperator* scanOpOrderBy = createTableScanOperator(stateUWA, &it, baseSchema);
-    uint8_t projColsOB[] = {0, 3};
+    embedDBOperator* scanOpOrderBy = createTableScanOperator(state, &it, baseSchema);
+    debugBinData(scanOpOrderBy, 20, 1);
+    uint8_t projColsOB[] = { 0, 1 };
     embedDBOperator* projColsOrderBy = createProjectionOperator(scanOpOrderBy, 2, projColsOB);
-    embedDBOperator* orderByOp = createOrderByOperator(stateUWA, projColsOrderBy, 3, -1, int32Comparator);
+    embedDBOperator* orderByOp = createOrderByOperator(state, projColsOrderBy, 1, -1, int32Comparator);
     orderByOp->init(orderByOp);
     int32_t* recordBuffer = (int32_t*)orderByOp->recordBuffer;
     uint32_t previous = 0;
@@ -221,7 +232,7 @@ void runTestUsingUWA500k() {
 int runUnityTests() {
     UNITY_BEGIN();
     RUN_TEST(runTestSequentialValues);
-    RUN_TEST(runTestUsingUWA500k);
+    RUN_TEST(runTestUsingSEA100k);
     return UNITY_END();
 }
 
