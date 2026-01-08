@@ -43,6 +43,8 @@
 
 #include "unity.h"
 
+#define DEBUG
+
 embedDBState* state;
 embedDBSchema* baseSchema;
 
@@ -59,7 +61,7 @@ void setUp() {
     state->eraseSizeInPages = 4;
     state->numDataPages = 20000;
     state->numIndexPages = 1000;
-    state->numSplinePoints = 30;
+    state->numSplinePoints = 120;
     /* Setup files */
     char dataPath[] = DATA_FILE_PATH_UWA, indexPath[] = INDEX_FILE_PATH_UWA;
     state->fileInterface = getFileInterface();
@@ -84,10 +86,10 @@ void setUp() {
     state->rules = NULL;
     state->numRules = 0;
 
-    int8_t colSizes[] = {4, 12};
-    int8_t colSignedness[] = {embedDB_COLUMN_UNSIGNED, embedDB_COLUMN_UNSIGNED};
-    ColumnType colTypes[] = {embedDB_COLUMN_UINT32, embedDB_COLUMN_UINT32};
-    baseSchema = embedDBCreateSchema(2, colSizes, colSignedness, colTypes);
+    int8_t colSizes[] = {4, 4, 4, 4};
+    int8_t colSignedness[] = {embedDB_COLUMN_UNSIGNED, embedDB_COLUMN_SIGNED, embedDB_COLUMN_SIGNED, embedDB_COLUMN_SIGNED};
+    ColumnType colTypes[] = {embedDB_COLUMN_UINT32, embedDB_COLUMN_INT32, embedDB_COLUMN_INT32, embedDB_COLUMN_INT32};
+    baseSchema = embedDBCreateSchema(4, colSizes, colSignedness, colTypes);
 }
 
 void tearDown() {
@@ -135,7 +137,7 @@ void insertNValues(embedDBState* state, int n, int mode) {
                 embedDBPut(state, &key, &value);
                 key++;
             }
-            for (int i = 0, data = 10; i <= n; i++) {
+            for (int i = 0, data = n; i <= n; i++) {
                 key = i + 1;
                 embedDBGet(state, (void*)&key, (void*)&value);
                 TEST_ASSERT_MESSAGE(value == data, "value isn't equal to extracted data");
@@ -147,13 +149,15 @@ void insertNValues(embedDBState* state, int n, int mode) {
     }
 }
 
-void debugBinData(embedDBOperator* scanTableOp, uint32_t numValues, uint32_t col) {
-    scanTableOp->init(scanTableOp);
-    int32_t* buffer = (int32_t*)scanTableOp->recordBuffer;
-    for (int i = 0; i < numValues; ++i) {
-        exec(scanTableOp);
-        printf("%u ", (uint32_t)buffer[col]);
+void debugBinData(embedDBOperator* op, uint32_t numValues, uint8_t col) {
+    op->init(op);
+    int32_t* buffer = (int32_t*)op->recordBuffer;
+    printf("\n");
+    for (int i = 0; i <= numValues; ++i) {
+        exec(op);
+        printf("%i ", (int32_t)buffer[col]);
     }
+    printf("\n");
     fflush(stdout);
 }
 
@@ -162,9 +166,9 @@ void runTestSequentialValues() {
 #ifdef ARDUINO
     insertNValues(state, 1, 0);
 #else
-    insertNValues(state, 10, 1);
+    insertNValues(state, 67, 1);
 #endif
-
+ 
     embedDBIterator it;
     it.minKey = NULL;
     it.maxKey = NULL;
@@ -176,6 +180,7 @@ void runTestSequentialValues() {
     uint8_t projColsOB[] = {0, 1};
     embedDBOperator* projColsOrderBy = createProjectionOperator(scanOpOrderBy, 2, projColsOB);
     embedDBOperator* orderByOp = createOrderByOperator(state, projColsOrderBy, 1, -1, int32Comparator);
+    //debugBinData(orderByOp, 67, 1);
 
     orderByOp->init(orderByOp);
 
@@ -184,14 +189,11 @@ void runTestSequentialValues() {
     int recordCount = 0;
 
     while (exec(orderByOp)) {
-        TEST_ASSERT_GREATER_OR_EQUAL_UINT32_MESSAGE(previous, ((uint32_t)recordBuffer[1]), "Sort value is not greater than or equal to previous value.");
-        previous = ((uint32_t)recordBuffer[1]);
+        TEST_ASSERT_GREATER_OR_EQUAL_INT32_MESSAGE(previous, ((int32_t)recordBuffer[1]), "Sort value is not greater than or equal to previous value.");
+        previous = ((int32_t)recordBuffer[1]);
         recordCount++;
-
-        // Safety break to prevent infinite loop
-        if (recordCount >= 10) {
-            break;
-        }
+        printf("%d ", previous);
+        fflush(stdout);
     }
 
     orderByOp->close(orderByOp);
@@ -211,18 +213,20 @@ void runTestUsingSEA100k() {
     embedDBInitIterator(state, &it);
 
     embedDBOperator* scanOpOrderBy = createTableScanOperator(state, &it, baseSchema);
-    debugBinData(scanOpOrderBy, 20, 1);
-    uint8_t projColsOB[] = { 0, 1 };
+    //debugBinData(scanOpOrderBy, 20, 1);
+    uint8_t projColsOB[] = {0, 1};
     embedDBOperator* projColsOrderBy = createProjectionOperator(scanOpOrderBy, 2, projColsOB);
+    //debugBinData(projColsOrderBy, 100000, 1);
     embedDBOperator* orderByOp = createOrderByOperator(state, projColsOrderBy, 1, -1, int32Comparator);
     orderByOp->init(orderByOp);
+    //debugBinData(orderByOp, 100000, 1);
     int32_t* recordBuffer = (int32_t*)orderByOp->recordBuffer;
     uint32_t previous = 0;
     // Result of the sort
-
+    uint32_t count = 1;
     while (exec(orderByOp)) {
-        TEST_ASSERT_GREATER_OR_EQUAL_UINT32_MESSAGE(previous, ((uint32_t)recordBuffer[1]) / 10.0, "Sort value is not greater than or equal to previous value previous values.");
-        previous = ((uint32_t)recordBuffer[1]) / 10.0;
+        TEST_ASSERT_GREATER_OR_EQUAL_INT32_MESSAGE(previous, ((int32_t)recordBuffer[1]) / 10.0, "Sort value is not greater than or equal to previous value previous values.");
+        previous = ((int32_t)recordBuffer[1]) / 10.0;
     }
 
     orderByOp->close(orderByOp);

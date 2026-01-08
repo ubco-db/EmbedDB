@@ -49,6 +49,8 @@ This is no output sort with block headers and iterator input. Heap used when mov
 
 #include "in_memory_sort.h"
 
+#include "debug_print.h"
+
 // #define DEBUG 1
 // #define DEBUG_OUTPUT 1
 // #define DEBUG_READ 1
@@ -71,7 +73,7 @@ void readPageMinSort(MinSortState *ms, int pageNum, external_sort_t *es, metrics
     // Read page into the buffer
     if (0 == is->fileInterface->read(ms->buffer, pageNum, es->page_size, fp)) {
 #ifdef DEBUG
-        printf("MINSORT: Failed to read block.\n");
+        debug_log("MINSORT: Failed to read block.\n");
 #endif
     }
 
@@ -149,7 +151,7 @@ void init_MinSort(MinSortState *ms, external_sort_t *es, metrics_t *metric, int8
     ms->min_initialized = (int8_t *)(ms->min + es->key_size * ms->numRegions);
 
 #ifdef DEBUG
-    printf("Memory overhead: %d  Max regions: %d\r\n", 2 * SORT_KEY_SIZE + INT_SIZE, j);
+    // printf("Memory overhead: %d  Max regions: %d\r\n", 2 * SORT_KEY_SIZE + INT_SIZE, j);
     printf("Page size: %d, Memory size: %d Record size: %d, Number of records: %lu, Number of blocks: %d, Blocks per region: %d  Regions: %d\r\n",
            es->page_size, ms->memoryAvailable, ms->record_size, ms->num_records, ms->numBlocks, ms->blocks_per_region, ms->numRegions);
 #endif
@@ -275,9 +277,9 @@ char *next_MinSort(MinSortState *ms, external_sort_t *es, void *tupleBuffer, met
                 memcpy(tupleBuffer, &(ms->buffer[ms->record_size * i + es->headerSize]), ms->record_size);
                 metric->num_memcpys++;
 #ifdef DEBUG
-                test_record_t *buf = (test_record_t *)(ms->buffer + es->headerSize + i * es->record_size);
-                buf = (test_record_t *)tupleBuffer;
-                printf("Returning tuple: %d\n", buf->key);
+                    test_record_t *buf = (test_record_t *)(ms->buffer + es->headerSize + i * es->record_size);
+                    buf = (test_record_t *)tupleBuffer;
+                    debug_log("Returning tuple: %d\n", buf->key);
 #endif
                 i++;  // Move to the next record
                 ms->tuplesOut++;
@@ -297,7 +299,7 @@ char *next_MinSort(MinSortState *ms, external_sort_t *es, void *tupleBuffer, met
 
 done:
 #ifdef DEBUG
-    printf("Updating minimum in region\r\n");
+        debug_log("Updating minimum in region\r\n");
 #endif
 
     // After processing the current block, scan the rest of the region to find a smaller record if possible
@@ -329,7 +331,7 @@ done:
             if (compareFn(dataVal, ms->current) == 0) {
                 ms->nextIdx = k * ms->records_per_block + i;
 #ifdef DEBUG
-                printf("Next tuple at: %d  k: %d  i: %d\r\n", ms->nextIdx, k, i);
+                    debug_log("Next tuple at: %d  k: %d  i: %d\r\n", ms->nextIdx, k, i);
 #endif
                 goto done2;
             }
@@ -359,7 +361,7 @@ done2:
         }
 
 #ifdef DEBUG
-        printf("Updated minimum in block to: %d\r\n", ms->min[ms->regionIdx]);
+                debug_log("Updated minimum in block to: %d\r\n", ms->min[ms->regionIdx]);
 #endif
     }
 

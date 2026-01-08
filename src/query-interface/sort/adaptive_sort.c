@@ -50,10 +50,13 @@
 #include "in_memory_sort.h"
 #include "no_output_heap.h"
 
-// #define     DEBUG         1
-// #define     DEBUG_OUTPUT  1
-// #define     DEBUG_READ    1
-// #define     DEBUG_HEAP    0
+#include "debug_print.h"
+
+ #define     DEBUG         1
+ #define     DEBUG_OUTPUT  1
+ #define     DEBUG_READ    1
+#define     DEBUG_HEAP    0
+#define ADAPTIVE_SORT_PRINT 
 
 // #define ADAPTIVE_SORT_PRINT_FINISH
 
@@ -67,22 +70,24 @@ void print_heap(char* buffer, int32_t heap_start_offset, int heap_size, int list
     int j;
     for (aa = 0; aa < 1; aa++) {
         addr = buffer + heap_start_offset;
-        printf("heap: ");
+        debug_log("heap: ");
         for (j = 0; j < heap_size; j++)
-            printf(" %d", *(int32_t*)(addr - j * es->record_size));
-        printf("| ");
+            debug_log(" %d", *(int32_t*)(addr - j * es->record_size));
+        debug_log("| ");
     }
-    printf("   ");
+    debug_log("   ");
+    
 
     // Prints the list
     for (aa = 0; aa < 1; aa++) {
         addr = buffer + es->page_size;
-        printf("list: ");
+        debug_log("list: ");
         for (j = 0; j < list_size; j++)
-            printf(" %d", *(int32_t*)(addr + j * es->record_size));
-        printf("| ");
+            debug_log(" %d", *(int32_t*)(addr + j * es->record_size));
+        debug_log("| ");
     }
-    printf("\n");
+    debug_log("\n");
+    
 }
 
 /**
@@ -145,7 +150,7 @@ int adaptive_sort(
     if (optimistic) {
         // Do FLASH MinSort init first
 #ifdef DEBUG
-        printf("*Optimistic*\n");
+    debug_log("*Optimistic*\n");
 #endif
 
         MinSortState ms;
@@ -161,18 +166,18 @@ int adaptive_sort(
         int32_t nobSortCost = numPasses * (10 + writeToReadRatio) / 10;
 
 #ifdef DEBUG
-        printf("Adaptive calculation.\n");
-        printf("NOB sort cost. # runs: %d", numSublist);
-        printf(" # passes: %d cost: %d\n", numPasses, nobSortCost);
-        printf("MinSort cost. Num sublists: %d ", numSublist);
-        printf(" Avg. distinct/sublist: %d\n", avgDistinct / 10);
+            debug_log("Adaptive calculation.\n");
+            debug_log("NOB sort cost. # runs: %d", numSublist);
+            debug_log(" # passes: %d cost: %d\n", numPasses, nobSortCost);
+            debug_log("MinSort cost. Num sublists: %d ", numSublist);
+            debug_log(" Avg. distinct/sublist: %d\n", avgDistinct / 10);
 #endif
 
         if (avgDistinct < nobSortCost)
         // if (true)
         {
 #ifdef DEBUG
-            printf("Performing MinSort Optimistic\n");
+            debug_log("Performing MinSort Optimistic\n");
 #endif
 
             int16_t count = 0;
@@ -201,10 +206,11 @@ int adaptive_sort(
                     metric->num_writes++;
 
 #ifdef DEBUG_OUTPUT
-                    printf("Wrote output block. Block index: %d\n", blockIndex);
+                    debug_log("Wrote output block. Block index: %d\n", blockIndex);
                     for (int k = 0; k < values_per_page; k++) {
-                        printf("%3d: 1 Output Record: %d\n", k, outputBuffer + es->headerSize + k * es->record_size + es->key_offset);
+                        debug_log("%3d: 1 Output Record: %d\n", k, outputBuffer + es->headerSize + k * es->record_size + es->key_offset);
                     }
+                    
 #endif
                 }
             }
@@ -223,10 +229,11 @@ int adaptive_sort(
                 metric->num_writes++;
 
 #ifdef DEBUG_OUTPUT
-                printf("Wrote output block. Block index: %d\n", blockIndex);
+                debug_log("Wrote output block. Block index: %d\n", blockIndex);
                 for (int k = 0; k < values_per_page; k++) {
-                    printf("%3d: 2 Output Record: %d\n", k, *(uint32_t*)(outputBuffer + es->headerSize + k * es->record_size + es->key_offset));
+                    debug_log("%3d: 2 Output Record: %d\n", k, *(uint32_t*)(outputBuffer + es->headerSize + k * es->record_size + es->key_offset));
                 }
+                
 #endif
             }
 
@@ -299,6 +306,7 @@ int adaptive_sort(
 
 #ifdef DEBUG_HEAP
             print_heap(buffer, heapStartOffset, heapSize, listSize, es);
+            
 #endif
 
             if (recordsRead > 1) {
@@ -323,7 +331,8 @@ int adaptive_sort(
                     // Track number of distinct values per sublist
                     avgDistinct = avgDistinct + (numDistinctInRun - avgDistinct / 10) * 10 / numSublist;
 #ifdef DEBUG
-                    printf("Number of distinct values in sublist: %d Running average: %d\n", numDistinctInRun, avgDistinct / 10);
+                    debug_log("Number of distinct values in sublist: %d Running average: %d\n", numDistinctInRun, avgDistinct / 10);
+                    
 #endif
                     numDistinctInRun = 1;
 
@@ -340,8 +349,9 @@ int adaptive_sort(
                 // Check if we've read all records from the current page
                 if (recordsRead == 0) {
                     // Check if there are any records left
-                    if (recordsLeft <= 0)
+                    if (recordsLeft <= 0) {
                         break;
+                    }
 
                     // Just copy over from heap
                     memcpy(buffer + es->headerSize + i * es->record_size, buffer + heapStartOffset, es->record_size); /* Heap into input/output block */
@@ -368,7 +378,8 @@ int adaptive_sort(
                     // Track number of distinct values per sublist
                     avgDistinct = avgDistinct + (numDistinctInRun - avgDistinct / 10) * 10 / numSublist;
 #ifdef DEBUG
-                    printf("Number of distinct values in sublist: %d Running average: %d\n", numDistinctInRun, avgDistinct / 10);
+                    debug_log("Number of distinct values in sublist: %d Running average: %d\n", numDistinctInRun, avgDistinct / 10);
+
 #endif
                     numDistinctInRun = 1;
 
@@ -471,12 +482,13 @@ int adaptive_sort(
             }
 
 #ifdef DEBUG_OUTPUT
-            printf("Wrote block. Sublist: %d ", numSublist);
-            printf(" Idx: %d\n", sublistSize);
-            // printf("Offset: %lu\n",  ftell(outputFile)-es->page_size);
+            debug_log("Wrote block. Sublist: %d ", numSublist);
+            debug_log(" Idx: %d\n", sublistSize);
+            //debug_log("Offset: %lu\n",  ftell(outputFile) - es->page_size);
             for (int k = 0; k < tuplesPerPage; k++) {
-                printf("%3d: 3 Output Record: %d\n", k, *(uint32_t*)(buffer + es->headerSize + k * es->record_size + es->key_offset));
+                debug_log("%3d: 3 Output Record: %d\n", k, *(uint32_t*)(buffer + es->headerSize + k * es->record_size + es->key_offset));
             }
+            
 #endif
 
             metric->num_writes += 1;
@@ -487,13 +499,15 @@ int adaptive_sort(
         // free(lastOutputKey);
         numSublist = metric->num_runs;
 #ifdef ADAPTIVE_SORT_PRINT
-        printf("Gen time: %d\n", metric->genTime);
+        debug_log("Gen time: %d\n", metric->genTime);
+
 #endif
 
         // Track number of distinct values per sublist
         avgDistinct = avgDistinct + (numDistinctInRun - avgDistinct / 10) * 10 / numSublist;
 #ifdef ADAPTIVE_SORT_PRINT
-        printf("Final number of distinct values in sublist: %d Average: %d\n", numDistinctInRun, avgDistinct);
+        debug_log("Final number of distinct values in sublist: %d Average: %d\n", numDistinctInRun, avgDistinct);
+
 #endif
         numDistinctInRun = 0;
     } /* end pessmistic */
@@ -523,11 +537,12 @@ int adaptive_sort(
     int32_t nobSortCost = numPasses * (10 + writeToReadRatio) / 10;
 
 #ifdef ADAPTIVE_SORT_PRINT
-    printf("Adaptive calculation.\n");
-    printf("NOB sort cost. # runs: %d", numSublist);
-    printf(" # passes: %d cost: %d\n", numPasses, nobSortCost);
-    printf("MinSort cost. Num sublists: %d ", numSublist);
-    printf(" Avg. distinct/sublist: %d\n", avgDistinct / 10);
+    debug_log("Adaptive calculation.\n");
+    debug_log("NOB sort cost. # runs: %d", numSublist);
+    debug_log(" # passes: %d cost: %d\n", numPasses, nobSortCost);
+    debug_log("MinSort cost. Num sublists: %d ", numSublist);
+    debug_log(" Avg. distinct/sublist: %d\n", avgDistinct / 10);
+
 #endif
 
     // Make decision to use either no output buffer sort or MinSort
@@ -540,7 +555,7 @@ int adaptive_sort(
         if (sublistVersionPossible) {
             // Use better performing version of minsort
 #ifdef ADAPTIVE_SORT_PRINT
-            printf("Performing MinSort with sorted sublists\n");
+            debug_log("Performing MinSort with sorted sublists\n");
 #endif
             ((file_iterator_state_t*)iteratorState)->file = outputFile;
             *resultFilePtr = 0;
@@ -549,7 +564,7 @@ int adaptive_sort(
         } else {
             // Use normal version of minsort. Do not have enough space to index a value per sublist. Assumes data is not sorted in each region
 #ifdef ADAPTIVE_SORT_PRINT
-            printf("Performing MinSort\n");
+            debug_log("Performing MinSort\n");
 #endif
             ((file_iterator_state_t*)iteratorState)->file = outputFile;
             flash_minsort(iteratorState, tupleBuffer, outputFile, buffer, bufferSizeBytes, es, resultFilePtr, metric, compareFn);
@@ -603,7 +618,7 @@ int adaptive_sort(
             // if (numSublist >= 32 && numSublist <= 64)// && avgDistinct/10 < 32)
             // {
             //     // Switch to MinSort to finish off
-            //     printf("Finishing sort with MinSort with sorted sublists\n");
+            //     debug_log("Finishing sort with MinSort with sorted sublists\n");
             //     ((file_iterator_state_t*) iteratorState)->file = outputFile;
             //     // *resultFilePtr = lastMergeStart;
             //     // fflush(outputFile);
@@ -621,7 +636,8 @@ int adaptive_sort(
                 lastWritePos = 0;
             }
 #ifdef ADAPTIVE_SORT_PRINT
-            printf("Pass number: %u  Comparisons: %lu  MemCopies: %lu  TransferIn: %lu  TransferOut: %lu TransferOther: %lu Other: %lu\n", passNumber, metric->num_compar, metric->num_memcpys, numShiftIntoOutput, numShiftOutOutput, numShiftOtherBlock, other);
+            debug_log("Pass number: %u  Comparisons: %lu  MemCopies: %lu  TransferIn: %lu  TransferOut: %lu TransferOther: %lu Other: %lu\n", passNumber, metric->num_compar, metric->num_memcpys, numShiftIntoOutput, numShiftOutOutput, numShiftOtherBlock, other);
+
 #endif
 
             passNumber++;
@@ -698,7 +714,8 @@ int adaptive_sort(
 #ifdef DEBUG
                                 void* buffer0Rec = (void*)buffer + es->headerSize;
                                 void* currentRec = (void*)buffer + i * es->page_size + es->headerSize;
-                                printf("Swapping in buffer 0. Current key: %d  New key: %d\n", *(uint32_t*)(buffer0Rec + es->key_offset), *(uint32_t*)(currentRec + es->key_offset));
+                                debug_log("Swapping in buffer 0. Current key: %d  New key: %d\n", *(uint32_t*)(buffer0Rec + es->key_offset), *(uint32_t*)(currentRec + es->key_offset));
+
 #endif
                                 // Perform swap
                                 sublsBlkPos[i] = sublsFilePtr[0]; /* Note: Using subls_blk_pos[i] as a temp variable during swap */  // TODO: Update swap to not be variable length
@@ -739,8 +756,9 @@ int adaptive_sort(
 #ifdef DEBUG_READ
                     void* firstRec = (void*)buffer + i * es->page_size + es->headerSize;
                     void* lastRec = (void*)buffer + i * es->page_size + es->headerSize + (*((int16_t*)(buffer + i * es->page_size + BLOCK_COUNT_OFFSET)) - 1) * es->record_size;
-                    printf("Read Sublist: %d Block: %d NumRec: %d First key: %d Last key: %d\n", i, (int32_t) * (buffer + i * es->page_size),
-                           *((int16_t*)(buffer + i * es->page_size + BLOCK_COUNT_OFFSET)), *(uint32_t*)(firstRec + es->key_offset), *(uint32_t*)(lastRec + es->key_offset));
+                    debug_log("Read Sublist: %d Block: %d NumRec: %d First key: %d Last key: %d\n", i, (int32_t) * (buffer + i * es->page_size),
+                              *((int16_t*)(buffer + i * es->page_size + BLOCK_COUNT_OFFSET)), *(uint32_t*)(firstRec + es->key_offset), *(uint32_t*)(lastRec + es->key_offset));
+
 #endif
                     // Initialize record1 to start of each block and record2 to empty
                     record1[i] = i * es->page_size + es->headerSize;
@@ -811,21 +829,22 @@ int adaptive_sort(
 
 #ifdef DEBUG
                     void* buf = (void*)buffer + resultRecOffset;
-                    printf("Smallest Record: %d  From list: %d\n", *(uint32_t*)(buf + es->key_offset), resultBlock);
-                    printf("List status: 0: (%d, %d) 1: (%d, %d) 2: (%d, %d) ResultList: %d\n", record1[0], record2[0],
-                           record1[1], record2[1], record1[2], record2[2], resultBlock);
+                    debug_log("Smallest Record: %d  From list: %d\n", *(uint32_t*)(buf + es->key_offset), resultBlock);
+                    debug_log("List status: 0: (%d, %d) 1: (%d, %d) 2: (%d, %d) ResultList: %d\n", record1[0], record2[0],
+                              record1[1], record2[1], record1[2], record2[2], resultBlock);
 
                     if (*(uint32_t*)(buf + es->key_offset) == 27391) {
                         /* Output all block contents */
                         for (int l = 0; l < 2; l++) {
-                            printf("Current  block: %d  # records: %d\n", l, tuplesPerPage);
+                            debug_log("Current  block: %d  # records: %d\n", l, tuplesPerPage);
                             for (int k = 0; k < tuplesPerPage; k++) {
                                 void* buf = (void*)(buffer + es->headerSize + k * es->record_size + l * es->page_size);
-                                printf("%d: Record: %d  Address: %p\n", k, buf + es->key_size, buf);
+                                debug_log("%d: Record: %d  Address: %p\n", k, buf + es->key_size, buf);
                             }
                         }
-                        printf("HERE\n");
+                        debug_log("HERE\n");
                     }
+                
 #endif
 
                     /* Add smallest tuple to output position in buffer (may already be in output buffer) */
@@ -846,7 +865,8 @@ int adaptive_sort(
                             numShiftOutOutput++;
 #ifdef DEBUG
                             void* buf = (void*)(buffer + record1[OUTPUT_BLOCK_ID]);
-                            printf("Output record moved to list %d Key: %d\n", resultBlock, *(uint32_t*)(buf + es->key_size));
+                            debug_log("Output record moved to list %d Key: %d\n", resultBlock, *(uint32_t*)(buf + es->key_size));
+
 #endif
                             /* Move result record into output block (record1[output_block]==record2[output_block]) */
                             metric->num_memcpys++;
@@ -940,11 +960,12 @@ int adaptive_sort(
                         record2[OUTPUT_BLOCK_ID] = -1;
                         metric->num_writes++;
 #ifdef DEBUG_OUTPUT
-                        printf("Wrote output block: %d  # records: %d\n", *((int32_t*)buffer), tuplesPerPage);
+                        debug_log("Wrote output block: %d  # records: %d\n", *((int32_t*)buffer), tuplesPerPage);
                         for (int k = 0; k < tuplesPerPage; k++) {
                             void* buf = (void*)(buffer + es->headerSize + k * es->record_size);
-                            printf("%3d: 4 Output Record: %d  Address: %p\n", k, *(uint32_t*)(buf + es->key_offset), buf);
+                            debug_log("%3d: 4 Output Record: %d  Address: %p\n", k, *(uint32_t*)(buf + es->key_offset), buf);
                         }
+            
 #endif
                     }
 
@@ -990,17 +1011,18 @@ int adaptive_sort(
 
                                     if (destBlk > bufferSizeInBlocks) {
 #ifdef ADAPTIVE_SORT_PRINT
-                                        printf("Incorrect destination block. List 1: (%d, %d) List 2: (%d, %d) List 3: (%d, %d) ResultList: %d\n", record1[0], record2[0],
-                                               record1[1], record2[1], record1[2], record2[2], resultBlock);
+                                        debug_log("Incorrect destination block. List 1: (%d, %d) List 2: (%d, %d) List 3: (%d, %d) ResultList: %d\n", record1[0], record2[0],
+                                                  record1[1], record2[1], record1[2], record2[2], resultBlock);
 
                                         /* Output all block contents */
                                         for (int l = 0; l < 3; l++) {
-                                            printf("Current  block: %d  # records: %d\n", l, tuplesPerPage);
+                                            debug_log("Current  block: %d  # records: %d\n", l, tuplesPerPage);
                                             for (int k = 0; k < tuplesPerPage; k++) {
                                                 void* buf = (void*)(buffer + es->headerSize + k * es->record_size + l * es->page_size);
-                                                printf("%d: Record: %d  Address: %p\n", k, buf + es->key_offset, buf);
+                                                debug_log("%d: Record: %d  Address: %p\n", k, buf + es->key_offset, buf);
                                             }
                                         }
+                                        
 #endif
                                     }
                                 }
@@ -1018,7 +1040,8 @@ int adaptive_sort(
                                         for (i = 0; i < numTransferThisPass; i++) {
 #ifdef DEBUG
                                             void* buf = (void*)(buffer + originPtr);
-                                            printf("Empty output block case. Moved output record back from list %d Key: %d\n", resultBlock, *(uint32_t*)(buf + es->key_offset));
+                                            debug_log("Empty output block case. Moved output record back from list %d Key: %d\n", resultBlock, *(uint32_t*)(buf + es->key_offset));
+
 #endif
                                             numShiftIntoOutput++;
                                             /* Get top value from heap */
@@ -1039,7 +1062,8 @@ int adaptive_sort(
                                             record1[destBlk] = record1[destBlk] - es->record_size;
 #ifdef DEBUG
                                             void* buf = (void*)(buffer + originPtr);
-                                            printf("Moved output record back from list %d Key: %d\n", resultBlock, buf + es->key_offset);
+                                            debug_log("Moved output record back from list %d Key: %d\n", resultBlock, buf + es->key_offset);
+
 #endif
                                             numShiftIntoOutput++;
 
@@ -1049,7 +1073,8 @@ int adaptive_sort(
                                                 metric->num_compar++;
 #ifdef DEBUG
                                                 void* buf = (void*)(buffer + insert_ptr + es->record_size);
-                                                printf("Compare with list %d Key: %d\n", resultBlock, buf + es->key_offset);
+                                                debug_log("Compare with list %d Key: %d\n", resultBlock, buf + es->key_offset);
+
 #endif
                                                 if (0 < es->compare_fcn(buffer + originPtr + es->key_offset, buffer + insert_ptr + es->record_size + es->key_offset)) {
                                                     /* shift next_val down */
@@ -1076,7 +1101,8 @@ int adaptive_sort(
 
 #ifdef DEBUG
                                         void* buf = (void*)(buffer + originPtr);
-                                        printf("Moved output record to list %d Key: %d\n", destBlk, buf + es->key_offset);
+                                        debug_log("Moved output record to list %d Key: %d\n", destBlk, buf + es->key_offset);
+
 #endif
                                         numShiftOtherBlock++;
 
@@ -1113,11 +1139,12 @@ int adaptive_sort(
                             record2[resultBlock] = -1;
                             record1[resultBlock] = resultBlock * es->page_size + es->headerSize;
 #ifdef DEBUG_READ
-                            printf("Read block sublist: %d\n", resultBlock);
+                            debug_log("Read block sublist: %d\n", resultBlock);
                             void* firstRec = (void*)buffer + resultBlock * es->page_size + es->headerSize;
                             void* lastRec = (void*)buffer + resultBlock * es->page_size + es->headerSize + (*((int16_t*)(buffer + resultBlock * es->page_size + BLOCK_COUNT_OFFSET)) - 1) * es->record_size;
-                            printf("Read Sublist: %d Block: %d NumRec: %d First key: %d Last key: %d\n", resultBlock, (int32_t) * (buffer + resultBlock * es->page_size),
-                                   *((int16_t*)(buffer + resultBlock * es->page_size + BLOCK_COUNT_OFFSET)), firstRec + es->key_offset, lastRec + es->key_offset);
+                            debug_log("Read Sublist: %d Block: %d NumRec: %d First key: %d Last key: %d\n", resultBlock, (int32_t) * (buffer + resultBlock * es->page_size),
+                                      *((int16_t*)(buffer + resultBlock * es->page_size + BLOCK_COUNT_OFFSET)), firstRec + es->key_offset, lastRec + es->key_offset);
+
 #endif
                         }
                     } /* end if is the non output block empty */
@@ -1184,7 +1211,8 @@ int adaptive_sort(
                                         /* move the record */
 #ifdef DEBUG
                                     void* buf = (void*)(buffer + outputCursor);
-                                    printf("Output list empty so moved record in output to list %d Key: %d\n", destBlk, *(uint32_t*)(buf + es->key_offset));
+                                    debug_log("Output list empty so moved record in output to list %d Key: %d\n", destBlk, *(uint32_t*)(buf + es->key_offset));
+
 #endif
                                     numShiftOutOutput++;
                                     metric->num_memcpys++;
@@ -1215,11 +1243,12 @@ int adaptive_sort(
 
                             int16_t numRecords = *((int16_t*)(buffer + BLOCK_COUNT_OFFSET));
 #ifdef DEBUG_READ
-                            printf("Read block sublist: 0\n");
+                            debug_log("Read block sublist: 0\n");
                             void* firstRec = (void*)buffer + es->headerSize;
                             void* lastRec = (void*)buffer + es->headerSize + (*((int16_t*)(buffer + BLOCK_COUNT_OFFSET)) - 1) * es->record_size;
-                            printf("Read Sublist: %d Block: %d NumRec: %d First key: %d Last key: %d\n", 0, (int32_t) * (buffer + 0 * es->page_size),
-                                   *((int16_t*)(buffer + BLOCK_COUNT_OFFSET)), firstRec + es->key_offset, lastRec + es->key_offset);
+                            debug_log("Read Sublist: %d Block: %d NumRec: %d First key: %d Last key: %d\n", 0, (int32_t) * (buffer + 0 * es->page_size),
+                                      *((int16_t*)(buffer + BLOCK_COUNT_OFFSET)), firstRec + es->key_offset, lastRec + es->key_offset);
+
 #endif
 
                             metric->num_reads += 1;
@@ -1304,11 +1333,12 @@ int adaptive_sort(
                     metric->num_writes += 1;
 
 #ifdef DEBUG_OUTPUT
-                    printf("Wrote output block here.\n");
+                    debug_log("Wrote output block here.\n");
                     for (int k = 0; k < tuplesPerPage; k++) {
                         void* buf = (void*)(buffer + es->headerSize + k * es->record_size);
-                        printf("%3d: 5 Output Record: %d  Address: %p\n", k, *(uint32_t*)(buf + es->key_offset), buf);  // TODO: Update to no use test_record_t
+                        debug_log("%3d: 5 Output Record: %d  Address: %p\n", k, *(uint32_t*)(buf + es->key_offset), buf);  // TODO: Update to no use test_record_t
                     }
+                    
 #endif
                 }
 
@@ -1320,7 +1350,8 @@ int adaptive_sort(
         } /* end of merge */
         *resultFilePtr = lastMergeStart;
 #ifdef ADAPTIVE_SORT_PRINT_FINISH
-        printf("Complete. Comparisons: %u  Writes: %u  Reads: %u Memcpys:\n", metric->num_compar, metric->num_writes, metric->num_reads, metric->num_memcpys);
+        debug_log("Complete. Comparisons: %u  Writes: %u  Reads: %u Memcpys:\n", metric->num_compar, metric->num_writes, metric->num_reads, metric->num_memcpys);
+
 #endif
 
         /* cleanup */
