@@ -1,13 +1,13 @@
 #include "sortWrapper.h"
 
-#include "debug_print.h"
 #include "query-interface/sort/in_memory_sort.h"
 #include "unistd.h"
 
 
-#define PRINT_METRIC
+// #define PRINT_METRIC
 #define DEBUG
-#define PRINT_ERRORS
+// #define PRINT_ERRORS
+#include "debug_print.h"
 
 /**
  * @brief Pure in-memory sort that avoids file I/O completely for very small datasets
@@ -124,9 +124,9 @@ file_iterator_state_t *startPureMemorySort(sortData *data, embedDBOperator *op) 
  * @param file              The file being written to
  * @return int8_t
  */
-int8_t writePageWithHeader(void *buffer, const uint32_t blockIndex, const uint32_t numberOfValues, const uint32_t pageSize, const embedDBFileInterface *fileInterface, void *file) {
-    memcpy(buffer, &blockIndex, sizeof(int32_t));
-    memcpy(buffer + sizeof(uint32_t), &numberOfValues, sizeof(int16_t));
+int8_t writePageWithHeader(void *buffer, const uint32_t blockIndex, const uint16_t numberOfValues, const uint32_t pageSize, const embedDBFileInterface *fileInterface, void *file) {
+    memcpy(buffer, &blockIndex, sizeof(uint32_t));
+    memcpy(buffer + sizeof(uint32_t), &numberOfValues, sizeof(uint16_t));
 
     fileInterface->write(buffer, blockIndex, pageSize, file);
 
@@ -154,15 +154,15 @@ int8_t writePageWithHeader(void *buffer, const uint32_t blockIndex, const uint32
  */
 uint32_t loadRowData(sortData *data, embedDBOperator *op, void *unsortedFile) {
     uint32_t count = 0;
-    int32_t blockIndex = 0;
-    int16_t valuesPerPage = (PAGE_SIZE - BLOCK_HEADER_SIZE) / data->recordSize;
+    uint32_t blockIndex = 0;
+    uint16_t valuesPerPage = (PAGE_SIZE - BLOCK_HEADER_SIZE) / data->recordSize;
 
 #ifdef DEBUG
     debug_log("DEBUG loadRowData: PAGE_SIZE=%d, BLOCK_HEADER_SIZE=%d, recordSize=%d, valuesPerPage=%d\n",
-              PAGE_SIZE, BLOCK_HEADER_SIZE, data->recordSize, valuesPerPage);
+        PAGE_SIZE, BLOCK_HEADER_SIZE, data->recordSize, valuesPerPage);
 #endif
 
-    void *buffer = malloc(PAGE_SIZE);
+    void* buffer = malloc(PAGE_SIZE);
 
     if (buffer == NULL) {
 #ifdef PRINT_ERRORS
@@ -176,15 +176,13 @@ uint32_t loadRowData(sortData *data, embedDBOperator *op, void *unsortedFile) {
         
         // Write page to file when full
         if (count % valuesPerPage == 0 && count != 0) {
+
             if (writePageWithHeader(buffer, blockIndex, valuesPerPage, PAGE_SIZE, data->fileInterface, unsortedFile)) {
                 free(buffer);
                 buffer = NULL;
                 return 0;
             }
-
             blockIndex++;
-
-            memset(buffer, 0, PAGE_SIZE);
         }
 
         // Offset of the data in the page
@@ -200,10 +198,24 @@ uint32_t loadRowData(sortData *data, embedDBOperator *op, void *unsortedFile) {
         }
 
         // Write data to buffer
-        memcpy((uint8_t *)buffer + rowOffset, op->input->recordBuffer, data->recordSize);
-
+        memcpy((uint8_t*)buffer + rowOffset, op->input->recordBuffer, data->recordSize);
 #ifdef DEBUG
-        if (count < 100 || count % 1000 == 0) {
+        if (count < 10) {
+            debug_log("DEBUG loadRowData record %d: ", count);
+            for (int i = 0; i < data->recordSize; i++) {
+                debug_log("%02x ", ((uint8_t *)op->input->recordBuffer)[i]);
+            }
+            debug_log("\n");
+
+            // Also show what we wrote to the buffer
+            debug_log("DEBUG wrote to buffer at offset %d: ", rowOffset);
+            for (int i = 0; i < data->recordSize; i++) {
+                debug_log("%02x ", ((uint8_t *)buffer)[rowOffset + i]);
+            }
+            debug_log("\n");
+            debug_log("DEBUG: recordBuffer address: %p\n", op->input->recordBuffer);
+        }
+        if (count < 10 || count % 1000 == 0) {
             int32_t *keyPtr = (int32_t *)(op->input->recordBuffer + data->keyOffset);
             debug_log("DEBUG loadRowData: count=%d, rowOffset=%d, key=%d\n", count, rowOffset, *keyPtr);
         }
@@ -247,6 +259,14 @@ void prepareSort(embedDBOperator *op) {
     data->keyOffset = getColOffsetFromSchema(op->schema, data->colNum);
     data->recordSize = getRecordSizeFromSchema(op->schema);
     data->keySize = op->schema->columnSizes[data->colNum];
+#ifdef DEBUG
+    debug_log("DEBUG prepareSort: recordSize=%d, keySize=%d, keyOffset=%d, colNum=%d\n",
+              data->recordSize, data->keySize, data->keyOffset, data->colNum);
+    debug_log("DEBUG prepareSort: schema has %d columns\n", op->schema->numCols);
+    for (int i = 0; i < op->schema->numCols; i++) {
+        debug_log("  Column %d: size=%d\n", i, op->schema->columnSizes[i]);
+    }
+#endif
 
     // A columns size will be negative if the column is signed
     // and positive if value is unsigned
@@ -257,8 +277,11 @@ void prepareSort(embedDBOperator *op) {
 #ifdef ARDUINO
     data->fileIterator = startPureMemorySort(data, op);
     if (data->fileIterator == NULL) {
+#ifdef DEBUG
         debug_log("ERROR: Pure memory sort failed\n");
+#endif
         return;
+    }
 #else
 
     if (data->fileInterface == NULL || data->fileInterface->setup == NULL) {
@@ -300,7 +323,7 @@ void prepareSort(embedDBOperator *op) {
     file_iterator_state_t *iteratorState = startSort(data, unsortedFile, sortedFile);
     if (iteratorState == NULL) {
 #ifdef PRINT_ERRORS
-        debug_log("ERROR: Sort failed");
+        debug_log("ERROR: Sort failed");    
 #endif
         return;
     }
@@ -490,10 +513,7 @@ void prepareSort(embedDBOperator *op) {
                sizeof(uint16_t));
         uint32_t recordIndexInPage = iteratorState->currentRecord % recordPerPage;
 #ifdef DEBUG
-        uint32_t blockIdx;
-        memcpy(&blockIdx, ((sortData *)data)->readBuffer, sizeof(uint32_t));
-        debug_log("READ PAGE hdr: blockIdx=%u values=%u\n",
-            blockIdx, valuesInPage);
+      
 #endif
 
         if (recordIndexInPage >= valuesInPage) {
@@ -503,20 +523,22 @@ void prepareSort(embedDBOperator *op) {
         memcpy(buffer, ((sortData *)data)->readBuffer + copyOffset, iteratorState->recordSize);
 
 #ifdef DEBUG
-        if (iteratorState->recordsRead < 100 || iteratorState->recordsRead % 1000 == 0) {
+        if (iteratorState->recordsRead < 10 || iteratorState->recordsRead % 1000 == 0) {
             int32_t *keyPtr = (int32_t *)(buffer + ((sortData *)data)->keyOffset);
             debug_log("DEBUG readNextRecord: recordsRead=%d, currentRecord=%d, pageIdx=%d, recordInPage=%d, copyOffset=%d, key=%d\n",
                       iteratorState->recordsRead, iteratorState->currentRecord, iteratorState->currentRecord / recordPerPage,
-                      recordIndexInPage, copyOffset, *keyPtr);
+                recordIndexInPage, copyOffset, *keyPtr);
+            uint32_t blockIdx;
+            memcpy(&blockIdx, ((sortData *)data)->readBuffer, sizeof(uint32_t));
+            debug_log("READ PAGE hdr: blockIdx=%u values=%u\n",
+                blockIdx, valuesInPage);
+            debug_log("PAGE HEADER: page=%d values=%d\n",
+                      iteratorState->currentRecord / recordPerPage,
+                valuesInPage);
+            int32_t *key0 = (int32_t *)(((sortData *)data)->readBuffer + BLOCK_HEADER_SIZE + ((sortData *)data)->keyOffset);
+            int32_t *keyLast = (int32_t *)(((sortData *)data)->readBuffer + BLOCK_HEADER_SIZE + (recordPerPage - 1) * iteratorState->recordSize + ((sortData *)data)->keyOffset);
+            debug_log("  First key on page: %d, Last key on page: %d\n", *key0, *keyLast);
         }
-        memcpy(&valuesInPage, ((sortData *)data)->readBuffer + sizeof(uint32_t), sizeof(uint16_t));
-
-        debug_log("PAGE HEADER: page=%d values=%d\n",
-                  iteratorState->currentRecord / recordPerPage,
-            valuesInPage);
-
-        debug_log("RESULT FILE BASE OFFSET = %u\n", iteratorState->resultFile);
-
 #endif
 
         iteratorState->recordsRead++;
@@ -529,10 +551,6 @@ void prepareSort(embedDBOperator *op) {
         //         }
         //         printf("\n");
         // #endif
-#ifdef DEBUG
-        debug_log("DEBUG readNextRecord: recordIndexInPage=%d, valuesInPage=%d, returning=%d\n",
-                  recordIndexInPage, valuesInPage, (recordIndexInPage >= valuesInPage) ? 1 : 0);
-#endif
         return 0;
     }
 

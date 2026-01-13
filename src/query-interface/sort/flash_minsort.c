@@ -49,11 +49,10 @@ This is no output sort with block headers and iterator input. Heap used when mov
 
 #include "in_memory_sort.h"
 
-#include "debug_print.h"
-
 // #define DEBUG 1
 // #define DEBUG_OUTPUT 1
 // #define DEBUG_READ 1
+// #include "debug_print.h"
 
 #ifndef INT_MAX
 #define INT_MAX 0xFFFFFFFF
@@ -82,10 +81,10 @@ void readPageMinSort(MinSortState *ms, int pageNum, external_sort_t *es, metrics
     ms->lastBlockIdx = pageNum;
 
 #ifdef DEBUG_READ
-    printf("Reading block: %d\n", pageNum);
+    debug_log("Reading block: %d\n", pageNum);
     for (int k = 0; k < 31; k++) {
         test_record_t *buf = (void *)(ms->buffer + es->headerSize + k * es->record_size);
-        printf("%d: Record: %d\n", k, buf->key);
+        debug_log("%d: Record: %d\n", k, buf->key);
     }
 #endif
 }
@@ -140,7 +139,7 @@ void init_MinSort(MinSortState *ms, external_sort_t *es, metrics_t *metric, int8
     ms->records_per_block = (es->page_size - es->headerSize) / es->record_size;
     j = (ms->memoryAvailable - 2 * es->page_size - 2 * es->key_size - INT_SIZE) / (es->key_size + sizeof(uint8_t));
 #ifdef FLASH_MINSORT_PRINT
-    printf("Memory overhead: %d  Max regions: %d\r\n", 2 * es->key_size + INT_SIZE, j);
+    debug_log("Memory overhead: %d  Max regions: %d\r\n", 2 * es->key_size + INT_SIZE, j);
 #endif
     ms->blocks_per_region = (uint32_t)ceil((double)ms->numBlocks / j);
     ms->numRegions = (uint32_t)ceil((double)ms->numBlocks / ms->blocks_per_region);
@@ -152,8 +151,8 @@ void init_MinSort(MinSortState *ms, external_sort_t *es, metrics_t *metric, int8
 
 #ifdef DEBUG
     // printf("Memory overhead: %d  Max regions: %d\r\n", 2 * SORT_KEY_SIZE + INT_SIZE, j);
-    printf("Page size: %d, Memory size: %d Record size: %d, Number of records: %lu, Number of blocks: %d, Blocks per region: %d  Regions: %d\r\n",
-           es->page_size, ms->memoryAvailable, ms->record_size, ms->num_records, ms->numBlocks, ms->blocks_per_region, ms->numRegions);
+    debug_log("Page size: %d, Memory size: %d Record size: %d, Number of records: %lu, Number of blocks: %d, Blocks per region: %d  Regions: %d\r\n",
+              es->page_size, ms->memoryAvailable, ms->record_size, ms->num_records, ms->numBlocks, ms->blocks_per_region, ms->numRegions);
 #endif
 
     /* Initialize each region’s minimum value */
@@ -191,7 +190,7 @@ void init_MinSort(MinSortState *ms, external_sort_t *es, metrics_t *metric, int8
 
 #ifdef DEBUG
     for (i = 0; i < ms->numRegions; i++)
-        printf("Region: %d  Min: %d\r\n", i, ms->min[i]);
+        debug_log("Region: %d  Min: %d\r\n", i, ms->min[i]);
 #endif
 
     /* Allocate memory for current and next keys */
@@ -277,9 +276,9 @@ char *next_MinSort(MinSortState *ms, external_sort_t *es, void *tupleBuffer, met
                 memcpy(tupleBuffer, &(ms->buffer[ms->record_size * i + es->headerSize]), ms->record_size);
                 metric->num_memcpys++;
 #ifdef DEBUG
-                    test_record_t *buf = (test_record_t *)(ms->buffer + es->headerSize + i * es->record_size);
-                    buf = (test_record_t *)tupleBuffer;
-                    debug_log("Returning tuple: %d\n", buf->key);
+                test_record_t *buf = (test_record_t *)(ms->buffer + es->headerSize + i * es->record_size);
+                buf = (test_record_t *)tupleBuffer;
+                debug_log("Returning tuple: %d\n", buf->key);
 #endif
                 i++;  // Move to the next record
                 ms->tuplesOut++;
@@ -299,7 +298,7 @@ char *next_MinSort(MinSortState *ms, external_sort_t *es, void *tupleBuffer, met
 
 done:
 #ifdef DEBUG
-        debug_log("Updating minimum in region\r\n");
+    debug_log("Updating minimum in region\r\n");
 #endif
 
     // After processing the current block, scan the rest of the region to find a smaller record if possible
@@ -331,7 +330,7 @@ done:
             if (compareFn(dataVal, ms->current) == 0) {
                 ms->nextIdx = k * ms->records_per_block + i;
 #ifdef DEBUG
-                    debug_log("Next tuple at: %d  k: %d  i: %d\r\n", ms->nextIdx, k, i);
+                debug_log("Next tuple at: %d  k: %d  i: %d\r\n", ms->nextIdx, k, i);
 #endif
                 goto done2;
             }
@@ -361,7 +360,7 @@ done2:
         }
 
 #ifdef DEBUG
-                debug_log("Updated minimum in block to: %d\r\n", ms->min[ms->regionIdx]);
+        debug_log("Updated minimum in block to: %d\r\n", ms->min[ms->regionIdx]);
 #endif
     }
 
@@ -418,7 +417,7 @@ int flash_minsort(
     metrics_t *metric,
     int8_t (*compareFn)(void *a, void *b)) {
 #ifdef DEBUG
-    printf("*Flash Minsort*\n");
+    debug_log("*Flash Minsort*\n");
 #endif
     clock_t start = clock();
 
@@ -433,6 +432,7 @@ int flash_minsort(
     int32_t blockIndex = 0;
     int16_t values_per_page = (es->page_size - es->headerSize) / es->record_size;
     uint8_t *outputBuffer = buffer + es->page_size;
+    unsigned long lastWritePos = *resultFilePtr;
     // test_record_t *buf;
 
     // Main sorting loop: fetches and writes sorted records in blocks
@@ -447,28 +447,40 @@ int flash_minsort(
             count = 0;                                                 // Reset count for the next block
 
             // Write the block to the output file using the file interface's write method
-            if (0 == ((file_iterator_state_t *)iteratorState)->fileInterface->write(outputBuffer, blockIndex, es->page_size, outputFile)) {
+            ((file_iterator_state_t *)iteratorState)->fileInterface->seek(lastWritePos, outputFile);
+#ifdef DEBUG
+            debug_log("Writing page flash minsort: blockIndex=%d, count=%d, filePosition=%ld\n",
+                      blockIndex, count, count / PAGE_SIZE);
+#endif
+            debug_log("Writing page flash minsort: blockIndex=%d, count=%d\n",
+                      blockIndex, count);
+            if (0 == ((file_iterator_state_t *)iteratorState)->fileInterface->writeRel(outputBuffer, es->page_size, 1, outputFile)) {
                 return 9;  // Return error code if writing to the output file fails
             }
 
 #ifdef DEBUG
-            printf("Wrote output block. Block index: %d\n", blockIndex);
+            debug_log("Wrote output block. Block index: %d\n", blockIndex);
             for (int k = 0; k < values_per_page; k++) {
                 test_record_t *buf = (void *)(outputBuffer + es->headerSize + k * es->record_size);
-                printf("%d: Output Record: %d\n", k, buf->key);
+                debug_log("%d: Output Record: %d\n", k, buf->key);
             }
 #endif
             metric->num_writes++;
+            lastWritePos += es->page_size;
             blockIndex++;
         }
     }
 
     // Write the last block if there are remaining records
     if (count > 0) {
+        ((file_iterator_state_t *)iteratorState)->fileInterface->seek(lastWritePos, outputFile);
         *((int32_t *)outputBuffer) = blockIndex;                   /* Block index */
         *((int16_t *)(outputBuffer + BLOCK_COUNT_OFFSET)) = count; /* Block record count */
-
-        if (0 == ((file_iterator_state_t *)iteratorState)->fileInterface->write(outputBuffer, blockIndex, es->page_size, outputFile)) {
+#ifdef DEBUG
+        debug_log("Writing page flash minsort: blockIndex=%d, count=%d, filePosition=%ld\n",
+                  blockIndex, count, count / PAGE_SIZE);
+#endif
+        if (0 == ((file_iterator_state_t *)iteratorState)->fileInterface->writeRel(outputBuffer, es->page_size, 1, outputFile)) {
             return 9;  // Return error code if writing to the output file fails
         }
         metric->num_writes++;
@@ -477,7 +489,7 @@ int flash_minsort(
     }
 
 #ifdef DEBUG
-    printf("Number of sorted records: %d", ms.num_records);
+    debug_log("Number of sorted records: %d", ms.num_records);
 #endif
 
     ((file_iterator_state_t *)iteratorState)->fileInterface->flush(outputFile);
@@ -489,7 +501,7 @@ int flash_minsort(
     *resultFilePtr = 0;
 
 #ifdef DEBUG
-    printf("Complete. Comparisons: %d  MemCopies: %d\n", metric->num_compar, metric->num_memcpys);
+    debug_log("Complete. Comparisons: %d  MemCopies: %d\n", metric->num_compar, metric->num_memcpys);
 #endif
 
     return 0;  // Successful completion

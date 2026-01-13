@@ -166,7 +166,7 @@ void runTestSequentialValues() {
 #ifdef ARDUINO
     insertNValues(state, 1, 0);
 #else
-    insertNValues(state, 67, 1);
+    insertNValues(state, 130, 1);
 #endif
  
     embedDBIterator it;
@@ -180,7 +180,7 @@ void runTestSequentialValues() {
     uint8_t projColsOB[] = {0, 1};
     embedDBOperator* projColsOrderBy = createProjectionOperator(scanOpOrderBy, 2, projColsOB);
     embedDBOperator* orderByOp = createOrderByOperator(state, projColsOrderBy, 1, -1, int32Comparator);
-    //debugBinData(orderByOp, 67, 1);
+    //debugBinData(orderByOp, 66, 1);
 
     orderByOp->init(orderByOp);
 
@@ -213,20 +213,23 @@ void runTestUsingSEA100k() {
     embedDBInitIterator(state, &it);
 
     embedDBOperator* scanOpOrderBy = createTableScanOperator(state, &it, baseSchema);
-    //debugBinData(scanOpOrderBy, 20, 1);
+    //debugBinData(scanOpOrderBy, 200, 0);
     uint8_t projColsOB[] = {0, 1};
     embedDBOperator* projColsOrderBy = createProjectionOperator(scanOpOrderBy, 2, projColsOB);
-    //debugBinData(projColsOrderBy, 100000, 1);
+    //debugBinData(projColsOrderBy, 200, 0);
     embedDBOperator* orderByOp = createOrderByOperator(state, projColsOrderBy, 1, -1, int32Comparator);
+    debugBinData(orderByOp, 100000, 1);
+
     orderByOp->init(orderByOp);
-    //debugBinData(orderByOp, 100000, 1);
+
     int32_t* recordBuffer = (int32_t*)orderByOp->recordBuffer;
     uint32_t previous = 0;
     // Result of the sort
-    uint32_t count = 1;
     while (exec(orderByOp)) {
         TEST_ASSERT_GREATER_OR_EQUAL_INT32_MESSAGE(previous, ((int32_t)recordBuffer[1]) / 10.0, "Sort value is not greater than or equal to previous value previous values.");
         previous = ((int32_t)recordBuffer[1]) / 10.0;
+        printf("%d ", previous);
+        fflush(stdout);
     }
 
     orderByOp->close(orderByOp);

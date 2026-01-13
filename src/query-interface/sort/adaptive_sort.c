@@ -52,11 +52,11 @@
 
 #include "debug_print.h"
 
- #define     DEBUG         1
- #define     DEBUG_OUTPUT  1
- #define     DEBUG_READ    1
-#define     DEBUG_HEAP    0
-#define ADAPTIVE_SORT_PRINT 
+//  #define     DEBUG         1
+//  #define     DEBUG_OUTPUT  1
+//  #define     DEBUG_READ    1
+// #define     DEBUG_HEAP    0
+// #define ADAPTIVE_SORT_PRINT 
 
 // #define ADAPTIVE_SORT_PRINT_FINISH
 
@@ -195,7 +195,10 @@ int adaptive_sort(
                 if (count == values_per_page) {
                     *((int32_t*)outputBuffer) = blockIndex;                   /* Block index */
                     *((int16_t*)(outputBuffer + BLOCK_COUNT_OFFSET)) = count; /* Block record count */
-
+#ifdef DEBUG
+                    debug_log("Writing page adaptive sort: blockIndex=%d, count=%d, filePosition=%ld\n",
+                        blockIndex, count, lastWritePos / PAGE_SIZE);
+#endif
                     // Write block to the ouput file
                     if (0 == ((file_iterator_state_t*)iteratorState)->fileInterface->write(outputBuffer, blockIndex, es->page_size, outputFile)) {
                         return 9;  // Return error code if writing to the output file fails
@@ -219,7 +222,10 @@ int adaptive_sort(
             if (count > 0) {
                 *((int32_t*)outputBuffer) = blockIndex;                   /* Block index */
                 *((int16_t*)(outputBuffer + BLOCK_COUNT_OFFSET)) = count; /* Block record count */
-
+#ifdef DEBUG
+                debug_log("Writing last page adaptive: blockIndex=%d, count=%d, filePosition=%ld\n",
+                    blockIndex, count, lastWritePos / PAGE_SIZE);
+#endif
                 if (0 == ((file_iterator_state_t*)iteratorState)->fileInterface->write(outputBuffer, blockIndex, es->page_size, outputFile)) {
                     return 9;  // Return error code if writing to the output file fails
                 }
@@ -339,7 +345,7 @@ int adaptive_sort(
                     // Restart building the sublist
                     outputCount = 0;
                     haveOutputKey = 0;
-                    sublistSize = 0;
+                    // sublistSize = 0;
                     metric->num_runs++;
                 }
             }
@@ -467,14 +473,19 @@ int adaptive_sort(
 
             // Add Page Headers
             *((int32_t*)buffer) = sublistSize;
-            *((int16_t*)(buffer + BLOCK_COUNT_OFFSET)) = (int8_t)outputCount;
+            *((int16_t*)(buffer + BLOCK_COUNT_OFFSET)) = (int16_t)outputCount;
             memcpy(tupleBuffer, buffer + (outputCount - 1) * es->record_size + es->headerSize, es->key_size);
             memcpy(lastOutputKey, tupleBuffer, es->record_size);
             metric->num_memcpys += 2;
 
             // Store the last key output temporarily in tuple buffer as once write out then read new block it would be gone
             // Write the output block
+#ifdef DEBUG
+            debug_log("Writing page adaptive writeRel: blockIndex=%d, count=%d, filePosition=%ld\n",
+                sublistSize, outputCount, lastWritePos / PAGE_SIZE);
+#endif
             ((file_iterator_state_t*)iteratorState)->fileInterface->writeRel(buffer, PAGE_SIZE, 1, outputFile);
+            
             if (((file_iterator_state_t*)iteratorState)->fileInterface->error(outputFile)) {
                 // File write error
                 free(lastOutputKey);
@@ -495,7 +506,6 @@ int adaptive_sort(
             sublistSize++;
             outputCount = 0;
         } /* while records left */
-
         // free(lastOutputKey);
         numSublist = metric->num_runs;
 #ifdef ADAPTIVE_SORT_PRINT
@@ -560,15 +570,15 @@ int adaptive_sort(
             ((file_iterator_state_t*)iteratorState)->file = outputFile;
             *resultFilePtr = 0;
             flash_minsort_sublist(iteratorState, tupleBuffer, outputFile, buffer, bufferSizeBytes, es, resultFilePtr, metric, compareFn, numSublist);
-            *resultFilePtr = lastWritePos;
+            //*resultFilePtr = lastWritePos;
         } else {
             // Use normal version of minsort. Do not have enough space to index a value per sublist. Assumes data is not sorted in each region
 #ifdef ADAPTIVE_SORT_PRINT
             debug_log("Performing MinSort\n");
 #endif
             ((file_iterator_state_t*)iteratorState)->file = outputFile;
-            flash_minsort(iteratorState, tupleBuffer, outputFile, buffer, bufferSizeBytes, es, resultFilePtr, metric, compareFn);
             *resultFilePtr = 0;
+            flash_minsort(iteratorState, tupleBuffer, outputFile, buffer, bufferSizeBytes, es, resultFilePtr, metric, compareFn);
         }
     } else {
         /*                                   */
@@ -946,6 +956,10 @@ int adaptive_sort(
                         *((int16_t*)(buffer + BLOCK_COUNT_OFFSET)) = (int16_t)tuplesPerPage;
 
                         ((file_iterator_state_t*)iteratorState)->fileInterface->seek(lastWritePos, outputFile);
+#ifdef DEBUG
+                        debug_log("Writing page adaptive writeRel 2: blockIndex=%d, count=%d, filePosition=%ld\n",
+                            currentBlockId, tuplesPerPage, lastWritePos / PAGE_SIZE);
+#endif
                         ((file_iterator_state_t*)iteratorState)->fileInterface->writeRel(buffer + OUTPUT_BLOCK_ID * es->page_size, PAGE_SIZE, 1, outputFile);
                         if (((file_iterator_state_t*)iteratorState)->fileInterface->error(outputFile)) {
                             // File read error
@@ -1304,7 +1318,7 @@ int adaptive_sort(
                     /* end of run */
                 }
 
-                if (record2[0] > 0) { /* Tuples in output block to write out */
+                if (record2[0] != -1) { /* Tuples in output block to write out */
                     // fseek(outputFile, lastWritePos, SEEK_SET);
                     // if (0 == fwrite(buffer + OUTPUT_BLOCK_ID * es->page_size, (size_t)es->page_size, 1, outputFile))
                     // {   /* File write error - arduino prints 1st value nmemb times if nmemb != 1 */
@@ -1318,6 +1332,10 @@ int adaptive_sort(
                     currentBlockId++;
 
                     ((file_iterator_state_t*)iteratorState)->fileInterface->seek(lastWritePos, outputFile);
+#ifdef DEBUG
+                    debug_log("Writing page adaptive write rel 3: blockIndex=%d, count=%d, filePosition=%ld\n",
+                        currentBlockId, (int16_t)(record2[0] - es->headerSize) / es->record_size + 1, lastWritePos / PAGE_SIZE);
+#endif
                     ((file_iterator_state_t*)iteratorState)->fileInterface->writeRel(buffer + OUTPUT_BLOCK_ID * es->page_size, PAGE_SIZE, 1, outputFile);
                     if (((file_iterator_state_t*)iteratorState)->fileInterface->error(outputFile)) {
                         // File write error
