@@ -5,7 +5,7 @@
 
 
 // #define PRINT_METRIC
-#define DEBUG
+// #define DEBUG
 // #define PRINT_ERRORS
 #include "debug_print.h"
 
@@ -213,7 +213,6 @@ uint32_t loadRowData(sortData *data, embedDBOperator *op, void *unsortedFile) {
                 debug_log("%02x ", ((uint8_t *)buffer)[rowOffset + i]);
             }
             debug_log("\n");
-            debug_log("DEBUG: recordBuffer address: %p\n", op->input->recordBuffer);
         }
         if (count < 10 || count % 1000 == 0) {
             int32_t *keyPtr = (int32_t *)(op->input->recordBuffer + data->keyOffset);
@@ -363,7 +362,7 @@ void prepareSort(embedDBOperator *op) {
 #ifdef ARDUINO
         const int buffer_max_pages = 1;  // Reduced to minimum for Arduino
 #else
-    const int buffer_max_pages = 4;
+        const int buffer_max_pages = 3;
 #endif
 
         char *buffer = malloc(buffer_max_pages * es.page_size + es.record_size);
@@ -428,6 +427,7 @@ void prepareSort(embedDBOperator *op) {
     // Use adaptive sort on desktop
     int8_t runGenOnly = false;   // Run full sort operation
     int8_t writeReadRatio = 19;  // 1.97 * 10 => 19
+    // err = flash_minsort(iteratorState, tuple_buffer, sortedFile, buffer, buffer_max_pages * es.page_size, &es, &result_file_ptr, &metrics, data->compareFn);
     err = adaptive_sort(readNextRecord, iteratorState, tuple_buffer, sortedFile, buffer, buffer_max_pages, &es, &result_file_ptr, &metrics, data->compareFn, runGenOnly, writeReadRatio, data);
 #endif
 
@@ -487,7 +487,6 @@ void prepareSort(embedDBOperator *op) {
         // Read next page if current buffer is empty
         if (iteratorState->currentRecord % recordPerPage == 0 || iteratorState->recordsRead == 0) {
             uint32_t seekOffset = iteratorState->resultFile + (iteratorState->currentRecord / recordPerPage) * PAGE_SIZE;
-            memset(((sortData *)data)->readBuffer, 0, PAGE_SIZE);
 
             iteratorState->fileInterface->seek(seekOffset, iteratorState->file);
             iteratorState->fileInterface->readRel(((sortData *)data)->readBuffer, PAGE_SIZE, 1, iteratorState->file);

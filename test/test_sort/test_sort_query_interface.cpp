@@ -166,7 +166,7 @@ void runTestSequentialValues() {
 #ifdef ARDUINO
     insertNValues(state, 1, 0);
 #else
-    insertNValues(state, 130, 1);
+    insertNValues(state, 400, 1);
 #endif
  
     embedDBIterator it;
