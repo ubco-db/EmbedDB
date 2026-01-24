@@ -362,7 +362,7 @@ void prepareSort(embedDBOperator *op) {
 #ifdef ARDUINO
         const int buffer_max_pages = 1;  // Reduced to minimum for Arduino
 #else
-        const int buffer_max_pages = 3;
+        const int buffer_max_pages = 4;
 #endif
 
         char *buffer = malloc(buffer_max_pages * es.page_size + es.record_size);

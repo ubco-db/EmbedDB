@@ -72,7 +72,7 @@ void print_heap(char* buffer, int32_t heap_start_offset, int heap_size, int list
         addr = buffer + heap_start_offset;
         debug_log("heap: ");
         for (j = 0; j < heap_size; j++)
-            debug_log(" %d", *(int32_t*)(addr - j * es->record_size));
+            debug_log(" %d", *(int32_t*)(addr - j * es->record_size + es->key_offset));
         debug_log("| ");
     }
     debug_log("   ");
@@ -275,7 +275,7 @@ int adaptive_sort(
 
         // Fill all blocks other than the first with tuples
         addr = buffer + es->page_size;
-        for (i = 0; i < (bufferSizeInBlocks - 1) / 2 * tuplesPerPage; i++) {
+        for (i = 0; i < (bufferSizeInBlocks - 1) * tuplesPerPage; i++) {
             status = !iterator(sortData, addr);
             if (status == 0)
                 break;
@@ -373,81 +373,6 @@ int adaptive_sort(
                     if (heapSize > 0)
                         heapify_rev(buffer + heapStartOffset, buffer + heapStartOffset - heapSize * es->record_size, heapSize, es, metric);
                     continue;
-                }
-                // Check if heap + list are too full (leave some margin)
-                int maxRecords = (bufferSizeInBlocks - 1) * tuplesPerPage;
-                int usedRecords = heapSize + listSize;
-
-                if (usedRecords >= maxRecords - tuplesPerPage) {  // Leave room for one page
-                    // Buffer is getting full - force flush current run and start new one
-
-                    // First, output all remaining records from current output page
-                    if (outputCount > 0) {
-                        *((int32_t*)buffer) = sublistSize;
-                        *((int16_t*)(buffer + BLOCK_COUNT_OFFSET)) = (int16_t)outputCount;
-                        ((file_iterator_state_t*)iteratorState)->fileInterface->writeRel(buffer, PAGE_SIZE, 1, outputFile);
-                        if (((file_iterator_state_t*)iteratorState)->fileInterface->error(outputFile)) {
-                            free(lastOutputKey);
-                            return 9;
-                        }
-                        metric->num_writes++;
-                        sublistSize++;
-                        outputCount = 0;
-                    }
-
-                    // Dump entire heap to output
-                    while (heapSize > 0) {
-                        memcpy(buffer + es->headerSize + outputCount * es->record_size,
-                               buffer + heapStartOffset, es->record_size);
-                        outputCount++;
-
-                        if (outputCount >= tuplesPerPage) {
-                            *((int32_t*)buffer) = sublistSize;
-                            *((int16_t*)(buffer + BLOCK_COUNT_OFFSET)) = (int16_t)outputCount;
-                            ((file_iterator_state_t*)iteratorState)->fileInterface->writeRel(buffer, PAGE_SIZE, 1, outputFile);
-                            if (((file_iterator_state_t*)iteratorState)->fileInterface->error(outputFile)) {
-                                free(lastOutputKey);
-                                return 9;
-                            }
-                            metric->num_writes++;
-                            sublistSize++;
-                            outputCount = 0;
-                        }
-
-                        heapSize--;
-                        if (heapSize > 0)
-                            heapify_rev(buffer + heapStartOffset,
-                                        buffer + heapStartOffset - heapSize * es->record_size,
-                                        heapSize, es, metric);
-                    }
-
-                    // Write final partial page if any
-                    if (outputCount > 0) {
-                        *((int32_t*)buffer) = sublistSize;
-                        *((int16_t*)(buffer + BLOCK_COUNT_OFFSET)) = (int16_t)outputCount;
-                        ((file_iterator_state_t*)iteratorState)->fileInterface->writeRel(buffer, PAGE_SIZE, 1, outputFile);
-                        if (((file_iterator_state_t*)iteratorState)->fileInterface->error(outputFile)) {
-                            free(lastOutputKey);
-                            return 9;
-                        }
-                        metric->num_writes++;
-                        outputCount = 0;
-                    }
-
-                    // Convert list to heap for new run
-                    for (int j = 0; j < listSize; j++) {
-                        shiftUp_rev(buffer + heapStartOffset,
-                                    buffer + es->page_size + j * es->record_size,
-                                    heapSize, es, metric);
-                        heapSize++;
-                    }
-                    listSize = 0;
-
-                    // Start new sublist
-                    numSublist++;
-                    sublistSize = 0;
-                    haveOutputKey = 0;
-                    metric->num_runs++;
                 }
 
                 heapVal = buffer + heapStartOffset;
@@ -613,7 +538,7 @@ int adaptive_sort(
         return 0;
 
     // lastWritePos = ftell(outputFile);
-    //lastWritePos = ((file_iterator_state_t*)iteratorState)->fileInterface->tell(outputFile);
+    lastWritePos = ((file_iterator_state_t*)iteratorState)->fileInterface->tell(outputFile);
 
     // if (avgDistinct/10 < nobSortCost)
     int bufferSizeBytes = (bufferSizeInBlocks - 1) * es->page_size;                        /* One of the buffers is used for a read buffer */
