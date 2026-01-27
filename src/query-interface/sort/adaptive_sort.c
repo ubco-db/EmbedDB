@@ -52,13 +52,13 @@
 
 #include "debug_print.h"
 
- #define     DEBUG         1
- #define     DEBUG_OUTPUT  1
- #define     DEBUG_READ    1
-#define     DEBUG_HEAP    0
-#define ADAPTIVE_SORT_PRINT 
+//  #define     DEBUG         1
+//  #define     DEBUG_OUTPUT  1
+//  #define     DEBUG_READ    1
+// #define     DEBUG_HEAP    0
+// #define ADAPTIVE_SORT_PRINT 
 
-#define ADAPTIVE_SORT_PRINT_FINISH
+// #define ADAPTIVE_SORT_PRINT_FINISH
 
 /**
  * Prints the contents of the heap. Used for debugging.
@@ -265,9 +265,9 @@ int adaptive_sort(
 
         void* lastOutputKey = malloc(es->record_size);
         int8_t haveOutputKey = 0;
-        int32_t sublistSize = 0;
-        int32_t outputCount = 0;
-        int32_t recordsLeft = 0;
+        int32_t sublistSize = 0; /* size in blocks */
+        int32_t outputCount = 0; /* number of values in output block */
+        int32_t recordsLeft = 0; /* number of records in buffer */
         void *heapVal, *inputVal;
 
         // Calculate safe initial heap size
@@ -275,12 +275,11 @@ int adaptive_sort(
         // Available buffer space = blocks 1 to (bufferSizeInBlocks-1)
         // Reserve last block's worth of space for the list to grow safely
         int32_t maxRecordsInBuffer = (bufferSizeInBlocks - 1) * tuplesPerPage;
-        int32_t safeInitialHeapSize = (bufferSizeInBlocks - 2) * tuplesPerPage;  // Reserve 1 block for list
 
 #ifdef DEBUG
         debug_log("DEBUG: Buffer setup:\n");
         debug_log("  bufferSizeInBlocks=%d, tuplesPerPage=%d\n", bufferSizeInBlocks, tuplesPerPage);
-        debug_log("  maxRecordsInBuffer=%d, safeInitialHeapSize=%d\n", maxRecordsInBuffer, safeInitialHeapSize);
+        debug_log("  maxRecordsInBuffer=%d", maxRecordsInBuffer);
         debug_log("  heapStartOffset=%d, page_size=%d, record_size=%d\n",
                   heapStartOffset, es->page_size, es->record_size);
         debug_log("  Buffer layout: [I/O Page 0][Data Pages 1-%d][Heap grows down from top]\n", bufferSizeInBlocks - 1);
@@ -289,10 +288,8 @@ int adaptive_sort(
         ((file_iterator_state_t*)iteratorState)->fileInterface->seek(0, outputFile);
         lastWritePos = 0;
 
-        // CRITICAL FIX: Only read enough to fill the safe initial heap size
-        // This leaves room for the list to grow and prevents reading all data before main loop
         addr = buffer + es->page_size;  // Start after I/O block
-        for (i = 0; i < safeInitialHeapSize; i++) {
+        for (i = 0; i < maxRecordsInBuffer; i++) {
             status = !iterator(sortData, addr);
             if (status == 0)
                 break;  // No more records available
@@ -302,7 +299,7 @@ int adaptive_sort(
 
 #ifdef DEBUG
         debug_log("DEBUG: Initial load completed:\n");
-        debug_log("  recordsRead=%d (requested %d)\n", recordsRead, safeInitialHeapSize);
+        debug_log("  recordsRead=%d (requested %d)\n", recordsRead, maxRecordsInBuffer);
         debug_log("  Data spans from offset %d to %d\n",
                   (int)(es->page_size), (int)(es->page_size + recordsRead * es->record_size));
 #endif
@@ -433,6 +430,46 @@ int adaptive_sort(
 
             // Swap output records into output buffer from heap if smaller than records currently there. (I/O block is id zero)
             for (i = 0; i < tuplesPerPage; i++) {
+                /* ==========================================================
+                 * HEAP-EMPTY → START NEW RUN TRANSITION
+                 * This MUST happen before producing output
+                 * ========================================================== */
+                if (heapSize == 0) {
+                    if (listSize > 0) {
+                        // Finish current run and start a new one
+                        numSublist++;
+                        metric->num_runs++;
+
+                        sublistSize = 0;
+                        outputCount = 0;
+                        haveOutputKey = 0;
+
+#ifdef DEBUG
+                        debug_log("DEBUG: Heap empty → starting new run, promoting list (%d records)\n",
+                                  listSize);
+#endif
+
+                        // Promote frozen list → heap
+                        for (int32_t k = listSize - 1; k >= 0; k--) {
+                            shiftUp_rev(buffer + heapStartOffset,
+                                        buffer + es->page_size + k * es->record_size,
+                                        heapSize, es, metric);
+                            heapSize++;
+                        }
+                        listSize = 0;
+
+                        // Restart filling the output page for the new run
+                        i = -1;
+                        continue;
+                    } else {
+                        // No heap, no list → nothing left to output
+                        break;
+                    }
+                }
+
+                /* ==========================================================
+                 * EXISTING LOGIC CONTINUES HERE
+                 * ========================================================== */
 #ifdef DEBUG
                 if (i < 3 || i == tuplesPerPage - 1) {  // Only log first 3 and last iteration
                     debug_log("  Inner loop i=%d: recordsRead=%d, outputCount=%d, recordsLeft=%d, heapSize=%d\n",
@@ -440,7 +477,7 @@ int adaptive_sort(
                 }
 #endif
                 // Check if we've read all records from the current page
-                if (recordsRead == 0) {
+                if (recordsRead == 0 || i >= recordsRead) {
                     // Check if there are any records left
                     if (recordsLeft <= 0) {
                         break;
@@ -700,7 +737,7 @@ int adaptive_sort(
             debug_log("Performing MinSort with sorted sublists\n");
 #endif
             ((file_iterator_state_t*)iteratorState)->file = outputFile;
-            *resultFilePtr = 0;
+            *resultFilePtr = lastWritePos;
             flash_minsort_sublist(iteratorState, tupleBuffer, outputFile, buffer, bufferSizeBytes, es, resultFilePtr, metric, compareFn, numSublist);
             //*resultFilePtr = lastWritePos;
         } else {
@@ -709,7 +746,7 @@ int adaptive_sort(
             debug_log("Performing MinSort\n");
 #endif
             ((file_iterator_state_t*)iteratorState)->file = outputFile;
-            *resultFilePtr = 0;
+            *resultFilePtr = lastWritePos;
             flash_minsort(iteratorState, tupleBuffer, outputFile, buffer, bufferSizeBytes, es, resultFilePtr, metric, compareFn);
         }
     } else {

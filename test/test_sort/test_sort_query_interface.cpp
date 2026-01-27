@@ -180,7 +180,7 @@ void runTestSequentialValues() {
     uint8_t projColsOB[] = {0, 1};
     embedDBOperator* projColsOrderBy = createProjectionOperator(scanOpOrderBy, 2, projColsOB);
     embedDBOperator* orderByOp = createOrderByOperator(state, projColsOrderBy, 1, -1, int32Comparator);
-    debugBinData(orderByOp, 190, 1);
+    // debugBinData(orderByOp, 190, 1);
 
     orderByOp->init(orderByOp);
 
