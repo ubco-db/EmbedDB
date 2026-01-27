@@ -83,7 +83,7 @@ void print_heap(char* buffer, int32_t heap_start_offset, int heap_size, int list
         addr = buffer + es->page_size;
         debug_log("list: ");
         for (j = 0; j < list_size; j++)
-            debug_log(" %d", *(int32_t*)(addr + j * es->record_size));
+            debug_log(" %d", *(int32_t*)(addr + j * es->record_size + es->key_offset));
         debug_log("| ");
     }
     debug_log("\n");
@@ -263,44 +263,112 @@ int adaptive_sort(
         int32_t heapStartOffset = bufferSizeInBlocks * es->page_size - es->record_size;
         int32_t listSize = 0;
 
-        void* lastOutputKey = malloc(es->record_size); /* Pointer to memory storing value of last key output */
+        void* lastOutputKey = malloc(es->record_size);
         int8_t haveOutputKey = 0;
-        int32_t sublistSize = 0; /* size in blocks */
-        int32_t outputCount = 0; /* number of values in output block */
-        int32_t recordsLeft = 0; /* number of records in buffer */
-        void* heapVal, * inputVal;
+        int32_t sublistSize = 0;
+        int32_t outputCount = 0;
+        int32_t recordsLeft = 0;
+        void *heapVal, *inputVal;
+
+        // Calculate safe initial heap size
+        // Need space for: heap (grows down) + list (grows up) + input page (block 0)
+        // Available buffer space = blocks 1 to (bufferSizeInBlocks-1)
+        // Reserve last block's worth of space for the list to grow safely
+        int32_t maxRecordsInBuffer = (bufferSizeInBlocks - 1) * tuplesPerPage;
+        int32_t safeInitialHeapSize = (bufferSizeInBlocks - 2) * tuplesPerPage;  // Reserve 1 block for list
+
+#ifdef DEBUG
+        debug_log("DEBUG: Buffer setup:\n");
+        debug_log("  bufferSizeInBlocks=%d, tuplesPerPage=%d\n", bufferSizeInBlocks, tuplesPerPage);
+        debug_log("  maxRecordsInBuffer=%d, safeInitialHeapSize=%d\n", maxRecordsInBuffer, safeInitialHeapSize);
+        debug_log("  heapStartOffset=%d, page_size=%d, record_size=%d\n",
+                  heapStartOffset, es->page_size, es->record_size);
+        debug_log("  Buffer layout: [I/O Page 0][Data Pages 1-%d][Heap grows down from top]\n", bufferSizeInBlocks - 1);
+#endif
 
         ((file_iterator_state_t*)iteratorState)->fileInterface->seek(0, outputFile);
         lastWritePos = 0;
 
-        // Fill all blocks other than the first with tuples
-        addr = buffer + es->page_size;
-        for (i = 0; i < (bufferSizeInBlocks - 1) * tuplesPerPage; i++) {
+        // CRITICAL FIX: Only read enough to fill the safe initial heap size
+        // This leaves room for the list to grow and prevents reading all data before main loop
+        addr = buffer + es->page_size;  // Start after I/O block
+        for (i = 0; i < safeInitialHeapSize; i++) {
             status = !iterator(sortData, addr);
             if (status == 0)
-                break;
+                break;  // No more records available
             recordsRead++;
             addr += es->record_size;
         }
 
+#ifdef DEBUG
+        debug_log("DEBUG: Initial load completed:\n");
+        debug_log("  recordsRead=%d (requested %d)\n", recordsRead, safeInitialHeapSize);
+        debug_log("  Data spans from offset %d to %d\n",
+                  (int)(es->page_size), (int)(es->page_size + recordsRead * es->record_size));
+#endif
+
         recordsLeft = recordsRead;
 
         // Update metrics
-        metric->num_reads += bufferSizeInBlocks - 1;
+        // Note: num_reads tracks page reads, but we read data during initial fill via iterator
+        // The iterator handles its own page reads, so don't double-count here
         metric->num_runs++;
 
-        // Build heap from tuples in filled blocks
+        // Build heap from tuples in reverse order
+        // Start from the end of loaded data and work backwards
+        addr = buffer + es->page_size + recordsRead * es->record_size;
         for (i = 0; i < recordsRead; i++) {
             addr -= es->record_size;
+
             memcpy(tupleBuffer, addr, es->record_size);
             metric->num_memcpys++;
             shiftUp_rev(buffer + heapStartOffset, tupleBuffer, heapSize, es, metric);
             heapSize++;
         }
 
+#ifdef DEBUG
+        debug_log("DEBUG: Heap construction completed:\n");
+        debug_log("  heapSize=%d, listSize=%d\n", heapSize, listSize);
+
+        // Memory layout verification
+        int32_t heapBottom = heapStartOffset - (heapSize - 1) * es->record_size;
+        int32_t listTop = es->page_size + listSize * es->record_size;
+        int32_t gapSize = heapBottom - listTop;
+
+        debug_log("DEBUG: Memory layout:\n");
+        debug_log("  I/O block:    offset 0 - %d\n", es->page_size);
+        debug_log("  List top:     offset %d\n", listTop);
+        debug_log("  Gap:          %d bytes (%d records)\n", gapSize, gapSize / es->record_size);
+        debug_log("  Heap bottom:  offset %d\n", heapBottom);
+        debug_log("  Heap top:     offset %d\n", heapStartOffset);
+        debug_log("  Buffer end:   offset %d\n", bufferSizeInBlocks * es->page_size);
+
+        if (heapBottom <= listTop) {
+            debug_log("ERROR: Heap and list overlap! This will cause corruption.\n");
+            free(lastOutputKey);
+            return 9;
+        }
+#endif
+
+#ifdef DEBUG_HEAP
+        print_heap(buffer, heapStartOffset, heapSize, listSize, es);
+#endif
+
+#ifdef DEBUG
+        debug_log("DEBUG: About to enter main loop\n");
+        debug_log("  heapSize=%d, listSize=%d, recordsLeft=%d\n", heapSize, listSize, recordsLeft);
+        debug_log("  Iterator position: recordsRead=%d, totalRecords=%d\n",
+                  ((file_iterator_state_t*)iteratorState)->recordsRead,
+                  ((file_iterator_state_t*)iteratorState)->totalRecords);
+#endif
+
         // Read each block and sort
         while (recordsLeft != 0) {
             recordsRead = 0;
+#ifdef DEBUG
+            debug_log("\n=== Main loop iteration: sublistSize=%d, outputCount=%d, heapSize=%d, listSize=%d, recordsLeft=%d ===\n",
+                      sublistSize, outputCount, heapSize, listSize, recordsLeft);
+#endif
 
             // Read in page
             addr = buffer + es->headerSize;
@@ -318,6 +386,16 @@ int adaptive_sort(
             
 #endif
 
+#ifdef DEBUG
+            debug_log("DEBUG: Main loop iteration - read %d records\n", recordsRead);
+            if (recordsRead > 0) {
+                debug_log("  First record value: %d, Last record value: %d\n",
+                          *(int32_t*)(buffer + es->headerSize + es->key_offset),
+                          *(int32_t*)(buffer + es->headerSize + (recordsRead - 1) * es->record_size + es->key_offset));
+            }
+            debug_log("  heapSize before processing: %d, listSize: %d\n", heapSize, listSize);
+#endif
+
             if (recordsRead > 1) {
                 // Sort page using in memory quick sort
                 metric->num_reads += 1;
@@ -333,7 +411,7 @@ int adaptive_sort(
 
                 // If first value in heap is smaller than lastOutputValue then start new sublist, otherwise continue with previous one.
                 heapVal = buffer + heapStartOffset;
-                if (lastOutputKey == NULL || es->compare_fcn(heapVal, lastOutputKey) < 0) {
+                if (lastOutputKey == NULL || es->compare_fcn(heapVal + es->key_offset, lastOutputKey + es->key_offset) < 0) {
                     // Start new sublist
                     numSublist++;
 
@@ -355,6 +433,12 @@ int adaptive_sort(
 
             // Swap output records into output buffer from heap if smaller than records currently there. (I/O block is id zero)
             for (i = 0; i < tuplesPerPage; i++) {
+#ifdef DEBUG
+                if (i < 3 || i == tuplesPerPage - 1) {  // Only log first 3 and last iteration
+                    debug_log("  Inner loop i=%d: recordsRead=%d, outputCount=%d, recordsLeft=%d, heapSize=%d\n",
+                              i, recordsRead, outputCount, recordsLeft, heapSize);
+                }
+#endif
                 // Check if we've read all records from the current page
                 if (recordsRead == 0) {
                     // Check if there are any records left
@@ -475,7 +559,19 @@ int adaptive_sort(
             }
 
             // Add Page Headers
-            *((int32_t*)buffer) = sublistSize;
+#ifdef DEBUG
+            debug_log("About to write block: sublistSize=%d, outputCount=%d, numSublist=%d\n",
+                      sublistSize, outputCount, numSublist);
+            debug_log("  First 3 output values:");
+            for (int dbg = 0; dbg < 3 && dbg < outputCount; dbg++) {
+                debug_log(" %d", *(int32_t*)(buffer + es->headerSize + dbg * es->record_size + es->key_offset));
+            }
+            debug_log("\n");
+#endif
+            if (outputCount == 0) {
+                continue;  // Skip to next iteration
+            }
+            * ((int32_t*)buffer) = sublistSize;
             *((int16_t*)(buffer + BLOCK_COUNT_OFFSET)) = (int16_t)outputCount;
             memcpy(tupleBuffer, buffer + (outputCount - 1) * es->record_size + es->headerSize, es->key_size);
             memcpy(lastOutputKey, tupleBuffer, es->record_size);
@@ -509,6 +605,12 @@ int adaptive_sort(
             lastWritePos += es->page_size;
             sublistSize++;
             outputCount = 0;
+#ifdef DEBUG
+            if (recordsLeft == 0) {
+                debug_log("DEBUG: Exiting main loop - heapSize=%d, listSize=%d, outputCount=%d, sublistSize=%d\n",
+                          heapSize, listSize, outputCount, sublistSize);
+            }
+#endif
         } /* while records left */
         // free(lastOutputKey);
         numSublist = metric->num_runs;
@@ -525,6 +627,32 @@ int adaptive_sort(
 #endif
         numDistinctInRun = 0;
     } /* end pessmistic */
+
+#ifdef DEBUG
+    debug_log("\n=== REPLACEMENT SELECTION COMPLETE ===\n");
+    debug_log("Number of sublists created: %d\n", numSublist);
+    debug_log("Output file size: %ld bytes (%ld blocks)\n", lastWritePos, lastWritePos / es->page_size);
+    debug_log("About to start merge phase...\n\n");
+
+    // Read and display what's in each block
+    for (int debugBlock = 0; debugBlock < lastWritePos / es->page_size; debugBlock++) {
+        ((file_iterator_state_t*)iteratorState)->fileInterface->seek(debugBlock * es->page_size, outputFile);
+        ((file_iterator_state_t*)iteratorState)->fileInterface->readRel(buffer, es->page_size, 1, outputFile);
+
+        uint32_t blockIdx = *((uint32_t*)buffer);
+        uint16_t count = *((uint16_t*)(buffer + BLOCK_COUNT_OFFSET));
+
+        debug_log("Block %d: blockIdx=%u, count=%u, first 10 values:", debugBlock, blockIdx, count);
+        for (int v = 0; v < count && v < 10; v++) {
+            debug_log(" %d", *(int32_t*)(buffer + es->headerSize + v * es->record_size + es->key_offset));
+        }
+        if (count > 10) debug_log(" ...");
+        debug_log("\n");
+    }
+    debug_log("=================================\n\n");
+#endif
+
+    //((file_iterator_state_t*)iteratorState)->fileInterface->flush(outputFile);
 
     // No merge phase necessary
     if (numSublist == 1) {

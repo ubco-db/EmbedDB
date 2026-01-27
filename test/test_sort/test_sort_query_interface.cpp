@@ -54,7 +54,7 @@ void setUp() {
     }
     state = (embedDBState*)malloc(sizeof(embedDBState));
     state->keySize = 4;
-    state->dataSize = 72;
+    state->dataSize = 12;
     state->compareKey = int32Comparator;
     state->compareData = int32Comparator;
     state->pageSize = 512;
@@ -86,7 +86,7 @@ void setUp() {
     state->rules = NULL;
     state->numRules = 0;
 
-    int8_t colSizes[] = {4, 64, 4, 4};
+    int8_t colSizes[] = {4, 4, 4, 4};
     int8_t colSignedness[] = {embedDB_COLUMN_UNSIGNED, embedDB_COLUMN_SIGNED, embedDB_COLUMN_SIGNED, embedDB_COLUMN_SIGNED};
     ColumnType colTypes[] = {embedDB_COLUMN_UINT32, embedDB_COLUMN_INT32, embedDB_COLUMN_INT32, embedDB_COLUMN_INT32};
     baseSchema = embedDBCreateSchema(4, colSizes, colSignedness, colTypes);
@@ -166,7 +166,7 @@ void runTestSequentialValues() {
 #ifdef ARDUINO
     insertNValues(state, 1, 0);
 #else
-    insertNValues(state, 22, 1);
+    insertNValues(state, 190, 1);
 #endif
  
     embedDBIterator it;
@@ -180,7 +180,7 @@ void runTestSequentialValues() {
     uint8_t projColsOB[] = {0, 1};
     embedDBOperator* projColsOrderBy = createProjectionOperator(scanOpOrderBy, 2, projColsOB);
     embedDBOperator* orderByOp = createOrderByOperator(state, projColsOrderBy, 1, -1, int32Comparator);
-    debugBinData(orderByOp, 22, 1);
+    debugBinData(orderByOp, 190, 1);
 
     orderByOp->init(orderByOp);
 
