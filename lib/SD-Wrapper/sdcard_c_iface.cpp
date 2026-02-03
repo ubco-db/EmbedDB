@@ -141,3 +141,8 @@ int sd_remove(const char *filename) {
     }
     return -1;
 }
+
+int sd_ferror(SD_FILE *stream) {
+    if (stream == NULL) return 1;
+    return stream->f.getWriteError() ? 1 : 0;
+}

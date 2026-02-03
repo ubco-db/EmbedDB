@@ -5,9 +5,9 @@
 #include "unistd.h"
 #endif
 
-#define PRINT_METRIC
-#define DEBUG
-#define PRINT_ERRORS
+// #define PRINT_METRIC
+// #define DEBUG
+// #define PRINT_ERRORS
 #if defined(DEBUG) || defined(PRINT_METRIC) || defined(PRINT_ERRORS)
 #include "debug_print.h"
 #else
@@ -137,7 +137,6 @@ int8_t writePageWithHeader(void *buffer, const uint32_t blockIndex, const uint16
     memcpy(buffer + sizeof(uint32_t), &numberOfValues, sizeof(uint16_t));
 
     fileInterface->write(buffer, blockIndex, pageSize, file);
-
     if (fileInterface->error(file)) {
 #ifdef PRINT_ERRORS
         debug_log("ERROR: SORT: Failed to write unsorted data");
@@ -206,7 +205,7 @@ uint32_t loadRowData(sortData *data, embedDBOperator *op, void *unsortedFile) {
         // Write data to buffer
         memcpy((uint8_t *)buffer + rowOffset, op->input->recordBuffer, data->recordSize);
 #ifdef DEBUG
-        if (count < 10) {
+        if (count < 100) {
             debug_log("DEBUG loadRowData record %d: ", count);
             for (int i = 0; i < data->recordSize; i++) {
                 debug_log("%02x ", ((uint8_t *)op->input->recordBuffer)[i]);
@@ -220,7 +219,7 @@ uint32_t loadRowData(sortData *data, embedDBOperator *op, void *unsortedFile) {
             }
             debug_log("\n");
         }
-        if (count < 10 || count % 1000 == 0) {
+        if (count < 100 || count % 1000 == 0) {
             int32_t *keyPtr = (int32_t *)(op->input->recordBuffer + data->keyOffset);
             debug_log("DEBUG loadRowData: count=%d, rowOffset=%d, key=%d\n", count, rowOffset, *keyPtr);
         }
@@ -240,7 +239,6 @@ uint32_t loadRowData(sortData *data, embedDBOperator *op, void *unsortedFile) {
         buffer = NULL;
         return 0;
     }
-
     data->fileInterface->flush(unsortedFile);
 
 #ifdef DEBUG
@@ -286,10 +284,10 @@ void prepareSort(embedDBOperator *op) {
     }
 
     char *tmp1 = data->fileInterface->tempFilePath();
-    char* tmp2 = data->fileInterface->tempFilePath();
-    
-    void* unsortedFile = data->fileInterface->setup(tmp1);
-    void* sortedFile = data->fileInterface->setup(tmp2);
+    char *tmp2 = data->fileInterface->tempFilePath();
+
+    void *unsortedFile = data->fileInterface->setup(tmp1);
+    void *sortedFile = data->fileInterface->setup(tmp2);
     free(tmp1);
     free(tmp2);
 
@@ -352,7 +350,6 @@ file_iterator_state_t *startSort(sortData *data, void *unsortedFile, void *sorte
     es.num_pages = (uint32_t)ceil((float)data->count / ((es.page_size - es.headerSize) / es.record_size));
 
     const int buffer_max_pages = 4;
-
 
     char *buffer = malloc(buffer_max_pages * es.page_size + es.record_size);
     char *tuple_buffer = buffer + es.page_size * buffer_max_pages;

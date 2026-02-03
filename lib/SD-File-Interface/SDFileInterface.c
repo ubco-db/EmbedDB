@@ -57,7 +57,7 @@ void tearDownSDFile(void *file) {
     free(file);
 }
 
-int8_t SD_FILE_REMOVE(void *file) {
+int8_t FILE_REMOVE(void *file) {
     if (file == NULL) return 1;
     SD_FILE_INFO *fileInfo = (SD_FILE_INFO *)file;
 
@@ -81,7 +81,7 @@ int8_t FILE_READ(void *buffer, uint32_t pageNum, uint32_t pageSize, void *file) 
 
 int8_t FILE_WRITE(void *buffer, uint32_t pageNum, uint32_t pageSize, void *file) {
     SD_FILE_INFO *fileInfo = (SD_FILE_INFO *)file;
-    if (fileInfo->sdFile == NULL) return -1;
+    if (fileInfo->sdFile == NULL) return 0;
 
     size_t fileSize = sd_length(fileInfo->sdFile);
     size_t requiredSize = (size_t)pageNum * pageSize;
@@ -90,14 +90,14 @@ int8_t FILE_WRITE(void *buffer, uint32_t pageNum, uint32_t pageSize, void *file)
         sd_fseek(fileInfo->sdFile, 0, SEEK_END);
         uint8_t zero = 0;
         while (sd_length(fileInfo->sdFile) < requiredSize) {
-            if (sd_fwrite(&zero, 1, 1, fileInfo->sdFile) != 1) return -1;
+            if (sd_fwrite(&zero, 1, 1, fileInfo->sdFile) != 1) return 0;
         }
     }
 
-    if (sd_fseek(fileInfo->sdFile, requiredSize, SEEK_SET) != 0) return -1;
+    if (sd_fseek(fileInfo->sdFile, requiredSize, SEEK_SET) != 0) return 0;
 
     if (sd_fwrite(buffer, pageSize, 1, fileInfo->sdFile) == 1) {
-        return 1; 
+        return 1;
     }
     return 0;
 }
@@ -147,6 +147,21 @@ char *sdFat_tempFilePath(void) {
     return out;
 }
 
+int8_t FILE_SEEK(uint32_t n, void *file) {
+    SD_FILE_INFO *fileInfo = (SD_FILE_INFO *)file;
+    return sd_fseek(fileInfo->sdFile, n, SEEK_SET);
+}
+
+int8_t FILE_ERROR(void *file) {
+    if (file == NULL) return 1;
+    SD_FILE_INFO *fileInfo = (SD_FILE_INFO *)file;
+
+    if (sd_ferror(fileInfo->sdFile)) {
+        return 1;
+    }
+    return 0;
+}
+
 embedDBFileInterface *getSDInterface() {
     embedDBFileInterface *fileInterface = malloc(sizeof(embedDBFileInterface));
     fileInterface->close = FILE_CLOSE;
@@ -154,10 +169,12 @@ embedDBFileInterface *getSDInterface() {
     fileInterface->write = FILE_WRITE;
     fileInterface->erase = FILE_ERASE;
     fileInterface->open = FILE_OPEN;
+    fileInterface->seek = FILE_SEEK;
     fileInterface->flush = FILE_FLUSH;
+    fileInterface->error = FILE_ERROR;
     fileInterface->setup = setupSDFile;
     fileInterface->teardown = tearDownSDFile;
-    fileInterface->removeFile = SD_FILE_REMOVE;
+    fileInterface->removeFile = FILE_REMOVE;
     fileInterface->tempFilePath = sdFat_tempFilePath;
     return fileInterface;
 }

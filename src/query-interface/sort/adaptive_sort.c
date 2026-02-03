@@ -50,9 +50,9 @@
 #include "in_memory_sort.h"
 #include "no_output_heap.h"
 
-//  #define     DEBUG         1
-//  #define     DEBUG_OUTPUT  1
-//  #define     DEBUG_READ    1
+// #define     DEBUG         1
+// #define     DEBUG_OUTPUT  1
+// #define     DEBUG_READ    1
 // #define     DEBUG_HEAP    0
 // #define ADAPTIVE_SORT_PRINT
 // #define ADAPTIVE_SORT_PRINT_FINISH
@@ -289,7 +289,6 @@ int adaptive_sort(
 
         ((file_iterator_state_t*)iteratorState)->fileInterface->seek(0, outputFile);
         lastWritePos = 0;
-
         addr = buffer + es->page_size;  // Start after I/O block
         for (i = 0; i < maxRecordsInBuffer; i++) {
             status = !iterator(sortData, addr);
@@ -808,7 +807,7 @@ int adaptive_sort(
                 lastWritePos = 0;
             }
 #ifdef ADAPTIVE_SORT_PRINT
-            debug_log("Pass number: %u  Comparisons: %lu  MemCopies: %lu  TransferIn: %lu  TransferOut: %lu TransferOther: %lu Other: %lu\n", passNumber, metric->num_compar, metric->num_memcpys, numShiftIntoOutput, numShiftOutOutput, numShiftOtherBlock, other);
+            debug_log("Pass number: %u  Comparisons: %lu  MemCopies: %lu  TransferIn: %lu  TransferOut: %lu TransferOther: %lu\n", passNumber, metric->num_compar, metric->num_memcpys, numShiftIntoOutput, numShiftOutOutput, numShiftOtherBlock);
 
 #endif
 

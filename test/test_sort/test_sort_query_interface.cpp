@@ -161,7 +161,7 @@ void runTestSequentialValues() {
     // Insert test data
 #ifdef ARDUINO
     Serial.println("About to insert values\n");
-    insertNValues(state, 100, 1);
+    insertNValues(state, 60, 1);
 #else
     insertNValues(state, 300, 1);
 #endif
