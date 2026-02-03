@@ -5,4 +5,4 @@
 
 void debug_log(const char *format, ...);
 
-#endif // DEBUG_PRINT_H_
+#endif  // DEBUG_PRINT_H_

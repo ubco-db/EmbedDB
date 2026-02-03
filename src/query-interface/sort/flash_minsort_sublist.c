@@ -49,7 +49,13 @@
 // #define DEBUG 1
 // #define DEBUG_OUTPUT 1
 // #define DEBUG_READ 1
-//  #include "debug_print.h"
+#if defined(DEBUG) || defined(DEBUG_OUTPUT) || defined(DEBUG_READ)
+#include "debug_print.h"
+#else
+#ifndef debug_log
+#define debug_log(...) ((void)0)
+#endif
+#endif
 
 void readPage_sublist(MinSortStateSublist *ms, int pageNum, external_sort_t *es, metrics_t *metric) {
     file_iterator_state_t *is = (file_iterator_state_t *)ms->iteratorState;
@@ -404,7 +410,6 @@ int flash_minsort_sublist(
 
     close_MinSort_sublist(&ms, es);
 
-    *resultFilePtr = 0;
     free(ms.min);
     free(ms.offset);
     free(ms.current);

@@ -52,7 +52,7 @@ extern "C" {
 #include "sdcard_c_iface.h"
 
 embedDBFileInterface *getSDInterface();
-void *setupSDFile(char *filename);
+void *setupSDFile(const char *filename);
 void tearDownSDFile(void *file);
 
 #ifdef __cplusplus

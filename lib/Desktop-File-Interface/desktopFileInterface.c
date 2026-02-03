@@ -23,7 +23,7 @@ void tearDownFile(void *file) {
 }
 
 int8_t FILE_REMOVE(void *file) {
-    if (file == NULL) return 0;
+    if (file == NULL) return 1;
     FILE_INFO *fileInfo = (FILE_INFO *)file;
 
     if (fileInfo->file != NULL) {
@@ -39,10 +39,6 @@ int8_t FILE_REMOVE(void *file) {
             perror("ERROR: Failed to remove temp file");
 #endif
         }
-        free(fileInfo->filename);
-        fileInfo->filename = NULL;
-
-        free(fileInfo);
         return result;
     }
 }

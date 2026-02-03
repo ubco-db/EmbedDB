@@ -40,7 +40,7 @@ typedef struct {
     SD_FILE *sdFile;
 } SD_FILE_INFO;
 
-void *setupSDFile(char *filename) {
+void *setupSDFile(const char *filename) {
     SD_FILE_INFO *fileInfo = malloc(sizeof(SD_FILE_INFO));
     int nameLen = strlen(filename);
     fileInfo->filename = calloc(1, nameLen + 1);
@@ -58,7 +58,7 @@ void tearDownSDFile(void *file) {
 }
 
 int8_t SD_FILE_REMOVE(void *file) {
-    if (file == NULL) return 0;
+    if (file == NULL) return 1;
     SD_FILE_INFO *fileInfo = (SD_FILE_INFO *)file;
 
     if (fileInfo->sdFile != NULL) {
@@ -66,21 +66,11 @@ int8_t SD_FILE_REMOVE(void *file) {
         fileInfo->sdFile = NULL;
     }
 
-    int8_t result = 1;
     if (fileInfo->filename != NULL) {
-        /* Try to use C remove as fallback; replace with sd-specific remove if available */
-        if (remove(fileInfo->filename) != 0) {
-            result = 0;
-#ifdef PRINT_ERRORS
-            perror("ERROR: Failed to remove SD temp file");
-#endif
-        }
-        free(fileInfo->filename);
-        fileInfo->filename = NULL;
+        int result = sd_remove(fileInfo->filename);
+        return (result == 0);
     }
-
-    free(fileInfo);
-    return result;
+    return 1;
 }
 
 int8_t FILE_READ(void *buffer, uint32_t pageNum, uint32_t pageSize, void *file) {
@@ -91,31 +81,25 @@ int8_t FILE_READ(void *buffer, uint32_t pageNum, uint32_t pageSize, void *file) 
 
 int8_t FILE_WRITE(void *buffer, uint32_t pageNum, uint32_t pageSize, void *file) {
     SD_FILE_INFO *fileInfo = (SD_FILE_INFO *)file;
+    if (fileInfo->sdFile == NULL) return -1;
+
     size_t fileSize = sd_length(fileInfo->sdFile);
-    size_t requiredSize = pageNum * pageSize;
-    if (fileSize < pageNum * pageSize) {
-        int8_t seekSuccess = sd_fseek(fileInfo->sdFile, fileSize, SEEK_SET);
-        if (seekSuccess == -1) {
-            return -1;
-        }
-        size_t currentSize = fileSize;
-        uint32_t max = UINT32_MAX;
-        uint32_t writeSuccess = 0;
-        while (currentSize < requiredSize) {
-            writeSuccess = sd_fwrite(&max, sizeof(uint32_t), 1, fileInfo->sdFile);
-            if (writeSuccess == 0)
-                return -1;
-            currentSize += 4;
+    size_t requiredSize = (size_t)pageNum * pageSize;
+
+    if (fileSize < requiredSize) {
+        sd_fseek(fileInfo->sdFile, 0, SEEK_END);
+        uint8_t zero = 0;
+        while (sd_length(fileInfo->sdFile) < requiredSize) {
+            if (sd_fwrite(&zero, 1, 1, fileInfo->sdFile) != 1) return -1;
         }
     }
-    int8_t seekSuccess = sd_fseek(fileInfo->sdFile, pageNum * pageSize, SEEK_SET);
-    if (seekSuccess == -1) {
-        return -1;
+
+    if (sd_fseek(fileInfo->sdFile, requiredSize, SEEK_SET) != 0) return -1;
+
+    if (sd_fwrite(buffer, pageSize, 1, fileInfo->sdFile) == 1) {
+        return 1; 
     }
-    int8_t writeSuccess = sd_fwrite(buffer, pageSize, 1, fileInfo->sdFile) == pageSize;
-    if (seekSuccess == -1)
-        return 0;
-    return 1;
+    return 0;
 }
 
 int8_t FILE_ERASE(uint32_t startPage, uint32_t endPage, uint32_t pageSize, void *file) {
@@ -152,6 +136,17 @@ int8_t FILE_OPEN(void *file, uint8_t mode) {
     }
 }
 
+char *sdFat_tempFilePath(void) {
+    char tempPathBuffer[32];
+    snprintf(tempPathBuffer, sizeof(tempPathBuffer), "TMP%lu.DAT", random());
+
+    char *out = malloc(strlen(tempPathBuffer) + 1);
+    if (out) {
+        strcpy(out, tempPathBuffer);
+    }
+    return out;
+}
+
 embedDBFileInterface *getSDInterface() {
     embedDBFileInterface *fileInterface = malloc(sizeof(embedDBFileInterface));
     fileInterface->close = FILE_CLOSE;
@@ -163,12 +158,6 @@ embedDBFileInterface *getSDInterface() {
     fileInterface->setup = setupSDFile;
     fileInterface->teardown = tearDownSDFile;
     fileInterface->removeFile = SD_FILE_REMOVE;
-    fileInterface->tempFilePath = sdfat_tempFilePath;
+    fileInterface->tempFilePath = sdFat_tempFilePath;
     return fileInterface;
-}
-
-char* sdfat_tempFilePath(void) {
-    static char tempPathBuffer[32];
-    snprintf(tempPathBuffer, sizeof(tempPathBuffer), "TMP%lu.DAT", random());
-    return tempPathBuffer;
 }

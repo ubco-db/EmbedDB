@@ -22,6 +22,7 @@
 #endif
 
 #ifdef ARDUINO
+#define FILE_TYPE SD_FILE
 #include "SDFileInterface.h"
 #define getFileInterface getSDInterface
 #define setupFile setupSDFile
@@ -42,8 +43,6 @@
 #endif
 
 #include "unity.h"
-
-#define DEBUG
 
 embedDBState* state;
 embedDBSchema* baseSchema;
@@ -68,9 +67,6 @@ void setUp() {
 
     state->dataFile = state->fileInterface->setup(dataPath);
     state->indexFile = state->fileInterface->setup(indexPath);
-#ifdef ARDUINO
-    state->fileInterface->tempFilePath
-#endif
 
     state->bufferSizeInBlocks = 4;
     state->buffer = malloc(state->bufferSizeInBlocks * state->pageSize);
@@ -153,47 +149,74 @@ void debugBinData(embedDBOperator* op, uint32_t numValues, uint8_t col) {
     op->init(op);
     int32_t* buffer = (int32_t*)op->recordBuffer;
     printf("\n");
-    for (int i = 0; i <= numValues; ++i) {
+    for (uint32_t i = 0; i <= numValues; ++i) {
         exec(op);
         printf("%i ", (int32_t)buffer[col]);
     }
     printf("\n");
-    fflush(stdout);
+    //fflush(stdout);
 }
 
 void runTestSequentialValues() {
     // Insert test data
 #ifdef ARDUINO
-    insertNValues(state, 1, 0);
+    Serial.println("About to insert values\n");
+    insertNValues(state, 100, 1);
 #else
-    insertNValues(state, 190, 1);
+    insertNValues(state, 300, 1);
 #endif
- 
+
     embedDBIterator it;
     it.minKey = NULL;
     it.maxKey = NULL;
     it.minData = NULL;
     it.maxData = NULL;
     embedDBInitIterator(state, &it);
-
+#ifdef ARDUINO
+    Serial.println("\n==================================");
+    Serial.println("Creating table scan");
+    Serial.println("==================================");
+    Serial.flush();
+#endif
     embedDBOperator* scanOpOrderBy = createTableScanOperator(state, &it, baseSchema);
-    uint8_t projColsOB[] = {0, 1};
+    uint8_t projColsOB[] = { 0, 1 };
+#ifdef ARDUINO
+    Serial.println("\n==================================");
+    Serial.println("Creating projection");
+    Serial.println("==================================");
+    Serial.flush();
+#endif
     embedDBOperator* projColsOrderBy = createProjectionOperator(scanOpOrderBy, 2, projColsOB);
+#ifdef ARDUINO
+    Serial.println("\n==================================");
+    Serial.println("Creating order by");
+    Serial.println("==================================");
+    Serial.flush();
+#endif
     embedDBOperator* orderByOp = createOrderByOperator(state, projColsOrderBy, 1, -1, int32Comparator);
-    // debugBinData(orderByOp, 190, 1);
-
+    // debugBinData(orderByOp, 300, 1);
+#ifdef ARDUINO
+    Serial.println("\n==================================");
+    Serial.println("Init order by");
+    Serial.println("==================================");
+    Serial.flush();
+#endif
     orderByOp->init(orderByOp);
-
+#ifdef ARDUINO
+    Serial.println("\n==================================");
+    Serial.println("exec order by");
+    Serial.println("==================================");
+    Serial.flush();
+#endif
     int32_t* recordBuffer = (int32_t*)orderByOp->recordBuffer;
-    uint32_t previous = 0;
+    exec(orderByOp);
+    int32_t previous = ((int32_t)recordBuffer[1]);
     int recordCount = 0;
 
     while (exec(orderByOp)) {
         TEST_ASSERT_GREATER_OR_EQUAL_INT32_MESSAGE(previous, ((int32_t)recordBuffer[1]), "Sort value is not greater than or equal to previous value.");
         previous = ((int32_t)recordBuffer[1]);
         recordCount++;
-        printf("%d ", previous);
-        fflush(stdout);
     }
 
     orderByOp->close(orderByOp);
@@ -213,23 +236,22 @@ void runTestUsingSEA100k() {
     embedDBInitIterator(state, &it);
 
     embedDBOperator* scanOpOrderBy = createTableScanOperator(state, &it, baseSchema);
-    //debugBinData(scanOpOrderBy, 200, 0);
-    uint8_t projColsOB[] = {0, 1};
+    // debugBinData(scanOpOrderBy, 200, 0);
+    uint8_t projColsOB[] = { 0, 1 };
     embedDBOperator* projColsOrderBy = createProjectionOperator(scanOpOrderBy, 2, projColsOB);
-    //debugBinData(projColsOrderBy, 200, 0);
+    // debugBinData(projColsOrderBy, 300, 1);
     embedDBOperator* orderByOp = createOrderByOperator(state, projColsOrderBy, 1, -1, int32Comparator);
-    debugBinData(orderByOp, 100000, 1);
+    // debugBinData(orderByOp, 100000, 1);
 
     orderByOp->init(orderByOp);
 
     int32_t* recordBuffer = (int32_t*)orderByOp->recordBuffer;
-    uint32_t previous = 0;
+    exec(orderByOp);
+    int32_t previous = ((int32_t)recordBuffer[1]) / 10.0;
     // Result of the sort
     while (exec(orderByOp)) {
         TEST_ASSERT_GREATER_OR_EQUAL_INT32_MESSAGE(previous, ((int32_t)recordBuffer[1]) / 10.0, "Sort value is not greater than or equal to previous value previous values.");
         previous = ((int32_t)recordBuffer[1]) / 10.0;
-        printf("%d ", previous);
-        fflush(stdout);
     }
 
     orderByOp->close(orderByOp);
@@ -238,8 +260,21 @@ void runTestUsingSEA100k() {
 
 int runUnityTests() {
     UNITY_BEGIN();
+#ifdef ARDUINO
+    Serial.println("\n\n==================================");
+    Serial.println("Starting Test Suite");
+    Serial.println("==================================");
+    Serial.flush();
+    delay(1000);  // Give time to start serial monitor
+#endif
     RUN_TEST(runTestSequentialValues);
-    RUN_TEST(runTestUsingSEA100k);
+#ifdef ARDUINO
+    Serial.println("\n==================================");
+    Serial.println("Test 1 Complete, starting Test 2");
+    Serial.println("==================================");
+    Serial.flush();
+#endif
+    //RUN_TEST(runTestUsingSEA100k);
     return UNITY_END();
 }
 

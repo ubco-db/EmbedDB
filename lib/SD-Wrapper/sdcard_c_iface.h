@@ -54,6 +54,7 @@ extern "C" {
 #define fflush(x) sd_fflush(x)
 #define fseek(x, y, z) sd_fseek(x, y, z)
 #define fread(w, x, y, z) sd_fread(w, x, y, z)
+// #define remove(x) sd_remove(x)
 
 /**
 @brief		Wrapper around Arduino File type (a C++ object).
@@ -166,9 +167,16 @@ sd_fwrite(
  * @param	stream	A pointer to a C file struct type associated with an SD file object.
  * @return  The size of the file in bytes
  */
-size_t sd_length(SD_FILE *stream);
+size_t sd_length(SD_FILE* stream);
 
-void init_sdcard(void *sd);
+/**
+@brief      Remove (delete) a file from the SD card.
+@param      filename The name of the file to delete.
+@returns    0 on success, -1 on failure.
+*/
+int sd_remove(const char *filename);
+
+void init_sdcard(void* sd);
 
 #if defined(__cplusplus)
 }

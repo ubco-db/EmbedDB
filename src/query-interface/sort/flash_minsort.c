@@ -52,7 +52,13 @@ This is no output sort with block headers and iterator input. Heap used when mov
 // #define DEBUG 1
 // #define DEBUG_OUTPUT 1
 // #define DEBUG_READ 1
-// #include "debug_print.h"
+#if defined(DEBUG) || defined(DEBUG_OUTPUT) || defined(DEBUG_READ)
+#include "debug_print.h"
+#else
+#ifndef debug_log
+#define debug_log(...) ((void)0)
+#endif
+#endif
 
 #ifndef INT_MAX
 #define INT_MAX 0xFFFFFFFF
@@ -68,7 +74,9 @@ This is no output sort with block headers and iterator input. Heap used when mov
 void readPageMinSort(MinSortState *ms, int pageNum, external_sort_t *es, metrics_t *metric) {
     file_iterator_state_t *is = (file_iterator_state_t *)ms->iteratorState;
     void *fp = is->file;
-
+#ifdef DEBUG
+    debug_log("DEBUG: READ_PAGE %d (Offset %d)\n", pageNum, pageNum * es->page_size);
+#endif
     // Read page into the buffer
     if (0 == is->fileInterface->read(ms->buffer, pageNum, es->page_size, fp)) {
 #ifdef DEBUG
@@ -160,28 +168,21 @@ void init_MinSort(MinSortState *ms, external_sort_t *es, metrics_t *metric, int8
         ms->min_initialized[i] = false;
     }
 
-    /* Populate each region’s minimum key by scanning blocks */
+    /* Populate each region's minimum key by scanning blocks */
     for (i = 0; i < ms->numBlocks; i++) {
-        readPageMinSort(ms, i, es, metric);  // Load block i into buffer
+        readPageMinSort(ms, i, es, metric);
         regionIdx = i / ms->blocks_per_region;
 
-        // Set inital value to first read.
-        // ms->min[regionIdx] = getValuePtr(ms, 0, es);
-        memcpy(getMinRegionPtr(ms, regionIdx, es), getValuePtr(ms, 0, es), es->key_size);
-        metric->num_memcpys++;
-        ms->min_initialized[regionIdx] = true;
-
-        /* Process remaining records in the block */
-        for (j = 1; j < ms->records_per_block; j++) {
+        for (j = 0; j < ms->records_per_block; j++) {
             if (((i * ms->records_per_block) + j) < ms->num_records) {
                 val = getValuePtr(ms, j, es);
                 metric->num_compar++;
 
-                /* Update region’s minimum if current record is smaller */
-                if (compareFn(val, getMinRegionPtr(ms, regionIdx, es)) == -1) {
+                // Only update if this is the first record for the region OR we found a new minimum
+                if (!ms->min_initialized[regionIdx] || compareFn(val, getMinRegionPtr(ms, regionIdx, es)) == -1) {
                     memcpy(getMinRegionPtr(ms, regionIdx, es), val, es->key_size);
-                    metric->num_memcpys++;
                     ms->min_initialized[regionIdx] = true;
+                    metric->num_memcpys++;
                 }
             } else
                 break;
@@ -190,7 +191,7 @@ void init_MinSort(MinSortState *ms, external_sort_t *es, metrics_t *metric, int8
 
 #ifdef DEBUG
     for (i = 0; i < ms->numRegions; i++)
-        debug_log("Region: %d  Min: %d\r\n", i, ms->min[i]);
+        debug_log("Region: %d  Min: %d\r\n", i, *(int *)getMinRegionPtr(ms, i, es));
 #endif
 
     /* Allocate memory for current and next keys */
@@ -254,7 +255,7 @@ char *next_MinSort(MinSortState *ms, external_sort_t *es, void *tupleBuffer, met
     for (k = startIndex / ms->records_per_block; k < ms->blocks_per_region; k++) {
         curBlk = startBlk + k;
 
-        if (curBlk > ms->numBlocks) {
+        if (curBlk >= ms->numBlocks) {
             break;
         }
 
@@ -419,7 +420,9 @@ int flash_minsort(
 #ifdef DEBUG
     debug_log("*Flash Minsort*\n");
 #endif
+#ifndef ARDUINO
     clock_t start = clock();
+#endif
 
     MinSortState ms;
     ms.buffer = buffer;
@@ -444,7 +447,6 @@ int flash_minsort(
         if (count == values_per_page) {                                // Write block
             *((int32_t *)outputBuffer) = blockIndex;                   /* Block index */
             *((int16_t *)(outputBuffer + BLOCK_COUNT_OFFSET)) = count; /* Block record count */
-            count = 0;                                                 // Reset count for the next block
 
             // Write the block to the output file using the file interface's write method
             ((file_iterator_state_t *)iteratorState)->fileInterface->seek(lastWritePos, outputFile);
@@ -452,8 +454,6 @@ int flash_minsort(
             debug_log("Writing page flash minsort: blockIndex=%d, count=%d, filePosition=%ld\n",
                       blockIndex, count, count / PAGE_SIZE);
 #endif
-            debug_log("Writing page flash minsort: blockIndex=%d, count=%d\n",
-                      blockIndex, count);
             if (0 == ((file_iterator_state_t *)iteratorState)->fileInterface->writeRel(outputBuffer, es->page_size, 1, outputFile)) {
                 return 9;  // Return error code if writing to the output file fails
             }
@@ -468,6 +468,7 @@ int flash_minsort(
             metric->num_writes++;
             lastWritePos += es->page_size;
             blockIndex++;
+            count = 0;
         }
     }
 
@@ -495,10 +496,9 @@ int flash_minsort(
     ((file_iterator_state_t *)iteratorState)->fileInterface->flush(outputFile);
 
     close_MinSort(&ms, es);
-
+#ifndef ARDUINO
     clock_t end = clock();
-
-    *resultFilePtr = 0;
+#endif
 
 #ifdef DEBUG
     debug_log("Complete. Comparisons: %d  MemCopies: %d\n", metric->num_compar, metric->num_memcpys);
