@@ -71,7 +71,7 @@ This is no output sort with block headers and iterator input. Heap used when mov
  * @param es Sorting configuration, including page and record sizes.
  * @param metric Metrics tracking structure for performance analysis.
  */
-void readPageMinSort(MinSortState *ms, int pageNum, external_sort_t *es, metrics_t *metric) {
+int8_t readPageMinSort(MinSortState *ms, int pageNum, external_sort_t *es, metrics_t *metric) {
     file_iterator_state_t *is = (file_iterator_state_t *)ms->iteratorState;
     void *fp = is->file;
 #ifdef DEBUG
@@ -82,6 +82,7 @@ void readPageMinSort(MinSortState *ms, int pageNum, external_sort_t *es, metrics
 #ifdef DEBUG
         debug_log("MINSORT: Failed to read block.\n");
 #endif
+        return 0;
     }
 
     metric->num_reads++;
@@ -95,6 +96,7 @@ void readPageMinSort(MinSortState *ms, int pageNum, external_sort_t *es, metrics
         debug_log("%d: Record: %d\n", k, buf->key);
     }
 #endif
+    return 1;
 }
 
 /**

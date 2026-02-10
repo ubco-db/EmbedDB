@@ -113,6 +113,16 @@ int8_t FILE_CLOSE(void *file) {
     return 1;
 }
 
+int8_t FILE_READ_REL(void *buffer, uint32_t size, uint32_t n, void *file) {
+    SD_FILE_INFO *fileInfo = (SD_FILE_INFO *)file;
+    return sd_fread(buffer, size, n, fileInfo->sdFile);
+}
+
+int8_t FILE_WRITE_REL(void *buffer, uint32_t size, uint32_t n, void *file) {
+    SD_FILE_INFO *fileInfo = (SD_FILE_INFO *)file;
+    return sd_fwrite(buffer, size, n, fileInfo->sdFile);
+}
+
 int8_t FILE_FLUSH(void *file) {
     SD_FILE_INFO *fileInfo = (SD_FILE_INFO *)file;
     return sd_fflush(fileInfo->sdFile) == 0;
@@ -134,6 +144,14 @@ int8_t FILE_OPEN(void *file, uint8_t mode) {
     } else {
         return 1;
     }
+}
+
+int32_t FILE_TELL(void *file) {
+    SD_FILE_INFO *fileInfo = (SD_FILE_INFO *)file;
+    if (fileInfo == NULL || fileInfo->sdFile == NULL) {
+        return -1;
+    }
+    return (int32_t)sd_ftell(fileInfo->sdFile);
 }
 
 char *sdFat_tempFilePath(void) {
@@ -172,6 +190,9 @@ embedDBFileInterface *getSDInterface() {
     fileInterface->seek = FILE_SEEK;
     fileInterface->flush = FILE_FLUSH;
     fileInterface->error = FILE_ERROR;
+    fileInterface->readRel = FILE_READ_REL;
+    fileInterface->writeRel = FILE_WRITE_REL;
+    fileInterface->tell = FILE_TELL;
     fileInterface->setup = setupSDFile;
     fileInterface->teardown = tearDownSDFile;
     fileInterface->removeFile = FILE_REMOVE;

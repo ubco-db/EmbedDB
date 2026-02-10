@@ -154,17 +154,12 @@ void debugBinData(embedDBOperator* op, uint32_t numValues, uint8_t col) {
         printf("%i ", (int32_t)buffer[col]);
     }
     printf("\n");
-    //fflush(stdout);
+    // fflush(stdout);
 }
 
 void runTestSequentialValues() {
     // Insert test data
-#ifdef ARDUINO
-    Serial.println("About to insert values\n");
-    insertNValues(state, 60, 1);
-#else
     insertNValues(state, 300, 1);
-#endif
 
     embedDBIterator it;
     it.minKey = NULL;
@@ -172,42 +167,14 @@ void runTestSequentialValues() {
     it.minData = NULL;
     it.maxData = NULL;
     embedDBInitIterator(state, &it);
-#ifdef ARDUINO
-    Serial.println("\n==================================");
-    Serial.println("Creating table scan");
-    Serial.println("==================================");
-    Serial.flush();
-#endif
     embedDBOperator* scanOpOrderBy = createTableScanOperator(state, &it, baseSchema);
-    uint8_t projColsOB[] = { 0, 1 };
-#ifdef ARDUINO
-    Serial.println("\n==================================");
-    Serial.println("Creating projection");
-    Serial.println("==================================");
-    Serial.flush();
-#endif
+    uint8_t projColsOB[] = {0, 1};
     embedDBOperator* projColsOrderBy = createProjectionOperator(scanOpOrderBy, 2, projColsOB);
-#ifdef ARDUINO
-    Serial.println("\n==================================");
-    Serial.println("Creating order by");
-    Serial.println("==================================");
-    Serial.flush();
-#endif
     embedDBOperator* orderByOp = createOrderByOperator(state, projColsOrderBy, 1, -1, int32Comparator);
-    // debugBinData(orderByOp, 300, 1);
-#ifdef ARDUINO
-    Serial.println("\n==================================");
-    Serial.println("Init order by");
-    Serial.println("==================================");
-    Serial.flush();
-#endif
+    // debugBinData(orderByOp, 70, 1);
+
     orderByOp->init(orderByOp);
-#ifdef ARDUINO
-    Serial.println("\n==================================");
-    Serial.println("exec order by");
-    Serial.println("==================================");
-    Serial.flush();
-#endif
+
     int32_t* recordBuffer = (int32_t*)orderByOp->recordBuffer;
     exec(orderByOp);
     int32_t previous = ((int32_t)recordBuffer[1]);
@@ -237,7 +204,7 @@ void runTestUsingSEA100k() {
 
     embedDBOperator* scanOpOrderBy = createTableScanOperator(state, &it, baseSchema);
     // debugBinData(scanOpOrderBy, 200, 0);
-    uint8_t projColsOB[] = { 0, 1 };
+    uint8_t projColsOB[] = {0, 1};
     embedDBOperator* projColsOrderBy = createProjectionOperator(scanOpOrderBy, 2, projColsOB);
     // debugBinData(projColsOrderBy, 300, 1);
     embedDBOperator* orderByOp = createOrderByOperator(state, projColsOrderBy, 1, -1, int32Comparator);
@@ -260,21 +227,8 @@ void runTestUsingSEA100k() {
 
 int runUnityTests() {
     UNITY_BEGIN();
-#ifdef ARDUINO
-    Serial.println("\n\n==================================");
-    Serial.println("Starting Test Suite");
-    Serial.println("==================================");
-    Serial.flush();
-    delay(1000);  // Give time to start serial monitor
-#endif
     RUN_TEST(runTestSequentialValues);
-#ifdef ARDUINO
-    Serial.println("\n==================================");
-    Serial.println("Test 1 Complete, starting Test 2");
-    Serial.println("==================================");
-    Serial.flush();
-#endif
-    //RUN_TEST(runTestUsingSEA100k);
+    RUN_TEST(runTestUsingSEA100k);
     return UNITY_END();
 }
 

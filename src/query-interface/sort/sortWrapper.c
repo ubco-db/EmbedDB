@@ -205,7 +205,7 @@ uint32_t loadRowData(sortData *data, embedDBOperator *op, void *unsortedFile) {
         // Write data to buffer
         memcpy((uint8_t *)buffer + rowOffset, op->input->recordBuffer, data->recordSize);
 #ifdef DEBUG
-        if (count < 100) {
+        if (count < 10) {
             debug_log("DEBUG loadRowData record %d: ", count);
             for (int i = 0; i < data->recordSize; i++) {
                 debug_log("%02x ", ((uint8_t *)op->input->recordBuffer)[i]);
@@ -219,7 +219,7 @@ uint32_t loadRowData(sortData *data, embedDBOperator *op, void *unsortedFile) {
             }
             debug_log("\n");
         }
-        if (count < 100 || count % 1000 == 0) {
+        if (count < 10 || count % 1000 == 0) {
             int32_t *keyPtr = (int32_t *)(op->input->recordBuffer + data->keyOffset);
             debug_log("DEBUG loadRowData: count=%d, rowOffset=%d, key=%d\n", count, rowOffset, *keyPtr);
         }
@@ -309,7 +309,6 @@ void prepareSort(embedDBOperator *op) {
 
     // Load row data
     data->count = loadRowData(data, op, unsortedFile);
-    debug_log("finished load row data, starting sort\n");
     // Start sorting
     file_iterator_state_t *iteratorState = startSort(data, unsortedFile, sortedFile);
     if (iteratorState == NULL) {
@@ -390,7 +389,6 @@ file_iterator_state_t *startSort(sortData *data, void *unsortedFile, void *sorte
 
     int err;
 
-    // Use adaptive sort on desktop
     int8_t runGenOnly = false;   // Run full sort operation
     int8_t writeReadRatio = 19;  // 1.97 * 10 => 19
     err = adaptive_sort(readNextRecord, iteratorState, tuple_buffer, sortedFile, buffer, buffer_max_pages, &es, &result_file_ptr, &metrics, data->compareFn, runGenOnly, writeReadRatio, data);

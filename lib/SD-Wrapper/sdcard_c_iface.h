@@ -166,18 +166,25 @@ sd_fwrite(
  * @param	stream	A pointer to a C file struct type associated with an SD file object.
  * @return  The size of the file in bytes
  */
-size_t sd_length(SD_FILE* stream);
+size_t sd_length(SD_FILE *stream);
 
 /**
 @brief      Remove (delete) a file from the SD card.
 @param      filename The name of the file to delete.
 @returns    0 on success, -1 on failure.
 */
-int sd_remove(const char* filename);
+int sd_remove(const char *filename);
+
+/**
+@brief      Find location of current file position.
+@param      stream	A pointer to a C file struct type associated with an SD file object.
+@returns    0 on success, -1 on failure.
+*/
+long sd_ftell(SD_FILE *stream);
 
 int sd_ferror(SD_FILE *stream);
 
-void init_sdcard(void* sd);
+void init_sdcard(void *sd);
 
 #if defined(__cplusplus)
 }
