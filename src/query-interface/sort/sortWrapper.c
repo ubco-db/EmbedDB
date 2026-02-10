@@ -1,14 +1,21 @@
 #include "sortWrapper.h"
 
 #include "query-interface/sort/in_memory_sort.h"
+#ifndef ARDUINO
+#include "unistd.h"
+#endif
 
-#define PRINT_METRIC
+// #define PRINT_METRIC
+// #define DEBUG
+// #define PRINT_ERRORS
+#if defined(DEBUG) || defined(PRINT_METRIC) || defined(PRINT_ERRORS)
+#include "debug_print.h"
+#else
+#ifndef debug_log
+#define debug_log(...) ((void)0)
+#endif
 
-// External declaration for setupFile function
-extern void *setupFile(const char *filename);
-
-// Forward declaration for pure in-memory sort (no file I/O)
-file_iterator_state_t *startPureMemorySort(sortData *data, embedDBOperator *op);
+#endif
 
 /**
  * @brief Pure in-memory sort that avoids file I/O completely for very small datasets
@@ -17,21 +24,28 @@ file_iterator_state_t *startPureMemorySort(sortData *data, embedDBOperator *op);
  * @return file_iterator_state_t* Iterator for reading sorted results from memory
  */
 file_iterator_state_t *startPureMemorySort(sortData *data, embedDBOperator *op) {
-    printf("DEBUG: Starting pure in-memory sort\n");
-
+#ifdef DEBUG
+    debug_log("DEBUG: Starting pure in-memory sort\n");
+#endif
     int record_count = 0;
     while (exec(op->input)) {
         record_count++;
         if (record_count > 10) {  // Safety limit
-            printf("ERROR: Too many records for pure in-memory sort\n");
+#ifdef PRINT_ERRORS
+            debug_log("ERROR: Too many records for pure in-memory sort\n");
+#endif
             return NULL;
         }
     }
 
-    printf("DEBUG: Found %d records for pure in-memory sort\n", record_count);
+#ifdef DEBUG
+    debug_log("DEBUG: Found %d records for pure in-memory sort\n", record_count);
+#endif
 
     if (record_count == 0) {
-        printf("DEBUG: No records to sort\n");
+#ifdef DEBUG
+        debug_log("DEBUG: No records to sort\n");
+#endif
         file_iterator_state_t *iteratorState = malloc(sizeof(file_iterator_state_t));
         if (iteratorState == NULL) {
             return NULL;
@@ -49,7 +63,9 @@ file_iterator_state_t *startPureMemorySort(sortData *data, embedDBOperator *op) 
 
     void *buffer = malloc(record_count * data->recordSize);
     if (buffer == NULL) {
-        printf("ERROR: Failed to allocate memory for pure in-memory sort\n");
+#ifdef PRINT_ERRORS
+        debug_log("ERROR: Failed to allocate memory for pure in-memory sort\n");
+#endif
         return NULL;
     }
 
@@ -64,23 +80,31 @@ file_iterator_state_t *startPureMemorySort(sortData *data, embedDBOperator *op) 
         records_read++;
     }
 
-    printf("DEBUG: Read %d records into memory buffer\n", records_read);
+#ifdef DEBUG
+    debug_log("DEBUG: Read %d records into memory buffer\n", records_read);
+#endif
 
     // Sort the records in memory using quicksort
     metrics_t metrics = {0};
     int sort_result = in_memory_quick_sort(buffer, records_read, data->recordSize, data->keyOffset, data->compareFn, &metrics);
 
     if (sort_result != 0) {
-        printf("ERROR: In-memory sort failed\n");
+#ifdef PRINT_ERRORS
+        debug_log("ERROR: In-memory sort failed\n");
+#endif
         free(buffer);
         return NULL;
     }
 
-    printf("DEBUG: Pure in-memory sort completed successfully\n");
+#ifdef DEBUG
+    debug_log("DEBUG: Pure in-memory sort completed successfully\n");
+#endif
 
     file_iterator_state_t *iteratorState = malloc(sizeof(file_iterator_state_t));
     if (iteratorState == NULL) {
-        printf("ERROR: Failed to allocate iterator state\n");
+#ifdef PRINT_ERRORS
+        debug_log("ERROR: Failed to allocate iterator state\n");
+#endif
         free(buffer);
         return NULL;
     }
@@ -108,14 +132,15 @@ file_iterator_state_t *startPureMemorySort(sortData *data, embedDBOperator *op) 
  * @param file              The file being written to
  * @return int8_t
  */
-int8_t writePageWithHeader(void *buffer, const uint32_t blockIndex, const uint32_t numberOfValues, const uint32_t pageSize, const embedDBFileInterface *fileInterface, void *file) {
-    memcpy(buffer, &blockIndex, sizeof(int32_t));
-    memcpy(buffer + sizeof(uint32_t), &numberOfValues, sizeof(int16_t));
+int8_t writePageWithHeader(void *buffer, const uint32_t blockIndex, const uint16_t numberOfValues, const uint32_t pageSize, const embedDBFileInterface *fileInterface, void *file) {
+    memcpy(buffer, &blockIndex, sizeof(uint32_t));
+    memcpy(buffer + sizeof(uint32_t), &numberOfValues, sizeof(uint16_t));
 
     fileInterface->write(buffer, blockIndex, pageSize, file);
-
     if (fileInterface->error(file)) {
-        printf("ERROR: SORT: Failed to write unsorted data");
+#ifdef PRINT_ERRORS
+        debug_log("ERROR: SORT: Failed to write unsorted data");
+#endif
         return 1;
     }
 
@@ -127,7 +152,7 @@ int8_t writePageWithHeader(void *buffer, const uint32_t blockIndex, const uint32
  *
  * @param data         The operator data
  * @param op            The previous operator
- * @param unsortedFile  A prexisting file that the row data will be writen to
+ * @param unsortedFile  A preexisting file that the row data will be written to
  * @param recordSize    The size of the data
  * @param keySize       The size of the key
  * @param keyOffset     The offset of the key with in the record (# of bytes)
@@ -136,14 +161,21 @@ int8_t writePageWithHeader(void *buffer, const uint32_t blockIndex, const uint32
  */
 uint32_t loadRowData(sortData *data, embedDBOperator *op, void *unsortedFile) {
     uint32_t count = 0;
-    int32_t blockIndex = 0;
-    int16_t valuesPerPage = (PAGE_SIZE - BLOCK_HEADER_SIZE) / data->recordSize;
+    uint32_t blockIndex = 0;
+    uint16_t valuesPerPage = (PAGE_SIZE - BLOCK_HEADER_SIZE) / data->recordSize;
+
+#ifdef DEBUG
+    debug_log("DEBUG loadRowData: PAGE_SIZE=%d, BLOCK_HEADER_SIZE=%d, recordSize=%d, valuesPerPage=%d\n",
+              PAGE_SIZE, BLOCK_HEADER_SIZE, data->recordSize, valuesPerPage);
+#endif
 
     void *buffer = malloc(PAGE_SIZE);
 
     if (buffer == NULL) {
-        printf("ERROR: SORT: buffer malloc failed");
-        return 0;
+#ifdef PRINT_ERRORS
+        debug_log("ERROR: SORT: buffer malloc failed");
+#endif
+        return 1;
     }
 
     // Write row data to file
@@ -155,15 +187,16 @@ uint32_t loadRowData(sortData *data, embedDBOperator *op, void *unsortedFile) {
                 buffer = NULL;
                 return 0;
             }
-
             blockIndex++;
         }
 
         // Offset of the data in the page
-        uint32_t rowOffset = count % valuesPerPage * data->recordSize + BLOCK_HEADER_SIZE;
+        uint32_t rowOffset = (count % valuesPerPage) * data->recordSize + BLOCK_HEADER_SIZE;
 
         if (rowOffset + data->recordSize > PAGE_SIZE) {
-            printf("ERROR: SORT: error calculating row offset");
+#ifdef PRINT_ERRORS
+            debug_log("ERROR: SORT: error calculating row offset");
+#endif
             free(buffer);
             buffer = NULL;
             return 0;
@@ -171,6 +204,26 @@ uint32_t loadRowData(sortData *data, embedDBOperator *op, void *unsortedFile) {
 
         // Write data to buffer
         memcpy((uint8_t *)buffer + rowOffset, op->input->recordBuffer, data->recordSize);
+#ifdef DEBUG
+        if (count < 10) {
+            debug_log("DEBUG loadRowData record %d: ", count);
+            for (int i = 0; i < data->recordSize; i++) {
+                debug_log("%02x ", ((uint8_t *)op->input->recordBuffer)[i]);
+            }
+            debug_log("\n");
+
+            // Also show what we wrote to the buffer
+            debug_log("DEBUG wrote to buffer at offset %d: ", rowOffset);
+            for (int i = 0; i < data->recordSize; i++) {
+                debug_log("%02x ", ((uint8_t *)buffer)[rowOffset + i]);
+            }
+            debug_log("\n");
+        }
+        if (count < 10 || count % 1000 == 0) {
+            int32_t *keyPtr = (int32_t *)(op->input->recordBuffer + data->keyOffset);
+            debug_log("DEBUG loadRowData: count=%d, rowOffset=%d, key=%d\n", count, rowOffset, *keyPtr);
+        }
+#endif
 
         count++;
 
@@ -186,8 +239,11 @@ uint32_t loadRowData(sortData *data, embedDBOperator *op, void *unsortedFile) {
         buffer = NULL;
         return 0;
     }
-
     data->fileInterface->flush(unsortedFile);
+
+#ifdef DEBUG
+    debug_log("DEBUG loadRowData: finished, totalRecords=%d\n", count);
+#endif
 
     // Clean up
     free(buffer);
@@ -206,57 +262,68 @@ void prepareSort(embedDBOperator *op) {
     data->keyOffset = getColOffsetFromSchema(op->schema, data->colNum);
     data->recordSize = getRecordSizeFromSchema(op->schema);
     data->keySize = op->schema->columnSizes[data->colNum];
+#ifdef DEBUG
+    debug_log("DEBUG prepareSort: recordSize=%d, keySize=%d, keyOffset=%d, colNum=%d\n",
+              data->recordSize, data->keySize, data->keyOffset, data->colNum);
+    debug_log("DEBUG prepareSort: schema has %d columns\n", op->schema->numCols);
+    for (int i = 0; i < op->schema->numCols; i++) {
+        debug_log("  Column %d: size=%d\n", i, op->schema->columnSizes[i]);
+    }
+#endif
 
     // A columns size will be negative if the column is signed
     // and positive if value is unsigned
     if (data->keySize < 0) {
         data->keySize = -1 * data->keySize;
     }
-
-#ifdef ARDUINO
-    // For Arduino Due, use pure in-memory sort to completely avoid SD card I/O issues
-    data->fileIterator = startPureMemorySort(data, op);
-    if (data->fileIterator == NULL) {
-        printf("ERROR: Pure memory sort failed\n");
+    if (data->fileInterface == NULL || data->fileInterface->setup == NULL) {
+#ifdef PRINT_ERRORS
+        debug_log("ERROR: File interface or setup function not provided while initializing ORDER BY operator\n");
+#endif
         return;
     }
-    return;
-#endif
 
-    // Set up files
-    void *unsortedFile = setupFile(SORT_DATA_LOCATION);
-    void *sortedFile = setupFile(SORT_ORDER_LOCATION);
+    char *tmp1 = data->fileInterface->tempFilePath();
+    char *tmp2 = data->fileInterface->tempFilePath();
+
+    void *unsortedFile = data->fileInterface->setup(tmp1);
+    void *sortedFile = data->fileInterface->setup(tmp2);
+    free(tmp1);
+    free(tmp2);
 
     if (unsortedFile == NULL || sortedFile == NULL) {
 #ifdef PRINT_ERRORS
-        printf("ERROR: Failed to open files while initializing ORDER BY operator");
+        debug_log("ERROR: Failed to allocate file handles while initializing ORDER BY operator\n");
 #endif
         return;
     }
-
     const uint8_t unsortedOpen = data->fileInterface->open(unsortedFile, EMBEDDB_FILE_MODE_W_PLUS_B);
     const uint8_t sortedOpen = data->fileInterface->open(sortedFile, EMBEDDB_FILE_MODE_W_PLUS_B);
 
     if (!unsortedOpen || !sortedOpen) {
 #ifdef PRINT_ERRORS
-        printf("ERROR: Failed to open files while initializing ORDER BY operator");
+        debug_log("ERROR: Failed to open files while initializing ORDER BY operator");
 #endif
         return;
     }
 
     // Load row data
     data->count = loadRowData(data, op, unsortedFile);
-
     // Start sorting
     file_iterator_state_t *iteratorState = startSort(data, unsortedFile, sortedFile);
     if (iteratorState == NULL) {
-        printf("ERROR: Sort failed");
+#ifdef PRINT_ERRORS
+        debug_log("ERROR: Sort failed");
+#endif
         return;
     }
 
     // Finish
     iteratorState->file = sortedFile;
     data->fileInterface->close(unsortedFile);
+    if (data->fileInterface->removeFile) {
+        data->fileInterface->removeFile(unsortedFile);
+    }
     data->fileIterator = iteratorState;
 }
 
@@ -281,19 +348,14 @@ file_iterator_state_t *startSort(sortData *data, void *unsortedFile, void *sorte
     es.page_size = PAGE_SIZE;
     es.num_pages = (uint32_t)ceil((float)data->count / ((es.page_size - es.headerSize) / es.record_size));
 
-// Reduce buffer size for Arduino
-#ifdef ARDUINO
-    const int buffer_max_pages = 1;  // Reduced to minimum for Arduino
-#else
     const int buffer_max_pages = 4;
-#endif
 
     char *buffer = malloc(buffer_max_pages * es.page_size + es.record_size);
     char *tuple_buffer = buffer + es.page_size * buffer_max_pages;
 
     if (buffer == NULL) {
 #ifdef PRINT_ERRORS
-        printf("ERROR: SORT: buffer malloc failed m\n");
+        debug_log("ERROR: SORT: buffer malloc failed m\n");
 #endif
         return NULL;
     }
@@ -302,7 +364,7 @@ file_iterator_state_t *startSort(sortData *data, void *unsortedFile, void *sorte
     file_iterator_state_t *iteratorState = malloc(sizeof(file_iterator_state_t));
     if (iteratorState == NULL) {
 #ifdef PRINT_ERRORS
-        printf("Error: SORT: iterator malloc failed\n");
+        debug_log("Error: SORT: iterator malloc failed\n");
 #endif
         free(buffer);
         buffer = NULL;
@@ -311,7 +373,7 @@ file_iterator_state_t *startSort(sortData *data, void *unsortedFile, void *sorte
 
     iteratorState->file = unsortedFile;
     iteratorState->recordsRead = 0;
-    iteratorState->totalRecords = data->count;  // Total records from the previous while loop
+    iteratorState->totalRecords = data->count;
     iteratorState->recordSize = es.record_size;
     iteratorState->fileInterface = data->fileInterface;
     iteratorState->currentRecord = 0;
@@ -326,38 +388,24 @@ file_iterator_state_t *startSort(sortData *data, void *unsortedFile, void *sorte
     long result_file_ptr = 0;
 
     int err;
-// Use simpler sort for Arduino with small datasets
-#ifdef ARDUINO
-    printf("DEBUG: Starting Arduino sort with %d records\n", data->count);
-    if (data->count <= 100) {  // Use flash_minsort for all datasets on Arduino (more memory efficient)
-        printf("DEBUG: Using flash_minsort for small dataset\n");
-        err = flash_minsort(iteratorState, tuple_buffer, sortedFile, buffer, buffer_max_pages * es.page_size, &es, &result_file_ptr, &metrics, data->compareFn);
-    } else {
-        printf("DEBUG: Using flash_minsort for large dataset\n");
-        // Use flash_minsort for larger datasets (more memory efficient than adaptive_sort)
-        err = flash_minsort(iteratorState, tuple_buffer, sortedFile, buffer, buffer_max_pages * es.page_size, &es, &result_file_ptr, &metrics, data->compareFn);
-    }
-    printf("DEBUG: Arduino sort completed with error code: %d\n", err);
-#else
-    // Use adaptive sort on desktop
+
     int8_t runGenOnly = false;   // Run full sort operation
     int8_t writeReadRatio = 19;  // 1.97 * 10 => 19
     err = adaptive_sort(readNextRecord, iteratorState, tuple_buffer, sortedFile, buffer, buffer_max_pages, &es, &result_file_ptr, &metrics, data->compareFn, runGenOnly, writeReadRatio, data);
-#endif
 
 #ifdef PRINT_METRIC
-    printf("\tComplete. Comparisons: %d  Writes: %d  Reads: %d Memcpys: %d\n", metrics.num_compar, metrics.num_writes, metrics.num_reads, metrics.num_memcpys);
+    debug_log("\tComplete. Comparisons: %d  Writes: %d  Reads: %d Memcpys: %d\n", metrics.num_compar, metrics.num_writes, metrics.num_reads, metrics.num_memcpys);
 #endif
 
     iteratorState->resultFile = result_file_ptr;
 
 #ifdef PRINT_ERRORS
     if (8 == err) {
-        printf("Out of memory!\n");
+        debug_log("Out of memory!\n");
     } else if (10 == err) {
-        printf("File Read Error!\n");
+        debug_log("File Read Error!\n");
     } else if (9 == err) {
-        printf("File Write Error!\n");
+        debug_log("File Write Error!\n");
     }
 #endif
 
@@ -385,64 +433,89 @@ uint8_t readNextRecord(void *data, void *buffer) {
         return 1;  // No more records left to read
     }
 
-#ifdef ARDUINO
-    // For pure memory sort on Arduino, read directly from memory buffer
-    if (iteratorState->file != NULL && iteratorState->resultFile == 0) {
-        memcpy(buffer, (char *)iteratorState->file + iteratorState->recordsRead * iteratorState->recordSize,
-               iteratorState->recordSize);
-        iteratorState->recordsRead++;
-        iteratorState->currentRecord++;
-        return 0;
-    }
-#endif
-
     uint32_t recordPerPage = (PAGE_SIZE - BLOCK_HEADER_SIZE) / iteratorState->recordSize;
 
     // Read next page if current buffer is empty
     if (iteratorState->currentRecord % recordPerPage == 0 || iteratorState->recordsRead == 0) {
-        iteratorState->fileInterface->seek(iteratorState->currentRecord / recordPerPage * PAGE_SIZE + iteratorState->resultFile, iteratorState->file);
+        uint32_t seekOffset = iteratorState->resultFile + (iteratorState->currentRecord / recordPerPage) * PAGE_SIZE;
+
+        iteratorState->fileInterface->seek(seekOffset, iteratorState->file);
         iteratorState->fileInterface->readRel(((sortData *)data)->readBuffer, PAGE_SIZE, 1, iteratorState->file);
 
+#ifdef DEBUG
+        if (iteratorState->recordsRead == 0 || iteratorState->recordsRead % 1000 == 0) {
+            debug_log("DEBUG readNextRecord: pageNum=%d, seekOffset=%d, recordsRead=%d\n",
+                      iteratorState->currentRecord / recordPerPage, seekOffset, iteratorState->recordsRead);
+        }
+#endif
+
         if (((sortData *)data)->fileInterface->error(iteratorState->file)) {
-            printf("ERROR: SORT: next record read failed");
+#ifdef PRINT_ERRORS
+            debug_log("ERROR: SORT: next record read failed");
+#endif
             return 2;
         }
     }
 
-    // Copy result to ouput buffer
-    memcpy(buffer, ((sortData *)data)->readBuffer + BLOCK_HEADER_SIZE + iteratorState->recordSize * (iteratorState->currentRecord % recordPerPage), iteratorState->recordSize);
+    // Copy result to output buffer
+    uint16_t valuesInPage;
+    memcpy(&valuesInPage, ((sortData *)data)->readBuffer + sizeof(uint32_t),
+           sizeof(uint16_t));
+    uint32_t recordIndexInPage = iteratorState->currentRecord % recordPerPage;
+#ifdef DEBUG
+
+#endif
+
+    if (recordIndexInPage >= valuesInPage) {
+        return 1;
+    }
+    uint32_t copyOffset = BLOCK_HEADER_SIZE + iteratorState->recordSize * recordIndexInPage;
+    memcpy(buffer, ((sortData *)data)->readBuffer + copyOffset, iteratorState->recordSize);
+
+#ifdef DEBUG
+    if (iteratorState->recordsRead < 10 || iteratorState->recordsRead % 1000 == 0) {
+        int32_t *keyPtr = (int32_t *)(buffer + ((sortData *)data)->keyOffset);
+        debug_log("DEBUG readNextRecord: recordsRead=%d, currentRecord=%d, pageIdx=%d, recordInPage=%d, copyOffset=%d, key=%d\n",
+                  iteratorState->recordsRead, iteratorState->currentRecord, iteratorState->currentRecord / recordPerPage,
+                  recordIndexInPage, copyOffset, *keyPtr);
+        uint32_t blockIdx;
+        memcpy(&blockIdx, ((sortData *)data)->readBuffer, sizeof(uint32_t));
+        debug_log("READ PAGE hdr: blockIdx=%u values=%u\n",
+                  blockIdx, valuesInPage);
+        debug_log("PAGE HEADER: page=%d values=%d\n",
+                  iteratorState->currentRecord / recordPerPage,
+                  valuesInPage);
+        int32_t *key0 = (int32_t *)(((sortData *)data)->readBuffer + BLOCK_HEADER_SIZE + ((sortData *)data)->keyOffset);
+        int32_t *keyLast = (int32_t *)(((sortData *)data)->readBuffer + BLOCK_HEADER_SIZE + (recordPerPage - 1) * iteratorState->recordSize + ((sortData *)data)->keyOffset);
+        debug_log("  First key on page: %d, Last key on page: %d\n", *key0, *keyLast);
+    }
+#endif
+
     iteratorState->recordsRead++;
     iteratorState->currentRecord++;
 
-#ifdef DEBUG
-    printf("DEBUG: ROWDATA from file:\n");
-    for (int i = 0; i < iteratorState->recordSize - SORT_KEY_SIZE; i++) {
-        printf("%2x ", ((uint8_t *)buffer)[i]);
-    }
-    printf("\n");
-#endif
-
+    // #ifdef DEBUG
+    //         printf("DEBUG: ROWDATA from file:\n");
+    //         for (int i = 0; i < iteratorState->recordSize - SORT_KEY_SIZE; i++) {
+    //             printf("%2x ", ((uint8_t *)buffer)[i]);
+    //         }
+    //         printf("\n");
+    // #endif
     return 0;
 }
 
 void closeSort(file_iterator_state_t *iteratorState) {
-#ifdef ARDUINO
-    // For pure memory sort, we need to free the memory buffer
-    if (iteratorState->file != NULL && iteratorState->resultFile == 0) {
-        free(iteratorState->file);
-        iteratorState->file = NULL;
-        return;
-    }
-#endif
-
     if (iteratorState->file != NULL) {
         iteratorState->fileInterface->close(iteratorState->file);
+        if (iteratorState->fileInterface->removeFile) {
+            iteratorState->fileInterface->removeFile(iteratorState->file);
+        }
         iteratorState->file = NULL;
     }
 }
 
 /**
- * @brief Initalizes default metric values
+ * @brief Initializes default metric values
  *
  * @return metrics_t
  */

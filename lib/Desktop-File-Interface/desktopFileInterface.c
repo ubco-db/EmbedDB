@@ -5,7 +5,7 @@ typedef struct {
     FILE *file;
 } FILE_INFO;
 
-void *setupFile(char *filename) {
+void *setupFile(const char *filename) {
     FILE_INFO *fileInfo = malloc(sizeof(FILE_INFO));
     int nameLen = strlen(filename);
     fileInfo->filename = calloc(1, nameLen + 1);
@@ -20,6 +20,27 @@ void tearDownFile(void *file) {
     if (fileInfo->file != NULL)
         fclose(fileInfo->file);
     free(file);
+}
+
+int8_t FILE_REMOVE(void *file) {
+    if (file == NULL) return 1;
+    FILE_INFO *fileInfo = (FILE_INFO *)file;
+
+    if (fileInfo->file != NULL) {
+        fclose(fileInfo->file);
+        fileInfo->file = NULL;
+    }
+
+    int8_t result = 1;
+    if (fileInfo->filename != NULL) {
+        if (remove(fileInfo->filename) != 0) {
+            result = 0;
+#ifdef PRINT_ERRORS
+            perror("ERROR: Failed to remove temp file");
+#endif
+        }
+        return result;
+    }
 }
 
 int8_t FILE_READ(void *buffer, uint32_t pageNum, uint32_t pageSize, void *file) {
@@ -121,6 +142,39 @@ int32_t FILE_TELL(void *file) {
     return ftell(fileInfo->file);
 }
 
+char *tempFilePath(void) {
+    static char tempPathBuffer[256];
+
+#if defined(_WIN32) || defined(_WIN64)
+    char *path = _tempnam(NULL, "embeddb_");
+    if (path != NULL) {
+        strncpy(tempPathBuffer, path, sizeof(tempPathBuffer) - 1);
+        tempPathBuffer[sizeof(tempPathBuffer) - 1] = '\0';
+        free(path);
+    } else {
+        /* Fallback */
+        snprintf(tempPathBuffer, sizeof(tempPathBuffer),
+                 "embeddb_%lu.tmp", (unsigned long)rand());
+    }
+
+#else
+    /* POSIX systems */
+    snprintf(tempPathBuffer, sizeof(tempPathBuffer),
+             "/tmp/embeddb_%luXXXXXX", (unsigned long)rand());
+
+    int fd = mkstemp(tempPathBuffer);
+    if (fd >= 0) {
+        close(fd);
+    }
+#endif
+
+    char *out = malloc(strlen(tempPathBuffer) + 1);
+    if (out) {
+        strcpy(out, tempPathBuffer);
+    }
+    return out;
+}
+
 embedDBFileInterface *getFileInterface() {
     embedDBFileInterface *fileInterface = malloc(sizeof(embedDBFileInterface));
     fileInterface->close = FILE_CLOSE;
@@ -135,6 +189,10 @@ embedDBFileInterface *getFileInterface() {
     fileInterface->writeRel = FILE_WRITE_REL;
     fileInterface->seek = FILE_SEEK;
     fileInterface->tell = FILE_TELL;
+    fileInterface->setup = setupFile;
+    fileInterface->teardown = tearDownFile;
+    fileInterface->removeFile = FILE_REMOVE;
+    fileInterface->tempFilePath = tempFilePath;
     return fileInterface;
 }
 
@@ -152,5 +210,9 @@ embedDBFileInterface *getMockEraseFileInterface() {
     fileInterface->writeRel = FILE_WRITE_REL;
     fileInterface->seek = FILE_SEEK;
     fileInterface->tell = FILE_TELL;
+    fileInterface->setup = setupFile;
+    fileInterface->teardown = tearDownFile;
+    fileInterface->removeFile = FILE_REMOVE;
+    fileInterface->tempFilePath = tempFilePath;
     return fileInterface;
 }

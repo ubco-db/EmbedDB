@@ -104,7 +104,7 @@ SD_FILE *sd_fopen(const char *filename, const char *mode) {
 
 size_t sd_fread(void *ptr, size_t size, size_t nmemb, SD_FILE *stream) {
     /* read is the size of bytes * num of size-bytes */
-    int16_t num_bytes = stream->f.read((char *)ptr, size * nmemb);
+    int32_t num_bytes = stream->f.read((char *)ptr, size * nmemb);
 
     if (num_bytes < 0)
         return 0;
@@ -112,24 +112,44 @@ size_t sd_fread(void *ptr, size_t size, size_t nmemb, SD_FILE *stream) {
 }
 
 int sd_fseek(SD_FILE *stream, unsigned long int offset, int whence) {
-    if (NULL == stream)
-        return -1;
+    if (NULL == stream) return -1;
 
-    bool result = stream->f.seek(offset);
-    if (!result)
-        return -1;
-    return 0;
+    unsigned long absolute_pos = offset;
+    if (whence == SEEK_CUR) {
+        absolute_pos = stream->f.position() + offset;
+    } else if (whence == SEEK_END) {
+        absolute_pos = stream->f.size() - offset;
+    }
+    return stream->f.seek(absolute_pos) ? 0 : -1;
 }
 
 size_t sd_fwrite(void *ptr, size_t size, size_t nmemb, SD_FILE *stream) {
     size_t total_count = size * nmemb;
     size_t bytes_written = stream->f.write(ptr, total_count);
 
-    if (total_count != bytes_written)
-        return 0;
-    return total_count;
+    if (bytes_written == 0) return 0;
+    return bytes_written / size;
 }
 
 size_t sd_length(SD_FILE *stream) {
     return stream->f.size();
+}
+
+int sd_remove(const char *filename) {
+    if (sdcard->remove(filename)) {
+        return 0;
+    }
+    return -1;
+}
+
+long sd_ftell(SD_FILE *stream) {
+    if (stream == NULL) {
+        return -1;
+    }
+    return (long)stream->f.position();
+}
+
+int sd_ferror(SD_FILE *stream) {
+    if (stream == NULL) return 1;
+    return stream->f.getWriteError() ? 1 : 0;
 }

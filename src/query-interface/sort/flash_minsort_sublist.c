@@ -46,19 +46,27 @@
 
 #include "in_memory_sort.h"
 
-/*
-#define DEBUG 1
-#define DEBUG_OUTPUT 1
-#define DEBUG_READ 1
-*/
+// #define DEBUG 1
+// #define DEBUG_OUTPUT 1
+// #define DEBUG_READ 1
+#if defined(DEBUG) || defined(DEBUG_OUTPUT) || defined(DEBUG_READ)
+#include "debug_print.h"
+#else
+#ifndef debug_log
+#define debug_log(...) ((void)0)
+#endif
+#endif
 
-void readPage_sublist(MinSortStateSublist *ms, int pageNum, external_sort_t *es, metrics_t *metric) {
+int8_t readPage_sublist(MinSortStateSublist *ms, int pageNum, external_sort_t *es, metrics_t *metric) {
     file_iterator_state_t *is = (file_iterator_state_t *)ms->iteratorState;
     void *fp = is->file;
 
     // Read page into the buffer
     if (0 == is->fileInterface->read(ms->buffer, pageNum, es->page_size, fp)) {
-        printf("MINSORT SUBLIST: Failed to read block.\n");
+#ifdef DEBUG
+        debug_log("MINSORT SUBLIST: Failed to read block.\n");
+#endif
+        return 0;
     }
 
     metric->num_reads++;
@@ -66,12 +74,13 @@ void readPage_sublist(MinSortStateSublist *ms, int pageNum, external_sort_t *es,
     ms->lastBlockIdx = pageNum;
 
 #ifdef DEBUG_READ
-    printf("Reading block: %d Offset: %lu\n", pageNum, offset);
+    debug_log("Reading block: %d Offset: %lu\n", pageNum, es->key_offset);
     for (int k = 0; k < 31; k++) {
         test_record_t *buf = (void *)(ms->buffer + es->headerSize + k * es->record_size);
-        printf("%d: Record: %d\n", k, buf->key);
+        debug_log("%d: Record: %d\n", k, buf->key);
     }
 #endif
+    return 1;
 }
 
 int32_t getBlockId(MinSortStateSublist *ms) {
@@ -105,7 +114,7 @@ void init_MinSort_sublist(MinSortStateSublist *ms, external_sort_t *es, metrics_
     // j = (ms->memoryAvailable - 2 * SORT_KEY_SIZE - INT_SIZE) / SORT_KEY_SIZE;
     j = (ms->memoryAvailable) / (SORT_KEY_SIZE + sizeof(uint8_t));
 #ifdef FLASH_MINSORT_PRINT
-    printf("Memory overhead: %d  Max regions: %d\r\n", 2 * SORT_KEY_SIZE + INT_SIZE, j);
+    debug_log("Memory overhead: %d  Max regions: %d\r\n", 2 * SORT_KEY_SIZE + INT_SIZE, j);
 #endif
     // Memory allocation
     // Allocate minimum index in separate memory space (block 0 is input buffer, block 1 is output buffer)
@@ -119,8 +128,8 @@ void init_MinSort_sublist(MinSortStateSublist *ms, external_sort_t *es, metrics_
     ms->min_set = malloc(ms->numRegions * sizeof(uint8_t));
     ms->offset = malloc(ms->numRegions * sizeof(long));
 #ifdef FLASH_MINSORT_PRINT
-    printf("Page size: %d, Memory size: %d Record size: %d, Number of records: %lu, Number of blocks: %d, Regions: %d\r\n",
-           es->page_size, ms->memoryAvailable, ms->record_size, ms->num_records, ms->numBlocks, ms->numRegions);
+    debug_log("Page size: %d, Memory size: %d Record size: %d, Number of records: %lu, Number of blocks: %d, Regions: %d\r\n",
+              es->page_size, ms->memoryAvailable, ms->record_size, ms->num_records, ms->numBlocks, ms->numRegions);
 #endif
 
     for (i = 0; i < ms->numRegions; i++)
@@ -137,12 +146,12 @@ void init_MinSort_sublist(MinSortStateSublist *ms, external_sort_t *es, metrics_
         int numBlocksSublist = *(int32_t *)ms->buffer; /* Retrieve block id (indexed from 0) to compute count of blocks in sublist */
 
 #if DEBUG
-        printf("Read block: %d", lastBlock);
-        printf(" Num: %d\n", numBlocksSublist);
+        debug_log("Read block: %d", lastBlock);
+        debug_log(" Num: %d\n", numBlocksSublist);
 
         for (int k = 0; k < 31; k++) {
             test_record_t *buf = (void *)(ms->buffer + es->headerSize + k * es->record_size);
-            printf("%d: Record: %d\n", k, buf->key);
+            debug_log("%d: Record: %d\n", k, buf->key);
         }
 #endif
         lastBlock = lastBlock - numBlocksSublist;
@@ -153,22 +162,22 @@ void init_MinSort_sublist(MinSortStateSublist *ms, external_sort_t *es, metrics_
         memcpy(ms->min + es->record_size * regionIdx, getTuple_sublist(ms, 0, es), es->value_size);
         metric->num_memcpys++;
         ms->min_set[regionIdx] = true;
-        ms->offset[regionIdx] = lastBlock * es->page_size + es->headerSize + ms->fileOffset;
+        ms->offset[regionIdx] = lastBlock * es->page_size + es->headerSize;
 #if DEBUG
-        printf("New min. Index: %d", regionIdx);
-        printf(" Min: %u", ms->min[regionIdx]);
-        printf(" Offset: %lu\n", ms->offset[regionIdx]);
+        debug_log("New min. Index: %d", regionIdx);
+        debug_log(" Min: %u", ms->min[regionIdx]);
+        debug_log(" Offset: %lu\n", ms->offset[regionIdx]);
 #endif
         regionIdx--;
         lastBlock--;
     }
 
 #ifdef DEBUG
-    printf("Region summary\n");
+    debug_log("Region summary\n");
     for (i = 0; i < ms->numRegions; i++) {
-        printf("Reg: %d", i);
-        printf(" Min: %u", ms->min[i]);
-        printf(" Offset: %lu\n", ms->offset[i]);
+        debug_log("Reg: %d", i);
+        debug_log(" Min: %u", ms->min[i]);
+        debug_log(" Offset: %lu\n", ms->offset[i]);
     }
 
 #endif
@@ -219,10 +228,17 @@ char *next_MinSort_sublist(MinSortStateSublist *ms, external_sort_t *es, void *t
         curBlk = startIndex / es->page_size;
 
         // Smallest value is at current index
-        if (curBlk != ms->lastBlockIdx) {  // Read block into buffer
-            readPage_sublist(ms, curBlk, es, metric);
+        if (curBlk != ms->lastBlockIdx) {
+            /* Checking for read failure here */
+            if (0 == readPage_sublist(ms, curBlk, es, metric)) {
+                // If we can't read the block, this region is exhausted.
+                ms->offset[ms->regionIdx] = -1;
+                ms->min_set[ms->regionIdx] = false;
+                // Recursive call to try again with this region disabled
+                return next_MinSort_sublist(ms, es, tupleBuffer, metric);
+            }
         }
-    } else {  // Use next record in current block
+    } else {
         i = ms->nextIdx;
     }
 
@@ -232,7 +248,7 @@ char *next_MinSort_sublist(MinSortStateSublist *ms, external_sort_t *es, void *t
 #ifdef DEBUG
     test_record_t *buf = (test_record_t *)(ms->buffer + es->headerSize + i * es->record_size);
     buf = (test_record_t *)tupleBuffer;
-    printf("Returning tuple: %d\n", buf->key);
+    debug_log("Returning tuple: %d\n", buf->key);
 #endif
 
     // Advance to next tuple in block
@@ -244,10 +260,15 @@ char *next_MinSort_sublist(MinSortStateSublist *ms, external_sort_t *es, void *t
         i = 0;
         int32_t currentBlockId = getBlockId(ms);
         curBlk++;
-        readPage_sublist(ms, curBlk, es, metric);
-        if (currentBlockId >= getBlockId(ms)) {
-            // Transitioned to a block in a new sublist
-            // ms->min[ms->regionIdx] = INT_MAX;
+
+        if (0 == readPage_sublist(ms, curBlk, es, metric)) {
+            // Read failed (EOF). Mark region as finished.
+            ms->offset[ms->regionIdx] = -1;
+            ms->min_set[ms->regionIdx] = false;
+        }
+        /* Only process the new block if read was successful */
+        else if (currentBlockId >= getBlockId(ms)) {
+            // Transitioned to a block in a new sublist (ID check)
             ms->offset[ms->regionIdx] = -1;
             ms->min_set[ms->regionIdx] = false;
         } else {
@@ -273,7 +294,7 @@ char *next_MinSort_sublist(MinSortStateSublist *ms, external_sort_t *es, void *t
     }
 
 #ifdef DEBUG
-    printf("Updated minimum in block to: %d\r\n", ms->min[ms->regionIdx]);
+    debug_log("Updated minimum in block to: %d\r\n", ms->min[ms->regionIdx]);
 #endif
 
     return tupleBuffer;
@@ -339,7 +360,7 @@ int flash_minsort_sublist(
     int32_t blockIndex = 0;
     int16_t values_per_page = (es->page_size - es->headerSize) / es->record_size;
     char *outputBuffer = buffer + es->page_size;
-    unsigned long lastWritePos = ms.fileOffset + es->num_pages * es->page_size;
+    unsigned long lastWritePos = *resultFilePtr;
 
     // Write
     while (next_MinSort_sublist(&ms, es, (char *)(outputBuffer + count * es->record_size + es->headerSize), metric) != NULL) {
@@ -354,6 +375,10 @@ int flash_minsort_sublist(
             // Force seek to end of file as outputFile is also inputFile and have been reading it
             ((file_iterator_state_t *)iteratorState)->fileInterface->seek(lastWritePos, outputFile);
             // Write the block to the output file using the file interface's write method
+#ifdef DEBUG
+            debug_log("Writing page flash minsort sublist: blockIndex=%d, count=%d, filePosition=%ld\n",
+                      blockIndex, count, lastWritePos / PAGE_SIZE);
+#endif
             if (0 == ((file_iterator_state_t *)iteratorState)->fileInterface->writeRel(outputBuffer, es->page_size, 1, outputFile)) {
                 return 9;  // Return error code if writing to the output file fails
             }
@@ -366,7 +391,7 @@ int flash_minsort_sublist(
                             printf("Last write pos: %lu Block: %d\n", lastWritePos, blockIndex);
                             */
 #ifdef DEBUG_OUTPUT
-            printf("Wrote output block. Block index: %d\n", blockIndex);
+            debug_log("Wrote output block. Block index: %d\n", blockIndex);
             for (int k = 0; k < values_per_page; k++) {
                 test_record_t *buf = (void *)(outputBuffer + es->headerSize + k * es->record_size);
                 printf("%d: Output Record: %d\n", k, buf->key);
@@ -380,11 +405,13 @@ int flash_minsort_sublist(
     if (count > 0) {
         // fseek(outputFile, lastWritePos, SEEK_SET);
         ((file_iterator_state_t *)iteratorState)->fileInterface->seek(lastWritePos, outputFile);
-
-        *((int32_t *)buffer) = blockIndex;                   /* Block index */
-        *((int16_t *)(buffer + BLOCK_COUNT_OFFSET)) = count; /* Block record count */
-
-        if (0 == ((file_iterator_state_t *)iteratorState)->fileInterface->write(outputBuffer, es->page_size, 1, outputFile)) {
+        *((int32_t *)outputBuffer) = blockIndex;                   /* Block index */
+        *((int16_t *)(outputBuffer + BLOCK_COUNT_OFFSET)) = count; /* Block record count */
+#ifdef DEBUG
+        debug_log("Writing last page minsort sublist: blockIndex=%d, count=%d, filePosition=%ld\n",
+                  blockIndex, count, lastWritePos / PAGE_SIZE);
+#endif
+        if (0 == ((file_iterator_state_t *)iteratorState)->fileInterface->writeRel(outputBuffer, es->page_size, 1, outputFile)) {
             return 9;  // Return error code if writing to the output file fails
         }
 
@@ -397,7 +424,6 @@ int flash_minsort_sublist(
 
     close_MinSort_sublist(&ms, es);
 
-    *resultFilePtr = 0;
     free(ms.min);
     free(ms.offset);
     free(ms.current);

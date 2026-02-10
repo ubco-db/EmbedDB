@@ -40,7 +40,7 @@ typedef struct {
     SD_FILE *sdFile;
 } SD_FILE_INFO;
 
-void *setupSDFile(char *filename) {
+void *setupSDFile(const char *filename) {
     SD_FILE_INFO *fileInfo = malloc(sizeof(SD_FILE_INFO));
     int nameLen = strlen(filename);
     fileInfo->filename = calloc(1, nameLen + 1);
@@ -57,6 +57,22 @@ void tearDownSDFile(void *file) {
     free(file);
 }
 
+int8_t FILE_REMOVE(void *file) {
+    if (file == NULL) return 1;
+    SD_FILE_INFO *fileInfo = (SD_FILE_INFO *)file;
+
+    if (fileInfo->sdFile != NULL) {
+        sd_fclose(fileInfo->sdFile);
+        fileInfo->sdFile = NULL;
+    }
+
+    if (fileInfo->filename != NULL) {
+        int result = sd_remove(fileInfo->filename);
+        return (result == 0);
+    }
+    return 1;
+}
+
 int8_t FILE_READ(void *buffer, uint32_t pageNum, uint32_t pageSize, void *file) {
     SD_FILE_INFO *fileInfo = (SD_FILE_INFO *)file;
     sd_fseek(fileInfo->sdFile, pageSize * pageNum, SEEK_SET);
@@ -65,31 +81,25 @@ int8_t FILE_READ(void *buffer, uint32_t pageNum, uint32_t pageSize, void *file) 
 
 int8_t FILE_WRITE(void *buffer, uint32_t pageNum, uint32_t pageSize, void *file) {
     SD_FILE_INFO *fileInfo = (SD_FILE_INFO *)file;
+    if (fileInfo->sdFile == NULL) return 0;
+
     size_t fileSize = sd_length(fileInfo->sdFile);
-    size_t requiredSize = pageNum * pageSize;
-    if (fileSize < pageNum * pageSize) {
-        int8_t seekSuccess = sd_fseek(fileInfo->sdFile, fileSize, SEEK_SET);
-        if (seekSuccess == -1) {
-            return -1;
-        }
-        size_t currentSize = fileSize;
-        uint32_t max = UINT32_MAX;
-        uint32_t writeSuccess = 0;
-        while (currentSize < requiredSize) {
-            writeSuccess = sd_fwrite(&max, sizeof(uint32_t), 1, fileInfo->sdFile);
-            if (writeSuccess == 0)
-                return -1;
-            currentSize += 4;
+    size_t requiredSize = (size_t)pageNum * pageSize;
+
+    if (fileSize < requiredSize) {
+        sd_fseek(fileInfo->sdFile, 0, SEEK_END);
+        uint8_t zero = 0;
+        while (sd_length(fileInfo->sdFile) < requiredSize) {
+            if (sd_fwrite(&zero, 1, 1, fileInfo->sdFile) != 1) return 0;
         }
     }
-    int8_t seekSuccess = sd_fseek(fileInfo->sdFile, pageNum * pageSize, SEEK_SET);
-    if (seekSuccess == -1) {
-        return -1;
+
+    if (sd_fseek(fileInfo->sdFile, requiredSize, SEEK_SET) != 0) return 0;
+
+    if (sd_fwrite(buffer, pageSize, 1, fileInfo->sdFile) == 1) {
+        return 1;
     }
-    int8_t writeSuccess = sd_fwrite(buffer, pageSize, 1, fileInfo->sdFile) == pageSize;
-    if (seekSuccess == -1)
-        return 0;
-    return 1;
+    return 0;
 }
 
 int8_t FILE_ERASE(uint32_t startPage, uint32_t endPage, uint32_t pageSize, void *file) {
@@ -101,6 +111,16 @@ int8_t FILE_CLOSE(void *file) {
     sd_fclose(fileInfo->sdFile);
     fileInfo->sdFile = NULL;
     return 1;
+}
+
+int8_t FILE_READ_REL(void *buffer, uint32_t size, uint32_t n, void *file) {
+    SD_FILE_INFO *fileInfo = (SD_FILE_INFO *)file;
+    return sd_fread(buffer, size, n, fileInfo->sdFile);
+}
+
+int8_t FILE_WRITE_REL(void *buffer, uint32_t size, uint32_t n, void *file) {
+    SD_FILE_INFO *fileInfo = (SD_FILE_INFO *)file;
+    return sd_fwrite(buffer, size, n, fileInfo->sdFile);
 }
 
 int8_t FILE_FLUSH(void *file) {
@@ -126,6 +146,40 @@ int8_t FILE_OPEN(void *file, uint8_t mode) {
     }
 }
 
+int32_t FILE_TELL(void *file) {
+    SD_FILE_INFO *fileInfo = (SD_FILE_INFO *)file;
+    if (fileInfo == NULL || fileInfo->sdFile == NULL) {
+        return -1;
+    }
+    return (int32_t)sd_ftell(fileInfo->sdFile);
+}
+
+char *sdFat_tempFilePath(void) {
+    char tempPathBuffer[32];
+    snprintf(tempPathBuffer, sizeof(tempPathBuffer), "TMP%lu.DAT", random());
+
+    char *out = malloc(strlen(tempPathBuffer) + 1);
+    if (out) {
+        strcpy(out, tempPathBuffer);
+    }
+    return out;
+}
+
+int8_t FILE_SEEK(uint32_t n, void *file) {
+    SD_FILE_INFO *fileInfo = (SD_FILE_INFO *)file;
+    return sd_fseek(fileInfo->sdFile, n, SEEK_SET);
+}
+
+int8_t FILE_ERROR(void *file) {
+    if (file == NULL) return 1;
+    SD_FILE_INFO *fileInfo = (SD_FILE_INFO *)file;
+
+    if (sd_ferror(fileInfo->sdFile)) {
+        return 1;
+    }
+    return 0;
+}
+
 embedDBFileInterface *getSDInterface() {
     embedDBFileInterface *fileInterface = malloc(sizeof(embedDBFileInterface));
     fileInterface->close = FILE_CLOSE;
@@ -133,6 +187,15 @@ embedDBFileInterface *getSDInterface() {
     fileInterface->write = FILE_WRITE;
     fileInterface->erase = FILE_ERASE;
     fileInterface->open = FILE_OPEN;
+    fileInterface->seek = FILE_SEEK;
     fileInterface->flush = FILE_FLUSH;
+    fileInterface->error = FILE_ERROR;
+    fileInterface->readRel = FILE_READ_REL;
+    fileInterface->writeRel = FILE_WRITE_REL;
+    fileInterface->tell = FILE_TELL;
+    fileInterface->setup = setupSDFile;
+    fileInterface->teardown = tearDownSDFile;
+    fileInterface->removeFile = FILE_REMOVE;
+    fileInterface->tempFilePath = sdFat_tempFilePath;
     return fileInterface;
 }

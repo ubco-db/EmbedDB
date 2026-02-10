@@ -123,7 +123,7 @@ void embedDBIterator_should_return_records_in_storage_and_in_write_buffer(void) 
     while (embedDBNext(state, &it, &itKey, itData)) {
         uint32_t actualDataValue;
         memcpy(&actualDataValue, itData, sizeof(int));
-        snprintf(message, 100, "embedDBIterator returned the wrong data value for key %li.", key);
+        snprintf(message, 100, "embedDBIterator returned the wrong data value for key %u.", key);
         TEST_ASSERT_EQUAL_UINT32_MESSAGE(expectedDataValue, actualDataValue, message);
         expectedDataValue += 5;
         numRecordsReturned += 1;
@@ -169,7 +169,7 @@ void embedDBIterator_should_return_records_in_storage_and_in_write_buffer_with_f
     /* test data and keys are returned correctly */
     while (embedDBNext(state, &it, &actualKeyValue, returnedDataValue)) {
         TEST_ASSERT_EQUAL_UINT32_MESSAGE(expectedKeyValue, actualKeyValue, "embedDBIterator returned an unexpected key value");
-        snprintf(message, 100, "embedDBIterator did not return the correct data for key %li).", expectedKeyValue);
+        snprintf(message, 100, "embedDBIterator did not return the correct data for key %u).", expectedKeyValue);
         memcpy(&actualDataValue, returnedDataValue, sizeof(float));
         TEST_ASSERT_EQUAL_FLOAT_MESSAGE(expectedDataValue, actualDataValue, message);
         expectedKeyValue += 3;
@@ -216,7 +216,7 @@ void embedDBIterator_should_return_keys_in_write_buffer_when_no_data_has_been_fl
     while (embedDBNext(state, &it, &actualKeyValue, returnedDataBuffer)) {
         TEST_ASSERT_EQUAL_UINT32_MESSAGE(key, actualKeyValue, "embedDBIterator returned an unexpected key value");
         memcpy(&acutalDataValue, returnedDataBuffer, sizeof(uint32_t));
-        snprintf(message, 100, "embedDBIterator did not return the correct data for key %li).", key);
+        snprintf(message, 100, "embedDBIterator did not return the correct data for key %u).", key);
         TEST_ASSERT_EQUAL_UINT32_MESSAGE(data, acutalDataValue, message);
         data += 15;
         key += 1;
@@ -261,7 +261,7 @@ void embedDBIterator_should_filter_and_rechieve_records_by_data_value(void) {
     /* assert returned records have correct values */
     while (embedDBNext(state, &it, &itKey, itData)) {
         TEST_ASSERT_EQUAL_UINT32_MESSAGE(expectedKeyValue, itKey, "embedDBIterator returned a key value which should have been filtered out");
-        snprintf(message, 100, "embedDBIterator did not return the correct data for key %li).", expectedKeyValue);
+        snprintf(message, 100, "embedDBIterator did not return the correct data for key %u).", expectedKeyValue);
         TEST_ASSERT_EQUAL_UINT32_MESSAGE(expectedDataValue, itData[0], message);
         expectedKeyValue += 1;
         expectedDataValue += 5;

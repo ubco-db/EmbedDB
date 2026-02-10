@@ -61,7 +61,7 @@ int8_t embedDBInitVarDataFromFile(embedDBState *state);
 int8_t shiftRecordLevelConsistencyBlocks(embedDBState *state);
 void embedDBInitSplineFromFile(embedDBState *state);
 int32_t getMaxError(embedDBState *state, void *buffer);
-void updateMaxiumError(embedDBState *state, void *buffer);
+void updateMaximumError(embedDBState *state, void *buffer);
 int8_t embedDBSetupVarDataStream(embedDBState *state, void *key, embedDBVarDataStream **varData, id_t recordNumber);
 uint32_t cleanSpline(embedDBState *state, uint32_t minPageNumber);
 void readToWriteBuf(embedDBState *state);
@@ -212,7 +212,7 @@ int8_t embedDBInit(embedDBState *state, size_t indexMaxError) {
         return -1;
     }
 
-    /* Initalize the spline structure if being used */
+    /* Initialize the spline structure if being used */
     if (!EMBEDDB_USING_BINARY_SEARCH(state->parameters)) {
         if (state->numSplinePoints < 4) {
 #ifdef PRINT_ERRORS
@@ -341,7 +341,7 @@ int8_t embedDBInitDataFromFile(embedDBState *state) {
             hasData = true;
             maxLogicalPageId = logicalPageId;
             physicalPageId++;
-            updateMaxiumError(state, buffer);
+            updateMaximumError(state, buffer);
             count++;
             i = 2;
         } else {
@@ -362,7 +362,7 @@ int8_t embedDBInitDataFromFile(embedDBState *state) {
         if (validData && logicalPageId == maxLogicalPageId + 1) {
             maxLogicalPageId = logicalPageId;
             physicalPageId++;
-            updateMaxiumError(state, buffer);
+            updateMaximumError(state, buffer);
             moreToRead = !(readPage(state, physicalPageId));
             count++;
         } else {
@@ -385,7 +385,7 @@ int8_t embedDBInitDataFromFile(embedDBState *state) {
         physicalPageId = (physicalPageId + pagesToBlockBoundary) % state->numDataPages;
         moreToRead = !(readPage(state, physicalPageId));
 
-        /* there should have been more to read becuase the file should not be empty at this point if it was not empty at the previous block */
+        /* there should have been more to read because the file should not be empty at this point if it was not empty at the previous block */
         if (!moreToRead) {
             return -1;
         }
@@ -442,7 +442,7 @@ int8_t embedDBInitDataFromFileWithRecordLevelConsistency(embedDBState *state) {
             hasPermanentData = true;
             maxLogicalPageId = logicalPageId;
             physicalPageId++;
-            updateMaxiumError(state, buffer);
+            updateMaximumError(state, buffer);
             count++;
             i = 4;
         } else {
@@ -460,7 +460,7 @@ int8_t embedDBInitDataFromFileWithRecordLevelConsistency(embedDBState *state) {
             if (validData && logicalPageId == maxLogicalPageId + 1) {
                 maxLogicalPageId = logicalPageId;
                 physicalPageId++;
-                updateMaxiumError(state, buffer);
+                updateMaximumError(state, buffer);
                 moreToRead = !(readPage(state, physicalPageId));
                 count++;
             } else {
@@ -494,7 +494,7 @@ int8_t embedDBInitDataFromFileWithRecordLevelConsistency(embedDBState *state) {
     /* record-level consistency recovery algorithm */
     uint32_t numPagesRead = 0;
     uint32_t numPagesToRead = blockSize * 2;
-    uint32_t rlcMaxLogicialPageNumber = UINT32_MAX;
+    uint32_t rlcMaxLogicalPageNumber = UINT32_MAX;
     uint32_t rlcMaxRecordCount = UINT32_MAX;
     uint32_t rlcMaxPage = UINT32_MAX;
     moreToRead = !(readPage(state, physicalPageId));
@@ -507,7 +507,7 @@ int8_t embedDBInitDataFromFileWithRecordLevelConsistency(embedDBState *state) {
             uint32_t numRecords = EMBEDDB_GET_COUNT(buffer);
             if (rlcMaxRecordCount == UINT32_MAX || numRecords > rlcMaxRecordCount) {
                 rlcMaxRecordCount = numRecords;
-                rlcMaxLogicialPageNumber = logicalPageId;
+                rlcMaxLogicalPageNumber = logicalPageId;
                 rlcMaxPage = numPagesRead;
             }
         }
@@ -516,11 +516,11 @@ int8_t embedDBInitDataFromFileWithRecordLevelConsistency(embedDBState *state) {
         numPagesRead++;
     }
 
-    /* need to find larged record-level consistency page to place back into the buffer and either one or both of the record-level consistency pages */
+    /* need to find large record-level consistency page to place back into the buffer and either one or both of the record-level consistency pages */
     uint32_t eraseStartingPage = 0;
     uint32_t eraseEndingPage = 0;
     uint32_t numBlocksToErase = 0;
-    if (rlcMaxLogicialPageNumber == UINT32_MAX) {
+    if (rlcMaxLogicalPageNumber == UINT32_MAX) {
         eraseStartingPage = state->rlcPhysicalStartingPage % state->numDataPages;
         numBlocksToErase = 2;
     } else {
@@ -657,7 +657,7 @@ int8_t embedDBInitIndex(embedDBState *state) {
 
 int8_t embedDBInitIndexFromFile(embedDBState *state) {
     id_t logicalIndexPageId = 0;
-    id_t maxLogicaIndexPageId = 0;
+    id_t maxLogicalIndexPageId = 0;
     id_t physicalIndexPageId = 0;
 
     /* This will become zero if there is no more to read */
@@ -669,13 +669,13 @@ int8_t embedDBInitIndexFromFile(embedDBState *state) {
 
     while (moreToRead && count < state->numIndexPages) {
         memcpy(&logicalIndexPageId, buffer, sizeof(id_t));
-        if (count == 0 || logicalIndexPageId == maxLogicaIndexPageId + 1) {
-            maxLogicaIndexPageId = logicalIndexPageId;
+        if (count == 0 || logicalIndexPageId == maxLogicalIndexPageId + 1) {
+            maxLogicalIndexPageId = logicalIndexPageId;
             physicalIndexPageId++;
             moreToRead = !(readIndexPage(state, physicalIndexPageId));
             count++;
         } else {
-            haveWrappedInMemory = logicalIndexPageId == maxLogicaIndexPageId - state->numIndexPages + 1;
+            haveWrappedInMemory = logicalIndexPageId == maxLogicalIndexPageId - state->numIndexPages + 1;
             break;
         }
     }
@@ -683,20 +683,20 @@ int8_t embedDBInitIndexFromFile(embedDBState *state) {
     if (count == 0)
         return 0;
 
-    state->nextIdxPageId = maxLogicaIndexPageId + 1;
+    state->nextIdxPageId = maxLogicalIndexPageId + 1;
     id_t physicalPageIDOfSmallestData = 0;
     if (haveWrappedInMemory) {
         physicalPageIDOfSmallestData = logicalIndexPageId % state->numIndexPages;
     }
     readIndexPage(state, physicalPageIDOfSmallestData);
     memcpy(&(state->minIndexPageId), buffer, sizeof(id_t));
-    state->numAvailIndexPages = state->numIndexPages + state->minIndexPageId - maxLogicaIndexPageId - 1;
+    state->numAvailIndexPages = state->numIndexPages + state->minIndexPageId - maxLogicalIndexPageId - 1;
 
     return 0;
 }
 
 int8_t embedDBInitVarData(embedDBState *state) {
-    // Initialize variable data outpt buffer
+    // Initialize variable data output buffer
     initBufferPage(state, EMBEDDB_VAR_WRITE_BUFFER(state->parameters));
 
     state->variableDataHeaderSize = state->keySize + sizeof(id_t);
@@ -797,7 +797,7 @@ int8_t embedDBInitVarDataFromFile(embedDBState *state) {
         physicalVariablePageId = (physicalVariablePageId + pagesToBlockBoundary) % state->numVarPages;
         moreToRead = !(readVariablePage(state, physicalVariablePageId));
 
-        /* there should have been more to read becuase the file should not be empty at this point if it was not empty at the previous block */
+        /* there should have been more to read because the file should not be empty at this point if it was not empty at the previous block */
         if (!moreToRead) {
             return -1;
         }
@@ -1055,7 +1055,7 @@ int8_t embedDBPut(embedDBState *state, void *key, void *data) {
             memcpy((void *)((int8_t *)buf + EMBEDDB_IDX_HEADER_SIZE + state->bitmapSize * idxcount), bm, state->bitmapSize);
         }
 
-        updateMaxiumError(state, state->buffer);
+        updateMaximumError(state, state->buffer);
 
         count = 0;
         initBufferPage(state, 0);
@@ -1139,7 +1139,7 @@ int8_t shiftRecordLevelConsistencyBlocks(embedDBState *state) {
     uint32_t eraseStartingPage = state->rlcPhysicalStartingPage;
     uint32_t eraseEndingPage = 0;
 
-    /* if we have wraped, we need to erase an additional block as the block we are shifting into is not empty */
+    /* if we have wrapped, we need to erase an additional block as the block we are shifting into is not empty */
     bool haveWrapped = (state->minDataPageId % state->numDataPages) == ((state->rlcPhysicalStartingPage + numRecordLevelConsistencyPages) % state->numDataPages);
     uint32_t numBlocksToErase = haveWrapped ? 2 : 3;
 
@@ -1175,7 +1175,7 @@ int8_t shiftRecordLevelConsistencyBlocks(embedDBState *state) {
     return 0;
 }
 
-void updateMaxiumError(embedDBState *state, void *buffer) {
+void updateMaximumError(embedDBState *state, void *buffer) {
     // Calculate error within the page
     int32_t maxError = getMaxError(state, buffer);
     if (state->maxError < maxError) {
@@ -1637,7 +1637,7 @@ void embedDBCloseIterator(embedDBIterator *it) {
 /**
  * @brief	Flushes output buffer.
  * @param	state	algorithm state structure
- * @returns 0 if successul and a non-zero value otherwise
+ * @returns 0 if successful and a non-zero value otherwise
  */
 int8_t embedDBFlushVar(embedDBState *state) {
     /* Check if we actually have any variable data in the buffer */
@@ -1667,7 +1667,7 @@ int8_t embedDBFlushVar(embedDBState *state) {
 /**
  * @brief	Flushes output buffer.
  * @param	state	algorithm state structure
- * @returns 0 if successul and a non-zero value otherwise
+ * @returns 0 if successful and a non-zero value otherwise
  */
 int8_t embedDBFlush(embedDBState *state) {
     // As the first buffer is the data write buffer, no address change is required
@@ -1859,7 +1859,7 @@ int8_t embedDBNextVar(embedDBState *state, embedDBIterator *it, void *key, void 
  * @param	state	embedDB algorithm state structure
  * @param   key     Key for the record
  * @param   varData Return variable for variable data as a embedDBVarDataStream (Unallocated). Returns NULL if no variable data. **Be sure to free the stream after you are done with it**
- * @return  Returns 0 if sucessfull or no variable data for the record, 1 if the records variable data was overwritten, 2 if the page failed to read, and 3 if the memorey failed to allocate.
+ * @return  Returns 0 if successful or no variable data for the record, 1 if the records variable data was overwritten, 2 if the page failed to read, and 3 if the memory failed to allocate.
  */
 int8_t embedDBSetupVarDataStream(embedDBState *state, void *key, embedDBVarDataStream **varData, id_t recordNumber) {
     void *dataBuf = (int8_t *)state->buffer + state->pageSize * EMBEDDB_DATA_READ_BUFFER;
@@ -2099,7 +2099,7 @@ int8_t writeTemporaryPage(embedDBState *state, void *buffer) {
 /**
  * @brief	Calculates the number of spline points not in use by embedDB and deletes them
  * @param	state	embedDB algorithm state structure
- * @param	key 	The minimim key embedDB still needs points for
+ * @param	key 	The minimum key embedDB still needs points for
  * @return	Returns the number of points deleted
  */
 uint32_t cleanSpline(embedDBState *state, uint32_t minPageNumber) {
@@ -2179,7 +2179,7 @@ id_t writeVariablePage(embedDBState *state, void *buffer) {
         return -1;
     }
 
-    // Make sure the address being witten to wraps around
+    // Make sure the address being written to wraps around
     id_t physicalPageId = state->nextVarPageId % state->numVarPages;
 
     // Erase data if needed
