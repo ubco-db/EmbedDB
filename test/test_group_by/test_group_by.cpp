@@ -176,7 +176,7 @@ void test_aggregate() {
     Truth* answers = (Truth*)calloc(1000, sizeof(Truth));
     uint32_t expectedGroups = 0;
 
-    stateSEA->fileInterface->seek(0, seaData->fp);
+    fseek(seaData->fp, 0, SEEK_SET);
     seaData->pageRecord = 0;
 
     void* rawRec;
