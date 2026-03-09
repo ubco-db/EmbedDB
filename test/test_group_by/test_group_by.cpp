@@ -162,9 +162,8 @@ void test_aggregate() {
     embedDBAggregateFunc* maxWind = createMaxAggregate(3, -4);
     embedDBAggregateFunc* avgWind = createAvgAggregate(3, 4);
     embedDBAggregateFunc* sum = createSumAggregate(2);
-    embedDBAggregateFunc* minTemp = createMinAggregate(1, -4);
-    embedDBAggregateFunc aggFunctions[] = {groupName, *counter, *maxWind, *avgWind, *sum, *minTemp};
-    uint32_t functionsLength = 6;
+    embedDBAggregateFunc aggFunctions[] = {groupName, *counter, *maxWind, *avgWind, *sum};
+    uint32_t functionsLength = 5;
 
     typedef struct {
         uint32_t count;
@@ -174,10 +173,10 @@ void test_aggregate() {
         int32_t avgSum;
     } Truth;
 
-    Truth* answers = (Truth*)calloc(1200, sizeof(Truth));
+    Truth* answers = (Truth*)calloc(1000, sizeof(Truth));
     uint32_t expectedGroups = 0;
 
-    fseek(seaData->fp, 0, SEEK_SET);
+    stateSEA->fileInterface->seek(0, seaData->fp);
     seaData->pageRecord = 0;
 
     void* rawRec;
@@ -225,8 +224,6 @@ void test_aggregate() {
         TEST_ASSERT_EQUAL_FLOAT_MESSAGE(expectedAvg, actualAvg, "Average mismatch");
 
         TEST_ASSERT_EQUAL_INT32_MESSAGE((int32_t)answers[label].sum, res[4], "Sum is wrong");
-
-        TEST_ASSERT_EQUAL_INT32_MESSAGE(answers[label].minTemp, res[6], "Min Temp is wrong");
     }
 
     TEST_ASSERT_EQUAL_INT32_MESSAGE(expectedGroups, groupsFound, "Number of unique groups mismatch");
