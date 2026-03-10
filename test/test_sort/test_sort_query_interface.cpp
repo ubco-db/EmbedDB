@@ -115,27 +115,29 @@ void insertData(embedDBState* state, const char* filename) {
     printf("\nInserted %d Records\n", numRecords);
 }
 
-void insertNValues(embedDBState* state, int n, int mode) {
-    int key, value;
+void insertNValues(embedDBState* state, int32_t n, int8_t mode) {
+    int32_t key, value;
 
     switch (mode) {
         case 0:
-            for (int i = 0; i <= n; i++) {
+            for (int32_t i = 0; i <= n; i++) {
                 key = i;
                 value = i;
                 embedDBPut(state, &key, &value);
             }
             break;
         case 1:
-            key = 1;
-            for (int i = n; i >= 0; i--) {
+            key = 0;
+            for (int32_t i = n; i >= 0; i--) {
                 value = i;
                 embedDBPut(state, &key, &value);
                 key++;
             }
-            for (int i = 0, data = n; i <= n; i++) {
-                key = i + 1;
-                embedDBGet(state, (void*)&key, (void*)&value);
+            int8_t valueBuffer[12];
+            for (int32_t i = 0, data = n; i <= n; i++) {
+                key = i;
+                embedDBGet(state, (void*)&key, (void*)&valueBuffer);
+                value = *(int32_t*)valueBuffer;
                 TEST_ASSERT_MESSAGE(value == data, "value isn't equal to extracted data");
                 data--;
             }
@@ -206,9 +208,11 @@ void runTestUsingSEA100k() {
     // debugBinData(scanOpOrderBy, 200, 0);
     uint8_t projColsOB[] = {0, 1};
     embedDBOperator* projColsOrderBy = createProjectionOperator(scanOpOrderBy, 2, projColsOB);
+    // int32_t selVal = 100;
+    // embedDBOperator* selectOp = createSelectionOperator(scanOpOrderBy, 3, SELECT_GTE, &selVal);
     // debugBinData(projColsOrderBy, 300, 1);
     embedDBOperator* orderByOp = createOrderByOperator(state, projColsOrderBy, 1, -1, int32Comparator);
-    // debugBinData(orderByOp, 100000, 1);
+    // debugBinData(orderByOp, 100, 1);
 
     orderByOp->init(orderByOp);
 

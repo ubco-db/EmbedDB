@@ -124,6 +124,16 @@ int32_t selVal = 200;
 embedDBOperator* selectOp2 = createSelectionOperator(scanOp, 3, SELECT_GTE, &selVal);
 ```
 
+### Sorting
+
+Performs an `ORDER BY col comparator` on the output of an operator. Can support any comparison function that the user creates and wants to use, and will use an adaptive sort that will utilize one of flash minsort, flash minsort sublist, or no output buffer heap sort.
+
+The following will sort on column 1 (zero-indexed), and the limit for debugging is set to off (-1).
+
+```c
+embedDBOperator* orderByOp1 = createOrderByOperator(state, prevOp, 1, -1, int32comparator);
+```
+
 ### Aggregate Functions
 
 This operator allows you to run a `GROUP BY` and perform an aggregate function on each group. In order to use this operator, you will need another type of object: `embedDBAggregateFunc`. The output of an aggregate operator is dictated by the list of `embedDBAggregateFunc` provided to `createAggregateOperator()`.

@@ -185,6 +185,7 @@ embedDBOperator* createKeyJoinOperator(embedDBOperator* input1, embedDBOperator*
  * @param dbState       The database state
  * @param input         The operator that this operator can pull records from
  * @param colNum        The column that is being sorted on
+ * @param limit         The first values to be read and sorted - not like a true limit at the moment
  * @param compareFn     The function being used to make comparisons between row data
  */
 embedDBOperator* createOrderByOperator(embedDBState* dbState, embedDBOperator* input, int8_t colNum, int32_t limit, int8_t (*compareFn)(void* a, void* b));
