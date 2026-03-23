@@ -9,12 +9,6 @@
 #include "query-interface/advancedQueries.h"
 #include "query-interface/sort/in_memory_sort.h"
 
-#if defined(_WIN32) || defined(_WIN64)
-#include <io.h>
-#else
-#include <unistd.h>
-#endif
-
 /**
  * 0 = SD Card
  * 1 = Dataflash

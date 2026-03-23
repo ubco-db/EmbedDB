@@ -1,3 +1,9 @@
+#if defined(_WIN32) || defined(_WIN64)
+#include <io.h>
+#else
+#include <unistd.h> 
+#endif
+
 #include "desktopFileInterface.h"
 
 typedef struct {
@@ -163,7 +169,7 @@ char *tempFilePath(void) {
 
     int fd = mkstemp(tempPathBuffer);
     if (fd >= 0) {
-        close(fd);  // Now unistd.h will make this work!
+        close(fd);
     } else {
         perror("mkstemp failed");
     }
