@@ -159,12 +159,13 @@ char *tempFilePath(void) {
 
 #else
     /* POSIX systems */
-    snprintf(tempPathBuffer, sizeof(tempPathBuffer),
-             "/tmp/embeddb_%luXXXXXX", (unsigned long)rand());
+    snprintf(tempPathBuffer, sizeof(tempPathBuffer), "/tmp/embeddb_XXXXXX");
 
     int fd = mkstemp(tempPathBuffer);
     if (fd >= 0) {
-        close(fd);
+        close(fd);  // Now unistd.h will make this work!
+    } else {
+        perror("mkstemp failed");
     }
 #endif
 
