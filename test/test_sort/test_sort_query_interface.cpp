@@ -134,14 +134,6 @@ void insertNValues(embedDBState* state, int32_t n, int8_t mode) {
                 key++;
             }
             int8_t valueBuffer[12];
-            /* Super weird bug for why valueBuffer is needed
-             * since the state db is setup for SEA data, is has
-             * size 12 bytes. On the dist for windows (only windows, only dist)
-             * the leftover 8 bytes from the get would spill over into the data variable
-             * being used to track the output and make sure it's sequential, which would screw
-             * up the value assertions. Using this buffer stores it all there, then we just cast
-             * to the value...weird that it only happened for windows dist.
-             */
             for (int32_t i = 0, data = n; i <= n; i++) {
                 key = i;
                 embedDBGet(state, (void*)&key, (void*)&valueBuffer);
