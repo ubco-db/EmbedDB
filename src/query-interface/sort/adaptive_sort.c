@@ -686,6 +686,7 @@ int adaptive_sort(
 
     // No merge phase necessary
     if (numSublist == 1) {
+        printf("done after replacement\n");
         ((file_iterator_state_t*)iteratorState)->fileInterface->flush(outputFile);
         *resultFilePtr = 0;
         return 0;
@@ -719,6 +720,7 @@ int adaptive_sort(
 
     // Make decision to use either no output buffer sort or MinSort
     if (avgDistinct / 10 < nobSortCost) {
+        printf("min\n");
         /*               */
         /*    MinSort    */
         /*               */
@@ -742,7 +744,9 @@ int adaptive_sort(
             *resultFilePtr = lastWritePos;
             flash_minsort(iteratorState, tupleBuffer, outputFile, buffer, bufferSizeBytes, es, resultFilePtr, metric, compareFn);
         }
-    } else {
+    }
+    else {
+        printf("nob\n");
         /*                                   */
         /*    No Output Buffer Sort Merge    */
         /*                                   */

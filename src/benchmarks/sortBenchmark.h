@@ -67,7 +67,7 @@ int sortQueryBenchmark() {
     stateUWA->eraseSizeInPages = 4;
     stateUWA->numDataPages = 20000;
     stateUWA->numIndexPages = 1000;
-    stateUWA->numSplinePoints = 30;
+    stateUWA->numSplinePoints = 120;
 
     if (STORAGE_TYPE == 1) {
         printf("Dataflash is not currently supported. Defaulting to SD card interface.");
@@ -91,6 +91,9 @@ int sortQueryBenchmark() {
         printf("There was an error setting up the state of the UWA dataset.");
         return -1;
     }
+
+    stateUWA->rules = NULL;
+    stateUWA->numRules = 0;
 
     int8_t colSizes[] = {4, 4, 4, 4};
     int8_t colSignedness[] = {embedDB_COLUMN_UNSIGNED, embedDB_COLUMN_SIGNED, embedDB_COLUMN_SIGNED, embedDB_COLUMN_SIGNED};
@@ -121,22 +124,22 @@ int sortQueryBenchmark() {
         }
     }
 
-    printf("\nSort followed by Projection\n");
-    // Perform sort runs with different numbers of values
-    for (int i = 0; i < 5; i++) {
-        printf("%d values:\n", num_values[i]);
+    // printf("\nSort followed by Projection\n");
+    // // Perform sort runs with different numbers of values
+    // for (int i = 0; i < 5; i++) {
+    //     printf("%d values:\n", num_values[i]);
 
-        // Repeat each run for consistency
-        for (int j = 0; j < 1; j++) {
-            clock_gettime(CLOCK_MONOTONIC, &start_time);
+    //     // Repeat each run for consistency
+    //     for (int j = 0; j < 1; j++) {
+    //         clock_gettime(CLOCK_MONOTONIC, &start_time);
 
-            sort_order_first(num_values[i], stateUWA, baseSchema);
+    //         sort_order_first(num_values[i], stateUWA, baseSchema);
 
-            clock_gettime(CLOCK_MONOTONIC, &end_time);
-            double elapsed_ms = time_diff_ms(start_time, end_time);
-            printf("\tElapsed time: %.3f ms\n", elapsed_ms);
-        }
-    }
+    //         clock_gettime(CLOCK_MONOTONIC, &end_time);
+    //         double elapsed_ms = time_diff_ms(start_time, end_time);
+    //         printf("\tElapsed time: %.3f ms\n", elapsed_ms);
+    //     }
+    // }
 
     // Close embedDB
     embedDBClose(stateUWA);
@@ -159,7 +162,7 @@ void sort_order_last(int32_t numValues, embedDBState* stateUWA, embedDBSchema* b
     embedDBInitIterator(stateUWA, &it);
 
     embedDBOperator* scanOpOrderBy = createTableScanOperator(stateUWA, &it, baseSchema);
-    uint8_t projColsOB[] = {0, 1};
+    uint8_t projColsOB[] = {0, 3};
     embedDBOperator* projColsOrderBy = createProjectionOperator(scanOpOrderBy, 2, projColsOB);
     embedDBOperator* orderByOp = createOrderByOperator(stateUWA, projColsOrderBy, 1, numValues, merge_sort_int32_comparator);
     orderByOp->init(orderByOp);
