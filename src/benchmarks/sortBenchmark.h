@@ -48,6 +48,19 @@
 #endif
 
 void insertData(embedDBState* state, const char* filename);
+void insertNValues(embedDBState* state, int32_t n) {
+    int32_t key = 0, value = 0;
+
+    for (int32_t i = 0; i < n; i++) {
+        if (i % 10 == 0) {
+            value = 0;
+        }
+        embedDBPut(state, &key, &value);
+        key++;
+        value++;
+        
+    }
+}
 void sort_order_last(int32_t numValues, embedDBState* stateUWA, embedDBSchema* baseSchema);
 void sort_order_first(int32_t numValues, embedDBState* stateUWA, embedDBSchema* baseSchema);
 
@@ -102,9 +115,14 @@ int sortQueryBenchmark() {
 
     // Insert data
     const char datafileName[] = "data/uwa500K.bin";
-    insertData(stateUWA, datafileName);
+    //insertData(stateUWA, datafileName);
+    insertNValues(stateUWA, 500000);
 
+#ifdef ARDUINO
+    uint32_t start_time, end_time;
+#else
     struct timespec start_time, end_time;
+#endif
     int32_t num_values[] = {100, 1000, 10000, 100000, 500000};
 
     printf("\nProjection followed by Sort\n");
@@ -114,32 +132,41 @@ int sortQueryBenchmark() {
 
         // Repeat each run for consistency
         for (int j = 0; j < 1; j++) {
+#ifdef ARDUINO
+            start_time = clock();
+#else
             clock_gettime(CLOCK_MONOTONIC, &start_time);
+#endif
 
             sort_order_last(num_values[i], stateUWA, baseSchema);
+#ifdef ARDUINO
+            end_time = clock();
+            uint32_t elapsed_time = end_time - start_time;
+            printf("\tElapsed time: %u ms\n", elapsed_time);
+#else
+            clock_gettime(CLOCK_MONOTONIC, &end_time);
+            double elapsed_time = time_diff_ms(start_time, end_time);
+            printf("\tElapsed time: %.3f ms\n", elapsed_time);
+#endif
+        }
+    }
+
+    printf("\nSort followed by Projection\n");
+    // Perform sort runs with different numbers of values
+    for (int i = 0; i < 5; i++) {
+        printf("%d values:\n", num_values[i]);
+
+        // Repeat each run for consistency
+        for (int j = 0; j < 1; j++) {
+            clock_gettime(CLOCK_MONOTONIC, &start_time);
+
+            sort_order_first(num_values[i], stateUWA, baseSchema);
 
             clock_gettime(CLOCK_MONOTONIC, &end_time);
             double elapsed_ms = time_diff_ms(start_time, end_time);
             printf("\tElapsed time: %.3f ms\n", elapsed_ms);
         }
     }
-
-    // printf("\nSort followed by Projection\n");
-    // // Perform sort runs with different numbers of values
-    // for (int i = 0; i < 5; i++) {
-    //     printf("%d values:\n", num_values[i]);
-
-    //     // Repeat each run for consistency
-    //     for (int j = 0; j < 1; j++) {
-    //         clock_gettime(CLOCK_MONOTONIC, &start_time);
-
-    //         sort_order_first(num_values[i], stateUWA, baseSchema);
-
-    //         clock_gettime(CLOCK_MONOTONIC, &end_time);
-    //         double elapsed_ms = time_diff_ms(start_time, end_time);
-    //         printf("\tElapsed time: %.3f ms\n", elapsed_ms);
-    //     }
-    // }
 
     // Close embedDB
     embedDBClose(stateUWA);
@@ -162,7 +189,7 @@ void sort_order_last(int32_t numValues, embedDBState* stateUWA, embedDBSchema* b
     embedDBInitIterator(stateUWA, &it);
 
     embedDBOperator* scanOpOrderBy = createTableScanOperator(stateUWA, &it, baseSchema);
-    uint8_t projColsOB[] = {0, 3};
+    uint8_t projColsOB[] = {0, 1};
     embedDBOperator* projColsOrderBy = createProjectionOperator(scanOpOrderBy, 2, projColsOB);
     embedDBOperator* orderByOp = createOrderByOperator(stateUWA, projColsOrderBy, 1, numValues, merge_sort_int32_comparator);
     orderByOp->init(orderByOp);

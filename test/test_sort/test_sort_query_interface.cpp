@@ -147,6 +147,19 @@ void insertNValues(embedDBState* state, int32_t n, int8_t mode) {
     }
 }
 
+void insertNValues2(embedDBState* state, int32_t n) {
+    int32_t key = 0, value = 0;
+
+    for (int32_t i = 0; i < n; i++) {
+        if (i % 10 == 0) {
+            value = 0;
+        }
+        embedDBPut(state, &key, &value);
+        key++;
+        value++;
+    }
+}
+
 void debugBinData(embedDBOperator* op, uint32_t numValues, uint8_t col) {
     op->init(op);
     int32_t* buffer = (int32_t*)op->recordBuffer;
@@ -154,14 +167,16 @@ void debugBinData(embedDBOperator* op, uint32_t numValues, uint8_t col) {
     for (uint32_t i = 0; i <= numValues; ++i) {
         exec(op);
         printf("%i ", (int32_t)buffer[col]);
+        if (i % 10 == 0)
+            printf("\n");
     }
     printf("\n");
-    // fflush(stdout);
+    //fflush(stdout);
 }
 
 void runTestSequentialValues() {
     // Insert test data
-    insertNValues(state, 300, 1);
+    insertNValues(state, 300, 0);
 
     embedDBIterator it;
     it.minKey = NULL;
@@ -173,8 +188,68 @@ void runTestSequentialValues() {
     uint8_t projColsOB[] = {0, 1};
     embedDBOperator* projColsOrderBy = createProjectionOperator(scanOpOrderBy, 2, projColsOB);
     embedDBOperator* orderByOp = createOrderByOperator(state, projColsOrderBy, 1, -1, int32Comparator);
-    // debugBinData(orderByOp, 70, 1);
+    orderByOp->init(orderByOp);
 
+    int32_t* recordBuffer = (int32_t*)orderByOp->recordBuffer;
+    exec(orderByOp);
+    int32_t previous = ((int32_t)recordBuffer[1]);
+    int recordCount = 0;
+
+    while (exec(orderByOp)) {
+        TEST_ASSERT_GREATER_OR_EQUAL_INT32_MESSAGE(previous, ((int32_t)recordBuffer[1]), "Sort value is not greater than or equal to previous value.");
+        previous = ((int32_t)recordBuffer[1]);
+        recordCount++;
+    }
+
+    orderByOp->close(orderByOp);
+    embedDBFreeOperatorRecursive(&orderByOp);
+}
+
+void runTestReverseSequentialValues() {
+    // Insert test data
+    insertNValues(state, 1000, 1);
+
+    embedDBIterator it;
+    it.minKey = NULL;
+    it.maxKey = NULL;
+    it.minData = NULL;
+    it.maxData = NULL;
+    embedDBInitIterator(state, &it);
+    embedDBOperator* scanOpOrderBy = createTableScanOperator(state, &it, baseSchema);
+    uint8_t projColsOB[] = {0, 1};
+    embedDBOperator* projColsOrderBy = createProjectionOperator(scanOpOrderBy, 2, projColsOB);
+    embedDBOperator* orderByOp = createOrderByOperator(state, projColsOrderBy, 1, -1, int32Comparator);
+    orderByOp->init(orderByOp);
+
+    int32_t* recordBuffer = (int32_t*)orderByOp->recordBuffer;
+    exec(orderByOp);
+    int32_t previous = ((int32_t)recordBuffer[1]);
+    int recordCount = 0;
+
+    while (exec(orderByOp)) {
+        TEST_ASSERT_GREATER_OR_EQUAL_INT32_MESSAGE(previous, ((int32_t)recordBuffer[1]), "Sort value is not greater than or equal to previous value.");
+        previous = ((int32_t)recordBuffer[1]);
+        recordCount++;
+    }
+
+    orderByOp->close(orderByOp);
+    embedDBFreeOperatorRecursive(&orderByOp);
+}
+
+void runTestRepeatedValues() {
+    // Insert test data
+    insertNValues2(state, 1000);
+
+    embedDBIterator it;
+    it.minKey = NULL;
+    it.maxKey = NULL;
+    it.minData = NULL;
+    it.maxData = NULL;
+    embedDBInitIterator(state, &it);
+    embedDBOperator* scanOpOrderBy = createTableScanOperator(state, &it, baseSchema);
+    uint8_t projColsOB[] = {0, 1};
+    embedDBOperator* projColsOrderBy = createProjectionOperator(scanOpOrderBy, 2, projColsOB);
+    embedDBOperator* orderByOp = createOrderByOperator(state, projColsOrderBy, 1, -1, int32Comparator);
     orderByOp->init(orderByOp);
 
     int32_t* recordBuffer = (int32_t*)orderByOp->recordBuffer;
@@ -205,14 +280,9 @@ void runTestUsingSEA100k() {
     embedDBInitIterator(state, &it);
 
     embedDBOperator* scanOpOrderBy = createTableScanOperator(state, &it, baseSchema);
-    // debugBinData(scanOpOrderBy, 200, 0);
     uint8_t projColsOB[] = {0, 1};
     embedDBOperator* projColsOrderBy = createProjectionOperator(scanOpOrderBy, 2, projColsOB);
-    // int32_t selVal = 100;
-    // embedDBOperator* selectOp = createSelectionOperator(scanOpOrderBy, 3, SELECT_GTE, &selVal);
-    // debugBinData(projColsOrderBy, 300, 1);
     embedDBOperator* orderByOp = createOrderByOperator(state, projColsOrderBy, 1, -1, int32Comparator);
-    // debugBinData(orderByOp, 100, 1);
 
     orderByOp->init(orderByOp);
 
@@ -232,6 +302,8 @@ void runTestUsingSEA100k() {
 int runUnityTests() {
     UNITY_BEGIN();
     RUN_TEST(runTestSequentialValues);
+    RUN_TEST(runTestReverseSequentialValues);
+    RUN_TEST(runTestRepeatedValues);
     RUN_TEST(runTestUsingSEA100k);
     return UNITY_END();
 }

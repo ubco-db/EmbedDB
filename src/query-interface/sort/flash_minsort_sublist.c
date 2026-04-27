@@ -49,7 +49,8 @@
 // #define DEBUG 1
 // #define DEBUG_OUTPUT 1
 // #define DEBUG_READ 1
-#if defined(DEBUG) || defined(DEBUG_OUTPUT) || defined(DEBUG_READ)
+// #define MINSORT_SUBLIST_END 1
+#if defined(DEBUG) || defined(DEBUG_OUTPUT) || defined(DEBUG_READ) || defined(MINSORT_SUBLIST_END)
 #include "debug_print.h"
 #else
 #ifndef debug_log
@@ -429,7 +430,9 @@ int flash_minsort_sublist(
     free(ms.current);
     free(ms.next);
 
-    //    printf("Complete. Comparisons: %d  MemCopies: %d  TransferIn: %d  TransferOut: %d TransferOther: %d\n", metric->num_compar, metric->num_memcpys, numShiftIntoOutput, numShiftOutOutput, numShiftOtherBlock);
-
+#ifdef MINSORT_SUBLIST_END
+    debug_log("Complete. Comparisons: %d Reads: %d Writes: %d MemCopies: %d\n", metric->num_compar, metric->num_reads,
+              metric->num_writes, metric->num_memcpys);
+#endif
     return 0;
 }
