@@ -167,7 +167,7 @@ int adaptive_sort(
         avgDistinct = 16;
 
         int16_t numPasses = (int)ceil(log(es->num_pages / bufferSizeInBlocks) / log(bufferSizeInBlocks));
-        int32_t nobSortCost = (numPasses * (10 + writeToReadRatio) + 9) / 10;
+        int32_t nobSortCost = (numPasses * (10 + writeToReadRatio)) / 10;
 
 #ifdef ADAPTIVE_SORT_PRINT
         debug_log("Adaptive calculation.\n");
