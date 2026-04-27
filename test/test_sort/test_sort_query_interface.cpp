@@ -171,7 +171,7 @@ void debugBinData(embedDBOperator* op, uint32_t numValues, uint8_t col) {
             printf("\n");
     }
     printf("\n");
-    //fflush(stdout);
+    // fflush(stdout);
 }
 
 void runTestSequentialValues() {

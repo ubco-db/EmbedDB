@@ -58,7 +58,6 @@ void insertNValues(embedDBState* state, int32_t n) {
         embedDBPut(state, &key, &value);
         key++;
         value++;
-        
     }
 }
 void sort_order_last(int32_t numValues, embedDBState* stateUWA, embedDBSchema* baseSchema);
@@ -115,7 +114,7 @@ int sortQueryBenchmark() {
 
     // Insert data
     const char datafileName[] = "data/uwa500K.bin";
-    //insertData(stateUWA, datafileName);
+    // insertData(stateUWA, datafileName);
     insertNValues(stateUWA, 500000);
 
 #ifdef ARDUINO
