@@ -96,7 +96,7 @@ void shiftUp(char* buffer,
         parent = (idx - 1) / 2;
 
         metric->num_compar++;
-        if (es->compare_fcn(input_tuple, buffer + parent * es->record_size + es->key_offset) >= 0) {
+        if (es->compare_fcn(input_tuple + es->key_offset, buffer + parent * es->record_size + es->key_offset) >= 0) {
             break;
         }
         metric->num_memcpys++;

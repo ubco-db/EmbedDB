@@ -70,7 +70,7 @@ void executeRules(embedDBState* state, void* key, void* data) {
             case GET_CUSTOM:
                 handleCustomQuery(state, state->rules[i], key, data);
                 break;
-            default:
+            default:;
 #ifdef PRINT_ERRORS
                 printf("ERROR: Unsupported rule type\n");
 #endif
@@ -177,7 +177,7 @@ embedDBOperator* createOperator(embedDBState* state, activeRule* rule, void*** a
         case GET_MIN:
             aggFunc = createMinAggregate(rule->colNum, rule->schema->columnSizes[rule->colNum]);
             break;
-        default:
+        default:;
 #ifdef PRINT_ERRORS
             printf("ERROR: Unsupported rule type\n");
 #endif
@@ -223,7 +223,7 @@ void executeComparison(activeRule* rule, void* aggregateValue, Comparator compar
         case NotEqual:
             if (comparisonResult != 0) rule->callback(aggregateValue, data, rule->context);
             break;
-        default:
+        default:;
 #ifdef PRINT_ERRORS
             printf("ERROR: Unsupported operation\n");
 #endif
@@ -266,7 +266,7 @@ void handleCustomQuery(embedDBState* state, activeRule* rule, void* key, void* d
         case DBDOUBLE:
             executeComparison(rule, result, doubleComparator, data);
             break;
-        default:
+        default:;
 #ifdef PRINT_ERRORS
             printf("ERROR: Unsupported return type\n");
 #endif
