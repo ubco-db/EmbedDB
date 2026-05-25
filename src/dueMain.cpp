@@ -70,6 +70,8 @@ static ArduinoOutStream cout(Serial);
 #elif WHICH_PROGRAM == 3
 #include "benchmarks/queryInterfaceBenchmark.h"
 #elif WHICH_PROGRAM == 4
+#include "benchmarks/activeRulesBenchmark.h"
+#elif WHICH_PROGRAM == 5
 #include "benchmarks/sortBenchmark.h"
 #endif
 
@@ -102,7 +104,7 @@ void setup() {
         sd.ls("/", LS_R);
     }
 
-    init_sdcard((void *)&sd);
+    init_sdcard((void*)&sd);
 #if WHICH_PROGRAM == 0
     embedDBExample();
 #elif WHICH_PROGRAM == 1
@@ -112,6 +114,8 @@ void setup() {
 #elif WHICH_PROGRAM == 3
     advancedQueryExample();
 #elif WHICH_PROGRAM == 4
+    activeRulesBenchmark();
+#elif WHICH_PROGRAM == 5
     sortQueryBenchmark();
 #endif
 }

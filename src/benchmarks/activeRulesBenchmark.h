@@ -1,9 +1,8 @@
 #include <errno.h>
-#include <mmsystem.h>  // Required for timeBeginPeriod
+#include <stdint.h>
 #include <stdio.h>
 #include <string.h>
 #include <time.h>
-#include <windows.h>
 
 #ifdef DIST
 #include "embedDB.h"
@@ -23,6 +22,8 @@
 
 #ifdef ARDUINO
 
+#include "Arduino.h"
+
 #if defined(MEMBOARD) && STORAGE_TYPE == 1
 
 #include "dataflashFileInterface.h"
@@ -30,6 +31,11 @@
 #endif
 
 #include "SDFileInterface.h"
+#include "query-interface/activeRules.h"
+#define FILE_TYPE SD_FILE
+#define fopen sd_fopen
+#define fread sd_fread
+#define fclose sd_fclose
 #define getFileInterface getSDInterface
 #define setupFile setupSDFile
 #define tearDownFile tearDownSDFile
@@ -38,7 +44,7 @@
 #define INDEX_PATH "indexFile.bin"
 
 #else
-
+#define FILE_TYPE FILE
 #include "desktopFileInterface.h"
 #include "query-interface/activeRules.h"
 #define DATA_PATH "build/artifacts/dataFile.bin"
@@ -46,24 +52,36 @@
 
 #endif
 
-#define NUM_INSERTIONS 2000
+#define NUM_INSERTIONS 1000
 
 embedDBState* init_state();
 embedDBSchema* createSchema();
 void GTcallback(void* aggregateValue, void* currentValue, void* context);
 
+int callbacks = 0;
+
 // Get current time in nanoseconds
 uint64_t get_nanoseconds() {
+#ifdef ARDUINO
+    return (uint64_t)micros() * 1000ULL;
+#else
+#if defined(TIME_UTC)
     struct timespec ts;
-    clock_gettime(CLOCK_MONOTONIC, &ts);
-    return (uint64_t)ts.tv_sec * 1e9 + ts.tv_nsec;
+    if (timespec_get(&ts, TIME_UTC) == TIME_UTC) {
+        return (uint64_t)ts.tv_sec * 1000000000ULL + (uint64_t)ts.tv_nsec;
+    }
+#endif
+    return (uint64_t)((double)clock() * (1000000000.0 / CLOCKS_PER_SEC));
+#endif
 }
 
 // Callback function for active rule
 void GTcallback(void* aggregateValue, void* currentValue, void* context) {
-    FILE* perfLog = (FILE*)context;
+    // FILE_TYPE* perfLog = (FILE_TYPE*)context;
     uint64_t callbackTime = get_nanoseconds();
-    fprintf(perfLog, "%llu,CALLBACK,%f\n", callbackTime, *(float*)aggregateValue);
+    // fprintf(perfLog, "%llu,CALLBACK,%f\n", (unsigned long long)callbackTime, *(float*)aggregateValue);
+    // printf("%llu,CALLBACK,%f\n", (unsigned long long)callbackTime, *(float*)aggregateValue);
+    callbacks++;
 }
 
 int8_t groupFunctionLocal(const void* lastRecord, const void* record) {
@@ -72,7 +90,8 @@ int8_t groupFunctionLocal(const void* lastRecord, const void* record) {
 
 embedDBOperator* createOperatorLocal(embedDBState* state, embedDBSchema* schema, void*** allocatedValues, uint32_t key) {
     embedDBIterator* it = (embedDBIterator*)malloc(sizeof(embedDBIterator));
-    uint32_t minKeyVal = key - (1000 - 1);
+    uint32_t numRecords = 1;
+    uint32_t minKeyVal = key - (numRecords - 1);
     uint32_t* minKeyPtr = (uint32_t*)malloc(sizeof(uint32_t));
     *minKeyPtr = minKeyVal;
     it->minKey = minKeyPtr;
@@ -118,23 +137,28 @@ void GetAvgLocal(embedDBState* state, embedDBSchema* schema, uint32_t key, float
         free(allocatedValues[i]);
     }
     free(allocatedValues);
-    if (avg > 0) {
+    if (avg < 0) {
         GTcallback(&avg, &currentVal, context);
     }
 }
 
 uint32_t activeRulesBenchmark() {
+    printf("Active Rules Benchmark\n");
     embedDBState* state = init_state();
     embedDBPrintInit(state);
     embedDBSchema* schema = createSchema();
 
     // Create active rule
     activeRule* activeRuleGT = createActiveRule(schema, NULL);
+    uint32_t numRecords = 10;
+    float minVal = 0.0f;
     activeRuleGT->IF(activeRuleGT, 1, GET_AVG)
-        ->ofLast(activeRuleGT, (void*)&(uint32_t){1000})
-        ->is(activeRuleGT, GreaterThan, (void*)&(float){0})
+        ->ofLast(activeRuleGT, (void*)&numRecords)
+        //    ->is(activeRuleGT, GreaterThan, (void*)&minVal)
+        ->is(activeRuleGT, LessThan, (void*)&minVal)
         ->then(activeRuleGT, GTcallback);
 
+    printf("Window size: %u\n", numRecords);
     state->rules = (activeRule**)malloc(sizeof(activeRule*));
     state->rules[0] = activeRuleGT;
     state->numRules = 1;
@@ -142,81 +166,79 @@ uint32_t activeRulesBenchmark() {
     srand(12345);                      // Fixed seed for reproducibility
 
     // Open performance log file
-    FILE* perfLog = fopen("C:/Users/richa/OneDrive/Documents/influxdb/embeddb_perf_new.csv", "w");
+    // FILE_TYPE perfLog = fopen("C:/tmp/EmbedDB-Vs-InfluxDB/embeddb_perf_new.csv", "w");
     // FILE* advancedPerfLog = fopen("C:/Users/richa/OneDrive/Documents/influxdb/embeddb_advanced_perf.csv", "w");
 
     // fprintf(advancedPerfLog, "timestamp,event,temperature,latency\n");
-    fprintf(perfLog, "timestamp,event,temperature,latency\n");
+    // fprintf(perfLog, "timestamp,event,temperature,latency\n");
+    printf("timestamp,event,temperature,latency\n");
 
     // Set callback context to the log file
-    state->rules[0]->context = perfLog;
-    timeBeginPeriod(1);
+    // state->rules[0]->context = perfLog;
 
     uint32_t j = 0;
     // Insert without active query first
-    for (int i = 0; i < NUM_INSERTIONS; i++) {
+    printf("Initial inserts\n");
+    void* dataPtr = malloc(state->dataSize);
+    for (int i = 0; i < 1000; i++) {
         uint64_t timestamp = get_nanoseconds();
-        float temperature = 15 + (float)rand() / RAND_MAX * 15;  // Random temperature between 15°C and 30°C
+        float temperature = -5 + (float)rand() / RAND_MAX * 10;  // Random temperature between -5°C and 5°C
 
-        LARGE_INTEGER start, end, freq;
-        QueryPerformanceFrequency(&freq);
-        QueryPerformanceCounter(&start);
+        uint64_t start = get_nanoseconds();
 
-        void* dataPtr = malloc(state->dataSize);
         *((float*)dataPtr) = temperature;
         int8_t result = embedDBPut(state, &j, dataPtr);
+        (void)result;
 
-        QueryPerformanceCounter(&end);
-        int insertTime = (double)(end.QuadPart - start.QuadPart) / freq.QuadPart * 1e9;  // Convert to nanoseconds
+        uint64_t end = get_nanoseconds();
+        uint64_t insertTime = end - start;
 
         // Log insertion event
         // fprintf(advancedPerfLog, "%llu,INSERT,%f,%i\n", timestamp, temperature, insertTime);
-        fprintf(perfLog, "%llu,INSERT,%f,%i\n", timestamp, temperature, insertTime);
+        // fprintf(perfLog, "%llu,INSERT,%f,%llu\n", (unsigned long long)timestamp, temperature, (unsigned long long)insertTime);
+        if (i % 100 == 0)
+            printf("%llu,INSERT,%f,%llu\n", (unsigned long long)timestamp, temperature, (unsigned long long)insertTime);
 
-        free(dataPtr);
         j++;
     }
 
-    state->rules[0]->enabled = true;  // Enable the rule for subsequent insertions
+    printf("Test inserts\n");
+    // state->rules[0]->enabled = true;  // Enable the rule for subsequent insertions
     uint64_t startTime = get_nanoseconds();
     for (int i = 0; i < NUM_INSERTIONS; i++) {
         uint64_t timestamp = get_nanoseconds();
-        float temperature = 15 + (float)rand() / RAND_MAX * 15;  // Random temperature between 15°C and 30°C
+        float temperature = -5 + (float)rand() / RAND_MAX * 10;  // Random temperature between -5°C and 5°C
 
-        LARGE_INTEGER start, end, freq;
-        QueryPerformanceFrequency(&freq);
-        QueryPerformanceCounter(&start);
-
-        void* dataPtr = malloc(state->dataSize);
+        uint64_t start = get_nanoseconds();
+        // void* dataPtr = malloc(state->dataSize);
         *((float*)dataPtr) = temperature;
         // using j instead of timestamp ensures same number of records queried each time independent of changing insert speed
 
         int8_t result = embedDBPut(state, &j, dataPtr);
+        // Uncomment this if want to test performance of advanced query without active rule callback
+        GetAvgLocal(state, schema, j, temperature, NULL);
 
-        // QueryPerformanceFrequency(&freq);
-        // QueryPerformanceCounter(&start);
-        // GetAvgLocal(state, schema, j, temperature, advancedPerfLog);
-
-        QueryPerformanceCounter(&end);
-        int insertTime = (double)(end.QuadPart - start.QuadPart) / freq.QuadPart * 1e9;  // Convert to nanoseconds
+        uint64_t end = get_nanoseconds();
+        uint64_t insertTime = end - start;
 
         // Log insertion event
         // fprintf(advancedPerfLog, "%llu,INSERT,%f,%i\n", timestamp, temperature, insertTime);
-        fprintf(perfLog, "%llu,INSERT,%f,%i\n", timestamp, temperature, insertTime);
+        // fprintf(perfLog, "%llu,INSERT,%f,%llu\n", (unsigned long long)timestamp, temperature, (unsigned long long)insertTime);
+        if (i % 100000 == 0)
+            printf("%llu,INSERT,%f,%llu\n", (unsigned long long)timestamp, temperature, (unsigned long long)insertTime);
 
-        free(dataPtr);
         j++;
     }
-    timeEndPeriod(1);
+    free(dataPtr);
     uint64_t endTime = get_nanoseconds();
 
     // Calculate throughput
     double totalTime = (double)(endTime - startTime) / 1e9;  // Convert to seconds
     double throughput = NUM_INSERTIONS / totalTime;
-    printf("Throughput: %f insertions/second\n", throughput);
+    printf("Throughput: %f insertions/second  Time: %f Records: %d  Callbacks: %d\n", throughput, totalTime, NUM_INSERTIONS, callbacks);
 
     // Clean up
-    fclose(perfLog);
+    // fclose(perfLog);
     // fclose(advancedPerfLog);
     return 0;
 }
