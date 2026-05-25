@@ -356,7 +356,7 @@ typedef struct {
 
     /**
      * @brief	Erases a span of paes from file
-     * @param	startPage   The first page to earse
+     * @param	startPage   The first page to erase
      * @param	pageSize	The page to erase up to (exclusive)
      * @param	file		The file data that was stored in embedDBState->dataFile etc
      * @return	1 for success and 0 for failure
@@ -412,6 +412,24 @@ typedef struct {
      */
     int32_t (*tell)(void *file);
 
+    /**
+     *  @brief Pointer to external function for file setup
+     */
+    void *(*setup)(const char *filename);
+    /**
+     *  @brief Pointer to external function for file teardown
+     */
+    void (*teardown)(void *file);
+    /**
+     *  @brief Pointer to platform specific tmp file path
+     */
+    char *(*tempFilePath)(void);
+
+    /**
+     *  @brief Pointer to file for deletion
+     */
+    int8_t (*removeFile)(void *file);
+
 } embedDBFileInterface;
 
 struct activeRule;
@@ -435,7 +453,7 @@ typedef struct {
     id_t nextIdxPageId;                                                   /* Next logical page id for index. Page id is an incrementing value and may not always be same as physical page id. */
     id_t nextVarPageId;                                                   /* Page number of next var page to be written */
     uint32_t nextRLCPhysicalPageLocation;                                 /* Physical page number for the location for the next record-level-consistency page */
-    uint32_t rlcPhysicalStartingPage;                                     /* Physical page number for the starting page of the record-level consistnecy pages */
+    uint32_t rlcPhysicalStartingPage;                                     /* Physical page number for the starting page of the record-level consistency pages */
     id_t currentVarLoc;                                                   /* Current variable address offset to write at (bytes from beginning of file) */
     void *buffer;                                                         /* Pre-allocated memory buffer for use by algorithm */
     spline *spl;                                                          /* Spline model */
@@ -608,14 +626,14 @@ uint32_t embedDBVarDataStreamRead(embedDBState *state, embedDBVarDataStream *str
 /**
  * @brief	Flushes output buffer.
  * @param	state	algorithm state structure
- * @returns 0 if successul and a non-zero value otherwise
+ * @returns 0 if successful and a non-zero value otherwise
  */
 int8_t embedDBFlush(embedDBState *state);
 
 /**
  * @brief	Flushes output buffer.
  * @param	state	algorithm state structure
- * @returns 0 if successul and a non-zero value otherwise
+ * @returns 0 if successful and a non-zero value otherwise
  */
 int8_t embedDBFlushVar(embedDBState *state);
 
@@ -668,7 +686,7 @@ id_t writeIndexPage(embedDBState *state, void *buffer);
 id_t writeVariablePage(embedDBState *state, void *buffer);
 
 /**
- * @brief   Writes a temporary page when using record-levek-consistency to storage.
+ * @brief   Writes a temporary page when using record-level-consistency to storage.
  * @param	state	embedDB algorithm state structure
  * @param	pageNum	Page number to read
  * @return  Returns 0 for success and non-zero value for an error.
@@ -1049,6 +1067,7 @@ embedDBOperator *createKeyJoinOperator(embedDBOperator *input1, embedDBOperator 
  * @param dbState       The database state
  * @param input         The operator that this operator can pull records from
  * @param colNum        The column that is being sorted on
+ * @param limit         The first values to be read and sorted - not like a true limit at the moment
  * @param compareFn     The function being used to make comparisons between row data
  */
 embedDBOperator *createOrderByOperator(embedDBState *dbState, embedDBOperator *input, int8_t colNum, int32_t limit, int8_t (*compareFn)(void *a, void *b));
@@ -1778,12 +1797,6 @@ void shiftUp_rev(char *buffer,
 #ifndef SORT_WRAPPER_H
 #define SORT_WRAPPER_H
 
-#if defined(DESKTOP)
-#endif
-
-#define SORT_DATA_LOCATION "sort_data.bin"
-#define SORT_ORDER_LOCATION "sort_order.bin"
-
 typedef struct embedDBOperator embedDBOperator;
 
 typedef struct sortData {
@@ -1801,7 +1814,7 @@ typedef struct sortData {
 } sortData;
 
 /**
- * @brief Initalizes default metric values
+ * @brief Initializes default metric values
  *
  * @return metrics_t
  */
@@ -1820,6 +1833,14 @@ metrics_t initMetric();
  *
  */
 uint32_t loadRowData(sortData *data, embedDBOperator *op, void *unsortedFile);
+
+/**
+ * @brief Pure in-memory sort that avoids file I/O completely for very small datasets
+ * @param data Sort configuration data
+ * @param op The operator to read data from
+ * @return file_iterator_state_t* Iterator for reading sorted results from memory
+ */
+file_iterator_state_t *startPureMemorySort(sortData *data, embedDBOperator *op);
 
 /**
  * @brief The data given in the unsortedFile is sorted and stored in the sortedFile
