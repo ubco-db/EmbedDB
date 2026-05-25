@@ -104,7 +104,7 @@ void setup() {
         sd.ls("/", LS_R);
     }
 
-    init_sdcard((void *)&sd);
+    init_sdcard((void*)&sd);
 #if WHICH_PROGRAM == 0
     embedDBExample();
 #elif WHICH_PROGRAM == 1
@@ -115,7 +115,7 @@ void setup() {
     advancedQueryExample();
 #elif WHICH_PROGRAM == 4
     activeRulesBenchmark();
-#elif WHICH_PROGRAM == 5    
+#elif WHICH_PROGRAM == 5
     sortQueryBenchmark();
 #endif
 }

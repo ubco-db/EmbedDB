@@ -91,7 +91,7 @@ int8_t groupFunctionLocal(const void* lastRecord, const void* record) {
 embedDBOperator* createOperatorLocal(embedDBState* state, embedDBSchema* schema, void*** allocatedValues, uint32_t key) {
     embedDBIterator* it = (embedDBIterator*)malloc(sizeof(embedDBIterator));
     uint32_t numRecords = 1;
-    uint32_t minKeyVal = key - (numRecords- 1);
+    uint32_t minKeyVal = key - (numRecords - 1);
     uint32_t* minKeyPtr = (uint32_t*)malloc(sizeof(uint32_t));
     *minKeyPtr = minKeyVal;
     it->minKey = minKeyPtr;
@@ -154,7 +154,7 @@ uint32_t activeRulesBenchmark() {
     float minVal = 0.0f;
     activeRuleGT->IF(activeRuleGT, 1, GET_AVG)
         ->ofLast(activeRuleGT, (void*)&numRecords)
-    //    ->is(activeRuleGT, GreaterThan, (void*)&minVal)
+        //    ->is(activeRuleGT, GreaterThan, (void*)&minVal)
         ->is(activeRuleGT, LessThan, (void*)&minVal)
         ->then(activeRuleGT, GTcallback);
 
@@ -185,7 +185,7 @@ uint32_t activeRulesBenchmark() {
         float temperature = -5 + (float)rand() / RAND_MAX * 10;  // Random temperature between -5°C and 5°C
 
         uint64_t start = get_nanoseconds();
-        
+
         *((float*)dataPtr) = temperature;
         int8_t result = embedDBPut(state, &j, dataPtr);
         (void)result;
@@ -198,7 +198,7 @@ uint32_t activeRulesBenchmark() {
         // fprintf(perfLog, "%llu,INSERT,%f,%llu\n", (unsigned long long)timestamp, temperature, (unsigned long long)insertTime);
         if (i % 100 == 0)
             printf("%llu,INSERT,%f,%llu\n", (unsigned long long)timestamp, temperature, (unsigned long long)insertTime);
-        
+
         j++;
     }
 

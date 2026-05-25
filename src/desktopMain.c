@@ -34,7 +34,7 @@ int main() {
     return advancedQueryExample();
 #elif WHICH_PROGRAM == 4
     return activeRulesBenchmark();
-#elif WHICH_PROGRAM == 5    
+#elif WHICH_PROGRAM == 5
     return sortQueryBenchmark();
 #endif
 }
