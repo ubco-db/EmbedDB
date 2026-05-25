@@ -1,3 +1,9 @@
+#if defined(_WIN32) || defined(_WIN64)
+#include <io.h>
+#else
+#include <unistd.h> 
+#endif
+
 #include "desktopFileInterface.h"
 
 typedef struct {
@@ -159,12 +165,13 @@ char *tempFilePath(void) {
 
 #else
     /* POSIX systems */
-    snprintf(tempPathBuffer, sizeof(tempPathBuffer),
-             "/tmp/embeddb_%luXXXXXX", (unsigned long)rand());
+    snprintf(tempPathBuffer, sizeof(tempPathBuffer), "/tmp/embeddb_XXXXXX");
 
     int fd = mkstemp(tempPathBuffer);
     if (fd >= 0) {
         close(fd);
+    } else {
+        perror("mkstemp failed");
     }
 #endif
 

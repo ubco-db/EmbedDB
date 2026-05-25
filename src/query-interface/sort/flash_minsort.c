@@ -52,7 +52,8 @@ This is no output sort with block headers and iterator input. Heap used when mov
 // #define DEBUG 1
 // #define DEBUG_OUTPUT 1
 // #define DEBUG_READ 1
-#if defined(DEBUG) || defined(DEBUG_OUTPUT) || defined(DEBUG_READ)
+// #define MINSORT_END 1
+#if defined(DEBUG) || defined(DEBUG_OUTPUT) || defined(DEBUG_READ) || defined(MINSORT_END)
 #include "debug_print.h"
 #else
 #ifndef debug_log
@@ -502,8 +503,9 @@ int flash_minsort(
     clock_t end = clock();
 #endif
 
-#ifdef DEBUG
-    debug_log("Complete. Comparisons: %d  MemCopies: %d\n", metric->num_compar, metric->num_memcpys);
+#ifdef MINSORT_END
+    debug_log("Complete. Comparisons: %d Reads: %d Writes: %d MemCopies: %d\n", metric->num_compar, metric->num_reads,
+              metric->num_writes, metric->num_memcpys);
 #endif
 
     return 0;  // Successful completion

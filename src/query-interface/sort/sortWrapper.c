@@ -389,8 +389,8 @@ file_iterator_state_t *startSort(sortData *data, void *unsortedFile, void *sorte
 
     int err;
 
-    int8_t runGenOnly = false;   // Run full sort operation
-    int8_t writeReadRatio = 19;  // 1.97 * 10 => 19
+    int8_t runGenOnly = false;  // Run full sort operation
+    int8_t writeReadRatio = 40;
     err = adaptive_sort(readNextRecord, iteratorState, tuple_buffer, sortedFile, buffer, buffer_max_pages, &es, &result_file_ptr, &metrics, data->compareFn, runGenOnly, writeReadRatio, data);
 
 #ifdef PRINT_METRIC

@@ -52,10 +52,10 @@
 
 // #define     DEBUG         1
 // #define     DEBUG_OUTPUT  1
-// #define     DEBUG_READ    1
+//  #define     DEBUG_READ    1
 // #define     DEBUG_HEAP    0
 // #define ADAPTIVE_SORT_PRINT
-// #define ADAPTIVE_SORT_PRINT_FINISH
+//  #define ADAPTIVE_SORT_PRINT_FINISH
 #if defined(DEBUG) || defined(DEBUG_OUTPUT) || defined(DEBUG_READ) || defined(DEBUG_HEAP) || defined(ADAPTIVE_SORT_PRINT) || defined(ADAPTIVE_SORT_PRINT_FINISH)
 #include "debug_print.h"
 #else
@@ -141,14 +141,16 @@ int adaptive_sort(
     int16_t i, status;
     int32_t numSublist = 0;
     void* addr;
+    int8_t startNewSublist = 0;
     int32_t numShiftOutOutput = 0, numShiftIntoOutput = 0, numShiftOtherBlock = 0;
+    int16_t cpuPenalty = 3;
 
     /* Distribution estimation variables */
     int16_t avgDistinct = 0; /* Average # of distinct values per run. Multiplied by 10 so can do integer rather than float operations. */
     /* Note: Could be int8_t as larger than 255 is above cutoff for using MinSort. */
-    uint8_t numDistinctInRun = 0; /* Number of distinct values in current run */
+    uint16_t numDistinctInRun = 0; /* Number of distinct values in current run */
 
-    int optimistic = false;
+    int optimistic = true;
     if (optimistic) {
         // Do FLASH MinSort init first
 #ifdef DEBUG
@@ -165,9 +167,9 @@ int adaptive_sort(
         avgDistinct = 16;
 
         int16_t numPasses = (int)ceil(log(es->num_pages / bufferSizeInBlocks) / log(bufferSizeInBlocks));
-        int32_t nobSortCost = numPasses * (10 + writeToReadRatio) / 10;
+        int32_t nobSortCost = (numPasses * (10 + writeToReadRatio)) / 10;
 
-#ifdef DEBUG
+#ifdef ADAPTIVE_SORT_PRINT
         debug_log("Adaptive calculation.\n");
         debug_log("NOB sort cost. # runs: %d", numSublist);
         debug_log(" # passes: %d cost: %d\n", numPasses, nobSortCost);
@@ -175,7 +177,7 @@ int adaptive_sort(
         debug_log(" Avg. distinct/sublist: %d\n", avgDistinct / 10);
 #endif
 
-        if (avgDistinct < nobSortCost)
+        if (avgDistinct * cpuPenalty < nobSortCost)
         // if (true)
         {
 #ifdef DEBUG
@@ -368,6 +370,12 @@ int adaptive_sort(
                       sublistSize, outputCount, heapSize, listSize, recordsLeft);
 #endif
 
+            if (startNewSublist) {
+                outputCount = 0;
+                haveOutputKey = 0;
+                sublistSize = 0;
+                startNewSublist = 0;
+            }
             // Read in page
             addr = buffer + es->headerSize;
             for (i = 0; i < tuplesPerPage; i++) {
@@ -430,41 +438,6 @@ int adaptive_sort(
 
             // Swap output records into output buffer from heap if smaller than records currently there. (I/O block is id zero)
             for (i = 0; i < tuplesPerPage; i++) {
-                /*
-                 * HEAP-EMPTY START NEW RUN TRANSITION
-                 */
-                if (heapSize == 0) {
-                    if (listSize > 0) {
-                        // Finish current run and start a new one
-                        numSublist++;
-                        metric->num_runs++;
-
-                        sublistSize = 0;
-                        outputCount = 0;
-                        haveOutputKey = 0;
-
-#ifdef DEBUG
-                        debug_log("DEBUG: Heap empty → starting new run, promoting list (%d records)\n",
-                                  listSize);
-#endif
-
-                        // Promote frozen list to heap
-                        for (int32_t k = listSize - 1; k >= 0; k--) {
-                            shiftUp_rev(buffer + heapStartOffset,
-                                        buffer + es->page_size + k * es->record_size,
-                                        heapSize, es, metric);
-                            heapSize++;
-                        }
-                        listSize = 0;
-
-                        // Restart filling the output page for the new run
-                        i = -1;
-                        continue;
-                    } else {
-                        // No heap, no list → nothing left to output
-                        break;
-                    }
-                }
 #ifdef DEBUG
                 if (i < 3 || i == tuplesPerPage - 1) {  // Only log first 3 and last iteration
                     debug_log("  Inner loop i=%d: recordsRead=%d, outputCount=%d, recordsLeft=%d, heapSize=%d\n",
@@ -473,6 +446,16 @@ int adaptive_sort(
 #endif
                 // Check if we've read all records from the current page
                 if (recordsRead == 0 || i >= recordsRead) {
+                    heapVal = buffer + heapStartOffset;
+                    if (haveOutputKey && heapSize > 0 &&
+                        es->compare_fcn(heapVal + es->key_offset,
+                                        lastOutputKey + es->key_offset) < 0) {
+                        numSublist++;
+                        metric->num_runs++;
+                        numDistinctInRun = 1;
+                        startNewSublist = 1;
+                        break;
+                    }
                     // Check if there are any records left
                     if (recordsLeft <= 0) {
                         break;
@@ -540,7 +523,7 @@ int adaptive_sort(
                     memcpy(buffer + es->headerSize + i * es->record_size, buffer + heapStartOffset, es->record_size); /* Heap into input/output block */
                     metric->num_memcpys += 2;
                     // Determine if the value is different than the last one to estimate the number of distinct values
-                    if (numDistinctInRun < 255 && haveOutputKey) {
+                    if (haveOutputKey) {
                         // Value is different
                         metric->num_compar++;
                         if (es->compare_fcn(lastOutputKey + es->key_offset, inputVal + es->key_offset) < 0)
@@ -659,7 +642,6 @@ int adaptive_sort(
 #endif
         numDistinctInRun = 0;
     } /* end pessmistic */
-
 #ifdef DEBUG
     debug_log("\n=== REPLACEMENT SELECTION COMPLETE ===\n");
     debug_log("Number of sublists created: %d\n", numSublist);
@@ -674,8 +656,8 @@ int adaptive_sort(
         uint32_t blockIdx = *((uint32_t*)buffer);
         uint16_t count = *((uint16_t*)(buffer + BLOCK_COUNT_OFFSET));
 
-        debug_log("Block %d: blockIdx=%u, count=%u, first 10 values:", debugBlock, blockIdx, count);
-        for (int v = 0; v < count && v < 10; v++) {
+        debug_log("Block %d: blockIdx=%u, count=%u,", debugBlock, blockIdx, count);
+        for (int v = 0; v < count && v < 63; v++) {
             debug_log(" %d", *(int32_t*)(buffer + es->headerSize + v * es->record_size + es->key_offset));
         }
         if (count > 10) debug_log(" ...");
@@ -707,6 +689,7 @@ int adaptive_sort(
 
     int16_t numPasses = (int)ceil(log(numSublist) / log(bufferSizeInBlocks));
     int32_t nobSortCost = numPasses * (10 + writeToReadRatio) / 10;
+    int32_t minSortCost = avgDistinct / 10 * cpuPenalty;
 
 #ifdef ADAPTIVE_SORT_PRINT
     debug_log("Adaptive calculation.\n");
@@ -714,11 +697,12 @@ int adaptive_sort(
     debug_log(" # passes: %d cost: %d\n", numPasses, nobSortCost);
     debug_log("MinSort cost. Num sublists: %d ", numSublist);
     debug_log(" Avg. distinct/sublist: %d\n", avgDistinct / 10);
-
+    debug_log("Sublist version possible: %d\n", sublistVersionPossible);
+    debug_log("Buffer size bytes: %d Sort key size: %d\n", bufferSizeBytes, SORT_KEY_SIZE);
 #endif
 
     // Make decision to use either no output buffer sort or MinSort
-    if (avgDistinct / 10 < nobSortCost) {
+    if (minSortCost < nobSortCost) {
         /*               */
         /*    MinSort    */
         /*               */
@@ -1479,7 +1463,7 @@ int adaptive_sort(
                     /* end of run */
                 }
 
-                if (record2[0] != -1) { /* Tuples in output block to write out */
+                if (record2[0] > 0) { /* Tuples in output block to write out */
                     // fseek(outputFile, lastWritePos, SEEK_SET);
                     // if (0 == fwrite(buffer + OUTPUT_BLOCK_ID * es->page_size, (size_t)es->page_size, 1, outputFile))
                     // {   /* File write error - arduino prints 1st value nmemb times if nmemb != 1 */

@@ -71,6 +71,8 @@ static ArduinoOutStream cout(Serial);
 #include "benchmarks/queryInterfaceBenchmark.h"
 #elif WHICH_PROGRAM == 4
 #include "benchmarks/activeRulesBenchmark.h"
+#elif WHICH_PROGRAM == 5
+#include "benchmarks/sortBenchmark.h"
 #endif
 
 #define ENABLE_DEDICATED_SPI 1
@@ -113,6 +115,8 @@ void setup() {
     advancedQueryExample();
 #elif WHICH_PROGRAM == 4
     activeRulesBenchmark();
+#elif WHICH_PROGRAM == 5    
+    sortQueryBenchmark();
 #endif
 }
 
