@@ -83,6 +83,8 @@ Examples:
 - [Performance Benchmarks](benchmarks/README.md)
 - [Time Series Index Publication](docs/SBITS_time_series_index.pdf)
 - [Time Series Learned Index Publication](https://arxiv.org/abs/2302.03085)
-<!-- TODO: EmbedDB publication -->
+- [ACM SAC 2024 EmbedDB Poster](https://dl.acm.org/doi/abs/10.1145/3605098.3636116)
+- [ICEIS 2024 EmbedDB Publication](https://www.scitepress.org/Papers/2024/125581/125581.pdf)
+- [ICEIS 2026 Active Rules Publication](docs/ICEIS_2026_Active_EmbedDB.pdf)
   
 <br>University of British Columbia Okanagan
