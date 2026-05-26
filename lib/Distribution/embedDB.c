@@ -3454,7 +3454,6 @@ int8_t nextOrderBy(embedDBOperator *op) {
 
 void closeOrderBy(embedDBOperator *op) {
     op->input->close(op->input);
-    op->input = NULL;
     embedDBFreeSchema(&op->schema);
 
     closeSort(((sortData *)op->state)->fileIterator);
@@ -3641,7 +3640,6 @@ int8_t nextAggregate(embedDBOperator *op) {
 
 void closeAggregate(embedDBOperator *op) {
     op->input->close(op->input);
-    op->input = NULL;
     embedDBFreeSchema(&op->schema);
     free(((struct aggregateInfo *)op->state)->lastRecordBuffer);
     free(op->state);
