@@ -67,7 +67,16 @@
 
 #include "unity.h"
 
+extern "C" int8_t binarySearch(embedDBState *state, void *buffer, void *key);
+
 embedDBState *state;
+static int8_t (*originalFileRead)(void *, uint32_t, uint32_t, void *);
+static uint32_t lastReadPage;
+
+static int8_t trackFileRead(void *buffer, uint32_t pageNum, uint32_t pageSize, void *file) {
+    lastReadPage = pageNum;
+    return originalFileRead(buffer, pageNum, pageSize, file);
+}
 
 void setupEmbedDB() {
     state = (embedDBState *)malloc(sizeof(embedDBState));
@@ -241,6 +250,28 @@ void embedDBFlush_does_not_write_when_nothing_in_buffer() {
     TEST_ASSERT_EQUAL_UINT32_MESSAGE(1000, state->numAvailDataPages, "embedDBFlush should not change numAvailDataPages when no records in buffer.");
 }
 
+void binarySearch_stops_at_first_page_for_lower_key() {
+    for (uint32_t key = 10; key < 136; key++) {
+        uint32_t data = key;
+        TEST_ASSERT_EQUAL_INT8(0, embedDBPut(state, &key, &data));
+    }
+    TEST_ASSERT_EQUAL_INT8(0, embedDBFlush(state));
+    TEST_ASSERT_EQUAL_UINT32(2, state->nextDataPageId);
+
+    state->bufferedPageId = UINT32_MAX;
+    originalFileRead = state->fileInterface->read;
+    state->fileInterface->read = trackFileRead;
+    lastReadPage = UINT32_MAX;
+
+    uint32_t key = 9;
+    void *readBuffer = (int8_t *)state->buffer + state->pageSize;
+    int8_t result = binarySearch(state, readBuffer, &key);
+
+    state->fileInterface->read = originalFileRead;
+    TEST_ASSERT_EQUAL_INT8(-1, result);
+    TEST_ASSERT_EQUAL_UINT32(0, lastReadPage);
+}
+
 int runUnityTests(void) {
     UNITY_BEGIN();
     RUN_TEST(embedDB_initial_configuration_is_correct);
@@ -250,6 +281,7 @@ int runUnityTests(void) {
     RUN_TEST(embedDB_put_inserts_one_more_than_one_page_of_records_correctly);
     RUN_TEST(iteratorReturnsCorrectRecords);
     RUN_TEST(embedDBFlush_does_not_write_when_nothing_in_buffer);
+    RUN_TEST(binarySearch_stops_at_first_page_for_lower_key);
     return UNITY_END();
 }
 
