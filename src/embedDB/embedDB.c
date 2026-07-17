@@ -1389,15 +1389,16 @@ int8_t binarySearch(embedDBState *state, void *buffer, void *key) {
         if (readPage(state, pageId % state->numDataPages) != 0)
             return -1;
 
-        if (first >= last)
-            break;
-
         if (state->compareKey(key, embedDBGetMinKey(state, buffer)) < 0) {
             /* Key is less than smallest record in block. */
+            if (first >= last)
+                return -1;
             last = pageId - 1;
             pageId = (first + last) / 2;
         } else if (state->compareKey(key, embedDBGetMaxKey(state, buffer)) > 0) {
             /* Key is larger than largest record in block. */
+            if (first >= last)
+                return -1;
             first = pageId + 1;
             pageId = (first + last) / 2;
         } else {
